@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stomp Lab</title>
+  <style>
+    @font-face {
+      font-family: "Barlow Condensed";
+      src: url("fonts/BarlowCondensed-ExtraBold.ttf") format("truetype");
+      font-weight: 800;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Barlow Condensed";
+      src: url("fonts/BarlowCondensed-Bold.ttf") format("truetype");
+      font-weight: 700;
+      font-style: normal;
+    }
+    @font-face {
+      font-family: "Share Tech Mono";
+      src: url("fonts/ShareTechMono.ttf") format("truetype");
+      font-weight: 400;
+      font-style: normal;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body {
+      width: 1200px;
+      height: 630px;
+      overflow: hidden;
+      background: #0B0C0E;
+    }
+    .stage {
+      position: relative;
+      width: 1200px;
+      height: 630px;
+      background:
+        radial-gradient(ellipse 90% 70% at 50% 42%, #16181a 0%, #0B0C0E 62%, #070809 100%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 18px;
+      padding: 36px 80px 28px;
+    }
+    .stage::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+      opacity: 0.07;
+      pointer-events: none;
+      mix-blend-mode: overlay;
+    }
+    .lockup {
+      position: relative;
+      z-index: 2;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .title {
+      font-family: "Barlow Condensed", "Liberation Sans Narrow", sans-serif;
+      font-weight: 800;
+      font-size: 92px;
+      line-height: 0.88;
+      letter-spacing: 0.16em;
+      color: #E8E6DF;
+      text-indent: 0.16em;
+      text-shadow:
+        0 1px 0 rgba(255,255,255,0.12),
+        0 3px 18px rgba(0,0,0,0.55);
+    }
+    .rule {
+      width: 52px;
+      height: 3px;
+      background: #7DFF9A;
+      border-radius: 1px;
+      box-shadow: 0 0 10px rgba(125,255,154,0.45);
+      margin: 2px 0 0;
+    }
+    .tag {
+      font-family: "Share Tech Mono", "DejaVu Sans Mono", monospace;
+      font-size: 15px;
+      letter-spacing: 0.42em;
+      text-indent: 0.42em;
+      color: #8A8C86;
+      text-transform: uppercase;
+    }
+    .pedal-wrap {
+      position: relative;
+      z-index: 2;
+      width: 640px;
+      height: 372px;
+      filter: drop-shadow(0 28px 36px rgba(0,0,0,0.62));
+    }
+    .pedal-wrap svg { width: 100%; height: 100%; display: block; }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <div class="lockup">
+      <div class="title">STOMP LAB</div>
+      <div class="rule"></div>
+      <div class="tag">build the chain</div>
+    </div>
+    <div class="pedal-wrap">
+      <svg viewBox="0 0 640 372" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <defs>
+          <linearGradient id="chassis" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#D5D9D2"/>
+            <stop offset="8%" stop-color="#B8BDB6"/>
+            <stop offset="22%" stop-color="#9EA49C"/>
+            <stop offset="55%" stop-color="#8A8C86"/>
+            <stop offset="78%" stop-color="#6F726C"/>
+            <stop offset="100%" stop-color="#5A5D58"/>
+          </linearGradient>
+          <linearGradient id="face" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#1A1C1E"/>
+            <stop offset="18%" stop-color="#121416"/>
+            <stop offset="100%" stop-color="#0B0C0E"/>
+          </linearGradient>
+          <linearGradient id="bezel" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="#2A2C2A"/>
+            <stop offset="40%" stop-color="#141614"/>
+            <stop offset="100%" stop-color="#0A0B0C"/>
+          </linearGradient>
+          <linearGradient id="lcdGlass" x1="0" y1="0" x2="0.2" y2="1">
+            <stop offset="0%" stop-color="#0C2214"/>
+            <stop offset="45%" stop-color="#07140C"/>
+            <stop offset="100%" stop-color="#050C08"/>
+          </linearGradient>
+          <radialGradient id="knobBody" cx="0.38" cy="0.32" r="0.7">
+            <stop offset="0%" stop-color="#E4E6E0"/>
+            <stop offset="38%" stop-color="#C5C9C2"/>
+            <stop offset="72%" stop-color="#8A8C86"/>
+            <stop offset="100%" stop-color="#4E514C"/>
+          </radialGradient>
+          <radialGradient id="knobCap" cx="0.4" cy="0.35" r="0.65">
+            <stop offset="0%" stop-color="#2A2C2A"/>
+            <stop offset="100%" stop-color="#0B0C0E"/>
+          </radialGradient>
+          <radialGradient id="fsMetal" cx="0.38" cy="0.3" r="0.72">
+            <stop offset="0%" stop-color="#E8E6DF"/>
+            <stop offset="40%" stop-color="#C5C9C2"/>
+            <stop offset="100%" stop-color="#6A6D68"/>
+          </radialGradient>
+          <filter id="recess" x="-10%" y="-10%" width="120%" height="120%">
+            <feOffset dx="0" dy="1" in="SourceAlpha" result="off"/>
+            <feGaussianBlur stdDeviation="1.4" in="off" result="blur"/>
+            <feComposite in="blur" in2="SourceAlpha" operator="arithmetic" k2="-1" k3="1" result="inner"/>
+            <feColorMatrix in="inner" type="matrix" values="0 0 0 0 0  0 0 0 0 0  0 0 0 0 0  0 0 0 0.7 0" result="shadow"/>
+            <feBlend in="SourceGraphic" in2="shadow" mode="normal"/>
+          </filter>
+          <filter id="lcdGlow">
+            <feGaussianBlur stdDeviation="2.2" result="g"/>
+            <feMerge>
+              <feMergeNode in="g"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+
+        <!-- floor contact -->
+        <ellipse cx="320" cy="358" rx="268" ry="12" fill="#000" opacity="0.45"/>
+
+        <!-- chassis -->
+        <rect x="18" y="8" width="604" height="344" rx="26" fill="url(#chassis)"/>
+        <rect x="18" y="8" width="604" height="344" rx="26" fill="none" stroke="#E8E6DF" stroke-opacity="0.28" stroke-width="1.2"/>
+        <!-- inner lip -->
+        <rect x="30" y="20" width="580" height="320" rx="18" fill="url(#face)" stroke="#3A3C3A" stroke-width="1"/>
+        <!-- brushed highlight along top edge -->
+        <rect x="36" y="22" width="568" height="7" rx="3" fill="#C5C9C2" opacity="0.12"/>
+
+        <!-- corner screws -->
+        <g fill="#C5C9C2" stroke="#5A5D58" stroke-width="0.6">
+          <circle cx="48" cy="38" r="5.2"/>
+          <circle cx="592" cy="38" r="5.2"/>
+          <circle cx="48" cy="322" r="5.2"/>
+          <circle cx="592" cy="322" r="5.2"/>
+        </g>
+        <g stroke="#3A3C3A" stroke-width="0.8">
+          <line x1="45" y1="35" x2="51" y2="41"/>
+          <line x1="589" y1="35" x2="595" y2="41"/>
+          <line x1="45" y1="319" x2="51" y2="325"/>
+          <line x1="589" y1="319" x2="595" y2="325"/>
+        </g>
+
+        <!-- LCD bezel -->
+        <rect x="52" y="48" width="292" height="156" rx="10" fill="url(#bezel)"/>
+        <rect x="60" y="56" width="276" height="140" rx="6" fill="url(#lcdGlass)" filter="url(#recess)"/>
+        <!-- LCD sheen -->
+        <rect x="60" y="56" width="276" height="44" rx="6" fill="#7DFF9A" opacity="0.04"/>
+
+        <!-- LCD header -->
+        <g font-family="Share Tech Mono, monospace" fill="#3D8A52">
+          <text x="74" y="78" font-size="11">PATH 1  ·  SNAP A</text>
+          <text x="286" y="78" font-size="11" text-anchor="end">120 BPM</text>
+        </g>
+
+        <!-- signal chain blocks -->
+        <g font-family="Share Tech Mono, monospace" font-size="11" text-anchor="middle">
+          <!-- Drive -->
+          <rect x="74" y="92" width="56" height="36" rx="3" fill="#1A1208" stroke="#C46A12" stroke-width="1.2"/>
+          <text x="102" y="107" fill="#E8A050">DRIVE</text>
+          <text x="102" y="121" fill="#8A8C86" font-size="9">Kinky</text>
+          <!-- arrow -->
+          <path d="M134 110 h10" stroke="#3D8A52" stroke-width="1.4"/>
+          <path d="M142 106 l6 4 -6 4" fill="#3D8A52"/>
+          <!-- Amp (active / phosphor) -->
+          <rect x="152" y="90" width="62" height="40" rx="3" fill="#0E2A16" stroke="#7DFF9A" stroke-width="1.6" filter="url(#lcdGlow)"/>
+          <text x="183" y="107" fill="#7DFF9A">AMP</text>
+          <text x="183" y="121" fill="#A8F0B8" font-size="9">Match</text>
+          <path d="M218 110 h10" stroke="#3D8A52" stroke-width="1.4"/>
+          <path d="M226 106 l6 4 -6 4" fill="#3D8A52"/>
+          <!-- Cab -->
+          <rect x="236" y="92" width="56" height="36" rx="3" fill="#121410" stroke="#8A8C86" stroke-width="1.2"/>
+          <text x="264" y="107" fill="#C5C9C2">CAB</text>
+          <text x="264" y="121" fill="#8A8C86" font-size="9">4x12</text>
+        </g>
+        <!-- second row: delay -->
+        <g font-family="Share Tech Mono, monospace" font-size="11" text-anchor="middle">
+          <rect x="74" y="140" width="56" height="36" rx="3" fill="#071812" stroke="#22A05A" stroke-width="1.2"/>
+          <text x="102" y="155" fill="#5AD68A">DLY</text>
+          <text x="102" y="169" fill="#8A8C86" font-size="9">Tape</text>
+          <path d="M134 158 h10" stroke="#3D8A52" stroke-width="1.4"/>
+          <path d="M142 154 l6 4 -6 4" fill="#3D8A52"/>
+          <rect x="152" y="140" width="62" height="36" rx="3" fill="#0C1014" stroke="#3A6A88" stroke-width="1.2"/>
+          <text x="183" y="155" fill="#6AB0D0">RVB</text>
+          <text x="183" y="169" fill="#8A8C86" font-size="9">Hall</text>
+          <path d="M218 158 h10" stroke="#3D8A52" stroke-width="1.4"/>
+          <path d="M226 154 l6 4 -6 4" fill="#3D8A52"/>
+          <rect x="236" y="140" width="56" height="36" rx="3" fill="#101010" stroke="#4A4C4A" stroke-width="1" stroke-dasharray="3 2"/>
+          <text x="264" y="162" fill="#5A5D58">+</text>
+        </g>
+
+        <!-- knobs cluster (right of LCD) -->
+        <g id="knobs">
+          <!-- labels -->
+          <g font-family="Share Tech Mono, monospace" font-size="8" fill="#8A8C86" text-anchor="middle">
+            <text x="392" y="64">GAIN</text>
+            <text x="456" y="64">BASS</text>
+            <text x="520" y="64">MID</text>
+            <text x="392" y="138">TREB</text>
+            <text x="456" y="138">PRES</text>
+            <text x="520" y="138">VOL</text>
+          </g>
+          <!-- six knobs -->
+          <g id="knob">
+            <!-- GAIN -->
+            <circle cx="392" cy="92" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="392" cy="92" r="11" fill="url(#knobCap)"/>
+            <line x1="392" y1="92" x2="403" y2="82" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+            <!-- BASS -->
+            <circle cx="456" cy="92" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="456" cy="92" r="11" fill="url(#knobCap)"/>
+            <line x1="456" y1="92" x2="456" y2="76" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+            <!-- MID -->
+            <circle cx="520" cy="92" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="520" cy="92" r="11" fill="url(#knobCap)"/>
+            <line x1="520" y1="92" x2="510" y2="80" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+            <!-- TREB -->
+            <circle cx="392" cy="166" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="392" cy="166" r="11" fill="url(#knobCap)"/>
+            <line x1="392" y1="166" x2="404" y2="174" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+            <!-- PRES -->
+            <circle cx="456" cy="166" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="456" cy="166" r="11" fill="url(#knobCap)"/>
+            <line x1="456" y1="166" x2="468" y2="158" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+            <!-- VOL -->
+            <circle cx="520" cy="166" r="18" fill="url(#knobBody)" stroke="#3A3C3A" stroke-width="0.8"/>
+            <circle cx="520" cy="166" r="11" fill="url(#knobCap)"/>
+            <line x1="520" y1="166" x2="532" y2="158" stroke="#E8E6DF" stroke-width="2" stroke-linecap="round"/>
+          </g>
+        </g>
+
+        <!-- small action buttons under LCD -->
+        <g>
+          <rect x="64" y="214" width="44" height="18" rx="3" fill="#1A1C1A" stroke="#5A5D58" stroke-width="0.8"/>
+          <rect x="114" y="214" width="44" height="18" rx="3" fill="#1A1C1A" stroke="#5A5D58" stroke-width="0.8"/>
+          <rect x="164" y="214" width="44" height="18" rx="3" fill="#1A1C1A" stroke="#5A5D58" stroke-width="0.8"/>
+          <rect x="214" y="214" width="52" height="18" rx="3" fill="#1A1C1A" stroke="#5A5D58" stroke-width="0.8"/>
+          <g font-family="Share Tech Mono, monospace" font-size="8" fill="#8A8C86" text-anchor="middle">
+            <text x="86" y="226">HOME</text>
+            <text x="136" y="226">VIEW</text>
+            <text x="186" y="226">SAVE</text>
+            <text x="240" y="226">ACTION</text>
+          </g>
+        </g>
+
+        <!-- power LED -->
+        <circle cx="560" cy="56" r="4" fill="#7DFF9A" opacity="0.95"/>
+        <circle cx="560" cy="56" r="7" fill="#7DFF9A" opacity="0.18"/>
+
+        <!-- three footswitches -->
+        <g id="fs">
+          <!-- FS1 -->
+          <circle cx="160" cy="286" r="38" fill="none" stroke="#3A3C3A" stroke-width="3"/>
+          <circle cx="160" cy="286" r="34" fill="none" stroke="#C46A12" stroke-width="3.5" opacity="0.85"/>
+          <circle cx="160" cy="286" r="26" fill="url(#fsMetal)" stroke="#4A4C4A" stroke-width="1"/>
+          <circle cx="160" cy="286" r="14" fill="#1A1C1A"/>
+          <circle cx="160" cy="282" r="6" fill="#C5C9C2" opacity="0.35"/>
+          <!-- FS2 active phosphor ring -->
+          <circle cx="320" cy="286" r="38" fill="none" stroke="#3A3C3A" stroke-width="3"/>
+          <circle cx="320" cy="286" r="34" fill="none" stroke="#7DFF9A" stroke-width="4"/>
+          <circle cx="320" cy="286" r="40" fill="none" stroke="#7DFF9A" stroke-width="1" opacity="0.25"/>
+          <circle cx="320" cy="286" r="26" fill="url(#fsMetal)" stroke="#4A4C4A" stroke-width="1"/>
+          <circle cx="320" cy="286" r="14" fill="#1A1C1A"/>
+          <circle cx="320" cy="282" r="6" fill="#C5C9C2" opacity="0.35"/>
+          <!-- FS3 -->
+          <circle cx="480" cy="286" r="38" fill="none" stroke="#3A3C3A" stroke-width="3"/>
+          <circle cx="480" cy="286" r="34" fill="none" stroke="#3A6A88" stroke-width="3.5" opacity="0.8"/>
+          <circle cx="480" cy="286" r="26" fill="url(#fsMetal)" stroke="#4A4C4A" stroke-width="1"/>
+          <circle cx="480" cy="286" r="14" fill="#1A1C1A"/>
+          <circle cx="480" cy="282" r="6" fill="#C5C9C2" opacity="0.35"/>
+        </g>
+        <g font-family="Share Tech Mono, monospace" font-size="9" fill="#8A8C86" text-anchor="middle">
+          <text x="160" y="338">BYPASS</text>
+          <text x="320" y="338">SNAP A</text>
+          <text x="480" y="338">TAP</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+</body>
+</html>
