@@ -12,9 +12,9 @@ import {
 } from "./cache";
 import { geminiJson } from "./gemini";
 import {
-  PresetOut,
   jsonSchemaHint,
   overlayUserGear,
+  parsePresetJson,
   publicPreset,
   systemForDevice,
   toPreset,
@@ -115,7 +115,7 @@ ${catalog}
 JSON schema:
 ${jsonSchemaHint()}`;
     const json = await geminiJson(input.apiKey, prompt);
-    const parsed = PresetOut.parse(json);
+    const parsed = parsePresetJson(json);
     const preset = overlayUserGear(
       toPreset(parsed, {
         source: "song",
@@ -183,7 +183,7 @@ ${catalog}
 JSON schema:
 ${jsonSchemaHint()}`;
     const json = await geminiJson(input.apiKey, prompt);
-    const parsed = PresetOut.parse(json);
+    const parsed = parsePresetJson(json);
     const preset = overlayUserGear(
       toPreset(parsed, {
         source: "custom",

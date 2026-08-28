@@ -16,7 +16,7 @@ The first person to research a new song stores the public preset (song, artist, 
 
 - TanStack Start + React 19 + Tailwind v4
 - Shared cache: Postgres (Neon in production, PGLite in local preview)
-- Gemini 3.7 Flash via the visitor’s own key (no server-side secret)
+- Gemini Flash via the visitor’s own key (2.5 first, then 3.x — no server-side secret)
 
 Auth is off. The cache table is unowned public song data only.
 

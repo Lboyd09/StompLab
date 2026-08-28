@@ -95,7 +95,7 @@ function SettingsPage() {
         </div>
         <p className="text-xs text-muted-foreground">
           Stored only in this browser — never written to the shared library. Research uses
-          Gemini 3.7 Flash (free-tier). Create the key with <strong className="font-medium text-foreground">no application restriction</strong>{" "}
+          Gemini Flash (2.5 first — the free-tier workhorse — then 3.x if needed). Create the key with <strong className="font-medium text-foreground">no application restriction</strong>{" "}
           (do not lock it to an HTTP referrer). The key is sent to this site only to call Google; it is
           not saved on the server.
         </p>

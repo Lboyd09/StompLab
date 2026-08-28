@@ -5,15 +5,13 @@ import { extractJson } from "./preset-schema";
 /**
  * Gemini Developer API — August 2026.
  *
- * gemini-2.0-flash was shut down 1 Jun 2026.
- * gemini-3.7-flash (13 Aug 2026) is the current Flash workhorse.
- * Prefer the visitor's browser first: Google often rejects datacenter IPs
- * (this host / Vercel serverless) with API_KEY_INVALID while the same key
- * works from the user's machine. The server proxy is only a CORS fallback.
+ * Free-tier keys reliably have gemini-2.5-flash. 3.7 Flash is often
+ * overloaded ("too many users") and 429'd — try 2.5 first, then 3.x.
+ * Prefer the visitor's browser: Google rejects many datacenter IPs.
  */
-const PREFERRED_MODELS = ["gemini-3.7-flash", "gemini-3.5-flash"] as const;
+const PREFERRED_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.7-flash"] as const;
 
-const GENERATE_MS = 15000;
+const GENERATE_MS = 20000;
 const LIST_MS = 8000;
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -32,6 +30,17 @@ function normalizeKey(raw: string): string {
   return raw.trim().replace(/^["']+|["']+$/g, "").replace(/\s+/g, "");
 }
 
+function isBusyStatus(status: number, message: string, apiStatus: string): boolean {
+  const lower = `${message} ${apiStatus}`.toLowerCase();
+  return (
+    status === 429 ||
+    status === 503 ||
+    apiStatus === "RESOURCE_EXHAUSTED" ||
+    apiStatus === "UNAVAILABLE" ||
+    /quota|overloaded|too many|high demand|unavailable|resource_exhausted|try again later/.test(lower)
+  );
+}
+
 function googleMessage(status: number, body: string): string {
   let message = "";
   let apiStatus = "";
@@ -42,10 +51,10 @@ function googleMessage(status: number, body: string): string {
   } catch {
     message = body.slice(0, 240);
   }
-  const lower = `${message} ${apiStatus}`.toLowerCase();
-  if (status === 429 || apiStatus === "RESOURCE_EXHAUSTED" || lower.includes("quota")) {
-    return "Gemini free-tier rate limit hit. Wait a minute, or open a song that's already in the library.";
+  if (isBusyStatus(status, message, apiStatus)) {
+    return "Gemini is busy on that model. Trying another Flash model.";
   }
+  const lower = `${message} ${apiStatus}`.toLowerCase();
   if (
     status === 401 ||
     apiStatus === "UNAUTHENTICATED" ||
@@ -80,9 +89,7 @@ function thinkingFor(model: string): Record<string, unknown> | undefined {
   if (model.includes("2.5") && !model.includes("lite")) {
     return { thinkingConfig: { thinkingBudget: 0 } };
   }
-  if (model.includes("gemini-3")) {
-    return { thinkingConfig: { thinkingLevel: "minimal" } };
-  }
+  // 3.x: omit thinking config. "minimal" 400s on some keys and eats JSON.
   return undefined;
 }
 
@@ -115,7 +122,7 @@ async function listFlashModels(apiKey: string): Promise<string[]> {
     .map((m) => (m.name ?? "").replace(/^models\//, ""))
     .filter(Boolean);
   const ranked: string[] = [];
-  for (const pref of [...PREFERRED_MODELS, "gemini-3.6-flash", "gemini-2.5-flash"]) {
+  for (const pref of [...PREFERRED_MODELS, "gemini-3.6-flash", "gemini-2.5-flash-lite"]) {
     if (names.includes(pref) && !ranked.includes(pref)) ranked.push(pref);
   }
   for (const n of names) {
@@ -196,6 +203,16 @@ async function generateJson(
   }
 }
 
+function isFatalKeyError(status: number, error: string, raw: string): boolean {
+  if (status === 401 || status === 403) return true;
+  const lower = `${error} ${raw}`.toLowerCase();
+  return /api[_ ]?key not valid|invalid api key|unregistered|key was rejected|refused the key/.test(lower);
+}
+
+function isBusyError(status: number, error: string, raw: string): boolean {
+  return isBusyStatus(status, error, "") || /busy on that model|rate limit|overloaded|too many/i.test(`${error} ${raw}`);
+}
+
 async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 8192): Promise<unknown> {
   const key = normalizeKey(apiKey);
   if (key.length < 20) throw new Error("Add a free Gemini API key in Settings first.");
@@ -204,8 +221,9 @@ async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 8192
   const tried = new Set<string>();
   let last = "Gemini request failed";
   let listed = false;
+  let sawBusy = false;
 
-  while (tried.size < 2) {
+  while (tried.size < 3) {
     const model = queue.find((m) => !tried.has(m));
     if (!model) break;
     tried.add(model);
@@ -215,30 +233,39 @@ async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 8192
     last = result.error;
     const lower = `${result.error} ${result.raw}`.toLowerCase();
 
-    if (result.status === 401 || result.status === 403 || result.status === 429) {
+    if (isFatalKeyError(result.status, result.error, result.raw)) {
       throw new Error(result.error);
     }
-    if (result.status === 400 && /api[_ ]?key not valid|invalid api key|unregistered/.test(lower)) {
-      throw new Error(result.error);
+    if (isBusyError(result.status, result.error, result.raw)) {
+      sawBusy = true;
+      last = result.error;
+      continue;
     }
     if (extra && (/thinking/i.test(lower) || result.error.includes("empty answer"))) {
       extra = undefined;
       const retry = await generateJson(key, model, prompt, maxOutputTokens, extra);
       if (retry.ok) return retry.json;
       last = retry.error;
-      if (retry.status === 401 || retry.status === 403 || retry.status === 429) {
-        throw new Error(retry.error);
+      if (isFatalKeyError(retry.status, retry.error, retry.raw)) throw new Error(retry.error);
+      if (isBusyError(retry.status, retry.error, retry.raw)) {
+        sawBusy = true;
+        continue;
       }
     }
-    if (result.status === 404 && !listed) {
+    if ((result.status === 404 || /isn't on this key|not found|not supported/i.test(lower)) && !listed) {
       listed = true;
       try {
         const live = await listFlashModels(key);
-        queue = live.filter((n) => !tried.has(n));
+        queue = [...queue, ...live.filter((n) => !tried.has(n) && !queue.includes(n))];
       } catch {
         // keep walking the preferred list
       }
     }
+  }
+  if (sawBusy) {
+    throw new Error(
+      "Gemini is busy right now. Wait a minute and try again, or open a featured song — those don't need a key.",
+    );
   }
   throw new Error(last);
 }
@@ -288,7 +315,7 @@ export async function geminiJson(apiKey: string, prompt: string): Promise<unknow
     return await callGemini(key, prompt);
   } catch (clientErr) {
     const clientMsg = clientErr instanceof Error ? clientErr.message : "Gemini failed";
-    if (!isNetworkError(clientMsg) && /key was rejected|refused the key|rate limit/i.test(clientMsg)) {
+    if (!isNetworkError(clientMsg) && /key was rejected|refused the key/i.test(clientMsg)) {
       throw clientErr;
     }
     try {

@@ -11,52 +11,119 @@ export const GearSchema = z.object({
   notes: z.string(),
 });
 
+/** Cab Mic in the UI is 0–12 (SM57 = 0). Gemini often emits "SM57" instead. */
+const MIC_NAME: Record<string, number> = {
+  sm57: 0,
+  "57": 0,
+  "57dynamic": 0,
+  "409": 1,
+  "421": 2,
+  "30": 3,
+  "20": 4,
+  "121": 5,
+  "160": 6,
+  "4038": 7,
+  "414": 8,
+  "84": 9,
+  "67": 10,
+  "87": 11,
+  "47": 12,
+  "112": 0,
+};
+
+function coerceNum(v: unknown): number | undefined {
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "boolean") return v ? 1 : 0;
+  if (typeof v === "string") {
+    const key = v.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+    if (key in MIC_NAME) return MIC_NAME[key];
+    const n = Number(v.trim());
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+function coerceParams(raw: unknown): Record<string, number> {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  const out: Record<string, number> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    const n = coerceNum(v);
+    if (n !== undefined) out[k] = n;
+  }
+  return out;
+}
+
+const Params = z.preprocess(coerceParams, z.record(z.string(), z.number()));
+
 export const BlockOut = z.object({
   modelId: z.string(),
-  enabled: z.boolean().optional(),
-  params: z.record(z.string(), z.number()).optional(),
+  enabled: z.preprocess((v) => (v === "false" || v === 0 ? false : v !== false), z.boolean()).optional(),
+  params: Params.optional(),
 });
+
+const Overrides = z.preprocess((v) => {
+  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  const out: Record<string, Record<string, number>> = {};
+  for (const [modelId, params] of Object.entries(v as Record<string, unknown>)) {
+    out[modelId] = coerceParams(params);
+  }
+  return out;
+}, z.record(z.string(), z.record(z.string(), z.number())));
 
 export const PresetOut = z.object({
   name: z.string(),
-  tempo: z.number(),
-  summary: z.string(),
-  originalGear: z.array(
-    z.object({ role: z.string(), name: z.string(), notes: z.string() }),
-  ),
-  recommendedGear: z.array(z.object({ item: z.string(), why: z.string() })).optional(),
+  tempo: z.preprocess((v) => coerceNum(v) ?? 120, z.number()),
+  summary: z.string().optional().default(""),
+  originalGear: z
+    .array(
+      z.object({
+        role: z.string().optional().default("Gear"),
+        name: z.string(),
+        notes: z.string().optional().default(""),
+      }),
+    )
+    .optional()
+    .default([]),
+  recommendedGear: z
+    .array(
+      z.object({
+        item: z.string(),
+        why: z.string().optional().default(""),
+      }),
+    )
+    .optional(),
   blocks: z.array(BlockOut).min(1).max(8),
-  snapshots: z.array(
-    z.object({
-      name: z.string(),
-      color: z.string(),
-      enabledModelIds: z.array(z.string()).optional(),
-      notes: z.string(),
-      paramOverrides: z.record(z.string(), z.record(z.string(), z.number())).optional(),
-    }),
-  ),
-  footswitches: z.array(
-    z.object({
-      index: z.number(),
-      label: z.string(),
-      color: z.string(),
-      action: z.enum([
-        "bypass",
-        "snapshot",
-        "tap",
-        "tuner",
-        "looper",
-        "preset-up",
-        "preset-down",
-        "mode",
-      ]),
-      targetModelId: z.string().optional(),
-      snapshotName: z.string().optional(),
-      notes: z.string(),
-    }),
-  ),
-  programming: z.array(z.string()),
-  tips: z.array(z.string()),
+  snapshots: z
+    .array(
+      z.object({
+        name: z.string(),
+        color: z.string().optional().default("#c5c9c2"),
+        enabledModelIds: z.array(z.string()).optional(),
+        notes: z.string().optional().default(""),
+        paramOverrides: Overrides.optional(),
+      }),
+    )
+    .optional()
+    .default([]),
+  footswitches: z
+    .array(
+      z.object({
+        index: z.preprocess((v) => coerceNum(v) ?? 1, z.number()),
+        label: z.string().optional().default("FS"),
+        color: z.string().optional().default("#c5c9c2"),
+        action: z
+          .enum(["bypass", "snapshot", "tap", "tuner", "looper", "preset-up", "preset-down", "mode"])
+          .optional()
+          .default("snapshot"),
+        targetModelId: z.string().optional(),
+        snapshotName: z.string().optional(),
+        notes: z.string().optional().default(""),
+      }),
+    )
+    .optional()
+    .default([]),
+  programming: z.array(z.string()).optional().default([]),
+  tips: z.array(z.string()).optional().default([]),
   song: z.string().optional(),
   artist: z.string().optional(),
 });
@@ -70,6 +137,13 @@ export function extractJson(text: string): unknown {
   const end = raw.lastIndexOf("}");
   if (start < 0 || end < 0) throw new Error("No JSON in model response");
   return JSON.parse(raw.slice(start, end + 1));
+}
+
+/** Never surface Zod dumps to the visitor. */
+export function parsePresetJson(json: unknown): PresetOutT {
+  const result = PresetOut.safeParse(json);
+  if (result.success) return result.data;
+  throw new Error("Gemini sent a preset we couldn't read. Try that song again.");
 }
 
 export function toPreset(
@@ -200,12 +274,13 @@ export function jsonSchemaHint() {
   "tempo": 120,
   "summary": "2-4 sentences: album/year, the real rig, and which HX stand-ins you used",
   "originalGear": [{"role":"Guitar|Bass|Amp|Pedal|Cab","name":"real gear","notes":"era / how it was used"}],
-  "blocks": [{"modelId":"scream-808","enabled":true,"params":{"Drive":2.0,"Output":7.5}}],
+  "blocks": [{"modelId":"scream-808","enabled":true,"params":{"Drive":2.0,"Output":7.5,"Mic":0}}],
   "snapshots": [{"name":"Verse","color":"#7d9a6a","enabledModelIds":["scream-808"],"paramOverrides":{"brit-2204":{"Drive":4.2}},"notes":""}],
   "footswitches": [{"index":1,"label":"DRIVE","color":"#ff7a18","action":"bypass","targetModelId":"scream-808","notes":""}],
   "programming": ["step"],
   "tips": ["how to play it so it sounds like the record"]
-}`;
+}
+Every params value MUST be a JSON number 0-10. Cab Mic is 0 (SM57) through 12 — never a mic name string.`;
 }
 
 const STAND_INS = `Common HX stand-ins when Helix has no exact model:
@@ -237,7 +312,8 @@ Accuracy rules — reconstruct the real recorded (or best-known live) rig, then 
 - Use primary sources: album credits, producer/tech interviews, well-known rig rundowns. If sources conflict, pick the most-cited record-era rig and say so.
 - Put REAL guitars, pedals, amps, cabs, mics in originalGear. Then map each piece to the closest catalog modelId.
 - Every block must earn its place on that recording. Do not pad with unused gate, compressor, EQ, chorus, or hall reverb.
-- Params are 0–10 floats. When a setting is documented (TS Drive low / Level high, muff sustain up, dotted-8th delay, etc.), use it. Invent only what is undocumented, matching that player's known values.
+- Params are 0–10 floats. NEVER put a string in params (no "SM57", no "dotted 8th"). Cab Mic is the number 0 for SM57.
+- When a setting is documented (TS Drive low / Level high, muff sustain up, dotted-8th delay, etc.), use it. Invent only what is undocumented, matching that player's known values.
 - The preset must be playable on one DSP: skip Poly Pitch / Poly Wham / 12 String / Trinity Chorus unless the song needs them.
 
 ${STAND_INS}
