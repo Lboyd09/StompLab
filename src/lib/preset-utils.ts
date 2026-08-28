@@ -36,3 +36,18 @@ export function deviceFor(preset: Preset) {
 export function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
+
+export function withSnapshot(preset: Preset, snapshotIndex: number): Preset {
+  const snap = preset.snapshots[snapshotIndex];
+  if (!snap) return preset;
+  const blocks = preset.blocks.map((b) => {
+    const enabled = snap.enabledBlocks.length ? snap.enabledBlocks.includes(b.id) : b.enabled;
+    const over = snap.paramOverrides?.[b.id];
+    return {
+      ...b,
+      enabled,
+      params: over ? { ...b.params, ...over } : b.params,
+    };
+  });
+  return { ...preset, blocks };
+}

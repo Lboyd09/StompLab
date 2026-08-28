@@ -131,8 +131,8 @@ function Home() {
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
           Name a track. Stomp Lab maps the real amps, pedals, and cabs to HX models, then lays them
-          out on an interactive Stomp — knobs, footswitches, snapshots, and the build order. No Grok
-          credits. Repeats are free for everyone.
+          out on an interactive Stomp — knobs, footswitches, snapshots, and a .hlx you can import
+          in HX Edit. Repeats are free for everyone.
         </p>
       </section>
 
@@ -182,7 +182,7 @@ function Home() {
               key={p.id}
               type="button"
               onClick={() => openFeatured(p.id)}
-              className="group rounded-xl border border-border bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/40"
+              className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
             >
               <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 {p.artist}
@@ -232,15 +232,15 @@ function Home() {
         <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
           <p>
             <span className="block font-medium text-foreground">1. Path</span>
-            Add each block in order. Amp and cab are two blocks. Stay at 8 or under.
+            Add each block in order. Amp and cab stay a pair unless you're going DI. Stay at 8 or under.
           </p>
           <p>
             <span className="block font-medium text-foreground">2. Knobs</span>
             Select a block, then set the three knobs. PAGE for more parameters. Values are 0–10.
           </p>
           <p>
-            <span className="block font-medium text-foreground">3. Switches</span>
-            PAGE cycles Stomp / Snapshot / Preset. Command Center assigns bypass, snapshots, tap, and tuner.
+            <span className="block font-medium text-foreground">3. File</span>
+            Download the .hlx and import it in HX Edit, or copy switches by hand. PAGE cycles Stomp / Snapshot / Preset.
           </p>
         </CardContent>
       </Card>

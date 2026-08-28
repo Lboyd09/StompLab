@@ -53,6 +53,13 @@ function matchFeatured(
   };
 }
 
+function gearLine(gear: UserGear[]): string {
+  if (!gear.length) return "";
+  return `\nPlayer owns (recommend these when they fit; do not invent extras): ${gear
+    .map((g) => `${g.kind}: ${g.name}${g.notes ? ` (${g.notes})` : ""}`)
+    .join("; ")}`;
+}
+
 export type ResearchOk = { ok: true; preset: Preset; source: "library" | "cache" | "gemini" };
 export type ResearchErr = { ok: false; error: string; needKey?: boolean };
 export type ResearchResult = ResearchOk | ResearchErr;
@@ -90,7 +97,7 @@ export async function researchSong(input: {
       ok: false,
       needKey: true,
       error:
-        "This song isn't in the shared library yet. Add a free Gemini API key in Settings — it stays in your browser and uses Google's free Flash-Lite tier, not Grok credits.",
+        "This song isn't in the shared library yet. Add a free Gemini API key in Settings — it stays in your browser and uses Google's free Gemini Flash tier.",
     };
   }
 
@@ -99,6 +106,8 @@ export async function researchSong(input: {
     const prompt = `${systemForDevice(input.stompModel, input.instrument)}
 
 Song: ${input.song}${input.artist ? ` by ${input.artist}` : ""}
+Research the original recorded ${input.instrument} tone. Be specific about album, year, and the chain that was actually used. The HX path should sound like that record, not a generic genre patch.
+${gearLine(input.userGear)}
 
 Catalog (id | name | based on | dsp):
 ${catalog}
@@ -166,6 +175,7 @@ export async function createCustomSound(input: {
 
 Build this sound on the ${DEVICE_MAP[input.stompModel].name}:
 ${input.description}
+${gearLine(input.userGear)}
 
 Catalog (id | name | based on | dsp):
 ${catalog}
@@ -228,7 +238,7 @@ export async function lookupEquivalent(input: {
       input.apiKey,
       `Map this real pedal or amp to Line 6 HX models. Return ONLY JSON:
 {"matches":[{"modelId":"","closeness":"exact|close|similar","how":"1-3 sentences"}]}
-Use only catalog modelId values. 1-4 matches, best first.
+Use only catalog modelId values. 1-4 matches, best first. Say when Helix has no exact model and why the stand-in is closest.
 
 Query: ${input.query}
 

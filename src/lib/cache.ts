@@ -41,86 +41,102 @@ const SaveEqIn = z.object({
   matches: z.unknown(),
 });
 
+type EqHit = { modelId: string; closeness: string; how: string };
+
 export const lookupCache = createServerFn({ method: "POST" })
   .validator((input: unknown) => LookupIn.parse(input))
   .handler(async ({ data }) => {
-    const sql = await getSql();
-    const rows = await sql<{
-      preset: Preset | null;
-      matches: unknown;
-      kind: string;
-      hit_count: number;
-    }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${data.key} limit 1`;
-    const row = rows[0];
-    if (!row) return { hit: false as const };
-    await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${data.key}`;
-    return {
-      hit: true as const,
-      kind: row.kind,
-      preset: row.preset,
-      matches: row.matches,
-      hitCount: Number(row.hit_count) + 1,
+    const miss = {
+      hit: false as const,
+      kind: "",
+      preset: null as Preset | null,
+      matches: [] as EqHit[],
+      hitCount: 0,
     };
+    try {
+      const sql = await getSql();
+      const rows = await sql<{
+        preset: Preset | null;
+        matches: EqHit[] | null;
+        kind: string;
+        hit_count: number;
+      }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${data.key} limit 1`;
+      const row = rows[0];
+      if (!row) return miss;
+      await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${data.key}`;
+      return {
+        hit: true as const,
+        kind: row.kind,
+        preset: row.preset,
+        matches: Array.isArray(row.matches) ? row.matches : [],
+        hitCount: Number(row.hit_count) + 1,
+      };
+    } catch {
+      return miss;
+    }
   });
 
 export const saveSongCache = createServerFn({ method: "POST" })
   .validator((input: unknown) => SaveSongIn.parse(input))
   .handler(async ({ data }) => {
-    const sql = await getSql();
-    const existing = await sql<{ cache_key: string }>`
-      select cache_key from rig_cache where cache_key = ${data.key} limit 1
-    `;
-    if (existing.length) {
-      await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${data.key}`;
+    try {
+      const sql = await getSql();
+      const presetJson = JSON.stringify(data.preset);
+      await sql.query(
+        `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset)
+         values ($1, 'song', $2, $3, $4, $5, $6::jsonb)
+         on conflict (cache_key) do update set hit_count = rig_cache.hit_count + 1, updated_at = now()`,
+        [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson],
+      );
+      return { saved: true as const };
+    } catch {
       return { saved: false as const };
     }
-    const presetJson = JSON.stringify(data.preset);
-    await sql.query(
-      `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset)
-       values ($1, 'song', $2, $3, $4, $5, $6::jsonb)`,
-      [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson],
-    );
-    return { saved: true as const };
   });
 
 export const saveEqCache = createServerFn({ method: "POST" })
   .validator((input: unknown) => SaveEqIn.parse(input))
   .handler(async ({ data }) => {
-    const sql = await getSql();
-    const existing = await sql<{ cache_key: string }>`
-      select cache_key from rig_cache where cache_key = ${data.key} limit 1
-    `;
-    if (existing.length) return { saved: false as const };
-    const matchesJson = JSON.stringify(data.matches);
-    await sql.query(
-      `insert into rig_cache (cache_key, kind, query, matches) values ($1, 'eq', $2, $3::jsonb)`,
-      [data.key, data.query, matchesJson],
-    );
-    return { saved: true as const };
+    try {
+      const sql = await getSql();
+      const matchesJson = JSON.stringify(data.matches);
+      await sql.query(
+        `insert into rig_cache (cache_key, kind, query, matches) values ($1, 'eq', $2, $3::jsonb)
+         on conflict (cache_key) do nothing`,
+        [data.key, data.query, matchesJson],
+      );
+      return { saved: true as const };
+    } catch {
+      return { saved: false as const };
+    }
   });
 
 export const listCachedSongs = createServerFn({ method: "GET" }).handler(async () => {
-  const sql = await getSql();
-  const rows = await sql<{
-    song: string;
-    artist: string;
-    instrument: string;
-    stomp_model: string;
-    hit_count: number;
-    cache_key: string;
-  }>`
-    select song, artist, instrument, stomp_model, hit_count, cache_key
-    from rig_cache
-    where kind = 'song' and song <> ''
-    order by hit_count desc, updated_at desc
-    limit 24
-  `;
-  return rows.map((r) => ({
-    song: r.song,
-    artist: r.artist,
-    instrument: r.instrument as "guitar" | "bass",
-    stompModel: r.stomp_model as "hx-stomp" | "hx-stomp-xl",
-    hitCount: Number(r.hit_count),
-    key: r.cache_key,
-  }));
+  try {
+    const sql = await getSql();
+    const rows = await sql<{
+      song: string;
+      artist: string;
+      instrument: string;
+      stomp_model: string;
+      hit_count: number;
+      cache_key: string;
+    }>`
+      select song, artist, instrument, stomp_model, hit_count, cache_key
+      from rig_cache
+      where kind = 'song' and song <> ''
+      order by hit_count desc, updated_at desc
+      limit 24
+    `;
+    return rows.map((r) => ({
+      song: r.song,
+      artist: r.artist,
+      instrument: r.instrument as "guitar" | "bass",
+      stompModel: r.stomp_model as "hx-stomp" | "hx-stomp-xl",
+      hitCount: Number(r.hit_count),
+      key: r.cache_key,
+    }));
+  } catch {
+    return [];
+  }
 });

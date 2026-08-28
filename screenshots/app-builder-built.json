@@ -1,0 +1,38 @@
+{
+  "url": "http://127.0.0.1:8081/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Stomp Lab",
+      "hasCanvas": false,
+      "bodyTextLen": 3621,
+      "bodyTextHash": "9669425cc71ccf97eb5b614c5632e455551a873a5c1da5d0845d8df9e0b1ddd2",
+      "bodyTextPrefix": "STOMP LAB Guitar Bass Stomp Stomp XL Lab Catalog Create Gear His",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Stomp Lab",
+      "hasCanvas": false,
+      "bodyTextLen": 3621,
+      "bodyTextHash": "4b9dc01c3fea894aa591e38dd09a9243e528bd70db7deadff547994697ea435f",
+      "bodyTextPrefix": "STOMP LAB Guitar Bass Stomp Stomp XL HX STOMP LABORATORY Researc",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-built-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-built.json",
+  "divergesFromBaseline": false,
+  "baselineReasons": []
+}

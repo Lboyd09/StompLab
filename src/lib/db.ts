@@ -93,7 +93,12 @@ function createNeonSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    const pool = new Pool({ connectionString: databaseUrl });
+    const pool = new Pool({
+      connectionString: databaseUrl,
+      max: 5,
+      idleTimeoutMillis: 10000,
+      connectionTimeoutMillis: 8000,
+    });
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -176,7 +181,15 @@ async function createSql(): Promise<Sql> {
         "or a server route loader, never from client code.",
     );
   }
-  return dbSource === "neon" ? createNeonSql() : createPgliteSql();
+  if (dbSource === "neon") return createNeonSql();
+  // Vite preview / a Vercel deploy without DATABASE_URL: PGLite's WASM data
+  // file is not in the serverless bundle, and an uncaught ENOENT kills the
+  // process. Serve a no-op SQL client so the site stays up (cache misses).
+  if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
+    console.error("[db] no DATABASE_URL in this environment — shared cache disabled");
+    return toSql(async () => []);
+  }
+  return createPgliteSql();
 }
 
 /**
@@ -188,8 +201,11 @@ async function createSql(): Promise<Sql> {
  */
 export function getSql(): Promise<Sql> {
   sqlPromise ??= createSql().catch((err) => {
-    sqlPromise = null; // don't memoize failures — let the next call retry
-    throw err;
+    sqlPromise = null;
+    // Never take down the site because the cache DB blipped — callers already
+    // treat empty results as a miss. Log once for operators.
+    console.error("[db] getSql failed", err instanceof Error ? err.message : err);
+    return toSql(async () => []);
   });
   return sqlPromise;
 }
@@ -229,10 +245,14 @@ export function ensureDbReady(): Promise<void> {
 const globalBoot = globalThis as typeof globalThis & {
   __pgBootstrapPromise__?: Promise<void>;
 };
-if (typeof window === "undefined" && dbSource === "pglite") {
+if (
+  typeof window === "undefined" &&
+  dbSource === "pglite" &&
+  process.env.NODE_ENV !== "production" &&
+  !process.env.VERCEL
+) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;
     console.error("[db] PGLite bootstrap failed:", err);
-    throw err;
   });
 }

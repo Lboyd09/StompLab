@@ -10,7 +10,6 @@ import { Input } from "../ui/input";
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
   { to: "/catalog", label: "Catalog", icon: Library },
-  { to: "/equivalents", label: "Equivalents", icon: Search },
   { to: "/create", label: "Create", icon: Sparkles },
   { to: "/gear", label: "Gear", icon: Wrench },
   { to: "/history", label: "History", icon: Clock },
@@ -43,7 +42,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex shrink-0 items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-md bg-card shadow-[var(--shadow-border)]">
+              <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
                 <SlidersHorizontal className="size-4" />
               </span>
               <span className="font-display text-sm font-semibold tracking-[0.18em] uppercase">
@@ -73,7 +72,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
                       onMouseDown={() => {
                         setQ("");
-                        void navigate({ to: "/catalog", search: { q: m.name, cat: m.category } });
+                        void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
                       }}
                     >
                       <span>
@@ -98,7 +97,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             >
               <KeyRound className="size-4" />
               {geminiKey.trim() ? (
-                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-emerald-400" />
+                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
               ) : null}
             </Link>
           </div>
@@ -157,14 +156,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-5">
           {NAV.map((item) => (
             <Link
               key={item.to}
               to={item.to}
               className={cn(
                 "flex min-h-14 flex-col items-center justify-center gap-1 text-[10px]",
-                pathname === item.to ? "text-foreground" : "text-muted-foreground",
+                pathname === item.to ? "text-primary" : "text-muted-foreground",
               )}
             >
               <item.icon className="size-4" />

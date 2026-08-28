@@ -73,6 +73,8 @@ export type Snapshot = {
   color: string;
   enabledBlocks: string[];
   notes: string;
+  /** Per-block 0–10 values recalled with this snapshot (HX snapshot controllers). */
+  paramOverrides?: Record<string, Record<string, number>>;
 };
 
 export type FootswitchAssign = {

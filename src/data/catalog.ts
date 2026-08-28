@@ -84,7 +84,7 @@ export function compactCatalogForPrompt(instrument?: Instrument): string {
     if (!models.length) continue;
     rows.push(`# ${cat.label}`);
     for (const m of models) {
-      rows.push(`- ${m.id} | ${m.name} | ${m.basedOn} | ${m.dsp}`);
+      rows.push(`- ${m.id}|${m.basedOn}`);
     }
   }
   return rows.join("\n");
