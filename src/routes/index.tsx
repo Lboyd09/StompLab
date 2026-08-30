@@ -11,11 +11,16 @@ import { FEATURED } from "@/data/featured";
 import { listCachedSongs, lookupCache } from "@/lib/cache";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
-import { newId } from "@/lib/preset-utils";
+import { newId, withStompModel } from "@/lib/preset-utils";
 import { researchSong } from "@/lib/research";
 import { useAppStore } from "@/store/app-store";
 
-export const Route = createFileRoute("/")({ component: Home });
+export const Route = createFileRoute("/")({
+  validateSearch: (s: Record<string, unknown>): { q?: string } => ({
+    q: typeof s.q === "string" && s.q.length ? s.q : undefined,
+  }),
+  component: Home,
+});
 
 function featuredKey(song: string, artist: string | undefined, instrument: string) {
   return `${song}|${artist ?? ""}|${instrument}`.toLowerCase();
@@ -28,7 +33,8 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const geminiKey = useAppStore((s) => s.geminiKey);
   const savePreset = useAppStore((s) => s.savePreset);
-  const [song, setSong] = useState("");
+  const search = Route.useSearch();
+  const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
   const [busy, setBusy] = useState(false);
   const [library, setLibrary] = useState<
@@ -45,6 +51,10 @@ function Home() {
       .then(setLibrary)
       .catch(() => undefined);
   }, []);
+
+  useEffect(() => {
+    if (search.q) setSong(search.q);
+  }, [search.q]);
 
   const community = library.filter(
     (row) =>
@@ -83,19 +93,7 @@ function Home() {
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return;
-    const preset = overlayUserGear(
-      {
-        ...src,
-        id: `${src.id}-${stompModel}`,
-        stompModel,
-        createdAt: Date.now(),
-        footswitches:
-          stompModel === "hx-stomp"
-            ? src.footswitches.filter((f) => f.index <= 3)
-            : src.footswitches,
-      },
-      gear,
-    );
+    const preset = overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear);
     savePreset(preset);
     void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }

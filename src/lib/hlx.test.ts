@@ -4,6 +4,7 @@ import { ALL_MODELS } from "../data/catalog.ts";
 import { FEATURED } from "../data/featured.ts";
 import { HELIX_IDS } from "../data/helix-ids.ts";
 import { buildHlx } from "./hlx.ts";
+import { featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
   const p = FEATURED.find((x) => x.id === id);
@@ -127,5 +128,64 @@ describe("buildHlx Enter Sandman", () => {
     assert.equal(snap1.blocks.dsp0.block0, false);
     assert.equal(snap1.blocks.dsp0.block1, true);
     assert.equal(snap1.blocks.dsp0.block3, true);
+  });
+});
+
+describe("visual FS map", () => {
+  it("leaves Stomp 1–3 alone and remaps XL top row to hardware 4–6", () => {
+    assert.equal(visualToHardwareFs(1, false), 1);
+    assert.equal(visualToHardwareFs(3, false), 3);
+    assert.equal(visualToHardwareFs(1, true), 4);
+    assert.equal(visualToHardwareFs(2, true), 5);
+    assert.equal(visualToHardwareFs(3, true), 6);
+    assert.equal(visualToHardwareFs(4, true), 1);
+    assert.equal(visualToHardwareFs(5, true), 2);
+    assert.equal(visualToHardwareFs(6, true), 3);
+    assert.equal(visualToHardwareFs(7, true), 7);
+    assert.equal(visualToHardwareFs(8, true), 8);
+  });
+
+  it("never 404s an XL featured slug", () => {
+    assert.equal(featuredBaseId("featured-sandman-hx-stomp-xl"), "featured-sandman");
+    assert.equal(featuredBaseId("featured-sandman-hx-stomp"), "featured-sandman");
+    const xl = resolveNamedPreset("featured-sandman-hx-stomp-xl", "hx-stomp-xl", []);
+    assert.ok(xl);
+    assert.equal(xl?.stompModel, "hx-stomp-xl");
+    assert.equal(xl?.id, "featured-sandman-hx-stomp-xl");
+    const stomp = resolveNamedPreset("featured-sandman-hx-stomp-xl", "hx-stomp", []);
+    assert.equal(stomp?.stompModel, "hx-stomp");
+    assert.equal(stomp?.id, "featured-sandman-hx-stomp");
+  });
+
+  it("moves featured snapshots to the closest XL row (visual 4–6 = hardware 1–3)", () => {
+    const xl = withStompModel(featured("featured-sandman"), "hx-stomp-xl");
+    const snaps = xl.footswitches.filter((f) => f.action === "snapshot");
+    assert.deepEqual(
+      snaps.map((f) => f.index),
+      [4, 5, 6],
+    );
+    const back = withStompModel(xl, "hx-stomp");
+    assert.deepEqual(
+      back.footswitches.filter((f) => f.action === "snapshot").map((f) => f.index),
+      [1, 2, 3],
+    );
+  });
+
+  it("writes XL bypass assigns to the hardware index for that visual switch", () => {
+    const src = featured("featured-teen-spirit");
+    const xl = withStompModel(
+      {
+        ...src,
+        footswitches: [
+          { index: 1, label: "OD", color: "#e24a3a", action: "bypass", targetBlockId: "b1", notes: "" },
+        ],
+      },
+      "hx-stomp-xl",
+    );
+    const hlx = buildHlx(xl, { fsMode: "stomp" });
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    const fs = tone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
+    assert.equal(fs.dsp0.block0["@fs_index"], 4);
+    assert.equal((hlx.data as { device: number }).device, 2162699);
   });
 });

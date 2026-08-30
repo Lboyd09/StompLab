@@ -45,25 +45,28 @@ function GuidePage() {
       <Section title="The replica is the unit">
         <p>
           Looking down at a real Stomp: LCD on the left, View / Action well beside it, three knobs under
-          the screen, volume on the right, three switches along the front edge.
+          the screen, volume on the right, three switches along the front edge — numbered 1, 2, 3 left to
+          right.
         </p>
         <p>
-          XL is wider. Six switches on the left in two rows. Closest row to your toes is 1–3. The row
-          nearer the screen is 4–6. MODE and TAP are full-size switches to the right of the LCD. Volume
-          is a recessed knob on the rear.
+          XL is wider, like the hardware from above: switches 1–3 on the top row, LCD and the View /
+          Action well to their right, switches 4–6 on the bottom row with MODE and TAP next to them.
+          Volume is a recessed knob on the rear.
         </p>
         <p>
-          Labels on the switches are what HX Edit writes. Numbers are optional — turn them on in Settings
-          if you want the hardware 1–6. Download uses those same indices, so the file lands on the
-          matching physical switch.
+          1 is always top-left. 2 top-middle, 3 top-right, 4 bottom-left, 5 bottom-middle, 6 bottom-right.
+          The .hlx writes those same physical positions onto the unit.
         </p>
       </Section>
 
       <Section title="Set the switches">
-        <p>Tap Set switches, tap a footswitch, tap an effect or a song section. That is the whole job.</p>
         <p>
-          Map song sections puts verse / chorus on the front row and sets Snapshot mode. Map effects puts
-          the path on the front row and sets Stomp mode. Download writes whichever mode is selected.
+          Tap a numbered footswitch on the replica, then tap what it should do. Snapshot mode shows song
+          sections. Stomp mode shows effects. That is the whole job.
+        </p>
+        <p>
+          Reset to original puts a featured rig back to the recorded map. Download writes whichever mode
+          is selected — Snapshot or Stomp.
         </p>
       </Section>
 
@@ -73,7 +76,7 @@ function GuidePage() {
           <li>File → Import. Pick the .hlx. Do not drag it onto a setlist.</li>
           <li>Press PAGE on the unit until SNAP or STOMP matches what you downloaded.</li>
           <li>
-            Play. Front left is switch 1. If a snapshot does nothing, you are still in Stomp mode — PAGE
+            Play. Switch 1 is top-left. If a snapshot does nothing, you are still in Stomp mode — PAGE
             once more.
           </li>
         </ol>

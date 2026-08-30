@@ -1,8 +1,22 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { BookOpen, Clock, Guitar, KeyRound, Library, Search, SlidersHorizontal, Sparkles, Wrench } from "lucide-react";
+import {
+  ArrowRightLeft,
+  BookOpen,
+  Clock,
+  Guitar,
+  KeyRound,
+  Library,
+  Search,
+  SlidersHorizontal,
+  Sparkles,
+  Wrench,
+} from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
 import { searchModels } from "@/data/catalog";
+import { FEATURED } from "@/data/featured";
+import { overlayUserGear } from "@/lib/preset-schema";
+import { withStompModel } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
@@ -15,7 +29,11 @@ const NAV = [
   { to: "/history", label: "History", icon: Clock },
 ] as const;
 
-const DESKTOP_NAV = [...NAV, { to: "/guide", label: "Guide", icon: BookOpen }] as const;
+const DESKTOP_NAV = [
+  ...NAV,
+  { to: "/equivalents", label: "Equivalents", icon: ArrowRightLeft },
+  { to: "/guide", label: "Guide", icon: BookOpen },
+] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
@@ -24,8 +42,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
   const geminiKey = useAppStore((s) => s.geminiKey);
+  const gear = useAppStore((s) => s.gear);
+  const savePreset = useAppStore((s) => s.savePreset);
   const theme = useAppStore((s) => s.theme);
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const location = useRouterState({ select: (s) => s.location });
+  const pathname = location.pathname;
+  const catalogFind =
+    pathname === "/catalog" && (location.search as { tab?: string }).tab === "find";
   const navigate = useNavigate();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
@@ -51,10 +74,24 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return undefined;
   }, [theme]);
 
-  const hits = useMemo(
-    () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 8) : []),
+  const modelHits = useMemo(
+    () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 6) : []),
     [q, instrument],
   );
+  const songHits = useMemo(() => {
+    const needle = q.trim().toLowerCase();
+    if (needle.length < 2) return [];
+    return FEATURED.filter((p) => {
+      const hay = `${p.song ?? ""} ${p.artist ?? ""} ${p.name}`.toLowerCase();
+      return hay.includes(needle);
+    }).slice(0, 4);
+  }, [q]);
+
+  function isActive(to: string) {
+    if (to === "/equivalents") return catalogFind;
+    if (to === "/catalog") return pathname === "/catalog" && !catalogFind;
+    return pathname === to;
+  }
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
@@ -79,13 +116,37 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 }}
                 onFocus={() => setOpen(true)}
                 onBlur={() => window.setTimeout(() => setOpen(false), 160)}
-                placeholder="Search models, pedals, amps…"
+                placeholder="Search songs, models, pedals…"
                 className="h-10 pl-9"
-                aria-label="Search catalog"
+                aria-label="Search songs and catalog"
               />
-              {open && hits.length > 0 ? (
+              {open && q.trim().length >= 2 ? (
                 <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
-                  {hits.map((m) => (
+                  {songHits.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
+                      onMouseDown={() => {
+                        const preset = overlayUserGear(
+                          withStompModel({ ...p, createdAt: Date.now() }, stompModel),
+                          gear,
+                        );
+                        savePreset(preset);
+                        setQ("");
+                        void navigate({ to: "/preset/$id", params: { id: preset.id } });
+                      }}
+                    >
+                      <span>
+                        <span className="block text-sm">{p.song}</span>
+                        <span className="block text-xs text-muted-foreground">{p.artist}</span>
+                      </span>
+                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Song
+                      </span>
+                    </button>
+                  ))}
+                  {modelHits.map((m) => (
                     <button
                       key={m.id}
                       type="button"
@@ -104,6 +165,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       </span>
                     </button>
                   ))}
+                  <button
+                    type="button"
+                    className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
+                    onMouseDown={() => {
+                      const song = q.trim();
+                      setQ("");
+                      void navigate({ to: "/", search: { q: song } });
+                    }}
+                  >
+                    <span className="text-sm">Research “{q.trim()}”</span>
+                    <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                      Lab
+                    </span>
+                  </button>
                 </div>
               ) : null}
             </div>
@@ -159,7 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   to={item.to}
                   className={cn(
                     "flex h-8 items-center gap-1.5 rounded-full px-3 text-xs font-medium",
-                    pathname === item.to
+                    isActive(item.to)
                       ? "bg-card text-foreground"
                       : "text-muted-foreground hover:text-foreground",
                   )}

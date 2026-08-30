@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { Preset, StompBlock } from "@/data/types";
-import { blockModel, deviceFor, dspLoad, footswitchPlace, formatParam, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { blockModel, deviceFor, dspLoad, formatParam, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -38,14 +38,14 @@ function BlockChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex h-8 min-w-8 shrink-0 flex-col overflow-hidden rounded-[2px] border text-left",
+        "relative flex h-7 min-w-7 shrink-0 flex-col overflow-hidden rounded-[2px] border text-left",
         selected ? "border-white" : "border-black/70",
         !block.enabled && "opacity-35",
       )}
-      style={{ background: "#14181c", width: 40 }}
+      style={{ background: "#14181c", width: 36 }}
     >
-      <span className="h-[4px] w-full" style={{ background: color }} />
-      <span className="flex flex-1 items-center justify-center px-0.5 font-mono text-[8px] font-semibold uppercase tracking-wide text-zinc-100">
+      <span className="h-[3px] w-full" style={{ background: color }} />
+      <span className="flex flex-1 items-center justify-center px-0.5 font-mono text-[7px] font-semibold uppercase tracking-wide text-zinc-100">
         {model?.abbrev ?? "—"}
       </span>
     </button>
@@ -54,24 +54,17 @@ function BlockChip({
 
 function scribblesFor(preset: Preset, fsMode: FsMode, xl: boolean): Scribble[] {
   const dim = "#5a5e62";
-  const indices = xl ? [4, 5, 6, 1, 2, 3] : [1, 2, 3];
+  const indices = xl ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
   return indices.map((index) => {
-    if (fsMode === "snapshot") {
-      const snap = preset.snapshots[index - 1];
-      return snap
-        ? { index, label: snap.name.slice(0, 8).toUpperCase(), color: snap.color }
-        : { index, label: "—", color: dim };
-    }
+    const assign = preset.footswitches.find((f) => f.index === index);
     if (fsMode === "preset") {
       const labels = xl
-        ? { 1: "BANK-", 2: "A", 3: "B", 4: "BANK+", 5: "PRESET-", 6: "PRESET+" }
+        ? { 1: "▲", 2: "C", 3: "D", 4: "▼", 5: "A", 6: "B" }
         : { 1: "PRESET-", 2: "TAP", 3: "PRESET+" };
       return { index, label: labels[index as keyof typeof labels] ?? "", color: dim };
     }
-    const assign = preset.footswitches.find((f) => f.index === index);
-    return assign
-      ? { index, label: assign.label.slice(0, 8), color: assign.color }
-      : { index, label: "—", color: dim };
+    if (assign) return { index, label: assign.label.slice(0, 8), color: assign.color };
+    return { index, label: "—", color: dim };
   });
 }
 
@@ -98,7 +91,7 @@ export function LcdScreen({
   const load = dspLoad(preset);
   const snap = preset.snapshots[activeSnapshot];
   const xl = device.footswitches === 8;
-  const strips = scribblesFor(preset, view === "assign" ? "stomp" : fsMode, xl);
+  const strips = scribblesFor(preset, fsMode, xl);
   const topStrips = xl ? strips.slice(0, 3) : [];
   const bottomStrips = xl ? strips.slice(3, 6) : strips;
 
@@ -113,7 +106,7 @@ export function LcdScreen({
         </div>
         <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] text-zinc-400">
           <span className="uppercase tracking-wider text-zinc-500">
-            {view === "assign" ? "assign" : fsMode === "snapshot" ? "snap" : fsMode}
+            {fsMode === "snapshot" ? "snap" : fsMode}
           </span>
           <span className="tabular-nums">{preset.tempo}</span>
           {showDsp ? (
@@ -131,16 +124,6 @@ export function LcdScreen({
 
       {view === "tuner" ? (
         <TunerView />
-      ) : view === "assign" ? (
-        <div className="flex flex-1 flex-col items-center justify-center gap-1 px-3 text-center">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-            {footswitchPlace(assignFsIndex, xl)}
-          </span>
-          <span className="text-[12px] font-medium text-zinc-100">
-            {preset.footswitches.find((f) => f.index === assignFsIndex)?.label ?? "Empty"}
-          </span>
-          <span className="text-[9px] text-zinc-500">Tap a switch, then pick below</span>
-        </div>
       ) : view === "edit" && selected && model ? (
         <div className="flex flex-1 flex-col px-2 pt-2">
           <div className="mb-1 flex items-center justify-between">
@@ -175,7 +158,7 @@ export function LcdScreen({
             <span>{snap ? snap.name : "Play"}</span>
             <span>Out</span>
           </div>
-          <div className="relative flex min-h-11 flex-1 items-center">
+          <div className="relative flex min-h-10 flex-1 items-center">
             <div className="hx-path-line absolute inset-x-1 top-1/2 h-px -translate-y-1/2" />
             <div className="relative flex w-full items-center gap-1 overflow-x-auto">
               {blocks.map((b) => (
@@ -194,9 +177,9 @@ export function LcdScreen({
       {view === "tuner" ? null : (
         <div className="mt-auto">
           {topStrips.length ? (
-            <ScribbleRow items={topStrips} active={view === "assign" ? assignFsIndex : undefined} onTap={onScribbleTap} />
+            <ScribbleRow items={topStrips} active={assignFsIndex} onTap={onScribbleTap} />
           ) : null}
-          <ScribbleRow items={bottomStrips} active={view === "assign" ? assignFsIndex : undefined} onTap={onScribbleTap} />
+          <ScribbleRow items={bottomStrips} active={assignFsIndex} onTap={onScribbleTap} />
         </div>
       )}
     </div>

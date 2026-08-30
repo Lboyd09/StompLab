@@ -1,7 +1,16 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset } from "@/data/types";
 import { copyHlx, downloadHlx, hlxFilename } from "@/lib/hlx";
-import { blockModel, deviceFor, dspLoad, formatParam, sortedBlocks, withSnapshot } from "@/lib/preset-utils";
+import {
+  blockModel,
+  deviceFor,
+  dspLoad,
+  featuredOriginal,
+  formatParam,
+  sortedBlocks,
+  withSnapshot,
+  withStompModel,
+} from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -33,13 +42,13 @@ export function PresetWorkspace({
   const setAssignFsIndex = useAppStore((s) => s.setAssignFsIndex);
   const defaultFsMode = useAppStore((s) => s.defaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
-  const showFsNumbers = useAppStore((s) => s.showFsNumbers);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
   const [copying, setCopying] = useState(false);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
   const exportMode = fsMode === "preset" ? "stomp" : fsMode;
+  const original = featuredOriginal(preset.id);
 
   useEffect(() => {
     if (defaultFsMode === "snapshot") setFsMode("snapshot");
@@ -51,7 +60,7 @@ export function PresetWorkspace({
     }
     setActiveSnapshot(0);
     setLcdView("play");
-    setAssignFsIndex(1);
+    setAssignFsIndex(device.footswitches === 8 ? 4 : 1);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
@@ -122,73 +131,10 @@ export function PresetWorkspace({
     onChange({ ...preset, footswitches: [...rest, nextAssign].sort((a, b) => a.index - b.index) });
   }
 
-  function fillStompDefaults() {
-    const fx = sortedBlocks(preset);
-    const slots = device.footswitches === 8 ? 6 : 3;
-    const assigns: FootswitchAssign[] = fx.slice(0, slots).map((b, i) => {
-      const model = blockModel(b);
-      return {
-        index: i + 1,
-        label: model?.abbrev ?? `FS${i + 1}`,
-        color: model ? CATEGORY_MAP[model.category].lcd : "#c5c9c2",
-        action: "bypass",
-        targetBlockId: b.id,
-        notes: model ? `Toggle ${model.name}` : "",
-      };
-    });
-    if (device.footswitches === 8) {
-      assigns.push({
-        index: 7,
-        label: "MODE",
-        color: "#5a5e62",
-        action: "mode",
-        notes: "Cycle Stomp / Snapshot / Preset",
-      });
-      assigns.push({
-        index: 8,
-        label: "TAP",
-        color: "#e24a3a",
-        action: "tap",
-        notes: "Tap tempo",
-      });
-    }
-    onChange({ ...preset, footswitches: assigns, exportFsMode: "stomp" });
-    setFsMode("stomp");
-    setLcdView("assign");
-    setAssignFsIndex(1);
-    toast.success("Front row is now your effects. Tap a switch to change one.");
-  }
-
-  function fillSnapshotDefaults() {
-    const slots = Math.min(preset.snapshots.length, device.footswitches === 8 ? 6 : 3);
-    const assigns: FootswitchAssign[] = preset.snapshots.slice(0, slots).map((s, i) => ({
-      index: i + 1,
-      label: s.name.slice(0, 8).toUpperCase(),
-      color: s.color,
-      action: "snapshot" as const,
-      snapshotId: s.id,
-      notes: `Recall ${s.name}`,
-    }));
-    if (device.footswitches === 8) {
-      assigns.push({
-        index: 7,
-        label: "MODE",
-        color: "#5a5e62",
-        action: "mode",
-        notes: "Cycle Stomp / Snapshot / Preset",
-      });
-      assigns.push({
-        index: 8,
-        label: "TAP",
-        color: "#e24a3a",
-        action: "tap",
-        notes: "Tap tempo",
-      });
-    }
-    onChange({ ...preset, footswitches: assigns, exportFsMode: "snapshot" });
-    setFsMode("snapshot");
-    setLcdView("play");
-    toast.success("Front row is verse / chorus / sections. Download writes Snapshot mode.");
+  function resetFeatured() {
+    if (!original) return;
+    onChange(withStompModel({ ...original, createdAt: preset.createdAt }, preset.stompModel));
+    toast.success("Switches restored to the original rig.");
   }
 
   function onDownload() {
@@ -284,20 +230,12 @@ export function PresetWorkspace({
               </button>
             ))}
           </div>
-          <Button
-            type="button"
-            size="sm"
-            variant={lcdView === "assign" ? "default" : "outline"}
-            onClick={() => setLcdView(lcdView === "assign" ? "play" : "assign")}
-          >
-            {lcdView === "assign" ? "Done" : "Set switches"}
-          </Button>
         </div>
         <p className="text-xs text-muted-foreground">
           {fsMode === "snapshot"
-            ? "Snapshot — each front switch is a song section. Download writes this mode onto the unit."
+            ? "Snapshot — tap a numbered switch, then tap a song section. Download writes this onto the unit."
             : fsMode === "stomp"
-              ? "Stomp — each switch turns an effect on or off. Download writes this mode onto the unit."
+              ? "Stomp — tap a numbered switch, then tap an effect. Download writes this onto the unit."
               : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
         </p>
 
@@ -311,29 +249,21 @@ export function PresetWorkspace({
           activeSnapshot={activeSnapshot}
           assignFsIndex={assignFsIndex}
           showDsp={showDsp}
-          showFsNumbers={showFsNumbers}
           onParamPage={setParamPage}
           onView={setLcdView}
           onFsMode={setFsMode}
           onSnapshot={setActiveSnapshot}
           onChangeParam={changeParam}
           onToggleBlock={toggleBlock}
-          onAssignFsIndex={(index) => {
-            setAssignFsIndex(index);
-            setLcdView("assign");
-          }}
+          onAssignFsIndex={setAssignFsIndex}
         />
 
         <FsAssignPanel
           preset={preset}
           fsIndex={assignFsIndex}
-          onSelect={(index) => {
-            setAssignFsIndex(index);
-            setLcdView("assign");
-          }}
+          fsMode={fsMode}
           onAssign={assignFs}
-          onAutoEffects={fillStompDefaults}
-          onAutoSnapshots={fillSnapshotDefaults}
+          onReset={original ? resetFeatured : undefined}
         />
 
         <Card>
@@ -463,7 +393,9 @@ export function PresetWorkspace({
         <Card>
           <CardHeader>
             <CardTitle>Build it on the Stomp</CardTitle>
-            <CardDescription>The replica is the map. Closest row to you is 1–3, same as the hardware.</CardDescription>
+            <CardDescription>
+              The replica is the map. 1 is top-left, 6 is bottom-right — same as the numbers on the switches.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
@@ -485,8 +417,9 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">3.</span>
                 <span>
-                  Front row (closest to your toes) is switches 1–3. On XL the back row is 4–6; MODE and TAP
-                  sit to the right of the screen. Volume is on the right of a Stomp, on the rear of an XL.
+                  Numbers: 1 top-left, 2 top-middle, 3 top-right, 4 bottom-left, 5 bottom-middle, 6
+                  bottom-right. On XL, MODE and TAP sit on the bottom row next to 4–6. Volume is on the
+                  right of a Stomp, on the rear of an XL.
                 </span>
               </li>
               {preset.programming.map((step, i) => (

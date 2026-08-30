@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 import type { Preset } from "@/data/types";
-import { deviceFor, footswitchPlace, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { deviceFor, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { Knob } from "./knob";
 import { LcdScreen } from "./lcd";
@@ -19,7 +19,6 @@ type Props = {
   activeSnapshot: number;
   assignFsIndex: number;
   showDsp?: boolean;
-  showFsNumbers?: boolean;
   onParamPage: (page: number) => void;
   onView: (view: LcdView) => void;
   onFsMode: (mode: FsMode) => void;
@@ -41,7 +40,6 @@ export function StompUnit({
   activeSnapshot,
   assignFsIndex,
   showDsp = true,
-  showFsNumbers = false,
   onParamPage,
   onView,
   onFsMode,
@@ -62,11 +60,9 @@ export function StompUnit({
   const lastHome = useRef(0);
 
   const switches = useMemo(() => {
-    return Array.from({ length: device.footswitches }, (_, i) => {
-      const assign = preset.footswitches.find((f) => f.index === i + 1);
-      return { index: i + 1, assign };
-    });
-  }, [device.footswitches, preset.footswitches]);
+    const n = xl ? 6 : 3;
+    return Array.from({ length: n }, (_, i) => i + 1);
+  }, [xl]);
 
   function cycleMode(dir: 1 | -1) {
     const i = FS_CYCLE.indexOf(fsMode);
@@ -100,10 +96,6 @@ export function StompUnit({
       onView("tuner");
       return;
     }
-    if (view === "assign") {
-      onView("play");
-      return;
-    }
     if (selected) onToggleBlock(selected.id);
   }
 
@@ -116,10 +108,7 @@ export function StompUnit({
   }
 
   function pressFs(index: number) {
-    if (view === "assign") {
-      onAssignFsIndex(index);
-      return;
-    }
+    onAssignFsIndex(index);
     if (view === "tuner") {
       onView("play");
       return;
@@ -133,8 +122,11 @@ export function StompUnit({
       return;
     }
     if (fsMode === "snapshot") {
-      const snap = preset.snapshots[index - 1];
-      if (snap) onSnapshot(index - 1);
+      const assign = preset.footswitches.find((f) => f.index === index);
+      if (assign?.action === "snapshot" && assign.snapshotId) {
+        const idx = preset.snapshots.findIndex((s) => s.id === assign.snapshotId);
+        if (idx >= 0) onSnapshot(idx);
+      }
       return;
     }
     if (fsMode === "preset") {
@@ -157,7 +149,7 @@ export function StompUnit({
     }
     if (assign.action === "snapshot") {
       const idx = preset.snapshots.findIndex((s) => s.id === assign.snapshotId);
-      onSnapshot(idx >= 0 ? idx : index - 1);
+      onSnapshot(idx >= 0 ? idx : 0);
       return;
     }
     if (assign.action === "bypass" && assign.targetBlockId) {
@@ -166,7 +158,7 @@ export function StompUnit({
   }
 
   const knobs = (
-    <div className="flex items-end justify-center gap-6 sm:gap-8">
+    <div className="flex items-end justify-center gap-3 sm:gap-4">
       {([0, 1, 2] as const).map((i) => {
         const p = pageParams[i];
         return (
@@ -200,7 +192,8 @@ export function StompUnit({
         onPress={() => cycleBlock(1)}
       />
       <HwBtn onClick={onAction}>Action</HwBtn>
-      <HwBtn onClick={() => onPage(-1)}>{"<"}</HwBtn>
+      <span className="hx-silk hx-well-save">Save</span>
+      <HwBtn onClick={() => onPage(-1)}>{"◀"}</HwBtn>
       <Knob
         label=""
         value={preset.snapshots.length ? ((activeSnapshot + 1) / preset.snapshots.length) * 10 : 0}
@@ -210,8 +203,7 @@ export function StompUnit({
           if (preset.snapshots.length) onSnapshot((activeSnapshot + 1) % preset.snapshots.length);
         }}
       />
-      <HwBtn onClick={() => onPage(1)}>{">"}</HwBtn>
-      <span className="hx-silk col-span-3 -mt-1">Page</span>
+      <HwBtn onClick={() => onPage(1)}>{"▶"}</HwBtn>
     </div>
   );
 
@@ -223,30 +215,28 @@ export function StompUnit({
         onSelectBlock(id);
         if (view !== "assign") onView("edit");
       }}
-      view={view}
+      view={view === "assign" ? "play" : view}
       fsMode={fsMode}
       paramPage={page}
       activeSnapshot={activeSnapshot}
       assignFsIndex={assignFsIndex}
       showDsp={showDsp}
-      onScribbleTap={(index) => {
-        onAssignFsIndex(index);
-        if (view !== "assign") onView("assign");
-      }}
+      onScribbleTap={onAssignFsIndex}
     />
   );
 
   function renderSwitch(index: number) {
+    const numbered = index <= 6;
     return (
       <Footswitch
         key={index}
         index={index}
-        place={footswitchPlace(index, xl)}
-        label={scribbleLabel(preset, fsMode, index, xl, view === "assign")}
+        label={scribbleLabel(preset, fsMode, index, xl)}
+        sublabel={index === 7 ? "Edit / Exit" : index === 8 ? "Tuner" : undefined}
         color={scribbleColor(preset, fsMode, index, activeSnapshot, xl)}
         lit={isLit(preset, fsMode, index, activeSnapshot, xl, view)}
-        selected={view === "assign" && assignFsIndex === index}
-        showNumber={showFsNumbers}
+        selected={assignFsIndex === index}
+        showNumber={numbered}
         onClick={() => pressFs(index)}
       />
     );
@@ -262,27 +252,19 @@ export function StompUnit({
 
         {xl ? (
           <div className="hx-xl-board">
-            <div className="hx-xl-fs">
-              <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                {[4, 5, 6].map(renderSwitch)}
-              </div>
-              <div className="grid grid-cols-3 gap-3 sm:gap-4">
-                {[1, 2, 3].map(renderSwitch)}
-              </div>
-              <p className="hx-silk text-center">Closest row is 1 · 2 · 3</p>
-            </div>
-            <div className="min-w-0 space-y-3">
-              <div className="flex items-stretch gap-2">
-                <div className="min-w-0 flex-1">{lcd}</div>
-                {well}
-              </div>
+            <div className="hx-xl-fs1">{renderSwitch(1)}</div>
+            <div className="hx-xl-fs2">{renderSwitch(2)}</div>
+            <div className="hx-xl-fs3">{renderSwitch(3)}</div>
+            <div className="hx-xl-lcd">
+              {lcd}
               {knobs}
             </div>
-            <div className="hx-xl-mode">
-              {renderSwitch(7)}
-              {renderSwitch(8)}
-              <p className="hx-silk text-center">Vol on rear</p>
-            </div>
+            <div className="hx-xl-well">{well}</div>
+            <div className="hx-xl-fs4">{renderSwitch(4)}</div>
+            <div className="hx-xl-fs5">{renderSwitch(5)}</div>
+            <div className="hx-xl-fs6">{renderSwitch(6)}</div>
+            <div className="hx-xl-mode">{renderSwitch(7)}</div>
+            <div className="hx-xl-tap">{renderSwitch(8)}</div>
           </div>
         ) : (
           <div className="hx-stomp-board">
@@ -293,27 +275,30 @@ export function StompUnit({
             </div>
             <div className="hx-stomp-knobs">{knobs}</div>
             <div className="hx-stomp-fs grid grid-cols-3 gap-3 sm:gap-5">
-              {switches.map((sw) => renderSwitch(sw.index))}
+              {switches.map((index) => renderSwitch(index))}
             </div>
           </div>
         )}
+        {xl ? <p className="hx-silk mt-3 text-center">Vol on rear</p> : null}
       </div>
     </div>
   );
 }
 
-function scribbleLabel(preset: Preset, fsMode: FsMode, index: number, xl: boolean, assigning: boolean): string {
-  if (assigning) return preset.footswitches.find((f) => f.index === index)?.label ?? "empty";
+function assigned(preset: Preset, index: number) {
+  return preset.footswitches.find((f) => f.index === index);
+}
+
+function scribbleLabel(preset: Preset, fsMode: FsMode, index: number, xl: boolean): string {
   if (xl && index === 7) return "MODE";
   if (xl && index === 8) return "TAP";
-  if (fsMode === "snapshot") return preset.snapshots[index - 1]?.name.slice(0, 8).toUpperCase() ?? "—";
   if (fsMode === "preset") {
-    if (xl) {
-      return { 1: "BANK-", 2: "A", 3: "B", 4: "BANK+", 5: "PRESET-", 6: "PRESET+" }[index] ?? "";
-    }
+    if (xl) return { 1: "▲", 2: "C", 3: "D", 4: "▼", 5: "A", 6: "B" }[index] ?? "";
     return ["PRESET-", "TAP", "PRESET+"][index - 1] ?? "";
   }
-  return preset.footswitches.find((f) => f.index === index)?.label ?? "empty";
+  const a = assigned(preset, index);
+  if (a?.label) return a.label;
+  return "";
 }
 
 function scribbleColor(
@@ -325,9 +310,9 @@ function scribbleColor(
 ): string {
   if (xl && index === 7) return "#5a5e62";
   if (xl && index === 8) return "#e24a3a";
-  if (fsMode === "snapshot") return preset.snapshots[index - 1]?.color ?? "#3a3d42";
-  if (fsMode === "preset") return index === 2 && !xl ? "#7dff9a" : "#5a5e62";
-  return preset.footswitches.find((f) => f.index === index)?.color ?? "#4a4e54";
+  const a = assigned(preset, index);
+  if (a?.color) return a.color;
+  return "#4a4e54";
 }
 
 function isLit(
@@ -338,18 +323,23 @@ function isLit(
   xl: boolean,
   view: LcdView,
 ): boolean {
-  if (view === "assign") return false;
+  if (view === "tuner") return xl && index === 8;
   if (xl && index === 7) return fsMode !== "stomp";
-  if (xl && index === 8) return view === "tuner";
-  if (fsMode === "snapshot") return activeSnapshot === index - 1;
-  if (fsMode === "preset") return false;
-  const assign = preset.footswitches.find((f) => f.index === index);
-  if (!assign) return false;
-  if (assign.action === "bypass" && assign.targetBlockId) {
-    return preset.blocks.find((b) => b.id === assign.targetBlockId)?.enabled !== false;
+  if (xl && index === 8) return false;
+  const a = assigned(preset, index);
+  if (fsMode === "snapshot") {
+    if (a?.action === "snapshot" && a.snapshotId) {
+      return preset.snapshots.findIndex((s) => s.id === a.snapshotId) === activeSnapshot;
+    }
+    return false;
   }
-  if (assign.action === "snapshot") {
-    return preset.snapshots.findIndex((s) => s.id === assign.snapshotId) === activeSnapshot;
+  if (fsMode === "preset") return false;
+  if (!a) return false;
+  if (a.action === "bypass" && a.targetBlockId) {
+    return preset.blocks.find((b) => b.id === a.targetBlockId)?.enabled !== false;
+  }
+  if (a.action === "snapshot") {
+    return preset.snapshots.findIndex((s) => s.id === a.snapshotId) === activeSnapshot;
   }
   return true;
 }
@@ -364,8 +354,8 @@ function HwBtn({ children, onClick }: { children: React.ReactNode; onClick: () =
 
 function Footswitch({
   index,
-  place,
   label,
+  sublabel,
   color,
   lit,
   selected,
@@ -373,8 +363,8 @@ function Footswitch({
   onClick,
 }: {
   index: number;
-  place: string;
   label: string;
+  sublabel?: string;
   color: string;
   lit: boolean;
   selected?: boolean;
@@ -385,8 +375,9 @@ function Footswitch({
     <button
       type="button"
       onClick={onClick}
-      aria-label={`${place}${label ? ` · ${label}` : ""}`}
-      className="group flex min-h-11 flex-col items-center gap-1.5"
+      aria-label={label ? `Switch ${index} ${label}` : `Switch ${index}`}
+      aria-pressed={selected}
+      className="group flex min-h-11 flex-col items-center gap-1"
     >
       <span
         className="hx-fs hx-fs-cap relative grid place-items-center rounded-full"
@@ -398,11 +389,12 @@ function Footswitch({
               : `0 0 0 2px #0a0b0d, 0 0 0 4px ${color}66`,
         }}
       >
-        {showNumber ? <span className="font-mono text-[9px] text-zinc-500">{index}</span> : null}
+        {showNumber ? <span className="font-mono text-[10px] font-semibold text-zinc-300">{index}</span> : null}
       </span>
       <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
         {label}
       </span>
+      {sublabel ? <span className="hx-silk">{sublabel}</span> : null}
     </button>
   );
 }

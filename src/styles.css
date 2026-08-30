@@ -84,14 +84,14 @@ html.light {
 
 .hx-chassis {
   background:
-    linear-gradient(180deg, #3a3e44 0%, #1f2226 22%, #15171a 72%, #101214 100%);
-  border: 1px solid #4a4e54;
-  border-radius: 16px;
-  padding: 14px 14px 16px;
+    linear-gradient(180deg, #1c1e22 0%, #121416 48%, #0b0c0e 100%);
+  border: 1px solid #2c3036;
+  border-radius: 14px;
+  padding: 12px 14px 14px;
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent),
-    inset 0 -3px 0 color-mix(in oklab, #000 55%, transparent),
-    0 28px 56px -30px #000;
+    inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent),
+    inset 0 -2px 0 color-mix(in oklab, #000 70%, transparent),
+    0 24px 48px -28px #000;
   color: #c5c9c2;
 }
 
@@ -100,14 +100,14 @@ html.light {
 }
 
 .hx-chassis-xl {
-  max-width: 1080px;
+  max-width: 880px;
 }
 
 .hx-brand {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 2px 12px;
+  padding: 0 2px 10px;
 }
 
 .hx-brand-mark {
@@ -120,28 +120,31 @@ html.light {
 
 .hx-stomp-board {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 220px) auto auto;
   grid-template-areas:
     "lcd well vol"
     "knobs well vol"
     "fs fs fs";
-  gap: 12px 10px;
+  gap: 12px 12px;
   align-items: start;
+  justify-content: center;
 }
 
 .hx-stomp-lcd {
   grid-area: lcd;
   min-width: 0;
+  max-width: 220px;
 }
 
 .hx-stomp-well {
   grid-area: well;
+  align-self: start;
 }
 
 .hx-stomp-vol {
   grid-area: vol;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding-top: 8px;
 }
@@ -152,56 +155,78 @@ html.light {
 
 .hx-stomp-fs {
   grid-area: fs;
-  padding-top: 4px;
+  padding-top: 8px;
 }
 
 .hx-well {
   display: grid;
-  grid-template-columns: 46px 40px 46px;
+  grid-template-columns: 44px 38px 44px;
   grid-template-rows: auto auto auto;
   place-items: center;
-  gap: 7px 5px;
-  padding: 8px 6px 6px;
-  background: linear-gradient(180deg, #121416, #0a0b0d);
-  border-radius: 8px;
+  gap: 6px 4px;
+  padding: 8px 8px 10px;
+  background: #08090b;
+  border-radius: 6px;
   box-shadow:
-    inset 0 2px 4px #000,
+    inset 0 2px 6px #000,
     0 0 0 1px #2a2d32;
+  flex-shrink: 0;
+}
+
+.hx-well-save {
+  grid-column: 1 / -1;
+  text-align: center;
+  font-size: 7px;
+  letter-spacing: 0.22em;
 }
 
 .hx-xl-board {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  grid-template-columns: repeat(3, minmax(56px, 1fr)) minmax(0, 200px) auto;
+  grid-template-areas:
+    "fs1 fs2 fs3 lcd well"
+    "fs4 fs5 fs6 mode tap";
+  gap: 16px 10px;
+  align-items: center;
+  justify-items: center;
 }
 
-.hx-xl-fs,
-.hx-xl-mode {
+.hx-xl-fs1 { grid-area: fs1; }
+.hx-xl-fs2 { grid-area: fs2; }
+.hx-xl-fs3 { grid-area: fs3; }
+.hx-xl-fs4 { grid-area: fs4; }
+.hx-xl-fs5 { grid-area: fs5; }
+.hx-xl-fs6 { grid-area: fs6; }
+.hx-xl-mode { grid-area: mode; }
+.hx-xl-tap { grid-area: tap; }
+
+.hx-xl-lcd {
+  grid-area: lcd;
   display: flex;
+  min-width: 0;
+  max-width: 200px;
+  width: 100%;
   flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  gap: 10px;
 }
 
-@media (min-width: 768px) {
-  .hx-xl-board {
-    display: grid;
-    grid-template-columns: minmax(210px, 0.95fr) minmax(240px, 1.15fr) auto;
-    align-items: end;
-    gap: 16px 18px;
-  }
-
-  .hx-xl-mode {
-    justify-content: flex-end;
-    padding-bottom: 22px;
-  }
+.hx-xl-well {
+  grid-area: well;
+  align-self: start;
+  padding-top: 2px;
+  justify-self: center;
 }
 
 .hx-lcd {
   background: #07090c;
-  aspect-ratio: 4 / 3;
-  min-height: 156px;
+  width: 100%;
+  max-width: 200px;
+  aspect-ratio: 5 / 4;
+  min-height: 0;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
   border: 1px solid #000;
   border-radius: 2px;
   box-shadow:
@@ -239,8 +264,8 @@ html.light {
 }
 
 .hx-hw-btn {
-  min-height: 24px;
-  min-width: 40px;
+  min-height: 26px;
+  min-width: 42px;
   padding: 0 5px;
   border-radius: 3px;
   font-family: var(--font-mono);
@@ -264,14 +289,32 @@ html.light {
 }
 
 .hx-fs-cap {
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
 }
 
 @media (min-width: 768px) {
   .hx-fs-cap {
-    width: 62px;
-    height: 62px;
+    width: 58px;
+    height: 58px;
+  }
+}
+
+@media (max-width: 720px) {
+  .hx-xl-board {
+    grid-template-columns: repeat(3, minmax(48px, 1fr));
+    grid-template-areas:
+      "lcd lcd lcd"
+      "well well well"
+      "fs1 fs2 fs3"
+      "fs4 fs5 fs6"
+      "mode tap .";
+    gap: 12px 8px;
+  }
+
+  .hx-xl-lcd,
+  .hx-xl-well {
+    justify-self: center;
   }
 }
 
@@ -290,9 +333,9 @@ html.light {
   }
 
   .hx-well {
-    grid-template-columns: 38px 32px 38px;
-    gap: 5px 3px;
-    padding: 6px 4px 4px;
+    grid-template-columns: 36px 30px 36px;
+    gap: 6px 3px;
+    padding: 6px 4px 8px;
   }
 
   .hx-hw-btn {
@@ -301,11 +344,17 @@ html.light {
   }
 
   .hx-lcd {
-    min-height: 132px;
+    max-width: 180px;
   }
 
-  .hx-chassis {
-    padding: 10px 8px 12px;
+  .hx-stomp-lcd,
+  .hx-xl-lcd {
+    max-width: 180px;
+  }
+
+  .hx-fs-cap {
+    width: 48px;
+    height: 48px;
   }
 }
 

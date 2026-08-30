@@ -23,8 +23,6 @@ function SettingsPage() {
   const setDefaultFsMode = useAppStore((s) => s.setDefaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
   const setShowDsp = useAppStore((s) => s.setShowDsp);
-  const showFsNumbers = useAppStore((s) => s.showFsNumbers);
-  const setShowFsNumbers = useAppStore((s) => s.setShowFsNumbers);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
   const setConfirmDownload = useAppStore((s) => s.setConfirmDownload);
   const instrument = useAppStore((s) => s.instrument);
@@ -199,21 +197,10 @@ function SettingsPage() {
             </span>
           </span>
         </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={showFsNumbers}
-            onChange={(e) => setShowFsNumbers(e.target.checked)}
-          />
-          <span>
-            Show footswitch numbers
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Hardware numbering: closest row is 1–3, back row is 4–6. Off by default — the labels are
-              enough.
-            </span>
-          </span>
-        </label>
+        <p className="text-sm text-muted-foreground">
+          Footswitches on the replica are numbered 1–6, starting top-left. That is the same map the .hlx
+          writes onto the unit.
+        </p>
         <label className="flex items-start gap-3 text-sm">
           <input
             type="checkbox"

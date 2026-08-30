@@ -1,7 +1,7 @@
 import { MODEL_MAP } from "@/data/catalog";
 import { helixIdFor } from "@/data/helix-ids";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
-import { sortedBlocks } from "./preset-utils";
+import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
 
 /**
  * HX Edit .hlx is L6Preset JSON. Layout taken from real HX Stomp dumps
@@ -435,7 +435,7 @@ function buildFootswitch(preset: Preset, others: StompBlock[]) {
     const model = MODEL_MAP[block.modelId];
     footswitch.dsp0[`block${idx}`] = {
       "@fs_enabled": true,
-      "@fs_index": fs.index,
+      "@fs_index": visualToHardwareFs(fs.index, preset.stompModel === "hx-stomp-xl"),
       "@fs_label": (fs.label || model?.name || "FX").slice(0, 16),
       "@fs_ledcolor": fsLed(fs.color),
       "@fs_momentary": false,
