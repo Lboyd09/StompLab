@@ -5,14 +5,25 @@ const GEAR_KEY = "stomplab.gear.v1";
 const SETTINGS_KEY = "stomplab.settings.v1";
 const GEMINI_KEY = "stomplab.geminiKey.v1";
 
+export type ThemeId = "dark" | "light" | "system";
+export type FsModePref = "auto" | "snapshot" | "stomp";
+
 export type Settings = {
   instrument: "guitar" | "bass";
   stompModel: StompModelId;
+  theme: ThemeId;
+  defaultFsMode: FsModePref;
+  showDsp: boolean;
+  confirmDownload: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
   instrument: "guitar",
   stompModel: "hx-stomp",
+  theme: "dark",
+  defaultFsMode: "auto",
+  showDsp: true,
+  confirmDownload: false,
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -61,11 +72,18 @@ export function saveGear(gear: UserGear[]) {
 }
 
 export function loadSettings(): Settings {
-  return { ...DEFAULT_SETTINGS, ...readJson<Partial<Settings>>(SETTINGS_KEY, {}) };
+  const raw = readJson<Partial<Settings>>(SETTINGS_KEY, {});
+  return { ...DEFAULT_SETTINGS, ...raw };
 }
 
 export function saveSettings(settings: Settings) {
   writeJson(SETTINGS_KEY, settings);
+}
+
+export function patchSettings(partial: Partial<Settings>): Settings {
+  const next = { ...loadSettings(), ...partial };
+  saveSettings(next);
+  return next;
 }
 
 export function loadGeminiKey(): string {

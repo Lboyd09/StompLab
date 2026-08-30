@@ -54,9 +54,13 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block0.Bass, undefined);
   });
 
-  it("Chorus snapshot bypasses the Small Clone (block1)", () => {
-    const snap1 = tone.snapshot1 as { blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(snap1.blocks.dsp0.block1, false);
+  it("Pre snapshot enables Small Clone; Chorus snapshot bypasses it", () => {
+    const snap1 = tone.snapshot1 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
+    const snap2 = tone.snapshot2 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
+    assert.equal(snap1["@name"], "PRE");
+    assert.equal(snap1.blocks.dsp0.block1, true);
+    assert.equal(snap2["@name"], "CHORUS");
+    assert.equal(snap2.blocks.dsp0.block1, false);
     const snap0 = tone.snapshot0 as { "@name": string; "@pedalstate": number };
     assert.equal(snap0["@name"], "VERSE");
     assert.equal(snap0["@pedalstate"], 0);

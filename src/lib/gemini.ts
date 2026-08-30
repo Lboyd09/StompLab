@@ -9,9 +9,9 @@ import { extractJson } from "./preset-schema";
  * overloaded ("too many users") and 429'd — try 2.5 first, then 3.x.
  * Prefer the visitor's browser: Google rejects many datacenter IPs.
  */
-const PREFERRED_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.7-flash"] as const;
+const PREFERRED_MODELS = ["gemini-2.5-flash", "gemini-3.5-flash", "gemini-3.7-flash", "gemini-3.6-flash"] as const;
 
-const GENERATE_MS = 20000;
+const GENERATE_MS = 28000;
 const LIST_MS = 8000;
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
@@ -223,7 +223,7 @@ async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 8192
   let listed = false;
   let sawBusy = false;
 
-  while (tried.size < 3) {
+  while (tried.size < 4) {
     const model = queue.find((m) => !tried.has(m));
     if (!model) break;
     tried.add(model);
@@ -235,6 +235,16 @@ async function callGemini(apiKey: string, prompt: string, maxOutputTokens = 8192
 
     if (isFatalKeyError(result.status, result.error, result.raw)) {
       throw new Error(result.error);
+    }
+    if (/timed out/i.test(result.error)) {
+      const retry = await generateJson(key, model, prompt, maxOutputTokens, extra);
+      if (retry.ok) return retry.json;
+      last = retry.error;
+      if (isFatalKeyError(retry.status, retry.error, retry.raw)) throw new Error(retry.error);
+      if (isBusyError(retry.status, retry.error, retry.raw)) {
+        sawBusy = true;
+        continue;
+      }
     }
     if (isBusyError(result.status, result.error, result.raw)) {
       sawBusy = true;

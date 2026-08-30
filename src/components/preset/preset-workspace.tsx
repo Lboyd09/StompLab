@@ -1,5 +1,5 @@
 import { CATEGORY_MAP } from "@/data/categories";
-import type { Preset } from "@/data/types";
+import type { FootswitchAssign, Preset } from "@/data/types";
 import { copyHlx, downloadHlx, hlxFilename } from "@/lib/hlx";
 import { blockModel, deviceFor, dspLoad, formatParam, sortedBlocks, withSnapshot } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
@@ -27,20 +27,30 @@ export function PresetWorkspace({
   const setParamPage = useAppStore((s) => s.setParamPage);
   const activeSnapshot = useAppStore((s) => s.activeSnapshot);
   const setActiveSnapshot = useAppStore((s) => s.setActiveSnapshot);
+  const assignFsIndex = useAppStore((s) => s.assignFsIndex);
+  const setAssignFsIndex = useAppStore((s) => s.setAssignFsIndex);
+  const defaultFsMode = useAppStore((s) => s.defaultFsMode);
+  const showDsp = useAppStore((s) => s.showDsp);
+  const confirmDownload = useAppStore((s) => s.confirmDownload);
   const [copying, setCopying] = useState(false);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
 
   useEffect(() => {
-    const snaps = preset.footswitches.filter((f) => f.action === "snapshot").length;
-    const stomps = preset.footswitches.filter((f) => f.action === "bypass").length;
-    setFsMode(snaps > 0 && snaps >= stomps ? "snapshot" : "stomp");
+    if (defaultFsMode === "snapshot") setFsMode("snapshot");
+    else if (defaultFsMode === "stomp") setFsMode("stomp");
+    else {
+      const snaps = preset.footswitches.filter((f) => f.action === "snapshot").length;
+      const stomps = preset.footswitches.filter((f) => f.action === "bypass").length;
+      setFsMode(snaps > 0 && snaps >= stomps ? "snapshot" : "stomp");
+    }
     setActiveSnapshot(0);
     setLcdView("play");
+    setAssignFsIndex(1);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preset.id, preset.stompModel, setFsMode, setActiveSnapshot, setLcdView]);
+  }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
 
   function changeParam(blockId: string, name: string, value: number) {
     const snap = preset.snapshots[activeSnapshot];
@@ -72,7 +82,7 @@ export function PresetWorkspace({
 
   function toggleBlock(blockId: string) {
     const snap = preset.snapshots[activeSnapshot];
-    if (snap) {
+    if (snap && fsMode === "snapshot") {
       const on = snap.enabledBlocks.includes(blockId);
       const enabledBlocks = on
         ? snap.enabledBlocks.filter((id) => id !== blockId)
@@ -89,11 +99,63 @@ export function PresetWorkspace({
     });
   }
 
+  function assignFs(index: number, patch: Partial<FootswitchAssign>) {
+    const existing = preset.footswitches.find((f) => f.index === index);
+    const nextAssign: FootswitchAssign = {
+      index,
+      label: patch.label ?? existing?.label ?? `FS${index}`,
+      color: patch.color ?? existing?.color ?? "#c5c9c2",
+      action: patch.action ?? existing?.action ?? "bypass",
+      targetBlockId: "targetBlockId" in patch ? patch.targetBlockId : existing?.targetBlockId,
+      snapshotId: "snapshotId" in patch ? patch.snapshotId : existing?.snapshotId,
+      notes: patch.notes ?? existing?.notes ?? "",
+    };
+    const rest = preset.footswitches.filter((f) => f.index !== index);
+    onChange({ ...preset, footswitches: [...rest, nextAssign].sort((a, b) => a.index - b.index) });
+  }
+
+  function fillStompDefaults() {
+    const fx = sortedBlocks(preset);
+    const slots = device.footswitches === 8 ? 6 : 3;
+    const assigns: FootswitchAssign[] = fx.slice(0, slots).map((b, i) => {
+      const model = blockModel(b);
+      return {
+        index: i + 1,
+        label: model?.abbrev ?? `FS${i + 1}`,
+        color: model ? CATEGORY_MAP[model.category].lcd : "#c5c9c2",
+        action: "bypass",
+        targetBlockId: b.id,
+        notes: model ? `Toggle ${model.name}` : "",
+      };
+    });
+    if (device.footswitches === 8) {
+      assigns.push({
+        index: 7,
+        label: "MODE",
+        color: "#5a5e62",
+        action: "mode",
+        notes: "Cycle Stomp / Snapshot / Preset",
+      });
+      assigns.push({
+        index: 8,
+        label: "TAP",
+        color: "#e24a3a",
+        action: "tap",
+        notes: "Tap tempo",
+      });
+    }
+    onChange({ ...preset, footswitches: assigns });
+    setFsMode("stomp");
+    setLcdView("assign");
+    toast.success("Switches mapped to effects. Tap a scribble strip to change one.");
+  }
+
   function onDownload() {
+    if (confirmDownload && !window.confirm(`Download ${hlxFilename(preset)} for HX Edit?`)) return;
     const ok = downloadHlx(preset);
     toast.success(
       ok
-        ? `Saved ${hlxFilename(preset)}. In HX Edit: File → Import, then PAGE to Snapshot mode.`
+        ? `Saved ${hlxFilename(preset)}. In HX Edit: File → Import, then PAGE to ${fsMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
         : "Download was blocked. Use Copy .hlx JSON and save it as a .hlx file.",
     );
   }
@@ -120,8 +182,12 @@ export function PresetWorkspace({
             <span>{device.name}</span>
             <span>·</span>
             <span className="tabular-nums">{preset.tempo} BPM</span>
-            <span>·</span>
-            <span className="tabular-nums">{load}% DSP</span>
+            {showDsp ? (
+              <>
+                <span>·</span>
+                <span className="tabular-nums">{load}% DSP</span>
+              </>
+            ) : null}
           </div>
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h1 className="font-display text-3xl font-semibold tracking-tight">
@@ -146,12 +212,58 @@ export function PresetWorkspace({
                 </Button>
               </div>
               <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                HX Edit · File · Import · then Snapshot mode
+                HX Edit · File · Import · then {fsMode === "snapshot" ? "Snapshot" : "Stomp"} mode
               </p>
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
         </header>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex rounded-full bg-secondary p-1">
+            {(
+              [
+                ["snapshot", "Snapshot"],
+                ["stomp", "Stomp"],
+                ["preset", "Preset"],
+              ] as const
+            ).map(([id, label]) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => {
+                  setFsMode(id);
+                  if (id !== "stomp") setLcdView("play");
+                }}
+                className={`h-9 rounded-full px-3.5 text-xs font-medium ${
+                  fsMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+          <Button
+            type="button"
+            size="sm"
+            variant={lcdView === "assign" ? "default" : "outline"}
+            onClick={() => setLcdView(lcdView === "assign" ? "play" : "assign")}
+          >
+            {lcdView === "assign" ? "Done assigning" : "Assign switches"}
+          </Button>
+          {fsMode === "stomp" ? (
+            <Button type="button" size="sm" variant="ghost" onClick={fillStompDefaults}>
+              Map effects to FS
+            </Button>
+          ) : null}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {fsMode === "snapshot"
+            ? "Snapshot mode — each switch recalls a song section (verse, chorus, solo). This is how most of the featured rigs are meant to be played."
+            : fsMode === "stomp"
+              ? "Stomp mode — each switch turns an effect on or off. Open Assign and tap a scribble strip on the display to pick which effect lives on which footswitch."
+              : "Preset mode — bank and preset walking, the way the hardware behaves when you aren't in a song."}
+        </p>
 
         <StompUnit
           preset={displayed}
@@ -161,12 +273,16 @@ export function PresetWorkspace({
           fsMode={fsMode}
           paramPage={paramPage}
           activeSnapshot={activeSnapshot}
+          assignFsIndex={assignFsIndex}
+          showDsp={showDsp}
           onParamPage={setParamPage}
           onView={setLcdView}
           onFsMode={setFsMode}
           onSnapshot={setActiveSnapshot}
           onChangeParam={changeParam}
           onToggleBlock={toggleBlock}
+          onAssignFs={assignFs}
+          onAssignFsIndex={setAssignFsIndex}
         />
 
         <Card>
@@ -297,24 +413,38 @@ export function PresetWorkspace({
           <CardHeader>
             <CardTitle>Footswitches</CardTitle>
             <CardDescription>
-              {device.footswitches} switches · {device.snapshots} snapshots · {device.looper} looper
+              {device.footswitches} switches · {fsMode} mode · tap Assign to edit on the display
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {preset.footswitches.map((f) => (
-              <div key={f.index} className="flex gap-3">
-                <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: f.color }} />
-                <div>
-                  <div className="text-sm font-medium">
-                    FS{f.index} · {f.label}
+            {Array.from({ length: device.footswitches }, (_, i) => i + 1).map((index) => {
+              const f = preset.footswitches.find((x) => x.index === index);
+              return (
+                <button
+                  key={index}
+                  type="button"
+                  onClick={() => {
+                    setAssignFsIndex(index);
+                    setLcdView("assign");
+                    setFsMode("stomp");
+                  }}
+                  className="flex w-full gap-3 rounded-lg px-1 py-1 text-left hover:bg-secondary/60"
+                >
+                  <span
+                    className="mt-1 size-2.5 shrink-0 rounded-full"
+                    style={{ background: f?.color ?? "#5a5e62" }}
+                  />
+                  <div>
+                    <div className="text-sm font-medium">
+                      FS{index} · {f?.label ?? "empty"}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {f ? `${f.action}${f.notes ? ` — ${f.notes}` : ""}` : "Tap to assign an effect"}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {f.action}
-                    {f.notes ? ` — ${f.notes}` : ""}
-                  </p>
-                </div>
-              </div>
-            ))}
+                </button>
+              );
+            })}
           </CardContent>
         </Card>
 

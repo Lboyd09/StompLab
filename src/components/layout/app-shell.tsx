@@ -22,6 +22,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
   const geminiKey = useAppStore((s) => s.geminiKey);
+  const theme = useAppStore((s) => s.theme);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const [q, setQ] = useState("");
@@ -30,6 +31,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    const apply = (dark: boolean) => {
+      root.classList.toggle("dark", dark);
+      root.classList.toggle("light", !dark);
+    };
+    if (theme === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      apply(mq.matches);
+      const onChange = () => apply(mq.matches);
+      mq.addEventListener("change", onChange);
+      return () => mq.removeEventListener("change", onChange);
+    }
+    apply(theme !== "light");
+    return undefined;
+  }, [theme]);
 
   const hits = useMemo(
     () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 8) : []),
@@ -89,7 +107,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
             <Link
               to="/settings"
-              aria-label="Gemini API key"
+              aria-label="Settings"
               className={cn(
                 "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card",
                 pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",

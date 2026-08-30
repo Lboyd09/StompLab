@@ -6,19 +6,26 @@ import {
   loadGeminiKey,
   loadPresets,
   loadSettings,
+  patchSettings,
   saveGear,
   saveGeminiKey,
-  saveSettings,
+  type FsModePref,
+  type Settings,
+  type ThemeId,
   upsertPreset,
 } from "@/lib/storage";
 
-type LcdView = "play" | "edit" | "tuner";
+type LcdView = "play" | "edit" | "tuner" | "assign";
 type FsMode = "stomp" | "snapshot" | "preset";
 
 type AppState = {
   hydrated: boolean;
   instrument: "guitar" | "bass";
   stompModel: StompModelId;
+  theme: ThemeId;
+  defaultFsMode: FsModePref;
+  showDsp: boolean;
+  confirmDownload: boolean;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -27,9 +34,14 @@ type AppState = {
   fsMode: FsMode;
   paramPage: number;
   activeSnapshot: number;
+  assignFsIndex: number;
   hydrate: () => void;
   setInstrument: (instrument: "guitar" | "bass") => void;
   setStompModel: (stompModel: StompModelId) => void;
+  setTheme: (theme: ThemeId) => void;
+  setDefaultFsMode: (mode: FsModePref) => void;
+  setShowDsp: (show: boolean) => void;
+  setConfirmDownload: (confirm: boolean) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
@@ -41,13 +53,22 @@ type AppState = {
   setFsMode: (mode: FsMode) => void;
   setParamPage: (page: number) => void;
   setActiveSnapshot: (index: number) => void;
+  setAssignFsIndex: (index: number) => void;
   patchCurrent: (preset: Preset) => void;
 };
+
+function persist(partial: Partial<Settings>) {
+  return patchSettings(partial);
+}
 
 export const useAppStore = create<AppState>((set, get) => ({
   hydrated: false,
   instrument: "guitar",
   stompModel: "hx-stomp",
+  theme: "dark",
+  defaultFsMode: "auto",
+  showDsp: true,
+  confirmDownload: false,
   geminiKey: "",
   presets: [],
   gear: [],
@@ -56,6 +77,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   fsMode: "stomp",
   paramPage: 0,
   activeSnapshot: 0,
+  assignFsIndex: 1,
   hydrate: () => {
     if (get().hydrated) return;
     const settings = loadSettings();
@@ -63,18 +85,38 @@ export const useAppStore = create<AppState>((set, get) => ({
       hydrated: true,
       instrument: settings.instrument,
       stompModel: settings.stompModel,
+      theme: settings.theme,
+      defaultFsMode: settings.defaultFsMode,
+      showDsp: settings.showDsp,
+      confirmDownload: settings.confirmDownload,
       geminiKey: loadGeminiKey(),
       presets: loadPresets(),
       gear: loadGear(),
     });
   },
   setInstrument: (instrument) => {
+    persist({ instrument });
     set({ instrument });
-    saveSettings({ instrument, stompModel: get().stompModel });
   },
   setStompModel: (stompModel) => {
+    persist({ stompModel });
     set({ stompModel });
-    saveSettings({ instrument: get().instrument, stompModel });
+  },
+  setTheme: (theme) => {
+    persist({ theme });
+    set({ theme });
+  },
+  setDefaultFsMode: (defaultFsMode) => {
+    persist({ defaultFsMode });
+    set({ defaultFsMode });
+  },
+  setShowDsp: (showDsp) => {
+    persist({ showDsp });
+    set({ showDsp });
+  },
+  setConfirmDownload: (confirmDownload) => {
+    persist({ confirmDownload });
+    set({ confirmDownload });
   },
   setGeminiKey: (geminiKey) => {
     saveGeminiKey(geminiKey);
@@ -101,5 +143,6 @@ export const useAppStore = create<AppState>((set, get) => ({
   setFsMode: (fsMode) => set({ fsMode }),
   setParamPage: (paramPage) => set({ paramPage }),
   setActiveSnapshot: (activeSnapshot) => set({ activeSnapshot }),
+  setAssignFsIndex: (assignFsIndex) => set({ assignFsIndex }),
   patchCurrent: (preset) => set({ presets: upsertPreset(preset) }),
 }));

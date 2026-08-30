@@ -18,12 +18,14 @@ export const Route = createRootRoute({
         content: "Research any song. Build a Line 6 HX Stomp preset you can copy onto the unit.",
       },
       { name: "theme-color", content: "#0B0C0E" },
+      { name: "apple-mobile-web-app-title", content: "StompLab" },
+      { name: "application-name", content: "StompLab" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
@@ -33,7 +35,7 @@ export const Route = createRootRoute({
     ],
   }),
   component: () => (
-    <html lang="en" className="antialiased" suppressHydrationWarning>
+    <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
