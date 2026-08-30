@@ -33,6 +33,23 @@ export function deviceFor(preset: Preset) {
   return DEVICE_MAP[preset.stompModel];
 }
 
+/** Physical place on the unit. XL front row is closest to you (hardware 1–3). */
+export function footswitchPlace(index: number, xl: boolean): string {
+  if (!xl) return (["Left", "Middle", "Right"][index - 1] ?? `Switch ${index}`);
+  return (
+    {
+      1: "Front left",
+      2: "Front middle",
+      3: "Front right",
+      4: "Back left",
+      5: "Back middle",
+      6: "Back right",
+      7: "MODE",
+      8: "TAP",
+    }[index] ?? `Switch ${index}`
+  );
+}
+
 export function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }

@@ -1,5 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
-import { Clock, Guitar, KeyRound, Library, Search, SlidersHorizontal, Sparkles, Wrench } from "lucide-react";
+import { BookOpen, Clock, Guitar, KeyRound, Library, Search, SlidersHorizontal, Sparkles, Wrench } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
 import { searchModels } from "@/data/catalog";
@@ -14,6 +14,8 @@ const NAV = [
   { to: "/gear", label: "Gear", icon: Wrench },
   { to: "/history", label: "History", icon: Clock },
 ] as const;
+
+const DESKTOP_NAV = [...NAV, { to: "/guide", label: "Guide", icon: BookOpen }] as const;
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
@@ -151,7 +153,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
             <nav className="ml-auto hidden items-center gap-1 md:flex">
-              {NAV.map((item) => (
+              {DESKTOP_NAV.map((item) => (
                 <Link
                   key={item.to}
                   to={item.to}

@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
-import type { FootswitchAssign, Preset, StompBlock } from "@/data/types";
-import { blockModel, deviceFor, dspLoad, formatParam, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import type { Preset, StompBlock } from "@/data/types";
+import { blockModel, deviceFor, dspLoad, footswitchPlace, formatParam, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -16,9 +16,7 @@ type Props = {
   activeSnapshot: number;
   assignFsIndex: number;
   showDsp?: boolean;
-  onToggleBlock?: (id: string) => void;
   onScribbleTap?: (index: number) => void;
-  onAssign?: (index: number, patch: Partial<FootswitchAssign>) => void;
 };
 
 type Scribble = { index: number; label: string; color: string };
@@ -55,10 +53,9 @@ function BlockChip({
 }
 
 function scribblesFor(preset: Preset, fsMode: FsMode, xl: boolean): Scribble[] {
-  const count = xl ? 6 : 3;
   const dim = "#5a5e62";
   const indices = xl ? [4, 5, 6, 1, 2, 3] : [1, 2, 3];
-  return indices.slice(0, count).map((index) => {
+  return indices.map((index) => {
     if (fsMode === "snapshot") {
       const snap = preset.snapshots[index - 1];
       return snap
@@ -69,12 +66,12 @@ function scribblesFor(preset: Preset, fsMode: FsMode, xl: boolean): Scribble[] {
       const labels = xl
         ? { 1: "BANK-", 2: "A", 3: "B", 4: "BANK+", 5: "PRESET-", 6: "PRESET+" }
         : { 1: "PRESET-", 2: "TAP", 3: "PRESET+" };
-      return { index, label: labels[index as keyof typeof labels] ?? `FS${index}`, color: dim };
+      return { index, label: labels[index as keyof typeof labels] ?? "", color: dim };
     }
     const assign = preset.footswitches.find((f) => f.index === index);
     return assign
       ? { index, label: assign.label.slice(0, 8), color: assign.color }
-      : { index, label: `FS${index}`, color: dim };
+      : { index, label: "—", color: dim };
   });
 }
 
@@ -89,7 +86,6 @@ export function LcdScreen({
   assignFsIndex,
   showDsp = true,
   onScribbleTap,
-  onAssign,
 }: Props) {
   const blocks = sortedBlocks(preset);
   const selected = blocks.find((b) => b.id === selectedBlockId) ?? blocks[0];
@@ -136,11 +132,15 @@ export function LcdScreen({
       {view === "tuner" ? (
         <TunerView />
       ) : view === "assign" ? (
-        <AssignView
-          preset={preset}
-          fsIndex={assignFsIndex}
-          onAssign={onAssign}
-        />
+        <div className="flex flex-1 flex-col items-center justify-center gap-1 px-3 text-center">
+          <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
+            {footswitchPlace(assignFsIndex, xl)}
+          </span>
+          <span className="text-[12px] font-medium text-zinc-100">
+            {preset.footswitches.find((f) => f.index === assignFsIndex)?.label ?? "Empty"}
+          </span>
+          <span className="text-[9px] text-zinc-500">Tap a switch, then pick below</span>
+        </div>
       ) : view === "edit" && selected && model ? (
         <div className="flex flex-1 flex-col px-2 pt-2">
           <div className="mb-1 flex items-center justify-between">
@@ -199,121 +199,6 @@ export function LcdScreen({
           <ScribbleRow items={bottomStrips} active={view === "assign" ? assignFsIndex : undefined} onTap={onScribbleTap} />
         </div>
       )}
-    </div>
-  );
-}
-
-function AssignView({
-  preset,
-  fsIndex,
-  onAssign,
-}: {
-  preset: Preset;
-  fsIndex: number;
-  onAssign?: (index: number, patch: Partial<FootswitchAssign>) => void;
-}) {
-  const current = preset.footswitches.find((f) => f.index === fsIndex);
-  const blocks = sortedBlocks(preset);
-
-  function set(patch: Partial<FootswitchAssign>) {
-    onAssign?.(fsIndex, patch);
-  }
-
-  return (
-    <div className="flex flex-1 flex-col gap-1.5 overflow-hidden px-2 pt-1.5">
-      <div className="flex items-center justify-between">
-        <span className="font-mono text-[10px] uppercase tracking-wider text-zinc-400">
-          FS{fsIndex} · {current?.label ?? "empty"}
-        </span>
-        <span className="font-mono text-[9px] text-zinc-500">tap a switch, then a block</span>
-      </div>
-      <div className="flex flex-wrap gap-1">
-        {blocks.map((b) => {
-          const model = blockModel(b);
-          if (!model) return null;
-          const on = current?.action === "bypass" && current.targetBlockId === b.id;
-          return (
-            <button
-              key={b.id}
-              type="button"
-              onClick={() =>
-                set({
-                  action: "bypass",
-                  targetBlockId: b.id,
-                  snapshotId: undefined,
-                  label: model.abbrev,
-                  color: CATEGORY_MAP[model.category].lcd,
-                  notes: `Toggle ${model.name}`,
-                })
-              }
-              className={cn(
-                "rounded-[2px] border px-1.5 py-0.5 font-mono text-[8px] uppercase",
-                on ? "border-white text-zinc-100" : "border-white/15 text-zinc-400",
-              )}
-            >
-              {model.abbrev}
-            </button>
-          );
-        })}
-      </div>
-      {preset.snapshots.length ? (
-        <div className="flex flex-wrap gap-1">
-          {preset.snapshots.map((s) => {
-            const on = current?.action === "snapshot" && current.snapshotId === s.id;
-            return (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() =>
-                  set({
-                    action: "snapshot",
-                    snapshotId: s.id,
-                    targetBlockId: undefined,
-                    label: s.name.slice(0, 8).toUpperCase(),
-                    color: s.color,
-                    notes: `Recall ${s.name}`,
-                  })
-                }
-                className={cn(
-                  "rounded-[2px] border px-1.5 py-0.5 font-mono text-[8px] uppercase",
-                  on ? "border-white text-zinc-100" : "border-white/15 text-zinc-400",
-                )}
-              >
-                {s.name}
-              </button>
-            );
-          })}
-        </div>
-      ) : null}
-      <div className="mt-auto flex flex-wrap gap-1 pb-1">
-        <button
-          type="button"
-          className="rounded-[2px] border border-white/15 px-1.5 py-0.5 font-mono text-[8px] uppercase text-zinc-400"
-          onClick={() =>
-            set({ action: "tap", label: "TAP", color: "#c5c9c2", targetBlockId: undefined, snapshotId: undefined, notes: "Tap tempo" })
-          }
-        >
-          Tap
-        </button>
-        <button
-          type="button"
-          className="rounded-[2px] border border-white/15 px-1.5 py-0.5 font-mono text-[8px] uppercase text-zinc-400"
-          onClick={() =>
-            set({ action: "tuner", label: "TUNER", color: "#22e07a", targetBlockId: undefined, snapshotId: undefined, notes: "Mute tuner" })
-          }
-        >
-          Tuner
-        </button>
-        <button
-          type="button"
-          className="rounded-[2px] border border-white/15 px-1.5 py-0.5 font-mono text-[8px] uppercase text-zinc-400"
-          onClick={() =>
-            set({ action: "mode", label: "MODE", color: "#5a5e62", targetBlockId: undefined, snapshotId: undefined, notes: "Cycle Stomp / Snapshot / Preset" })
-          }
-        >
-          Mode
-        </button>
-      </div>
     </div>
   );
 }

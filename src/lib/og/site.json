@@ -1,6 +1,8 @@
 {
   "title": "Stomp Lab",
+  "shortName": "StompLab",
   "type": "website",
   "card": "custom",
-  "description": "Research any song. Build a Line 6 HX Stomp preset you can copy onto the unit."
+  "description": "Research any song. Build a Line 6 HX Stomp preset you can copy onto the unit.",
+  "color": "0B0C0E"
 }

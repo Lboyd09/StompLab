@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -130,9 +130,7 @@ function Home() {
           Research a song. Copy the preset onto your Stomp.
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
-          Name a track. Stomp Lab maps the real amps, pedals, and cabs to HX models, then lays them
-          out on an interactive Stomp — knobs, footswitches, snapshots, and a .hlx you can import
-          in HX Edit. Repeats are free for everyone.
+          Name a track. See it on the unit. Download a .hlx HX Edit can import. Repeats are free.
         </p>
       </section>
 
@@ -226,21 +224,27 @@ function Home() {
 
       <Card>
         <CardHeader>
-          <CardTitle>How to copy it</CardTitle>
-          <CardDescription>The screen is the unit. Match blocks left to right, then assign the footswitches.</CardDescription>
+          <CardTitle>How it works</CardTitle>
+          <CardDescription>
+            The screen is the unit.{" "}
+            <Link to="/guide" className="text-primary underline underline-offset-2">
+              Full tutorial
+            </Link>
+          </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
           <p>
-            <span className="block font-medium text-foreground">1. Path</span>
-            Add each block in order. Amp and cab stay a pair unless you're going DI. Stay at 8 or under.
+            <span className="block font-medium text-foreground">1. Look it up</span>
+            Featured songs are instant. A new title uses your Gemini key once, then the shared library
+            keeps it.
           </p>
           <p>
-            <span className="block font-medium text-foreground">2. Knobs</span>
-            Select a block, then set the three knobs. PAGE for more parameters. Values are 0–10.
+            <span className="block font-medium text-foreground">2. Play the replica</span>
+            Snapshot is verse/chorus. Stomp is effects on/off. Tap a switch, then tap what it should do.
           </p>
           <p>
-            <span className="block font-medium text-foreground">3. File</span>
-            Download the .hlx and import it in HX Edit, or copy switches by hand. PAGE cycles Stomp / Snapshot / Preset.
+            <span className="block font-medium text-foreground">3. Import the file</span>
+            Download the .hlx. HX Edit: File → Import. PAGE until SNAP or STOMP matches.
           </p>
         </CardContent>
       </Card>

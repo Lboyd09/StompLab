@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
+import { ALL_MODELS } from "../data/catalog.ts";
 import { FEATURED } from "../data/featured.ts";
 import { HELIX_IDS } from "../data/helix-ids.ts";
 import { buildHlx } from "./hlx.ts";
@@ -24,6 +25,15 @@ describe("HELIX_IDS", () => {
     assert.equal(HELIX_IDS["scream-808"], "HD2_DistScream808");
     for (const id of Object.values(HELIX_IDS)) {
       assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(id), false, id);
+    }
+  });
+
+  it("covers every non-legacy non-mic catalog model", () => {
+    const skip = new Set(["split-y", "split-a-b", "crossover-split", "merge"]);
+    for (const m of ALL_MODELS) {
+      if (m.io === "legacy" || m.category === "mic") continue;
+      if (skip.has(m.id)) continue;
+      assert.ok(HELIX_IDS[m.id], `missing factory id for ${m.id}`);
     }
   });
 });
@@ -73,6 +83,15 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block0["@no_snapshot_bypass"], false);
     assert.equal((hlx.data as { device: number }).device, 2162694);
     assert.equal(hlx.schema, "L6Preset");
+  });
+
+  it("stomp export still uses factory models and pedalstate 0", () => {
+    const stomp = buildHlx(featured("featured-teen-spirit"), { fsMode: "stomp" });
+    const stompTone = (stomp.data as { tone: Record<string, unknown> }).tone;
+    const global = stompTone.global as { "@pedalstate": number };
+    assert.equal(global["@pedalstate"], 0);
+    const fs = stompTone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
+    assert.equal(Object.keys(fs.dsp0).length, 0);
   });
 });
 

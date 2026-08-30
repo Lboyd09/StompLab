@@ -124,6 +124,8 @@ export type Preset = {
   footswitches: FootswitchAssign[];
   programming: string[];
   tips: string[];
+  /** How the .hlx should come up on the unit. Snapshot = verse/chorus, Stomp = effects on/off. */
+  exportFsMode?: "stomp" | "snapshot";
 };
 
 export type UserGear = {

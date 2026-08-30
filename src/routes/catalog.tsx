@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CATEGORIES, CATEGORY_MAP } from "@/data/categories";
-import { ALL_MODELS, MODEL_MAP, findEquivalents, searchModels } from "@/data/catalog";
+import { MODEL_MAP, findEquivalents, searchModels } from "@/data/catalog";
 import type { CategoryId } from "@/data/types";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { lookupEquivalent } from "@/lib/research";
@@ -72,7 +72,8 @@ function CatalogPage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Every amp, cab, mic, and effect on the HX Stomp — plus a finder that maps a real pedal to
-          the Line 6 name. {ALL_MODELS.length} models.
+          the Line 6 name.
+
         </p>
       </header>
 
@@ -201,7 +202,9 @@ function CatalogPage() {
             <p className="text-sm text-muted-foreground">{CATEGORY_MAP[cat as CategoryId].description}</p>
           ) : null}
 
-          <p className="text-xs text-muted-foreground tabular-nums">{models.length} models</p>
+          <p className="text-xs text-muted-foreground tabular-nums">
+            {models.length} {instrument} models
+          </p>
 
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((m) => {

@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
-import type { FootswitchAssign, Preset } from "@/data/types";
-import { deviceFor, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import type { Preset } from "@/data/types";
+import { deviceFor, footswitchPlace, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { Knob } from "./knob";
 import { LcdScreen } from "./lcd";
@@ -19,13 +19,13 @@ type Props = {
   activeSnapshot: number;
   assignFsIndex: number;
   showDsp?: boolean;
+  showFsNumbers?: boolean;
   onParamPage: (page: number) => void;
   onView: (view: LcdView) => void;
   onFsMode: (mode: FsMode) => void;
   onSnapshot: (index: number) => void;
   onChangeParam: (blockId: string, name: string, value: number) => void;
   onToggleBlock: (blockId: string) => void;
-  onAssignFs: (index: number, patch: Partial<FootswitchAssign>) => void;
   onAssignFsIndex: (index: number) => void;
 };
 
@@ -41,13 +41,13 @@ export function StompUnit({
   activeSnapshot,
   assignFsIndex,
   showDsp = true,
+  showFsNumbers = false,
   onParamPage,
   onView,
   onFsMode,
   onSnapshot,
   onChangeParam,
   onToggleBlock,
-  onAssignFs,
   onAssignFsIndex,
 }: Props) {
   const device = deviceFor(preset);
@@ -93,7 +93,7 @@ export function StompUnit({
 
   function onAction() {
     if (Date.now() - lastHome.current < 900) {
-      toast.success("Saved. On a real Stomp, Home + Action writes the preset.");
+      toast.success("Saved. On a real Stomp, View + Action writes the preset.");
       return;
     }
     if (view === "play") {
@@ -124,11 +124,11 @@ export function StompUnit({
       onView("play");
       return;
     }
-    if (xl && fsMode !== "stomp" && index === 7) {
+    if (xl && index === 7) {
       cycleMode(1);
       return;
     }
-    if (xl && fsMode !== "stomp" && index === 8) {
+    if (xl && index === 8) {
       onView("tuner");
       return;
     }
@@ -166,7 +166,7 @@ export function StompUnit({
   }
 
   const knobs = (
-    <div className="flex items-end justify-center gap-5 sm:gap-7">
+    <div className="flex items-end justify-center gap-6 sm:gap-8">
       {([0, 1, 2] as const).map((i) => {
         const p = pageParams[i];
         return (
@@ -189,29 +189,29 @@ export function StompUnit({
     </div>
   );
 
-  const consoleBtns = (
-    <div className="flex w-[52px] shrink-0 flex-col items-center gap-1 pt-0.5">
-      <HwBtn onClick={onHome}>Home</HwBtn>
-      <HwBtn onClick={onAction}>Action</HwBtn>
+  const well = (
+    <div className="hx-well" aria-label="View, knobs, Action, Page">
+      <HwBtn onClick={onHome}>View</HwBtn>
       <Knob
-        label="Upper"
+        label=""
         value={blocks.length ? ((blocks.findIndex((b) => b.id === selected?.id) + 1) / blocks.length) * 10 : 0}
         size="sm"
+        showValue={false}
         onPress={() => cycleBlock(1)}
       />
+      <HwBtn onClick={onAction}>Action</HwBtn>
+      <HwBtn onClick={() => onPage(-1)}>{"<"}</HwBtn>
       <Knob
-        label="Lower"
+        label=""
         value={preset.snapshots.length ? ((activeSnapshot + 1) / preset.snapshots.length) * 10 : 0}
         size="sm"
+        showValue={false}
         onPress={() => {
           if (preset.snapshots.length) onSnapshot((activeSnapshot + 1) % preset.snapshots.length);
         }}
       />
-      <div className="mt-0.5 flex gap-0.5">
-        <HwBtn onClick={() => onPage(-1)}>{"<"}</HwBtn>
-        <HwBtn onClick={() => onPage(1)}>{">"}</HwBtn>
-      </div>
-      <span className="hx-silk">Page</span>
+      <HwBtn onClick={() => onPage(1)}>{">"}</HwBtn>
+      <span className="hx-silk col-span-3 -mt-1">Page</span>
     </div>
   );
 
@@ -233,7 +233,6 @@ export function StompUnit({
         onAssignFsIndex(index);
         if (view !== "assign") onView("assign");
       }}
-      onAssign={onAssignFs}
     />
   );
 
@@ -242,78 +241,79 @@ export function StompUnit({
       <Footswitch
         key={index}
         index={index}
+        place={footswitchPlace(index, xl)}
         label={scribbleLabel(preset, fsMode, index, xl, view === "assign")}
         color={scribbleColor(preset, fsMode, index, activeSnapshot, xl)}
         lit={isLit(preset, fsMode, index, activeSnapshot, xl, view)}
         selected={view === "assign" && assignFsIndex === index}
+        showNumber={showFsNumbers}
         onClick={() => pressFs(index)}
       />
     );
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="min-w-0 overflow-x-auto">
       <div className={cn("hx-chassis mx-auto w-full", xl ? "hx-chassis-xl" : "hx-chassis-stomp")}>
-        <div className="mb-3 flex items-center justify-between px-1">
-          <span className="hx-silk">Line 6</span>
-          <span className="hx-silk">{device.name}</span>
+        <div className="hx-brand">
+          <span className="hx-brand-mark">Line 6</span>
+          <span className="hx-brand-mark">{xl ? "HX Stomp XL" : "HX Stomp"}</span>
         </div>
 
         {xl ? (
           <div className="hx-xl-board">
-            <div className="flex flex-col justify-end gap-3">
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">{[4, 5, 6].map(renderSwitch)}</div>
-              <div className="grid grid-cols-3 gap-2 sm:gap-3">{[1, 2, 3].map(renderSwitch)}</div>
+            <div className="hx-xl-fs">
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                {[4, 5, 6].map(renderSwitch)}
+              </div>
+              <div className="grid grid-cols-3 gap-3 sm:gap-4">
+                {[1, 2, 3].map(renderSwitch)}
+              </div>
+              <p className="hx-silk text-center">Closest row is 1 · 2 · 3</p>
             </div>
             <div className="min-w-0 space-y-3">
               <div className="flex items-stretch gap-2">
                 <div className="min-w-0 flex-1">{lcd}</div>
-                {consoleBtns}
+                {well}
               </div>
               {knobs}
             </div>
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-1 md:self-end">
+            <div className="hx-xl-mode">
               {renderSwitch(7)}
               {renderSwitch(8)}
+              <p className="hx-silk text-center">Vol on rear</p>
             </div>
           </div>
         ) : (
-          <>
-            <div className="flex items-stretch gap-2 sm:gap-3">
-              <div className="flex w-14 shrink-0 flex-col items-center justify-center gap-1">
-                <Knob label="Volume" value={volume} onChange={setVolume} size="md" />
-              </div>
-              <div className="min-w-0 flex-1">{lcd}</div>
-              {consoleBtns}
+          <div className="hx-stomp-board">
+            <div className="hx-stomp-lcd">{lcd}</div>
+            <div className="hx-stomp-well">{well}</div>
+            <div className="hx-stomp-vol">
+              <Knob label="Volume" value={volume} onChange={setVolume} size="md" />
             </div>
-            <div className="mt-4">{knobs}</div>
-            <div className="mt-4 grid grid-cols-3 gap-2 sm:gap-3">{switches.map((sw) => renderSwitch(sw.index))}</div>
-          </>
+            <div className="hx-stomp-knobs">{knobs}</div>
+            <div className="hx-stomp-fs grid grid-cols-3 gap-3 sm:gap-5">
+              {switches.map((sw) => renderSwitch(sw.index))}
+            </div>
+          </div>
         )}
-
-        <p className="mt-4 px-1 text-center font-mono text-[9px] leading-relaxed tracking-wide text-zinc-500">
-          {xl
-            ? "Wide board: FS1–FS6 on the left, LCD in the middle, MODE and TAP on the right. Volume is on the rear. "
-            : ""}
-          PAGE cycles Stomp / Snapshot / Preset in Play. Home toggles Play/Edit. Action opens tuner. Tap a scribble strip to assign a switch.
-        </p>
       </div>
     </div>
   );
 }
 
 function scribbleLabel(preset: Preset, fsMode: FsMode, index: number, xl: boolean, assigning: boolean): string {
-  if (assigning) return preset.footswitches.find((f) => f.index === index)?.label ?? `FS${index}`;
+  if (assigning) return preset.footswitches.find((f) => f.index === index)?.label ?? "empty";
   if (xl && index === 7) return "MODE";
   if (xl && index === 8) return "TAP";
   if (fsMode === "snapshot") return preset.snapshots[index - 1]?.name.slice(0, 8).toUpperCase() ?? "—";
   if (fsMode === "preset") {
     if (xl) {
-      return { 1: "BANK-", 2: "A", 3: "B", 4: "BANK+", 5: "PRESET-", 6: "PRESET+" }[index] ?? `FS${index}`;
+      return { 1: "BANK-", 2: "A", 3: "B", 4: "BANK+", 5: "PRESET-", 6: "PRESET+" }[index] ?? "";
     }
     return ["PRESET-", "TAP", "PRESET+"][index - 1] ?? "";
   }
-  return preset.footswitches.find((f) => f.index === index)?.label ?? `FS${index}`;
+  return preset.footswitches.find((f) => f.index === index)?.label ?? "empty";
 }
 
 function scribbleColor(
@@ -364,34 +364,43 @@ function HwBtn({ children, onClick }: { children: React.ReactNode; onClick: () =
 
 function Footswitch({
   index,
+  place,
   label,
   color,
   lit,
   selected,
+  showNumber,
   onClick,
 }: {
   index: number;
+  place: string;
   label: string;
   color: string;
   lit: boolean;
   selected?: boolean;
+  showNumber: boolean;
   onClick: () => void;
 }) {
   return (
-    <button type="button" onClick={onClick} className="group flex min-h-11 flex-col items-center gap-1.5">
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={`${place}${label ? ` · ${label}` : ""}`}
+      className="group flex min-h-11 flex-col items-center gap-1.5"
+    >
       <span
         className="hx-fs hx-fs-cap relative grid place-items-center rounded-full"
         style={{
           boxShadow: lit
-            ? `0 0 0 2px #0a0b0d, 0 0 0 4px ${color}, 0 0 14px ${color}`
+            ? `0 0 0 2px #0a0b0d, 0 0 0 5px ${color}, 0 0 16px ${color}`
             : selected
-              ? `0 0 0 2px #0a0b0d, 0 0 0 4px #e8e6df`
-              : `0 0 0 2px #0a0b0d, 0 0 0 4px ${color}55`,
+              ? `0 0 0 2px #0a0b0d, 0 0 0 5px #e8e6df`
+              : `0 0 0 2px #0a0b0d, 0 0 0 4px ${color}66`,
         }}
       >
-        <span className="font-mono text-[9px] text-zinc-500">{index}</span>
+        {showNumber ? <span className="font-mono text-[9px] text-zinc-500">{index}</span> : null}
       </span>
-      <span className="max-w-full truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
+      <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
         {label}
       </span>
     </button>

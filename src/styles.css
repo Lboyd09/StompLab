@@ -84,37 +84,115 @@ html.light {
 
 .hx-chassis {
   background:
-    linear-gradient(180deg, #2a2d32 0%, #17191c 38%, #101114 100%);
-  border: 1px solid #3a3e44;
-  border-radius: 18px;
-  padding: 14px 12px 12px;
+    linear-gradient(180deg, #3a3e44 0%, #1f2226 22%, #15171a 72%, #101214 100%);
+  border: 1px solid #4a4e54;
+  border-radius: 16px;
+  padding: 14px 14px 16px;
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 14%, transparent),
-    inset 0 -2px 0 color-mix(in oklab, #000 50%, transparent),
-    0 24px 48px -28px #000;
+    inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent),
+    inset 0 -3px 0 color-mix(in oklab, #000 55%, transparent),
+    0 28px 56px -30px #000;
   color: #c5c9c2;
 }
 
 .hx-chassis-stomp {
-  max-width: 440px;
+  max-width: 520px;
 }
 
 .hx-chassis-xl {
-  max-width: 980px;
+  max-width: 1080px;
+}
+
+.hx-brand {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 0 2px 12px;
+}
+
+.hx-brand-mark {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: #7a7e78;
+}
+
+.hx-stomp-board {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "lcd well vol"
+    "knobs well vol"
+    "fs fs fs";
+  gap: 12px 10px;
+  align-items: start;
+}
+
+.hx-stomp-lcd {
+  grid-area: lcd;
+  min-width: 0;
+}
+
+.hx-stomp-well {
+  grid-area: well;
+}
+
+.hx-stomp-vol {
+  grid-area: vol;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-top: 8px;
+}
+
+.hx-stomp-knobs {
+  grid-area: knobs;
+}
+
+.hx-stomp-fs {
+  grid-area: fs;
+  padding-top: 4px;
+}
+
+.hx-well {
+  display: grid;
+  grid-template-columns: 46px 40px 46px;
+  grid-template-rows: auto auto auto;
+  place-items: center;
+  gap: 7px 5px;
+  padding: 8px 6px 6px;
+  background: linear-gradient(180deg, #121416, #0a0b0d);
+  border-radius: 8px;
+  box-shadow:
+    inset 0 2px 4px #000,
+    0 0 0 1px #2a2d32;
 }
 
 .hx-xl-board {
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: 14px;
+}
+
+.hx-xl-fs,
+.hx-xl-mode {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
 }
 
 @media (min-width: 768px) {
   .hx-xl-board {
     display: grid;
-    grid-template-columns: minmax(0, 1.15fr) minmax(220px, 0.95fr) auto;
+    grid-template-columns: minmax(210px, 0.95fr) minmax(240px, 1.15fr) auto;
     align-items: end;
-    gap: 14px;
+    gap: 16px 18px;
+  }
+
+  .hx-xl-mode {
+    justify-content: flex-end;
+    padding-bottom: 22px;
   }
 }
 
@@ -161,8 +239,8 @@ html.light {
 }
 
 .hx-hw-btn {
-  min-height: 22px;
-  min-width: 22px;
+  min-height: 24px;
+  min-width: 40px;
   padding: 0 5px;
   border-radius: 3px;
   font-family: var(--font-mono);
@@ -186,14 +264,48 @@ html.light {
 }
 
 .hx-fs-cap {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
 }
 
 @media (min-width: 768px) {
   .hx-fs-cap {
-    width: 58px;
-    height: 58px;
+    width: 62px;
+    height: 62px;
+  }
+}
+
+@media (max-width: 420px) {
+  .hx-stomp-board {
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-areas:
+      "lcd well"
+      "knobs knobs"
+      "vol vol"
+      "fs fs";
+  }
+
+  .hx-stomp-vol {
+    padding-top: 0;
+  }
+
+  .hx-well {
+    grid-template-columns: 38px 32px 38px;
+    gap: 5px 3px;
+    padding: 6px 4px 4px;
+  }
+
+  .hx-hw-btn {
+    min-width: 34px;
+    min-height: 22px;
+  }
+
+  .hx-lcd {
+    min-height: 132px;
+  }
+
+  .hx-chassis {
+    padding: 10px 8px 12px;
   }
 }
 

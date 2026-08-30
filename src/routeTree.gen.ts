@@ -14,6 +14,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as EquivalentsRouteImport } from './routes/equivalents'
 import { Route as GearRouteImport } from './routes/gear'
+import { Route as GuideRouteImport } from './routes/guide'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
@@ -43,6 +44,11 @@ const GearRoute = GearRouteImport.update({
   path: '/gear',
   getParentRoute: () => rootRouteImport,
 } as any)
+const GuideRoute = GuideRouteImport.update({
+  id: '/guide',
+  path: '/guide',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/preset/$id': typeof PresetIdRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/preset/$id': typeof PresetIdRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/settings': typeof SettingsRoute
   '/preset/$id': typeof PresetIdRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/guide'
     | '/history'
     | '/settings'
     | '/preset/$id'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/guide'
     | '/history'
     | '/settings'
     | '/preset/$id'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/guide'
     | '/history'
     | '/settings'
     | '/preset/$id'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   EquivalentsRoute: typeof EquivalentsRoute
   GearRoute: typeof GearRoute
+  GuideRoute: typeof GuideRoute
   HistoryRoute: typeof HistoryRoute
   SettingsRoute: typeof SettingsRoute
   PresetIdRoute: typeof PresetIdRoute
@@ -171,6 +184,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GearRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/guide': {
+      id: '/guide'
+      path: '/guide'
+      fullPath: '/guide'
+      preLoaderRoute: typeof GuideRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/history': {
       id: '/history'
       path: '/history'
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   EquivalentsRoute: EquivalentsRoute,
   GearRoute: GearRoute,
+  GuideRoute: GuideRoute,
   HistoryRoute: HistoryRoute,
   SettingsRoute: SettingsRoute,
   PresetIdRoute: PresetIdRoute,

@@ -26,6 +26,7 @@ type AppState = {
   defaultFsMode: FsModePref;
   showDsp: boolean;
   confirmDownload: boolean;
+  showFsNumbers: boolean;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -41,6 +42,7 @@ type AppState = {
   setTheme: (theme: ThemeId) => void;
   setDefaultFsMode: (mode: FsModePref) => void;
   setShowDsp: (show: boolean) => void;
+  setShowFsNumbers: (show: boolean) => void;
   setConfirmDownload: (confirm: boolean) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
@@ -68,6 +70,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: "dark",
   defaultFsMode: "auto",
   showDsp: true,
+  showFsNumbers: false,
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -88,6 +91,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       theme: settings.theme,
       defaultFsMode: settings.defaultFsMode,
       showDsp: settings.showDsp,
+      showFsNumbers: settings.showFsNumbers,
       confirmDownload: settings.confirmDownload,
       geminiKey: loadGeminiKey(),
       presets: loadPresets(),
@@ -113,6 +117,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setShowDsp: (showDsp) => {
     persist({ showDsp });
     set({ showDsp });
+  },
+  setShowFsNumbers: (showFsNumbers) => {
+    persist({ showFsNumbers });
+    set({ showFsNumbers });
   },
   setConfirmDownload: (confirmDownload) => {
     persist({ confirmDownload });

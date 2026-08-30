@@ -158,35 +158,24 @@ export function renderInstallPageHtml(template, { host, url } = {}) {
 }
 
 export function renderWebManifest(hostHeader) {
-  const fromHost = appNameFromHost(hostHeader);
-  const siteTitle = String(readOgSite().title ?? "").trim();
-  const useSite = fromHost === DEFAULT_APP_NAME && Boolean(siteTitle);
-  const name = useSite ? siteTitle : fromHost;
-  const short_name = useSite ? siteTitle.replace(/\s+/g, "") : name;
-  const icons = useSite
-    ? [
-        { src: "/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
-        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
-        { src: "/icon-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
-      ]
-    : [
+  const name = appNameFromHost(hostHeader);
+  return JSON.stringify(
+    {
+      name,
+      short_name: name,
+      id: "/",
+      start_url: "/",
+      scope: "/",
+      display: "standalone",
+      background_color: "#000000",
+      theme_color: "#000000",
+      icons: [
         {
           src: "/__grok/icon-180.png",
           sizes: "180x180",
           type: "image/png",
         },
-      ];
-  return JSON.stringify(
-    {
-      name,
-      short_name,
-      id: "/",
-      start_url: "/",
-      scope: "/",
-      display: "standalone",
-      background_color: "#0B0C0E",
-      theme_color: "#0B0C0E",
-      icons,
+      ],
     },
     null,
     2,
@@ -448,7 +437,7 @@ export function injectGrokPwaHead(html, ctx = {}) {
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes("apple-touch-icon");
+      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);

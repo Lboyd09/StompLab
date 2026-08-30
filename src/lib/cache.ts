@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
-import { getSql } from "@/lib/db";
+import { dbSource, getSql } from "@/lib/db";
 import type { Preset } from "@/data/types";
 
 function norm(s: string) {
@@ -110,6 +110,19 @@ export const saveEqCache = createServerFn({ method: "POST" })
       return { saved: false as const };
     }
   });
+
+export const cacheHealth = createServerFn({ method: "GET" }).handler(async () => {
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ n: number }>`select count(*)::int as n from rig_cache`;
+    if (!rows[0]) {
+      return { ok: false, entries: 0, backend: "none" as const };
+    }
+    return { ok: true, entries: Number(rows[0].n ?? 0), backend: dbSource };
+  } catch {
+    return { ok: false, entries: 0, backend: "none" as const };
+  }
+});
 
 export const listCachedSongs = createServerFn({ method: "GET" }).handler(async () => {
   try {

@@ -411,6 +411,20 @@ function buildControllerSection(preset: Preset, others: StompBlock[], maxSnapsho
   return controller;
 }
 
+type HlxFsMode = "stomp" | "snapshot" | "preset";
+
+function resolveFsMode(preset: Preset, requested?: HlxFsMode): HlxFsMode {
+  if (requested === "stomp" || requested === "snapshot" || requested === "preset") return requested;
+  if (preset.exportFsMode === "stomp" || preset.exportFsMode === "snapshot") return preset.exportFsMode;
+  return usesSnapshotMode(preset) ? "snapshot" : "stomp";
+}
+
+function pedalstateFor(mode: HlxFsMode): number {
+  if (mode === "snapshot") return 2;
+  if (mode === "preset") return 1;
+  return 0;
+}
+
 function buildFootswitch(preset: Preset, others: StompBlock[]) {
   const footswitch: { dsp0: HlxJson; dsp1: HlxJson } = { dsp0: {}, dsp1: {} };
   for (const fs of preset.footswitches) {
@@ -448,12 +462,12 @@ function emptySnapshot(index: number, others: StompBlock[], tempo: number) {
   };
 }
 
-export function buildHlx(preset: Preset): HlxJson {
+export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
   const blocks = exportableBlocks(preset);
   const { dsp, others } = buildDsp(blocks);
   const maxSnapshots = STOMP_MAX_SNAPSHOTS[preset.stompModel];
   const tempo = Math.max(40, Math.min(240, Math.round(preset.tempo || 120)));
-  const snapMode = usesSnapshotMode(preset);
+  const mode = resolveFsMode(preset, opts?.fsMode);
 
   const tone: HlxJson = {
     dsp0: dsp,
@@ -470,7 +484,7 @@ export function buildHlx(preset: Preset): HlxJson {
       "@cursor_group": others.length ? "block0" : "inputA",
       "@tempo": tempo,
       "@current_snapshot": 0,
-      "@pedalstate": snapMode ? 2 : 0,
+      "@pedalstate": pedalstateFor(mode),
       "@guitarpad": 0,
       "@guitarinputZ": 0,
     },
@@ -521,12 +535,12 @@ export function hlxFilename(preset: Preset): string {
   return `${base}.hlx`;
 }
 
-export function hlxJson(preset: Preset): string {
-  return JSON.stringify(buildHlx(preset), null, 2);
+export function hlxJson(preset: Preset, opts?: { fsMode?: HlxFsMode }): string {
+  return JSON.stringify(buildHlx(preset, opts), null, 2);
 }
 
-export function downloadHlx(preset: Preset): boolean {
-  const json = hlxJson(preset);
+export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): boolean {
+  const json = hlxJson(preset, opts);
   const blob = new Blob([json], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   try {
@@ -546,8 +560,8 @@ export function downloadHlx(preset: Preset): boolean {
   }
 }
 
-export async function copyHlx(preset: Preset): Promise<void> {
-  const json = hlxJson(preset);
+export async function copyHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): Promise<void> {
+  const json = hlxJson(preset, opts);
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(json);
     return;

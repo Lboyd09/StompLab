@@ -15,6 +15,7 @@ export type Settings = {
   defaultFsMode: FsModePref;
   showDsp: boolean;
   confirmDownload: boolean;
+  showFsNumbers: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -24,6 +25,7 @@ const DEFAULT_SETTINGS: Settings = {
   defaultFsMode: "auto",
   showDsp: true,
   confirmDownload: false,
+  showFsNumbers: false,
 };
 
 function readJson<T>(key: string, fallback: T): T {
