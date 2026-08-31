@@ -17,7 +17,7 @@ import {
   systemForDevice,
   toPreset,
 } from "./preset-schema";
-import { newId } from "./preset-utils";
+import { newId, withStompModel } from "./preset-utils";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -36,19 +36,11 @@ export function matchFeatured(
     const ps = norm(p.song ?? "");
     const pa = norm(p.artist ?? "");
     if (ps === s) return !a || pa.includes(a) || a.includes(pa);
-    return ps.includes(s) || s.includes(ps);
+    if (s.length < 5) return false;
+    return ps.includes(s) || (s.includes(ps) && ps.length >= 5);
   });
   if (!hit) return null;
-  return {
-    ...hit,
-    id: newId("pst"),
-    createdAt: Date.now(),
-    stompModel,
-    footswitches:
-      stompModel === "hx-stomp"
-        ? hit.footswitches.filter((f) => f.index <= 3)
-        : hit.footswitches,
-  };
+  return withStompModel({ ...hit, id: newId("pst"), createdAt: Date.now() }, stompModel);
 }
 
 function gearLine(gear: UserGear[]): string {
@@ -304,6 +296,62 @@ ${catalog}`,
       return { ok: true, matches, source: "gemini" };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Lookup failed";
+      return {
+        ok: false,
+        error: message,
+        reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
+      };
+    }
+  });
+
+
+const ReviseIn = z.object({
+  song: z.string().min(1).max(120),
+  artist: z.string().max(120).optional(),
+  instrument: z.enum(["guitar", "bass"]),
+  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  note: z.string().min(2).max(240),
+  current: z.string().max(2000),
+  userGear: z.array(GearSchema).optional().default([]),
+});
+
+export const revisePresetFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => ReviseIn.parse(input))
+  .handler(async ({ context, data }): Promise<ResearchResult> => {
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    try {
+      const catalog = compactCatalogForPrompt(data.instrument);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+
+Revise this HX Stomp path. Keep factory model ids. Only change what the note asks.
+
+Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
+Current path: ${data.current}
+Note from the player: ${data.note}
+${gearLine(data.userGear)}
+
+Catalog (id | name | based on | dsp):
+${catalog}
+
+JSON schema:
+${jsonSchemaHint()}`;
+      const preset = await runGeminiPreset({
+        prompt,
+        instrument: data.instrument,
+        stompModel: data.stompModel,
+        source: "song",
+        song: data.song,
+        artist: data.artist,
+        userGear: data.userGear,
+      });
+      await recordBuild(context.userId, "revise", data.song.trim());
+      return { ok: true, preset, source: "gemini" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not revise that sound";
+      await recordFailure(context.userId, data.song, data.artist ?? "", message);
       return {
         ok: false,
         error: message,

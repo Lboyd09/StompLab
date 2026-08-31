@@ -21,6 +21,7 @@ import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
+import { Onboarding } from "./onboarding";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -258,6 +259,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
+      <Onboarding />
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">

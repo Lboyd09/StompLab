@@ -1,7 +1,10 @@
 import { Link } from "@tanstack/react-router";
 import type { Plan } from "@/lib/plan";
 
-export function GeminiHint({ plan }: { plan: Plan }) {
+export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean }) {
+  if (pending) {
+    return <p className="text-xs text-muted-foreground">Checking your account…</p>;
+  }
   if (!plan.signedIn) {
     return (
       <p className="text-xs text-muted-foreground">

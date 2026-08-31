@@ -160,12 +160,12 @@ describe("visual FS map", () => {
     assert.equal(stomp?.id, "featured-sandman-hx-stomp");
   });
 
-  it("moves featured snapshots to the closest XL row (visual 4–6 = hardware 1–3)", () => {
+  it("keeps featured snapshots on replica 1–3 (top). File maps those to hardware FS4–6 (XL far row)", () => {
     const xl = withStompModel(featured("featured-sandman"), "hx-stomp-xl");
     const snaps = xl.footswitches.filter((f) => f.action === "snapshot");
     assert.deepEqual(
       snaps.map((f) => f.index),
-      [4, 5, 6],
+      [1, 2, 3],
     );
     const back = withStompModel(xl, "hx-stomp");
     assert.deepEqual(
@@ -174,7 +174,7 @@ describe("visual FS map", () => {
     );
   });
 
-  it("puts Teen Spirit intro first and XL pre on visual 1", () => {
+  it("puts Teen Spirit intro first and XL pre on visual 4 (bottom-left = hardware FS1)", () => {
     const src = featured("featured-teen-spirit");
     assert.equal(src.snapshots[0]?.name, "Intro");
     assert.equal(src.footswitches[0]?.action, "snapshot");
@@ -185,7 +185,9 @@ describe("visual FS map", () => {
     assert.equal(xl.snapshots.length, 4);
     assert.equal(xl.snapshots[3]?.name, "Pre");
     const pre = xl.footswitches.find((f) => f.snapshotId === "s4");
-    assert.equal(pre?.index, 1);
+    assert.equal(pre?.index, 4);
+    const intro = xl.footswitches.find((f) => f.snapshotId === "s1");
+    assert.equal(intro?.index, 1);
   });
 
   it("exports only factory HD2 ids for every featured rig", () => {
@@ -207,6 +209,17 @@ describe("visual FS map", () => {
         `${p.id} FS1–3 must be snapshots`,
       );
     }
+  });
+
+  it("writes XL snapshot 1 to hardware FS4 (far/top row)", () => {
+    const xl = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
+    const hlx = buildHlx(xl);
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    const snap0 = tone.snapshot0 as { "@fs_index": number; "@name": string };
+    const snap3 = tone.snapshot3 as { "@fs_index": number };
+    assert.equal(snap0["@name"], "INTRO");
+    assert.equal(snap0["@fs_index"], 4);
+    assert.equal(snap3["@fs_index"], 1);
   });
 
   it("writes XL bypass assigns to the hardware index for that visual switch", () => {

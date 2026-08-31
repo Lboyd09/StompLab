@@ -9,6 +9,7 @@ import {
   featuredOriginal,
   formatParam,
   isDemoId,
+  isFeaturedKnownId,
   sortedBlocks,
   withSnapshot,
   withStompModel,
@@ -23,6 +24,9 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
+import { FeedbackCard } from "../layout/feedback-card";
+import { revisePresetFn } from "@/lib/research";
+import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 
 export function PresetWorkspace({
   preset,
@@ -46,14 +50,17 @@ export function PresetWorkspace({
   const defaultFsMode = useAppStore((s) => s.defaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
-  const { plan } = usePlan();
+  const { plan, isPending: planPending } = usePlan();
   const [copying, setCopying] = useState(false);
+  const [revising, setRevising] = useState<string | null>(null);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
   const exportMode = fsMode === "preset" ? "stomp" : fsMode;
   const original = featuredOriginal(preset.id);
-  const canDownload = canDownloadPreset(preset.id, plan);
+  const canDownload = planPending
+    ? isDemoId(preset.id) || !isFeaturedKnownId(preset.id)
+    : canDownloadPreset(preset.id, plan);
 
   useEffect(() => {
     if (defaultFsMode === "snapshot") setFsMode("snapshot");
@@ -151,6 +158,42 @@ export function PresetWorkspace({
         ? `Saved ${hlxFilename(preset)}. In HX Edit: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
         : "Download was blocked. Use Copy JSON and save it as a .hlx file.",
     );
+  }
+
+  async function onRevise(note: string) {
+    if (!plan.signedIn) return;
+    if (!plan.canResearch) return;
+    setRevising(note);
+    try {
+      const current = sortedBlocks(preset)
+        .map((b) => {
+          const m = blockModel(b);
+          return m ? `${m.name}${b.enabled ? "" : " off"}` : "";
+        })
+        .filter(Boolean)
+        .join(" → ");
+      const result = await revisePresetFn({
+        data: {
+          song: preset.song || preset.name,
+          artist: preset.artist,
+          instrument: preset.instrument,
+          stompModel: preset.stompModel,
+          note,
+          current,
+          userGear: [],
+        },
+      });
+      if (!result.ok) {
+        notifyResearchError(result, { login: () => undefined, upgrade: () => undefined });
+        return;
+      }
+      onChange(result.preset);
+      notifyResearchSource(result.source);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not revise.");
+    } finally {
+      setRevising(null);
+    }
   }
 
   async function onCopy() {
@@ -443,9 +486,7 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">3.</span>
                 <span>
-                  Numbers: 1 top-left, 2 top-middle, 3 top-right, 4 bottom-left, 5 bottom-middle, 6
-                  bottom-right. On XL, MODE and TAP sit on the bottom row next to 4–6. Volume is on the
-                  right of a Stomp, on the rear of an XL.
+                  Numbers on this replica: 1 top-left through 6 bottom-right. On an XL the factory silkscreen is inverted — our file puts replica 1 on the TOP-LEFT of the unit (hardware FS4), so intro is not on the closest row. MODE and TAP sit next to the bottom row. Volume is on the right of a Stomp, on the rear of an XL.
                 </span>
               </li>
               {preset.programming.map((step, i) => (
@@ -464,6 +505,30 @@ export function PresetWorkspace({
             </p>
           </CardContent>
         </Card>
+
+        {plan.signedIn ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>Revise this tone</CardTitle>
+              <CardDescription>Tell the Lab what is off. It rewrites the path.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-wrap gap-2">
+              {["Too dark", "Too bright", "More gain", "Less gain", "Wrong amp"].map((note) => (
+                <button
+                  key={note}
+                  type="button"
+                  disabled={Boolean(revising)}
+                  onClick={() => void onRevise(note)}
+                  className="h-9 rounded-full bg-secondary px-3 text-xs"
+                >
+                  {revising === note ? "Revising…" : note}
+                </button>
+              ))}
+            </CardContent>
+          </Card>
+        ) : null}
+
+        <FeedbackCard song={preset.song || preset.name} />
 
         {preset.tips.length ? (
           <Card>

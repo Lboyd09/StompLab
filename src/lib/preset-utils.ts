@@ -34,7 +34,11 @@ export function deviceFor(preset: Preset) {
   return DEVICE_MAP[preset.stompModel];
 }
 
-/** Visual 1 is top-left on XL. Hardware FS1 is the closest-to-you left switch. */
+/**
+ * Replica 1 is top-left. On XL the factory silkscreen is inverted:
+ * hardware FS4/5/6 are the top row, FS1/2/3 the closest-to-you row.
+ * Map visual → hardware so intro (visual 1) lands on the TOP of the unit.
+ */
 export function visualToHardwareFs(index: number, xl: boolean): number {
   if (!xl) return index;
   const map: Record<number, number> = { 1: 4, 2: 5, 3: 6, 4: 1, 5: 2, 6: 3, 7: 7, 8: 8 };
@@ -101,34 +105,33 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   if (model === "hx-stomp") {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    fs = high.length ? high.map((f) => ({ ...f, index: f.index - 3 })) : low;
+    fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
   } else {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    if (low.length && !high.length && low.every((f) => f.action === "snapshot")) {
-      fs = low.map((f) => ({ ...f, index: f.index + 3 }));
+    if (!low.length && high.length) {
+      fs = high.map((f) => ({ ...f, index: f.index - 3 }));
+    } else {
+      fs = [...low, ...high.filter((h) => !low.some((l) => l.index === h.index - 3))];
     }
     const fourth = snapshots[3];
-    if (
-      fourth &&
-      !fs.some((f) => f.snapshotId === fourth.id) &&
-      !fs.some((f) => f.index === 1)
-    ) {
+    if (fourth && !fs.some((f) => f.snapshotId === fourth.id) && !fs.some((f) => f.index === 4)) {
       fs = [
+        ...fs.filter((f) => f.index !== 4),
         {
-          index: 1,
+          index: 4,
           label: fourth.name.slice(0, 8).toUpperCase(),
           color: fourth.color,
           action: "snapshot" as const,
           snapshotId: fourth.id,
           notes: fourth.notes,
         },
-        ...fs.filter((f) => f.index !== 1),
       ];
     }
     fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
   }
   fs = fs.filter((f) => f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId)));
+  fs = fs.sort((a, b) => a.index - b.index);
   const base = featuredBaseId(preset.id);
   const id = base.startsWith("featured-") ? `${base}-${model}` : preset.id;
   return { ...preset, id, stompModel: model, footswitches: fs, snapshots };

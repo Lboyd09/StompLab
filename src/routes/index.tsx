@@ -2,12 +2,13 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { ResearchProgress } from "@/components/layout/research-progress";
+import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { listSharedLibrary, lookupCache } from "@/lib/cache";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
@@ -35,11 +36,12 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
-  const { plan, refresh } = usePlan();
+  const { plan, refresh, isPending: planPending } = usePlan();
   const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
+  const [progress, setProgress] = useState(0);
   const [library, setLibrary] = useState<
     { song: string; artist: string; instrument: string; stompModel: string; hitCount: number; key: string }[]
   >([]);
@@ -88,6 +90,7 @@ function Home() {
       await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
       return;
     }
+    if (planPending) return;
     if (!plan.signedIn) {
       await navigate({ to: "/login", search: { next: "/" } });
       return;
@@ -98,6 +101,10 @@ function Home() {
     }
     setBusy(true);
     setStatus("Researching…");
+    setProgress(8);
+    const tick = window.setInterval(() => {
+      setProgress((p) => (p >= 94 ? 94 : p + 3));
+    }, 450);
     try {
       const result = await researchSongFn({
         data: {
@@ -137,7 +144,9 @@ function Home() {
       toast.error(message);
       setStatus(message);
     } finally {
+      window.clearInterval(tick);
       setBusy(false);
+      setProgress(0);
     }
   }
 
@@ -169,7 +178,7 @@ function Home() {
 
   return (
     <div className="space-y-10">
-      <UpgradeBanner plan={plan} />
+      <UpgradeBanner plan={plan} pending={planPending} />
 
       <section className="max-w-2xl space-y-3">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">HX Stomp laboratory</p>
@@ -182,38 +191,30 @@ function Home() {
       </section>
 
       <form onSubmit={(e) => void onResearch(e)} className="max-w-2xl space-y-4">
-        <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]">
-          <div className="space-y-1.5">
-            <Label htmlFor="song">Song</Label>
-            <Input
-              id="song"
-              value={song}
-              onChange={(e) => setSong(e.target.value)}
-              placeholder="Enter Sandman"
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="artist">Artist</Label>
-            <Input
-              id="artist"
-              value={artist}
-              onChange={(e) => setArtist(e.target.value)}
-              placeholder="Metallica"
-            />
-          </div>
-          <div className="flex items-end">
-            <Button type="submit" disabled={busy} className="w-full sm:w-auto">
-              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              {busy ? "Researching" : "Build preset"}
-            </Button>
-          </div>
+        <SongTypeahead
+          song={song}
+          artist={artist}
+          instrument={instrument}
+          onSong={setSong}
+          onArtist={setArtist}
+          onPick={(hit) => {
+            setSong(hit.song);
+            setArtist(hit.artist);
+            if (hit.featuredId) openFeatured(hit.featuredId);
+          }}
+        />
+        <div className="flex items-end">
+          <Button type="submit" disabled={busy || planPending} className="w-full sm:w-auto">
+            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+            {busy ? "Researching" : "Build preset"}
+          </Button>
         </div>
+        {busy ? <ResearchProgress pct={progress} /> : null}
         <p className="text-xs text-muted-foreground">
           Using {instrument} · {stompModel === "hx-stomp" ? "HX Stomp (3 switches)" : "HX Stomp XL (8 switches)"}.
-          Change both in the header.
+          Change both in the header. Type two letters to pick the exact recording.
         </p>
-        <GeminiHint plan={plan} />
+        <GeminiHint plan={plan} pending={planPending} />
         {status && busy === false && !plan.canResearch ? (
           <p className="text-sm text-destructive">{status}</p>
         ) : null}
@@ -229,6 +230,7 @@ function Home() {
             <button
               key={p.id}
               type="button"
+              aria-label={`Open ${p.song}`}
               onClick={() => openFeatured(p.id)}
               className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
             >
@@ -323,6 +325,10 @@ function Home() {
           </p>
         </CardContent>
       </Card>
+
+      <div className="max-w-2xl">
+        <FeedbackCard />
+      </div>
     </div>
   );
 }

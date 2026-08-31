@@ -99,7 +99,7 @@ export const FEATURED: Preset[] = [
       "Path: Stupor OD → 70s Chorus → Cali IV Rhythm 2 → 4x12 Cali V30 → Hot Springs.",
       "Intro (FS1): DS-1 OFF, Small Clone ON, Drive 1.6, spring Mix 3.2. Guitar Chalk Twin + Clone.",
       "Verse (FS2): DS-1 ON, clone OFF, Drive 4.2. Chorus (FS3): clone OFF, Drive 6.8.",
-      "On HX Stomp XL, snapshot 4 (PRE) is the watery hello — Small Clone + DS-1. Visual switch 1.",
+      "On HX Stomp XL, snapshot 4 (PRE) is the watery hello — Small Clone + DS-1. Replica switch 4 (bottom-left).",
       "One amp on purpose. A real Twin + Mesa would blow the Stomp DSP; intro Drive is the Twin stand-in.",
       "Download the .hlx. HX Edit: File → Import. PAGE enters Snapshot mode.",
     ],

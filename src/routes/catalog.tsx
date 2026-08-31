@@ -33,7 +33,7 @@ function CatalogPage() {
   const navigate = useNavigate();
   const setSearch = Route.useNavigate();
   const instrument = useAppStore((s) => s.instrument);
-  const { plan } = usePlan();
+  const { plan, isPending: planPending } = usePlan();
   const [localQ, setLocalQ] = useState(search.q);
   const [eqQuery, setEqQuery] = useState(search.tab === "find" ? search.q : "");
   const [busy, setBusy] = useState(false);
@@ -53,6 +53,7 @@ function CatalogPage() {
   async function onAsk(e: React.FormEvent) {
     e.preventDefault();
     if (eqQuery.trim().length < 2) return;
+    if (planPending) return;
     if (!plan.signedIn) {
       await navigate({ to: "/login", search: { next: "/catalog" } });
       return;
@@ -87,7 +88,7 @@ function CatalogPage() {
 
   return (
     <div className="space-y-6">
-      <UpgradeBanner plan={plan} />
+      <UpgradeBanner plan={plan} pending={planPending} />
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
@@ -133,11 +134,11 @@ function CatalogPage() {
                 }}
                 placeholder="Ibanez TS808, Klon Centaur, Ampeg SVT…"
               />
-              <Button type="submit" disabled={busy || eqQuery.trim().length < 2}>
+              <Button type="submit" disabled={busy || planPending || eqQuery.trim().length < 2}>
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Explain"}
               </Button>
             </div>
-            <GeminiHint plan={plan} />
+            <GeminiHint plan={plan} pending={planPending} />
           </form>
 
           {aiHits?.length ? (

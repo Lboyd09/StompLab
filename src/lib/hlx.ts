@@ -492,6 +492,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
 
   for (let i = 0; i < maxSnapshots; i++) {
     const snap = preset.snapshots[i];
+    const hwIndex = visualToHardwareFs(i + 1, preset.stompModel === "hx-stomp-xl");
     tone[`snapshot${i}`] = snap
       ? {
           "@name": snap.name.slice(0, 10).toUpperCase(),
@@ -500,6 +501,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
           "@pedalstate": 0,
           "@ledcolor": snapshotLed(snap.color),
           "@custom_name": true,
+          "@fs_index": hwIndex,
           blocks: { dsp0: snapshotBlockStates(snap, others) },
           controllers: { dsp0: snapshotControllers(snap, others) },
         }

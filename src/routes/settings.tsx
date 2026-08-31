@@ -2,7 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
+import { UserButton } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cacheHealth } from "@/lib/cache";
 import { FREE_BUILDS, LAUNCH_USD, PAID_MONTHLY_BUILDS, PRICE_USD } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
@@ -33,8 +34,14 @@ function SettingsPage() {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
-  const { plan } = usePlan();
+  const { plan, isPending: planPending } = usePlan();
+  const { user, isPending: authPending } = useCurrentUserState();
+  const [mounted, setMounted] = useState(false);
   const [library, setLibrary] = useState<{ ok: boolean; entries: number } | null>(null);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     hydrate();
@@ -47,6 +54,7 @@ function SettingsPage() {
   }, []);
 
   const unitLabel = stompModel === "hx-stomp-xl" ? "HX Stomp XL" : "HX Stomp";
+  const accountPending = !mounted || authPending || planPending;
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
@@ -60,33 +68,38 @@ function SettingsPage() {
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Account</h2>
-        <SignedOut>
-          <p className="text-sm text-muted-foreground">
-            Sign in with email to use {FREE_BUILDS} free custom songs, then unlock for ${LAUNCH_USD}.
-          </p>
-          <Button asChild>
-            <Link to="/login">Sign in</Link>
-          </Button>
-        </SignedOut>
-        <SignedIn>
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <UserButton />
-            {plan.paid ? (
-              <span className="text-sm text-muted-foreground">
-                {plan.monthUsed} / {PAID_MONTHLY_BUILDS} builds this month
-              </span>
-            ) : (
-              <span className="text-sm text-muted-foreground">
-                {plan.freeRemaining} free song{plan.freeRemaining === 1 ? "" : "s"} left
-              </span>
-            )}
-          </div>
-          {!plan.paid ? (
-            <Button asChild variant="secondary">
-              <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+        {accountPending ? (
+          <p className="text-sm text-muted-foreground">Checking your account…</p>
+        ) : user ? (
+          <>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <UserButton />
+              {plan.paid ? (
+                <span className="text-sm text-muted-foreground">
+                  {plan.monthUsed} / {PAID_MONTHLY_BUILDS} builds this month
+                </span>
+              ) : (
+                <span className="text-sm text-muted-foreground">
+                  {plan.freeRemaining} free song{plan.freeRemaining === 1 ? "" : "s"} left
+                </span>
+              )}
+            </div>
+            {!plan.paid ? (
+              <Button asChild variant="secondary">
+                <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+              </Button>
+            ) : null}
+          </>
+        ) : (
+          <>
+            <p className="text-sm text-muted-foreground">
+              Sign in with email to use {FREE_BUILDS} free custom songs, then unlock for ${LAUNCH_USD}.
+            </p>
+            <Button asChild>
+              <Link to="/login">Sign in</Link>
             </Button>
-          ) : null}
-        </SignedIn>
+          </>
+        )}
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">

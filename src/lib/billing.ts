@@ -6,7 +6,7 @@ import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan } from "./p
 import { createPolarCheckout, extractOrder, fetchPolarCheckout } from "./polar";
 import type { UserGear } from "@/data/types";
 
-async function emailFor(userId: string): Promise<string | null> {
+export async function emailFor(userId: string): Promise<string | null> {
   try {
     const sql = await getSql();
     const rows = await sql<{ email: string | null }>`select email from "user" where id = ${userId} limit 1`;
@@ -16,7 +16,7 @@ async function emailFor(userId: string): Promise<string | null> {
   }
 }
 
-async function loadPlan(userId: string, email: string | null): Promise<Plan> {
+export async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const sql = await getSql();
   const month = yearMonth();
   const ent = await sql<{ paid: boolean }>`
@@ -57,7 +57,20 @@ async function loadPlan(userId: string, email: string | null): Promise<Plan> {
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Plan> => {
-    const email = await emailFor(context.userId);
+    const dbEmail = await emailFor(context.userId);
+    let sessionEmail: string | null = null;
+    try {
+      const { getSessionUser } = await import("@/lib/auth/verify.server");
+      const session = await getSessionUser();
+      if (session?.id === context.userId) sessionEmail = session.email;
+    } catch {
+      /* cookie/session lookup is best-effort */
+    }
+    const email = isAdminEmail(dbEmail)
+      ? dbEmail
+      : isAdminEmail(sessionEmail)
+        ? sessionEmail
+        : dbEmail || sessionEmail;
     return loadPlan(context.userId, email);
   });
 
@@ -267,7 +280,24 @@ export const adminDashboard = createServerFn({ method: "GET" })
       order by updated_at desc
       limit 80
     `;
-    return { purchases, usage, failures, cache };
+    let notes: { created_at: string; email: string; kind: string; song: string; message: string }[] = [];
+    try {
+      notes = await sql<{
+        created_at: string;
+        email: string;
+        kind: string;
+        song: string;
+        message: string;
+      }>`
+        select created_at::text, email, kind, song, message
+        from feedback
+        order by created_at desc
+        limit 80
+      `;
+    } catch {
+      notes = [];
+    }
+    return { purchases, usage, failures, cache, feedback: notes };
   });
 
 export const adminDeleteCache = createServerFn({ method: "POST" })
@@ -324,4 +354,52 @@ export const pushMyGear = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
-export { loadPlan, emailFor };
+
+export const submitFeedbackFn = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z
+      .object({
+        message: z.string().min(4).max(800),
+        kind: z.enum(["site", "preset", "revise"]).optional().default("site"),
+        song: z.string().max(120).optional().default(""),
+        email: z.string().max(160).optional().default(""),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    const sql = await getSql();
+    await sql`
+      insert into feedback (user_id, email, kind, message, song)
+      values (${"anon"}, ${data.email}, ${data.kind ?? "site"}, ${data.message}, ${data.song ?? ""})
+    `;
+    return { ok: true as const };
+  });
+
+export const submitAuthedFeedbackFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z
+      .object({
+        message: z.string().min(4).max(800),
+        kind: z.enum(["site", "preset", "revise"]).optional().default("site"),
+        song: z.string().max(120).optional().default(""),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    const email = (await emailFor(context.userId)) ?? "";
+    const sql = await getSql();
+    await sql`
+      insert into feedback (user_id, email, kind, message, song)
+      values (${context.userId}, ${email}, ${data.kind ?? "site"}, ${data.message}, ${data.song ?? ""})
+    `;
+    return { ok: true as const };
+  });
+
+export const probeResearchFn = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId);
+    const { probeResearch } = await import("./gemini");
+    return probeResearch();
+  });

@@ -80,17 +80,30 @@ function LoginPage() {
           if (/already/i.test(err.message || "") || /already/i.test(msg)) setMode("in");
           return;
         }
-      } else {
-        const { error: err } = await authClient.signIn.email({
-          email: trimmed,
-          password,
-        });
-        if (err) {
-          setError(friendlyAuthError(err.message || "", "in"));
-          return;
-        }
       }
-      await authClient.getSession().catch(() => undefined);
+      const { error: err } = await authClient.signIn.email({
+        email: trimmed,
+        password,
+        rememberMe: true,
+      });
+      if (err) {
+        // Sign-up already created the account — treat a follow-up sign-in
+        // failure as a cookie/session problem, not a bad password.
+        if (mode === "up") {
+          const session = await authClient.getSession().catch(() => null);
+          if (session?.data?.user) {
+            await navigate({ to: next, replace: true });
+            return;
+          }
+        }
+        setError(friendlyAuthError(err.message || "", mode === "up" ? "in" : "in"));
+        return;
+      }
+      const session = await authClient.getSession().catch(() => null);
+      if (!session?.data?.user) {
+        setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again.");
+        return;
+      }
       await navigate({ to: next, replace: true });
     } catch (err) {
       setError(friendlyAuthError(err instanceof Error ? err.message : "", mode));

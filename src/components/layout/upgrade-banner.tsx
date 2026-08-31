@@ -1,8 +1,8 @@
 import { Link } from "@tanstack/react-router";
 import { LAUNCH_USD, PRICE_USD, type Plan } from "@/lib/plan";
 
-export function UpgradeBanner({ plan }: { plan: Plan }) {
-  if (plan.paid) return null;
+export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
+  if (pending || plan.paid || plan.admin) return null;
   return (
     <Link
       to="/upgrade"

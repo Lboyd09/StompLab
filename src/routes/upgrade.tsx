@@ -26,7 +26,7 @@ function UpgradePage() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
-  const { plan, refresh } = usePlan();
+  const { plan, refresh, isPending: planPending } = usePlan();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [confirming, setConfirming] = useState(Boolean(search.checkout_id));
@@ -74,12 +74,20 @@ function UpgradePage() {
     }
   }
 
+  if (isPending || planPending) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
+        <p className="text-sm text-muted-foreground">Checking your account…</p>
+      </main>
+    );
+  }
+
   if (plan.paid && !confirming) {
     return (
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
-          <h1 className="font-display text-3xl font-semibold">You're unlocked</h1>
+          <h1 className="font-display text-3xl font-semibold">{plan.admin ? "Admin — full Lab" : "You're unlocked"}</h1>
           <p className="text-sm text-muted-foreground">
             {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured songs never
             count.

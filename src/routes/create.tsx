@@ -4,6 +4,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { PaywallCard } from "@/components/layout/paywall-card";
+import { ResearchProgress } from "@/components/layout/research-progress";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -30,10 +31,12 @@ function CreatePage() {
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
+  const [progress, setProgress] = useState(0);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (description.trim().length < 4) return;
+    if (isPending) return;
     if (!plan.signedIn) {
       await navigate({ to: "/login", search: { next: "/create" } });
       return;
@@ -43,6 +46,10 @@ function CreatePage() {
       return;
     }
     setBusy(true);
+    setProgress(8);
+    const tick = window.setInterval(() => {
+      setProgress((p) => (p >= 94 ? 94 : p + 3));
+    }, 450);
     try {
       const result = await createCustomSoundFn({
         data: {
@@ -79,7 +86,9 @@ function CreatePage() {
       }
       toast.error(message);
     } finally {
+      window.clearInterval(tick);
       setBusy(false);
+      setProgress(0);
     }
   }
 
@@ -123,7 +132,8 @@ function CreatePage() {
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}
         </Button>
-        <GeminiHint plan={plan} />
+        {busy ? <ResearchProgress pct={progress} /> : null}
+        <GeminiHint plan={plan} pending={isPending} />
       </form>
 
       <div className="space-y-2">

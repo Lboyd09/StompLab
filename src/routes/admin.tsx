@@ -2,17 +2,20 @@ import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { adminDashboard, adminDeleteCache } from "@/lib/billing";
+import { adminDashboard, adminDeleteCache, probeResearchFn } from "@/lib/billing";
 import { isAdminEmail } from "@/lib/plan";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 type Dash = Awaited<ReturnType<typeof adminDashboard>>;
+type Probe = Awaited<ReturnType<typeof probeResearchFn>>;
 
 function AdminPage() {
   const { user, isPending } = useCurrentUserState();
   const [dash, setDash] = useState<Dash | null>(null);
   const [error, setError] = useState("");
+  const [probe, setProbe] = useState<Probe | null>(null);
+  const [probing, setProbing] = useState(false);
 
   useEffect(() => {
     if (isPending || !user) return;
@@ -40,6 +43,22 @@ function AdminPage() {
     setDash(next);
   }
 
+  async function onProbe() {
+    setProbing(true);
+    try {
+      setProbe(await probeResearchFn());
+    } catch (err) {
+      setProbe({
+        configured: false,
+        google: "error",
+        gateway: "error",
+        detail: err instanceof Error ? err.message : "Probe failed",
+      });
+    } finally {
+      setProbing(false);
+    }
+  }
+
   return (
     <div className="space-y-10">
       <header className="space-y-1">
@@ -49,6 +68,23 @@ function AdminPage() {
       </header>
 
       {error && !dash ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold">Research backend</h2>
+        <p className="text-sm text-muted-foreground">
+          Checks Google AI Studio and the Vercel gateway. Never prints the key.
+        </p>
+        <Button type="button" variant="secondary" disabled={probing} onClick={() => void onProbe()}>
+          {probing ? "Checking…" : "Ping research"}
+        </Button>
+        {probe ? (
+          <ul className="space-y-1 text-sm">
+            <li>Google: {probe.google}</li>
+            <li>Gateway: {probe.gateway}</li>
+            <li className="text-muted-foreground">{probe.detail}</li>
+          </ul>
+        ) : null}
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Purchases</h2>
@@ -76,6 +112,14 @@ function AdminPage() {
         <Table
           cols={["When", "Song", "Artist", "Error"]}
           rows={(dash?.failures ?? []).map((f) => [f.created_at, f.song, f.artist, f.error])}
+        />
+      </section>
+
+      <section className="space-y-3">
+        <h2 className="font-display text-lg font-semibold">Feedback</h2>
+        <Table
+          cols={["When", "Email", "Kind", "Song", "Message"]}
+          rows={(dash?.feedback ?? []).map((f) => [f.created_at, f.email, f.kind, f.song, f.message])}
         />
       </section>
 
