@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,7 +12,8 @@ import { CATEGORIES, CATEGORY_MAP } from "@/data/categories";
 import { MODEL_MAP, findEquivalents, searchModels } from "@/data/catalog";
 import type { CategoryId } from "@/data/types";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
-import { lookupEquivalent } from "@/lib/research";
+import { lookupEquivalentFn } from "@/lib/research";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
@@ -28,9 +30,10 @@ export const Route = createFileRoute("/catalog")({
 
 function CatalogPage() {
   const search = Route.useSearch();
-  const navigate = Route.useNavigate();
+  const navigate = useNavigate();
+  const setSearch = Route.useNavigate();
   const instrument = useAppStore((s) => s.instrument);
-  const geminiKey = useAppStore((s) => s.geminiKey);
+  const { plan } = usePlan();
   const [localQ, setLocalQ] = useState(search.q);
   const [eqQuery, setEqQuery] = useState(search.tab === "find" ? search.q : "");
   const [busy, setBusy] = useState(false);
@@ -50,17 +53,33 @@ function CatalogPage() {
   async function onAsk(e: React.FormEvent) {
     e.preventDefault();
     if (eqQuery.trim().length < 2) return;
+    if (!plan.signedIn) {
+      await navigate({ to: "/login", search: { next: "/catalog" } });
+      return;
+    }
+    if (!plan.paid) {
+      await navigate({ to: "/upgrade" });
+      return;
+    }
     setBusy(true);
     try {
-      const result = await lookupEquivalent({ query: eqQuery.trim(), apiKey: geminiKey });
+      const result = await lookupEquivalentFn({ data: { query: eqQuery.trim() } });
       if (!result.ok) {
-        notifyResearchError(result, () => void navigate({ to: "/settings" }));
+        notifyResearchError(result, {
+          login: () => void navigate({ to: "/login" }),
+          upgrade: () => void navigate({ to: "/upgrade" }),
+        });
         return;
       }
       setAiHits(result.matches);
       notifyResearchSource(result.source);
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Lookup failed");
+      const message = err instanceof Error ? err.message : "Lookup failed";
+      if (message === "Unauthorized") {
+        await navigate({ to: "/login", search: { next: "/catalog" } });
+        return;
+      }
+      toast.error(message);
     } finally {
       setBusy(false);
     }
@@ -68,19 +87,19 @@ function CatalogPage() {
 
   return (
     <div className="space-y-6">
+      <UpgradeBanner plan={plan} />
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Every amp, cab, mic, and effect on the HX Stomp — plus a finder that maps a real pedal to
           the Line 6 name.
-
         </p>
       </header>
 
       <div className="flex rounded-full bg-secondary p-1 w-fit">
         <button
           type="button"
-          onClick={() => navigate({ search: (p) => ({ ...p, tab: "browse" }) })}
+          onClick={() => setSearch({ search: (p) => ({ ...p, tab: "browse" }) })}
           className={cn(
             "h-8 rounded-full px-4 text-xs font-medium",
             tab === "browse" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
@@ -90,7 +109,7 @@ function CatalogPage() {
         </button>
         <button
           type="button"
-          onClick={() => navigate({ search: (p) => ({ ...p, tab: "find" }) })}
+          onClick={() => setSearch({ search: (p) => ({ ...p, tab: "find" }) })}
           className={cn(
             "h-8 rounded-full px-4 text-xs font-medium",
             tab === "find" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
@@ -118,7 +137,7 @@ function CatalogPage() {
                 {busy ? <Loader2 className="size-4 animate-spin" /> : "Explain"}
               </Button>
             </div>
-            <GeminiHint />
+            <GeminiHint plan={plan} />
           </form>
 
           {aiHits?.length ? (
@@ -173,7 +192,7 @@ function CatalogPage() {
             value={localQ}
             onChange={(e) => {
               setLocalQ(e.target.value);
-              void navigate({ search: (prev) => ({ ...prev, q: e.target.value }) });
+              void setSearch({ search: (prev) => ({ ...prev, q: e.target.value }) });
             }}
             placeholder="Filter by name, Boss, Marshall, Big Muff…"
             aria-label="Filter catalog"
@@ -183,7 +202,7 @@ function CatalogPage() {
             <CatChip
               active={!cat}
               label="All"
-              onClick={() => navigate({ search: (p) => ({ ...p, cat: "" }) })}
+              onClick={() => setSearch({ search: (p) => ({ ...p, cat: "" }) })}
             />
             {CATEGORIES.map((c) => (
               <CatChip
@@ -192,7 +211,7 @@ function CatalogPage() {
                 label={c.label}
                 color={c.lcd}
                 onClick={() =>
-                  navigate({ search: (p) => ({ ...p, cat: p.cat === c.id ? "" : c.id }) })
+                  setSearch({ search: (p) => ({ ...p, cat: p.cat === c.id ? "" : c.id }) })
                 }
               />
             ))}

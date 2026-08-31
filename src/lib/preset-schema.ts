@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
+import { helixIdFor } from "@/data/helix-ids";
 import type { Preset, StompBlock, UserGear } from "@/data/types";
 import { newId } from "./preset-utils";
 
@@ -160,6 +161,7 @@ export function toPreset(
   for (const b of out.blocks.slice(0, 8)) {
     const model = MODEL_MAP[b.modelId];
     if (!model) continue;
+    if (!helixIdFor(model.id)) continue;
     const params: Record<string, number> = {};
     for (const p of model.params) {
       const v = b.params?.[p];
@@ -276,7 +278,7 @@ export function jsonSchemaHint() {
   "originalGear": [{"role":"Guitar|Bass|Amp|Pedal|Cab","name":"real gear","notes":"era / how it was used"}],
   "blocks": [{"modelId":"scream-808","enabled":true,"params":{"Drive":2.0,"Output":7.5,"Mic":0}}],
   "snapshots": [{"name":"Verse","color":"#7d9a6a","enabledModelIds":["scream-808"],"paramOverrides":{"brit-2204":{"Drive":4.2}},"notes":""}],
-  "footswitches": [{"index":1,"label":"DRIVE","color":"#ff7a18","action":"bypass","targetModelId":"scream-808","notes":""}],
+  "footswitches": [{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro","notes":""}],
   "programming": ["step"],
   "tips": ["how to play it so it sounds like the record"]
 }
@@ -289,6 +291,7 @@ const STAND_INS = `Common HX stand-ins when Helix has no exact model:
 - Marshall Shredmaster → knuckle-dragon (high-gain pedal into a clean amp).
 - Marshall Silver Jubilee 2555 → placater-dirty.
 - Mesa Studio Preamp → cali-iv-rhythm-2.
+- Fender Twin Reverb → us-deluxe-nrm (do NOT load a second amp — snapshot Drive down + hot-springs for the Twin intro).
 - Korg SDD-3000 → vintage-digital.
 - Binson Echorec → cosmos-echo.
 - Roland RE-201 Space Echo → cosmos-echo.
@@ -297,7 +300,8 @@ const STAND_INS = `Common HX stand-ins when Helix has no exact model:
 - Mu-Tron III → mutant-filter.
 - Dunlop Cry Baby → uk-wah-846.
 - Ibanez TS-9 / TS808 as a tightener (Drive low, Level high) → scream-808.
-Never invent modelIds. Prefer HX models over Legacy.`;
+- Fender spring tank → hot-springs.
+Never invent modelIds. Prefer HX models over Legacy. Every block MUST have a factory HD2_* mapping — skip anything you cannot find in the catalog.`;
 
 export function systemForDevice(stompModel: "hx-stomp" | "hx-stomp-xl", instrument: "guitar" | "bass") {
   const d = DEVICE_MAP[stompModel];
@@ -309,12 +313,12 @@ Instrument: ${instrument}.
 
 Accuracy rules — reconstruct the real recorded (or best-known live) rig, then map it:
 - Name the album and year in summary. Prefer the studio tracking rig over a later tour unless asked for live.
-- Use primary sources: album credits, producer/tech interviews, well-known rig rundowns. If sources conflict, pick the most-cited record-era rig and say so.
+- Primary sources, in order: Guitar Chalk song/amp-settings articles, producer/tech interviews (Butch Vig, Bob Rock, Alan Parsons, Phil Taylor), album credits, well-known rig rundowns. If sources conflict, pick the most-cited RECORD-era rig and say so in summary.
 - Put REAL guitars, pedals, amps, cabs, mics in originalGear. Then map each piece to the closest catalog modelId.
 - Every block must earn its place on that recording. Do not pad with unused gate, compressor, EQ, chorus, or hall reverb.
 - Params are 0–10 floats. NEVER put a string in params (no "SM57", no "dotted 8th"). Cab Mic is the number 0 for SM57.
-- When a setting is documented (TS Drive low / Level high, muff sustain up, dotted-8th delay, etc.), use it. Invent only what is undocumented, matching that player's known values.
-- The preset must be playable on one DSP: skip Poly Pitch / Poly Wham / 12 String / Trinity Chorus unless the song needs them.
+- When a setting is documented (TS Drive low / Level high, muff sustain up, dotted-8th delay, Twin spring, etc.), use it. Invent only what is undocumented, matching that player's known values.
+- The preset must be playable on one DSP: skip Poly Pitch / Poly Wham / 12 String / Trinity Chorus unless the song needs them. NEVER load two amps — bypassed blocks still cost DSP. Snapshot Drive / Ch Vol instead.
 
 ${STAND_INS}
 
@@ -327,11 +331,11 @@ Signal order:
 
 Footswitches vs snapshots — map the SONG, not a generic chain:
 - Break the track into real sections (intro / verse / pre-chorus / chorus / solo / breakdown).
-- You MUST emit one snapshot per distinct section, up to the device max (${d.snapshots}). Names like INTRO, VERSE, CHORUS, SOLO.
+- You MUST emit one snapshot per distinct section, up to the device max (${d.snapshots}). Names like Intro, Verse, Chorus, Solo.
 - Snapshots must SOUND different: toggle the pedals that actually change (chorus, wah, muff, delay) AND put Drive / Ch Vol / Mix in paramOverrides. A chorus snapshot with the same blocks as the verse is wrong.
-- If the record has a clean or quiet intro (Enter Sandman arpeggio, verse-quiet Nirvana), that is its own snapshot — do not leave the heavy rhythm on by default.
-- Footswitch bypass when the player stomps one or two pedals. Indexes 1..${d.footswitches}.
-- On HX Stomp, prefer Snapshot mode for songs with 2–3 sections so FS1–FS3 recall those snapshots.
+- If the record has a clean, chorused, or quiet intro (Smells Like Teen Spirit = Twin Reverb + Small Clone, no DS-1; Enter Sandman wah arpeggio), that is SNAPSHOT 1. Do not start the preset on the heavy chorus tone. Documented clean intros get their own snapshot.
+- Footswitches 1..${Math.min(3, d.footswitches)} MUST be action "snapshot" recalling those sections in order. Do NOT put TAP or a lone bypass on FS1–FS3. TAP is the hardware TAP switch (index 8 on XL). Extra bypass stomps are only allowed on XL indexes 1–3 after the snapshot row.
+- On HX Stomp, Snapshot mode is required so FS1–FS3 recall those snapshots.
 
 programming is step-by-step on the unit, including snapshot parameter recall. tips are how to pick, volume-knob, and play so it sounds like the record — not generic advice.`;
 }

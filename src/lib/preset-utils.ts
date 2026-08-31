@@ -72,22 +72,45 @@ export function featuredOriginal(id: string): Preset | undefined {
 }
 
 export function withStompModel(preset: Preset, model: StompModelId): Preset {
+  const maxSnaps = DEVICE_MAP[model].snapshots;
+  const snapshots = preset.snapshots.slice(0, maxSnaps);
+  const snapIds = new Set(snapshots.map((s) => s.id));
+
   let fs = preset.footswitches.filter((f) => f.index <= 6);
   if (model === "hx-stomp") {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    fs = !low.length && high.length ? high.map((f) => ({ ...f, index: f.index - 3 })) : low;
+    fs = high.length ? high.map((f) => ({ ...f, index: f.index - 3 })) : low;
   } else {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
     if (low.length && !high.length && low.every((f) => f.action === "snapshot")) {
       fs = low.map((f) => ({ ...f, index: f.index + 3 }));
     }
+    const fourth = snapshots[3];
+    if (
+      fourth &&
+      !fs.some((f) => f.snapshotId === fourth.id) &&
+      !fs.some((f) => f.index === 1)
+    ) {
+      fs = [
+        {
+          index: 1,
+          label: fourth.name.slice(0, 8).toUpperCase(),
+          color: fourth.color,
+          action: "snapshot" as const,
+          snapshotId: fourth.id,
+          notes: fourth.notes,
+        },
+        ...fs.filter((f) => f.index !== 1),
+      ];
+    }
     fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
   }
+  fs = fs.filter((f) => f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId)));
   const base = featuredBaseId(preset.id);
   const id = base.startsWith("featured-") ? `${base}-${model}` : preset.id;
-  return { ...preset, id, stompModel: model, footswitches: fs };
+  return { ...preset, id, stompModel: model, footswitches: fs, snapshots };
 }
 
 export function resolveNamedPreset(id: string, model: StompModelId, stored: Preset[]): Preset | null {

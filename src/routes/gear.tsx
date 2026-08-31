@@ -1,11 +1,13 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { pullMyGear, pushMyGear } from "@/lib/billing";
 import { newId } from "@/lib/preset-utils";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import type { UserGear } from "@/data/types";
 
@@ -17,16 +19,44 @@ function GearPage() {
   const gear = useAppStore((s) => s.gear);
   const addGear = useAppStore((s) => s.addGear);
   const removeGear = useAppStore((s) => s.removeGear);
+  const setGear = useAppStore((s) => s.setGear);
+  const { plan } = usePlan();
   const [kind, setKind] = useState<UserGear["kind"]>("guitar");
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
+  const [synced, setSynced] = useState(false);
+
+  useEffect(() => {
+    if (!plan.canLockerSync) return;
+    pullMyGear()
+      .then((r) => {
+        if (!r.sync) return;
+        if (r.gear.length) setGear(r.gear);
+        else if (gear.length) void pushMyGear({ data: { gear } });
+        setSynced(true);
+      })
+      .catch(() => undefined);
+    // Pull once when paid unlocks — don't re-run on every locker edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan.canLockerSync]);
+
+  function persist(next: UserGear[]) {
+    if (plan.canLockerSync) void pushMyGear({ data: { gear: next } }).catch(() => undefined);
+  }
 
   function onAdd(e: React.FormEvent) {
     e.preventDefault();
     if (!name.trim()) return;
-    addGear({ id: newId("gear"), kind, name: name.trim(), notes: notes.trim() });
+    const item = { id: newId("gear"), kind, name: name.trim(), notes: notes.trim() };
+    addGear(item);
+    persist([item, ...gear]);
     setName("");
     setNotes("");
+  }
+
+  function onRemove(id: string) {
+    removeGear(id);
+    persist(gear.filter((g) => g.id !== id));
   }
 
   return (
@@ -38,6 +68,19 @@ function GearPage() {
           which piece to grab — and when to skip the Stomp amp and run four-cable method into a real
           head.
         </p>
+        {plan.canLockerSync ? (
+          <p className="text-xs text-muted-foreground">
+            {synced ? "Synced to your account." : "Syncing locker…"}
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">
+            Saved on this device.{" "}
+            <Link to="/upgrade" className="text-primary underline underline-offset-2">
+              Unlock
+            </Link>{" "}
+            to sync the locker across devices.
+          </p>
+        )}
       </header>
 
       <form onSubmit={onAdd} className="space-y-3 rounded-xl border border-border bg-card p-5">
@@ -93,7 +136,7 @@ function GearPage() {
                 <div className="font-medium">{g.name}</div>
                 {g.notes ? <p className="mt-1 text-sm text-muted-foreground">{g.notes}</p> : null}
               </div>
-              <Button variant="ghost" size="icon" aria-label={`Remove ${g.name}`} onClick={() => removeGear(g.id)}>
+              <Button variant="ghost" size="icon" aria-label={`Remove ${g.name}`} onClick={() => onRemove(g.id)}>
                 <Trash2 className="size-4" />
               </Button>
             </li>

@@ -10,6 +10,9 @@ function block(
   return { id, modelId, enabled, path: "main", position, params };
 }
 
+/** Lab demos — always free, never Gemini. */
+export const DEMO_IDS = ["featured-sandman", "featured-teen-spirit", "featured-numb"] as const;
+
 export const FEATURED: Preset[] = [
   {
     id: "featured-teen-spirit",
@@ -22,44 +25,46 @@ export const FEATURED: Preset[] = [
     name: "Teen Spirit",
     tempo: 117,
     summary:
-      "Nevermind (1991). Butch Vig: the EHX Small Clone is the watery pre-chorus ('hello, hello, hello'), not the loud chorus. Path: DS-1 (Stupor OD) → Small Clone (70s Chorus) → Mesa Studio Pre (Cali IV Rhythm 2) → 4×12. Snapshot mode: Verse = clone off, Pre = clone on, Chorus = clone off and slammed.",
+      "Nevermind (1991). Guitar Chalk + Butch Vig: the INTRO is a clean Twin Reverb with the EHX Small Clone — no DS-1. Dirt is a BOSS DS-1 into the Mesa Studio .22 for verse/chorus. The watery swirl is the pre-chorus ('hello, hello'), not the loud HELLO. Snapshot 1 is that clean intro.",
     originalGear: [
-      { role: "Guitar", name: "1969 Fender Mustang (L) / 1965 Jaguar (R)", notes: "Single coils, doubled left/right on the record. Kurt also used Strats with a bridge humbucker on some takes." },
-      { role: "Pedal", name: "BOSS DS-1", notes: "Main Nevermind dirt, gain around 1 o'clock in the studio — not dime'd. Helix has no DS-1; Stupor OD (Boss SD-1 family) is the closest always-on dirt." },
-      { role: "Pedal", name: "EHX Small Clone", notes: "Depth switch ON. Vig: the chiming/watery guitar on the pre-chorus buildup of Teen Spirit (and all of Come As You Are). Bypassed for the loud 'HELLO' chorus." },
-      { role: "Amp", name: "Mesa/Boogie Studio .22 Preamp + Crown", notes: "Nevermind rack. A Fender Bassman was blended on some other album tracks, not this riff." },
-      { role: "Cab", name: "Marshall 1960 4×12, SM57 / 414 / U87", notes: "Close, dry. Vig picked the mic per song; SM57 is the Stomp default." },
+      { role: "Guitar", name: "1969 Fender Mustang (L) / 1965 Jaguar (R)", notes: "Single coils, doubled left/right. Kurt also used Strats with a bridge humbucker on some takes." },
+      { role: "Amp (intro)", name: "Fender Twin Reverb", notes: "Guitar Chalk: the opening riff is a clean Twin platform + Small Clone. Headroom, spring tank, no pedal dirt." },
+      { role: "Pedal", name: "EHX Small Clone", notes: "Depth switch ON. Intro and pre-chorus. Bypassed for the dry verse and the loud chorus." },
+      { role: "Pedal", name: "BOSS DS-1", notes: "Nevermind dirt, gain ~1 o'clock — not dime'd. Off for the clean intro. Helix has no DS-1; Stupor OD (SD-1 family) is the stand-in." },
+      { role: "Amp (dirt)", name: "Mesa/Boogie Studio .22 Preamp + Crown", notes: "Nevermind rack. One HX amp (Cali IV Rhythm 2) with intro Drive ~1.6 stands in for the Twin so we don't load two amps." },
+      { role: "Cab", name: "Marshall 1960 4×12, SM57 / 414 / U87", notes: "Close, dry. SM57 is the Stomp default." },
     ],
     recommendedGear: [
       { item: "Offset or Strat-style single coil", why: "The icepick and clack are the riff. Roll the guitar tone back a hair." },
       { item: "Bridge pickup, guitar volume at 7 for verses", why: "Kurt didn't switch channels — he turned the guitar down." },
     ],
     blocks: [
-      block("b1", "stupor-od", { Drive: 7.0, Bass: 5.0, Mid: 6.6, Treble: 5.6, Output: 6.0 }, 0),
+      block("b1", "stupor-od", { Drive: 7.0, Bass: 5.0, Mid: 6.6, Treble: 5.6, Output: 6.0 }, 0, false),
       block("b2", "70s-chorus", { Rate: 3.4, Depth: 7.2, Mix: 6.5, Tone: 5.4 }, 1),
-      block("b3", "cali-iv-rhythm-2", { Drive: 4.2, Bass: 5.2, Mid: 6.4, Treble: 5.4, Presence: 4.6, Master: 5.6, "Ch Vol": 5.4, Sag: 4.2 }, 2),
+      block("b3", "cali-iv-rhythm-2", { Drive: 1.6, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.2, Master: 5.6, "Ch Vol": 5.2, Sag: 3.4 }, 2),
       block("b4", "4x12-cali-v30", { Mic: 0, Distance: 2.0, "Low Cut": 2.4, "High Cut": 7.0, "Early Refl": 2.4 }, 3),
+      block("b5", "hot-springs", { Decay: 3.6, Predelay: 1.4, Mix: 3.2, "Low Cut": 3.0, "High Cut": 7.4 }, 4),
     ],
     snapshots: [
       {
         id: "s1",
+        name: "Intro",
+        color: "#7d9a6a",
+        enabledBlocks: ["b2", "b3", "b4", "b5"],
+        notes: "CLEAN Twin-style intro. DS-1 OFF, Small Clone ON, Drive 1.6, spring tank up. This is the opening riff.",
+        paramOverrides: {
+          b3: { Drive: 1.6, "Ch Vol": 5.2, Presence: 4.2, Treble: 5.8 },
+          b5: { Mix: 3.2, Decay: 3.6 },
+        },
+      },
+      {
+        id: "s2",
         name: "Verse",
         color: "#c5c9c2",
         enabledBlocks: ["b1", "b3", "b4"],
         notes: "DS-1 on, Small Clone OFF — the dry muted verse riff. Play lighter; guitar volume ~7.",
         paramOverrides: {
-          b3: { Drive: 4.2, "Ch Vol": 5.4, Presence: 4.4 },
-        },
-      },
-      {
-        id: "s2",
-        name: "Pre",
-        color: "#2ec8ff",
-        enabledBlocks: ["b1", "b2", "b3", "b4"],
-        notes: "Small Clone ON — the watery 'hello, hello, hello' pre-chorus. This is the effect people skip.",
-        paramOverrides: {
-          b2: { Mix: 6.5, Depth: 7.2 },
-          b3: { Drive: 4.6, "Ch Vol": 5.8, Presence: 4.6 },
+          b3: { Drive: 4.2, "Ch Vol": 5.4, Presence: 4.4, Treble: 5.4 },
         },
       },
       {
@@ -67,27 +72,39 @@ export const FEATURED: Preset[] = [
         name: "Chorus",
         color: "#e24a3a",
         enabledBlocks: ["b1", "b3", "b4"],
-        notes: "Small Clone OFF — the loud HELLO chorus. Amp slammed, no watery swirl. Use this for the solo too.",
+        notes: "Small Clone OFF — the loud HELLO chorus. Amp slammed. Use this for the solo too.",
         paramOverrides: {
-          b3: { Drive: 6.8, "Ch Vol": 6.8, Presence: 5.4 },
+          b3: { Drive: 6.8, "Ch Vol": 6.8, Presence: 5.4, Treble: 5.6 },
+        },
+      },
+      {
+        id: "s4",
+        name: "Pre",
+        color: "#2ec8ff",
+        enabledBlocks: ["b1", "b2", "b3", "b4"],
+        notes: "XL snapshot 4. Small Clone ON — the watery 'hello, hello, hello' pre-chorus.",
+        paramOverrides: {
+          b2: { Mix: 6.5, Depth: 7.2 },
+          b3: { Drive: 4.6, "Ch Vol": 5.8, Presence: 4.6 },
         },
       },
     ],
     footswitches: [
-      { index: 1, label: "VERSE", color: "#c5c9c2", action: "snapshot", snapshotId: "s1", notes: "Dry verse, clone off." },
-      { index: 2, label: "PRE", color: "#2ec8ff", action: "snapshot", snapshotId: "s2", notes: "Watery pre-chorus, Small Clone on." },
+      { index: 1, label: "INTRO", color: "#7d9a6a", action: "snapshot", snapshotId: "s1", notes: "Clean Twin + Small Clone. No DS-1." },
+      { index: 2, label: "VERSE", color: "#c5c9c2", action: "snapshot", snapshotId: "s2", notes: "Dry verse, clone off." },
       { index: 3, label: "CHORUS", color: "#e24a3a", action: "snapshot", snapshotId: "s3", notes: "Loud chorus, clone off." },
     ],
     programming: [
-      "SNAPSHOT MODE. After import: PAGE until the scribbles say VERSE / PRE / CHORUS.",
-      "Path: Stupor OD → 70s Chorus → Cali IV Rhythm 2 → 4x12 Cali V30. No gate, no compressor.",
-      "Stupor OD (DS-1 stand-in): Drive 7.0, Mid 6.6. Always on.",
-      "70s Chorus is the Small Clone (Depth switch on). Bypass it in Verse and Chorus. Turn it on only for Snap 2 Pre.",
-      "Cali IV Rhythm 2: Snap 1 Drive 4.2 / Ch Vol 5.4. Snap 2 Drive 4.6 / Ch Vol 5.8. Snap 3 Drive 6.8 / Ch Vol 6.8.",
-      "Download the .hlx. HX Edit: File → Import. The hardware PAGE button is what actually enters Snapshot mode.",
+      "SNAPSHOT MODE. After import: PAGE until the scribbles say INTRO / VERSE / CHORUS.",
+      "Path: Stupor OD → 70s Chorus → Cali IV Rhythm 2 → 4x12 Cali V30 → Hot Springs.",
+      "Intro (FS1): DS-1 OFF, Small Clone ON, Drive 1.6, spring Mix 3.2. Guitar Chalk Twin + Clone.",
+      "Verse (FS2): DS-1 ON, clone OFF, Drive 4.2. Chorus (FS3): clone OFF, Drive 6.8.",
+      "On HX Stomp XL, snapshot 4 (PRE) is the watery hello — Small Clone + DS-1. Visual switch 1.",
+      "One amp on purpose. A real Twin + Mesa would blow the Stomp DSP; intro Drive is the Twin stand-in.",
+      "Download the .hlx. HX Edit: File → Import. PAGE enters Snapshot mode.",
     ],
     tips: [
-      "The pre-chorus should swirl. If it doesn't, you're still on Verse — hit FS2.",
+      "If the opening riff is dirty, you're on Verse — hit FS1. The intro should shimmer, not crunch.",
       "Play the loud chorus with the guitar wide open and pick near the bridge. Leave the Small Clone off.",
     ],
   },
@@ -262,12 +279,12 @@ export const FEATURED: Preset[] = [
     name: "Streets",
     tempo: 126,
     summary:
-      "The Joshua Tree (1987). The Edge is a dotted-eighth Korg SDD-3000 into a Vox AC30, with a Deluxe Memory Man for analog bloom. The guitar is almost clean — the delay IS the riff. Stomp the delays rather than hiding them in snapshots. Light compression, no gate.",
+      "The Joshua Tree (1987). Guitar Chalk: Vox AC30, Korg SDD-3000 dotted-eighth, Deluxe Memory Man for analog bloom. The guitar is almost clean — the delay IS the riff. Three snapshots (Intro cascade / Verse SDD / Chorus both), same layout as Sandman.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster / Explorer", notes: "Bright pickup, lots of pick attack, near the bridge." },
       { role: "Delay", name: "Korg SDD-3000", notes: "Dotted 8th digital. The Joshua Tree sound." },
       { role: "Delay", name: "EHX Deluxe Memory Man", notes: "Shorter analog, modulation on, mix lower than the SDD." },
-      { role: "Amp", name: "Vox AC-30 Top Boost", notes: "Chime, not cranked to crunch." },
+      { role: "Amp", name: "Vox AC-30 Top Boost", notes: "Chime, not cranked to crunch. Guitar Chalk: Brilliant channel, Treble ~2 o'clock." },
     ],
     recommendedGear: [
       { item: "Strat or other bright single coil", why: "Dark humbuckers smear the dotted-eighth pattern." },
@@ -284,37 +301,49 @@ export const FEATURED: Preset[] = [
     snapshots: [
       {
         id: "s1",
-        name: "Both",
+        name: "Intro",
         color: "#2ec8ff",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5", "b6"],
-        notes: "Intro cascade — both delays.",
+        notes: "Opening cascade — both delays. This is the famous intro.",
+        paramOverrides: {
+          b2: { Mix: 4.8, Feedback: 3.8 },
+          b3: { Mix: 2.4, Feedback: 2.6 },
+        },
       },
       {
         id: "s2",
-        name: "Digital",
+        name: "Verse",
         color: "#7d9a6a",
         enabledBlocks: ["b1", "b2", "b4", "b5", "b6"],
-        notes: "SDD only, for thinner verses.",
+        notes: "SDD-3000 only. Thinner dotted-eighth for the verse figure.",
+        paramOverrides: {
+          b2: { Mix: 4.2, Feedback: 3.4 },
+        },
       },
       {
         id: "s3",
-        name: "Dry",
+        name: "Chorus",
         color: "#c5c9c2",
-        enabledBlocks: ["b1", "b4", "b5", "b6"],
-        notes: "Delays off if you need a dry hit. Prefer stomps.",
+        enabledBlocks: ["b1", "b2", "b3", "b4", "b5", "b6"],
+        notes: "Both delays, a little more mix and bloom for the lift.",
+        paramOverrides: {
+          b2: { Mix: 5.0, Feedback: 4.0 },
+          b3: { Mix: 2.8, Feedback: 2.8 },
+          b6: { Mix: 2.4 },
+        },
       },
     ],
     footswitches: [
-      { index: 1, label: "SDD", color: "#2ec8ff", action: "bypass", targetBlockId: "b2", notes: "Dotted-8th Korg. This is the riff." },
-      { index: 2, label: "MEMMAN", color: "#7d9a6a", action: "bypass", targetBlockId: "b3", notes: "Analog bloom on/off." },
-      { index: 3, label: "TAP", color: "#c5c9c2", action: "tap", notes: "Tap 126 BPM. Delays follow dotted 8th." },
+      { index: 1, label: "INTRO", color: "#2ec8ff", action: "snapshot", snapshotId: "s1", notes: "Both delays — the cascade." },
+      { index: 2, label: "VERSE", color: "#7d9a6a", action: "snapshot", snapshotId: "s2", notes: "SDD only." },
+      { index: 3, label: "CHORUS", color: "#c5c9c2", action: "snapshot", snapshotId: "s3", notes: "Both delays, more mix." },
     ],
     programming: [
+      "SNAPSHOT MODE. PAGE until INTRO / VERSE / CHORUS. Same layout as Sandman / Teen Spirit.",
       "Path: Deluxe Comp → Vintage Digital → Elephant Man → Essex A30 → 2x12 Blue Bell → Plateaux.",
-      "Vintage Digital: note division dotted 8th at 126 BPM, Feedback 3.6, Mix 4.6. This is the riff.",
-      "Elephant Man: shorter analog, Mix 2.0, Mod 4.2 for Memory Man chorus.",
-      "Stomp mode, not snapshot mode: FS1 = SDD, FS2 = Memory Man, FS3 = Tap. Edge kicks delays, he doesn't change amp channels.",
-      "Comp Mix 5.5 — just enough to even the 16ths. No gate.",
+      "Vintage Digital: dotted 8th at 126 BPM, Feedback 3.6, Mix 4.6. This is the riff.",
+      "Elephant Man: shorter analog, Mix 2.0–2.8, Mod 4.2 for Memory Man chorus.",
+      "Tempo 126. Comp Mix 5.5 — just enough to even the 16ths. No gate.",
     ],
     tips: [
       "Play sixteenth notes dead even. If your timing is off, the delay will expose it immediately.",
@@ -332,7 +361,7 @@ export const FEATURED: Preset[] = [
     name: "Give It Away",
     tempo: 92,
     summary:
-      "Blood Sugar Sex Magik (1991). Frusciante's quack is a Mu-Tron III into a Marshall Silver Jubilee — not a Super Lead. Helix has no Jubilee, so Placater Dirty (Friedman BE, Jubilee-derived) is the right family. Stomp the filter; don't snapshot the whole song. No gate. No compressor — the envelope needs your pick attack.",
+      "Blood Sugar Sex Magik (1991). Frusciante's quack is a Mu-Tron III into a Marshall Silver Jubilee — not a Super Lead. Helix has no Jubilee, so Placater Dirty (Friedman BE, Jubilee-derived) is the right family. Three snapshots: Quack / Crunch / Solo — same layout as Sandman.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster", notes: "Worn Strat, single coils, often bridge or middle." },
       { role: "Pedal", name: "Mu-Tron III", notes: "Up position. Sensitivity follows pick attack — play it like percussion." },
@@ -354,7 +383,7 @@ export const FEATURED: Preset[] = [
         name: "Quack",
         color: "#e050f0",
         enabledBlocks: ["b1", "b2", "b3", "b4"],
-        notes: "Filter on — the riff. Prefer FS1 over this snapshot.",
+        notes: "Filter on — the riff. Mute between hits so the envelope retriggers.",
       },
       {
         id: "s2",
@@ -362,6 +391,9 @@ export const FEATURED: Preset[] = [
         color: "#e24a3a",
         enabledBlocks: ["b2", "b3", "b4"],
         notes: "Filter off for dry chorus stabs.",
+        paramOverrides: {
+          b2: { Drive: 5.0, "Ch Vol": 6.0 },
+        },
       },
       {
         id: "s3",
@@ -375,15 +407,15 @@ export const FEATURED: Preset[] = [
       },
     ],
     footswitches: [
-      { index: 1, label: "MUTRON", color: "#e050f0", action: "bypass", targetBlockId: "b1", notes: "Stomp the Mu-Tron. This is how he used it." },
-      { index: 2, label: "CRUNCH", color: "#e24a3a", action: "snapshot", snapshotId: "s2", notes: "Dry Jubilee if you need both hands." },
+      { index: 1, label: "QUACK", color: "#e050f0", action: "snapshot", snapshotId: "s1", notes: "Mu-Tron riff." },
+      { index: 2, label: "CRUNCH", color: "#e24a3a", action: "snapshot", snapshotId: "s2", notes: "Dry Jubilee." },
       { index: 3, label: "SOLO", color: "#f5d000", action: "snapshot", snapshotId: "s3", notes: "Drive bump." },
     ],
     programming: [
+      "SNAPSHOT MODE. PAGE until QUACK / CRUNCH / SOLO. Same layout as Sandman.",
       "Path: Mutant Filter → Placater Dirty → 4x12 Greenback 25 → Room. No gate, no compressor.",
       "Mutant Filter: Mix 10, Q 6.4. Raise Speed/sensitivity until muted 16ths quack.",
-      "Placater Dirty (Jubilee family): Drive 5.0 — crunch, not a Recto.",
-      "Stomp mode: FS1 toggles the filter. That is the patch.",
+      "Placater Dirty (Jubilee family): Drive 5.0 — crunch, not a Recto. Snap 3 Drive 6.2.",
     ],
     tips: [
       "Mute with the left hand between hits so the envelope retriggers every note.",
@@ -401,7 +433,7 @@ export const FEATURED: Preset[] = [
     name: "YYZ Bass",
     tempo: 126,
     summary:
-      "Moving Pictures (1981). Geddy's bass is a bright Jazz Bass (Ric on other eras) split between a DI and an Ampeg SVT / Hiwatt stack. Light compression so the picked 16ths stay percussive — not a squash. One tone; tap tempo and a slight fill bump, not a snapshot opera.",
+      "Moving Pictures (1981). Geddy's bass is a bright Jazz Bass (Ric on other eras) split between a DI and an Ampeg SVT / Hiwatt stack. Light compression so the picked 16ths stay percussive. Three snapshots: Riff / Fill / Lead — same layout as Sandman.",
     originalGear: [
       { role: "Bass", name: "Fender Jazz Bass", notes: "Moving Pictures era. Both pickups, a little bridge-heavy. Rickenbacker 4001 on earlier Rush." },
       { role: "Amp", name: "Ampeg SVT + Hiwatt, blended with DI", notes: "The record is amp + direct. Punch, clack, and a mid bump." },
@@ -441,22 +473,26 @@ export const FEATURED: Preset[] = [
       },
       {
         id: "s3",
-        name: "DI-ish",
+        name: "Lead",
         color: "#2ec8ff",
-        enabledBlocks: ["b1", "b4", "b5"],
-        notes: "Amp off — closer to the direct blend if you want it clackier.",
+        enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
+        notes: "Busier / solo-ish — Drive and Treble up, still the SVT in the chain.",
+        paramOverrides: {
+          b2: { Drive: 5.2, Treble: 7.2, "Ch Vol": 6.4 },
+        },
       },
     ],
     footswitches: [
-      { index: 1, label: "RIFF", color: "#c5c9c2", action: "snapshot", snapshotId: "s1", notes: "Main tone." },
+      { index: 1, label: "RIFF", color: "#c5c9c2", action: "snapshot", snapshotId: "s1", notes: "Main ostinato." },
       { index: 2, label: "FILL", color: "#f5d000", action: "snapshot", snapshotId: "s2", notes: "Busier sections." },
-      { index: 3, label: "TAP", color: "#c5c9c2", action: "tap", notes: "126 BPM." },
+      { index: 3, label: "LEAD", color: "#2ec8ff", action: "snapshot", snapshotId: "s3", notes: "Drive and treble bump." },
     ],
     programming: [
+      "SNAPSHOT MODE. PAGE until RIFF / FILL / LEAD. Same layout as Sandman.",
       "Path: Kinky Comp → Ampeg SVT Brt → 8x10 Ampeg SVT → Simple EQ → Room.",
       "Comp Mix 4.5, Attack 5.2 — leveling, not squash. The pick has to stay.",
       "SVT Bright, Drive 4.0. If it farts, drop Bass and raise cab Low Cut.",
-      "Simple EQ Mid 6.6 is the clack. Optional Snap 3 bypasses the amp for a DI-leaning blend.",
+      "Simple EQ Mid 6.6 is the clack. Tempo 126.",
     ],
     tips: [
       "Mute unused strings. The ostinato falls apart if the low E rings.",
@@ -470,11 +506,11 @@ export const FEATURED: Preset[] = [
     song: "Schism",
     artist: "Tool",
     instrument: "bass",
-    stompModel: "hx-stomp-xl",
+    stompModel: "hx-stomp",
     name: "Schism",
     tempo: 82,
     summary:
-      "Lateralus (2001). Justin Chancellor is a Wal MKII into Diezel/Mesa with analog chorus on the unison lines. Period dirt is a SansAmp-style blend, not a 2010s Darkglass. Snapshots for clean / unison / heavy; stomps for dirt and chorus on the XL.",
+      "Lateralus (2001). Justin Chancellor is a Wal MKII into Diezel/Mesa with analog chorus on the unison lines. Period dirt is a SansAmp-style blend, not a 2010s Darkglass. Snapshots: Line / Unison / Heavy / Lead — same snapshot layout as the guitar rigs.",
     originalGear: [
       { role: "Bass", name: "Wal MKII", notes: "Active, dense mids, very articulate. The part is the tone." },
       { role: "Amp", name: "Diezel VH4 / Mesa / GK", notes: "High-headroom grind. Wet/dry in the live rig." },
@@ -534,18 +570,12 @@ export const FEATURED: Preset[] = [
       { index: 1, label: "LINE", color: "#c5c9c2", action: "snapshot", snapshotId: "s1", notes: "Dry line." },
       { index: 2, label: "UNISON", color: "#2ec8ff", action: "snapshot", snapshotId: "s2", notes: "The famous chorus line." },
       { index: 3, label: "HEAVY", color: "#e24a3a", action: "snapshot", snapshotId: "s3", notes: "Drop-chorus grind." },
-      { index: 4, label: "LEAD", color: "#f5d000", action: "snapshot", snapshotId: "s4", notes: "XL snapshot 4." },
-      { index: 5, label: "DIRT", color: "#ff7a18", action: "bypass", targetBlockId: "b2", notes: "SansAmp independently." },
-      { index: 6, label: "CHO", color: "#2ec8ff", action: "bypass", targetBlockId: "b5", notes: "Chorus stomp." },
-      { index: 7, label: "MODE", color: "#5a5e62", action: "mode", notes: "Cycle Stomp / Snapshot / Preset — physical MODE switch." },
-      { index: 8, label: "TAP", color: "#e24a3a", action: "tap", notes: "Physical TAP/TUNER switch. Hold for tuner on the real unit." },
     ],
     programming: [
-      "Built for HX Stomp XL (4 snapshots, 8 switches). On a 3-switch Stomp, map Snap 1–3 and skip FS4–8.",
+      "SNAPSHOT MODE. PAGE until LINE / UNISON / HEAVY. XL adds LEAD on visual switch 1 (snapshot 4).",
       "Path: 3-Band Comp → ZeroAmp Bass DI (SansAmp, Mix 4.2) → Das Benzin Lead (Diezel) → 8x10 SVT → 70s Chorus → Hall.",
       "Keep the SansAmp blended. This is not a wall of fuzz.",
       "Chorus after the cab so it doesn't get fizzy inside the distortion.",
-      "Command Center: FS7 = MODE, FS8 = TAP (the two switches to the right of the LCD on a real XL).",
     ],
     tips: [
       "If you only have an HX Stomp, use Snap 1–3 and put chorus on an external FS4.",

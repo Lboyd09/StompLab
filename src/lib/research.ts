@@ -1,17 +1,15 @@
+import { createServerFn } from "@tanstack/react-start";
+import { z } from "zod";
 import { compactCatalogForPrompt, MODEL_MAP } from "@/data/catalog";
 import { FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
 import type { Preset, UserGear } from "@/data/types";
-import {
-  eqCacheKey,
-  lookupCache,
-  saveEqCache,
-  saveSongCache,
-  songCacheKey,
-  soundCacheKey,
-} from "./cache";
+import { authMiddleware } from "@/lib/auth/middleware";
+import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
+import { eqCacheKey, lookupCache, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
 import { geminiJson } from "./gemini";
 import {
+  GearSchema,
   jsonSchemaHint,
   overlayUserGear,
   parsePresetJson,
@@ -25,7 +23,7 @@ function norm(s: string) {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
 }
 
-function matchFeatured(
+export function matchFeatured(
   song: string,
   artist: string | undefined,
   instrument: "guitar" | "bass",
@@ -61,196 +59,266 @@ function gearLine(gear: UserGear[]): string {
 }
 
 export type ResearchOk = { ok: true; preset: Preset; source: "library" | "cache" | "gemini" };
-export type ResearchErr = { ok: false; error: string; needKey?: boolean };
+export type ResearchErr = {
+  ok: false;
+  error: string;
+  reason?: "signin" | "paywall" | "quota" | "busy";
+};
 export type ResearchResult = ResearchOk | ResearchErr;
 
-export async function researchSong(input: {
-  song: string;
+const ResearchIn = z.object({
+  song: z.string().min(1).max(120),
+  artist: z.string().max(120).optional(),
+  instrument: z.enum(["guitar", "bass"]),
+  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  userGear: z.array(GearSchema).optional().default([]),
+});
+
+const CreateIn = z.object({
+  description: z.string().min(4).max(800),
+  instrument: z.enum(["guitar", "bass"]),
+  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  userGear: z.array(GearSchema).optional().default([]),
+});
+
+const EqIn = z.object({ query: z.string().min(2).max(120) });
+
+function blocked(reason: "paywall" | "quota"): ResearchErr {
+  if (reason === "quota") {
+    return {
+      ok: false,
+      reason: "quota",
+      error: "You've used this month's 50 Gemini builds. Featured songs and cache hits still work. Resets next calendar month.",
+    };
+  }
+  return {
+    ok: false,
+    reason: "paywall",
+    error: "0 free songs left. Unlock StompLab to research any song.",
+  };
+}
+
+async function runGeminiPreset(opts: {
+  prompt: string;
+  instrument: "guitar" | "bass";
+  stompModel: "hx-stomp" | "hx-stomp-xl";
+  source: "song" | "custom";
+  song?: string;
   artist?: string;
-  instrument: "guitar" | "bass";
-  stompModel: "hx-stomp" | "hx-stomp-xl";
   userGear: UserGear[];
-  apiKey: string;
-}): Promise<ResearchResult> {
-  const featured = matchFeatured(input.song, input.artist, input.instrument, input.stompModel);
-  if (featured) {
-    return { ok: true, preset: overlayUserGear(featured, input.userGear), source: "library" };
-  }
+}): Promise<Preset> {
+  const json = await geminiJson(opts.prompt);
+  const parsed = parsePresetJson(json);
+  return overlayUserGear(
+    toPreset(parsed, {
+      source: opts.source,
+      instrument: opts.instrument,
+      stompModel: opts.stompModel,
+      song: opts.song,
+      artist: opts.artist,
+    }),
+    opts.userGear,
+  );
+}
 
-  const key = songCacheKey(input.song, input.artist, input.instrument, input.stompModel);
-  try {
-    const cached = await lookupCache({ data: { key } });
-    if (cached.hit && cached.preset) {
-      const preset: Preset = {
-        ...cached.preset,
-        id: newId("pst"),
-        createdAt: Date.now(),
-      };
-      return { ok: true, preset: overlayUserGear(preset, input.userGear), source: "cache" };
+export const researchSongFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => ResearchIn.parse(input))
+  .handler(async ({ context, data }): Promise<ResearchResult> => {
+    const featured = matchFeatured(data.song, data.artist, data.instrument, data.stompModel);
+    if (featured) {
+      return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
     }
-  } catch {
-    // Cache miss / db not ready — continue to Gemini
-  }
 
-  if (!input.apiKey.trim()) {
-    return {
-      ok: false,
-      needKey: true,
-      error:
-        "This song isn't in the shared library yet. Add a free Gemini API key in Settings — it stays in your browser and uses Google's free Gemini Flash tier.",
-    };
-  }
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    const key = songCacheKey(data.song, data.artist, data.instrument, data.stompModel);
 
-  try {
-    const catalog = compactCatalogForPrompt(input.instrument);
-    const prompt = `${systemForDevice(input.stompModel, input.instrument)}
+    if (plan.canSharedLibrary) {
+      try {
+        const cached = await lookupCache({ data: { key } });
+        if (cached.hit && cached.preset) {
+          const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+          return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+        }
+      } catch {
+        /* miss */
+      }
+    }
 
-Song: ${input.song}${input.artist ? ` by ${input.artist}` : ""}
-Research the original recorded ${input.instrument} tone. Be specific about album, year, and the chain that was actually used. The HX path should sound like that record, not a generic genre patch.
-${gearLine(input.userGear)}
+    if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+
+    try {
+      const catalog = compactCatalogForPrompt(data.instrument);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+
+Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
+Research the original recorded ${data.instrument} tone. Be specific about album, year, and the chain that was actually used. The HX path should sound like that record, not a generic genre patch.
+${gearLine(data.userGear)}
 
 Catalog (id | name | based on | dsp):
 ${catalog}
 
 JSON schema:
 ${jsonSchemaHint()}`;
-    const json = await geminiJson(input.apiKey, prompt);
-    const parsed = parsePresetJson(json);
-    const preset = overlayUserGear(
-      toPreset(parsed, {
+      const preset = await runGeminiPreset({
+        prompt,
+        instrument: data.instrument,
+        stompModel: data.stompModel,
         source: "song",
-        instrument: input.instrument,
-        stompModel: input.stompModel,
-        song: input.song,
-        artist: input.artist,
-      }),
-      input.userGear,
-    );
-    void saveSongCache({
-      data: {
-        key,
-        song: input.song.trim(),
-        artist: (input.artist ?? "").trim(),
-        instrument: input.instrument,
-        stompModel: input.stompModel,
-        preset: publicPreset(preset),
-      },
-    }).catch(() => undefined);
-    return { ok: true, preset, source: "gemini" };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Research failed" };
-  }
-}
-
-export async function createCustomSound(input: {
-  description: string;
-  instrument: "guitar" | "bass";
-  stompModel: "hx-stomp" | "hx-stomp-xl";
-  userGear: UserGear[];
-  apiKey: string;
-}): Promise<ResearchResult> {
-  const key = soundCacheKey(input.description, input.instrument, input.stompModel);
-  try {
-    const cached = await lookupCache({ data: { key } });
-    if (cached.hit && cached.preset) {
-      const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-      return { ok: true, preset: overlayUserGear(preset, input.userGear), source: "cache" };
+        song: data.song,
+        artist: data.artist,
+        userGear: data.userGear,
+      });
+      await recordBuild(context.userId, "song", data.song.trim());
+      void saveSongCache({
+        data: {
+          key,
+          song: data.song.trim(),
+          artist: (data.artist ?? "").trim(),
+          instrument: data.instrument,
+          stompModel: data.stompModel,
+          preset: publicPreset(preset),
+        },
+      }).catch(() => undefined);
+      return { ok: true, preset, source: "gemini" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Research failed";
+      await recordFailure(context.userId, data.song, data.artist ?? "", message);
+      return {
+        ok: false,
+        error: message,
+        reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
+      };
     }
-  } catch {
-    // continue
-  }
+  });
 
-  if (!input.apiKey.trim()) {
-    return {
-      ok: false,
-      needKey: true,
-      error:
-        "Add a free Gemini API key in Settings to describe a new sound. Cached sounds don't need a key.",
-    };
-  }
+export const createCustomSoundFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => CreateIn.parse(input))
+  .handler(async ({ context, data }): Promise<ResearchResult> => {
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    const key = soundCacheKey(data.description, data.instrument, data.stompModel);
 
-  try {
-    const catalog = compactCatalogForPrompt(input.instrument);
-    const prompt = `${systemForDevice(input.stompModel, input.instrument)}
+    if (plan.canSharedLibrary) {
+      try {
+        const cached = await lookupCache({ data: { key } });
+        if (cached.hit && cached.preset) {
+          const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+          return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+        }
+      } catch {
+        /* miss */
+      }
+    }
 
-Build this sound on the ${DEVICE_MAP[input.stompModel].name}:
-${input.description}
-${gearLine(input.userGear)}
+    if (!plan.canCreate) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+
+    try {
+      const catalog = compactCatalogForPrompt(data.instrument);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+
+Build this sound on the ${DEVICE_MAP[data.stompModel].name}:
+${data.description}
+${gearLine(data.userGear)}
 
 Catalog (id | name | based on | dsp):
 ${catalog}
 
 JSON schema:
 ${jsonSchemaHint()}`;
-    const json = await geminiJson(input.apiKey, prompt);
-    const parsed = parsePresetJson(json);
-    const preset = overlayUserGear(
-      toPreset(parsed, {
+      const preset = await runGeminiPreset({
+        prompt,
+        instrument: data.instrument,
+        stompModel: data.stompModel,
         source: "custom",
-        instrument: input.instrument,
-        stompModel: input.stompModel,
-      }),
-      input.userGear,
-    );
-    void saveSongCache({
-      data: {
-        key,
-        song: preset.name,
-        artist: "custom",
-        instrument: input.instrument,
-        stompModel: input.stompModel,
-        preset: publicPreset(preset),
-      },
-    }).catch(() => undefined);
-    return { ok: true, preset, source: "gemini" };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Could not build that sound" };
-  }
-}
+        userGear: data.userGear,
+      });
+      await recordBuild(context.userId, "create", preset.name);
+      void saveSongCache({
+        data: {
+          key,
+          song: preset.name,
+          artist: "custom",
+          instrument: data.instrument,
+          stompModel: data.stompModel,
+          preset: publicPreset(preset),
+        },
+      }).catch(() => undefined);
+      return { ok: true, preset, source: "gemini" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Could not build that sound";
+      await recordFailure(context.userId, data.description.slice(0, 80), "custom", message);
+      return {
+        ok: false,
+        error: message,
+        reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
+      };
+    }
+  });
 
 export type EqMatch = { modelId: string; closeness: string; how: string };
 
-export async function lookupEquivalent(input: {
-  query: string;
-  apiKey: string;
-}): Promise<{ ok: true; matches: EqMatch[]; source: "local" | "cache" | "gemini" } | ResearchErr> {
-  const key = eqCacheKey(input.query);
-  try {
-    const cached = await lookupCache({ data: { key } });
-    if (cached.hit && Array.isArray(cached.matches)) {
-      return { ok: true, matches: cached.matches as EqMatch[], source: "cache" };
+export const lookupEquivalentFn = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => EqIn.parse(input))
+  .handler(async ({ context, data }): Promise<{ ok: true; matches: EqMatch[]; source: "cache" | "gemini" } | ResearchErr> => {
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    const key = eqCacheKey(data.query);
+
+    if (plan.canSharedLibrary) {
+      try {
+        const cached = await lookupCache({ data: { key } });
+        if (cached.hit && Array.isArray(cached.matches) && cached.matches.length) {
+          return { ok: true, matches: cached.matches as EqMatch[], source: "cache" };
+        }
+      } catch {
+        /* miss */
+      }
     }
-  } catch {
-    // continue
-  }
 
-  if (!input.apiKey.trim()) {
-    return {
-      ok: false,
-      needKey: true,
-      error: "No shared match yet. Add a Gemini key in Settings to research this pedal.",
-    };
-  }
+    if (!plan.paid) {
+      return {
+        ok: false,
+        reason: "paywall",
+        error: "Catalog browse is free. Gemini pedal matching unlocks with StompLab.",
+      };
+    }
 
-  try {
-    const catalog = compactCatalogForPrompt();
-    const json = (await geminiJson(
-      input.apiKey,
-      `Map this real pedal or amp to Line 6 HX models. Return ONLY JSON:
+    try {
+      const catalog = compactCatalogForPrompt();
+      const json = (await geminiJson(
+        `Map this real pedal or amp to Line 6 HX models. Return ONLY JSON:
 {"matches":[{"modelId":"","closeness":"exact|close|similar","how":"1-3 sentences"}]}
 Use only catalog modelId values. 1-4 matches, best first. Say when Helix has no exact model and why the stand-in is closest.
 
-Query: ${input.query}
+Query: ${data.query}
 
 Catalog:
 ${catalog}`,
-    )) as { matches?: EqMatch[] };
-    const matches = (json.matches ?? [])
-      .filter((m) => MODEL_MAP[m.modelId])
-      .slice(0, 4);
-    void saveEqCache({ data: { key, query: input.query, matches } }).catch(() => undefined);
-    return { ok: true, matches, source: "gemini" };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Lookup failed" };
-  }
+      )) as { matches?: EqMatch[] };
+      const matches = (json.matches ?? []).filter((m) => MODEL_MAP[m.modelId]).slice(0, 4);
+      void saveEqCache({ data: { key, query: data.query, matches } }).catch(() => undefined);
+      return { ok: true, matches, source: "gemini" };
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Lookup failed";
+      return {
+        ok: false,
+        error: message,
+        reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
+      };
+    }
+  });
+
+/** @deprecated client wrappers — use the *Fn server functions */
+export async function researchSong(): Promise<ResearchResult> {
+  return { ok: false, error: "Research now runs on the server.", reason: "signin" };
+}
+export async function createCustomSound(): Promise<ResearchResult> {
+  return { ok: false, error: "Create now runs on the server.", reason: "signin" };
+}
+export async function lookupEquivalent(): Promise<ResearchErr> {
+  return { ok: false, error: "Lookup now runs on the server.", reason: "signin" };
 }

@@ -4,9 +4,9 @@ import {
   BookOpen,
   Clock,
   Guitar,
-  KeyRound,
   Library,
   Search,
+  Settings,
   SlidersHorizontal,
   Sparkles,
   Wrench,
@@ -20,6 +20,7 @@ import { withStompModel } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
+import { AuthSlot } from "./auth-slot";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -41,7 +42,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
-  const geminiKey = useAppStore((s) => s.geminiKey);
   const gear = useAppStore((s) => s.gear);
   const savePreset = useAppStore((s) => s.savePreset);
   const theme = useAppStore((s) => s.theme);
@@ -182,6 +182,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </div>
               ) : null}
             </div>
+            <div className="max-w-[42vw] shrink-0 overflow-hidden sm:max-w-none">
+              <AuthSlot />
+            </div>
             <Link
               to="/settings"
               aria-label="Settings"
@@ -190,10 +193,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <KeyRound className="size-4" />
-              {geminiKey.trim() ? (
-                <span className="absolute right-1.5 top-1.5 size-1.5 rounded-full bg-primary" />
-              ) : null}
+              <Settings className="size-4" />
             </Link>
           </div>
           <div className="flex flex-wrap items-center gap-2">

@@ -66,21 +66,24 @@ describe("buildHlx Teen Spirit", () => {
   });
 
   it("Pre snapshot enables Small Clone; Chorus snapshot bypasses it", () => {
+    const snap0 = tone.snapshot0 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap1 = tone.snapshot1 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
-    const snap2 = tone.snapshot2 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(snap1["@name"], "PRE");
-    assert.equal(snap1.blocks.dsp0.block1, true);
+    const snap2 = tone.snapshot2 as { "@name": string; "@pedalstate": number; blocks: { dsp0: Record<string, boolean> } };
+    assert.equal(snap0["@name"], "INTRO");
+    assert.equal(snap0.blocks.dsp0.block0, false);
+    assert.equal(snap0.blocks.dsp0.block1, true);
+    assert.equal(snap1["@name"], "VERSE");
+    assert.equal(snap1.blocks.dsp0.block0, true);
+    assert.equal(snap1.blocks.dsp0.block1, false);
     assert.equal(snap2["@name"], "CHORUS");
     assert.equal(snap2.blocks.dsp0.block1, false);
-    const snap0 = tone.snapshot0 as { "@name": string; "@pedalstate": number };
-    assert.equal(snap0["@name"], "VERSE");
-    assert.equal(snap0["@pedalstate"], 0);
+    assert.equal(snap2["@pedalstate"], 0);
   });
 
   it("uses snapshot mode globally and 1-based join position", () => {
     const global = tone.global as { "@pedalstate": number };
     assert.equal(global["@pedalstate"], 2);
-    assert.equal(dsp0.join["@position"], 3);
+    assert.equal(dsp0.join["@position"], 4);
     assert.equal(dsp0.block0["@no_snapshot_bypass"], false);
     assert.equal((hlx.data as { device: number }).device, 2162694);
     assert.equal(hlx.schema, "L6Preset");
@@ -169,6 +172,41 @@ describe("visual FS map", () => {
       back.footswitches.filter((f) => f.action === "snapshot").map((f) => f.index),
       [1, 2, 3],
     );
+  });
+
+  it("puts Teen Spirit intro first and XL pre on visual 1", () => {
+    const src = featured("featured-teen-spirit");
+    assert.equal(src.snapshots[0]?.name, "Intro");
+    assert.equal(src.footswitches[0]?.action, "snapshot");
+    const stomp = withStompModel(src, "hx-stomp");
+    assert.equal(stomp.snapshots.length, 3);
+    assert.equal(stomp.snapshots[0]?.name, "Intro");
+    const xl = withStompModel(src, "hx-stomp-xl");
+    assert.equal(xl.snapshots.length, 4);
+    assert.equal(xl.snapshots[3]?.name, "Pre");
+    const pre = xl.footswitches.find((f) => f.snapshotId === "s4");
+    assert.equal(pre?.index, 1);
+  });
+
+  it("exports only factory HD2 ids for every featured rig", () => {
+    for (const p of FEATURED) {
+      const hlx = buildHlx(p);
+      const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+      const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+      for (const [k, block] of Object.entries(dsp0)) {
+        if (!k.startsWith("block") && k !== "cab0") continue;
+        const model = String(block["@model"] ?? "");
+        if (!model) continue;
+        assert.match(model, /^HD2_/, `${p.id} ${k} ${model}`);
+        assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
+      }
+      const primary = p.footswitches.filter((f) => f.index <= 3);
+      assert.ok(primary.length >= 3, p.id);
+      assert.ok(
+        primary.every((f) => f.action === "snapshot"),
+        `${p.id} FS1–3 must be snapshots`,
+      );
+    }
   });
 
   it("writes XL bypass assigns to the hardware index for that visual switch", () => {

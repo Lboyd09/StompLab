@@ -1,22 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { ExternalLink, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
-import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SignedIn, SignedOut, UserButton } from "@/lib/auth/gates";
 import { cacheHealth } from "@/lib/cache";
-import { testGeminiKey } from "@/lib/gemini";
+import { FREE_BUILDS, LAUNCH_USD, PAID_MONTHLY_BUILDS, PRICE_USD } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
 function SettingsPage() {
-  const stored = useAppStore((s) => s.geminiKey);
-  const hydrated = useAppStore((s) => s.hydrated);
   const hydrate = useAppStore((s) => s.hydrate);
-  const setGeminiKey = useAppStore((s) => s.setGeminiKey);
   const theme = useAppStore((s) => s.theme);
   const setTheme = useAppStore((s) => s.setTheme);
   const defaultFsMode = useAppStore((s) => s.defaultFsMode);
@@ -29,8 +25,7 @@ function SettingsPage() {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
-  const [draft, setDraft] = useState(stored);
-  const [busy, setBusy] = useState(false);
+  const { plan } = usePlan();
   const [library, setLibrary] = useState<{ ok: boolean; entries: number } | null>(null);
 
   useEffect(() => {
@@ -38,37 +33,10 @@ function SettingsPage() {
   }, [hydrate]);
 
   useEffect(() => {
-    if (hydrated) setDraft(stored);
-  }, [hydrated, stored]);
-
-  useEffect(() => {
     cacheHealth()
       .then((h) => setLibrary({ ok: h.ok, entries: h.entries }))
       .catch(() => setLibrary({ ok: false, entries: 0 }));
   }, []);
-
-  function save(next: string) {
-    setGeminiKey(next);
-    setDraft(next);
-  }
-
-  async function onSave(e: React.FormEvent) {
-    e.preventDefault();
-    const key = draft.trim();
-    if (!key) return;
-    save(key);
-    setBusy(true);
-    try {
-      const result = await testGeminiKey(key);
-      if (!result.ok) {
-        toast.error(result.error);
-        return;
-      }
-      toast.success("Key works. Gemini Flash is ready for new songs.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   const unitLabel = stompModel === "hx-stomp-xl" ? "HX Stomp XL" : "HX Stomp";
 
@@ -77,24 +45,41 @@ function SettingsPage() {
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Your {unitLabel} · {instrument}. Research runs on{" "}
-          <strong className="font-medium text-foreground">your</strong> free Google Gemini key. Featured
-          songs and the shared library need none.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          <Link to="/guide" className="text-primary underline underline-offset-2">
-            Open the tutorial
-          </Link>
-          {library ? (
-            <>
-              {" · "}
-              {library.ok
-                ? `Shared library on · ${library.entries} saved rigs`
-                : "Shared library is local on this copy — featured songs still work"}
-            </>
-          ) : null}
+          Your {unitLabel} · {instrument}. Theme, unit, and how the replica behaves. Research runs on
+          the server — you never paste a Gemini key.
         </p>
       </header>
+
+      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Account</h2>
+        <SignedOut>
+          <p className="text-sm text-muted-foreground">
+            Sign in with email to use {FREE_BUILDS} free custom songs, then unlock for ${LAUNCH_USD}.
+          </p>
+          <Button asChild>
+            <Link to="/login">Sign in</Link>
+          </Button>
+        </SignedOut>
+        <SignedIn>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <UserButton />
+            {plan.paid ? (
+              <span className="text-sm text-muted-foreground">
+                {plan.monthUsed} / {PAID_MONTHLY_BUILDS} builds this month
+              </span>
+            ) : (
+              <span className="text-sm text-muted-foreground">
+                {plan.freeRemaining} free song{plan.freeRemaining === 1 ? "" : "s"} left
+              </span>
+            )}
+          </div>
+          {!plan.paid ? (
+            <Button asChild variant="secondary">
+              <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+            </Button>
+          ) : null}
+        </SignedIn>
+      </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Look and feel</h2>
@@ -217,87 +202,15 @@ function SettingsPage() {
         </label>
       </section>
 
-      <form onSubmit={onSave} className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <Label htmlFor="gemini">Google Gemini API key</Label>
-        <Input
-          id="gemini"
-          type="password"
-          autoComplete="off"
-          spellCheck={false}
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          placeholder="AIza…"
-        />
-        <div className="flex flex-wrap gap-2">
-          {draft.trim() ? (
-            <Button type="submit" disabled={busy}>
-              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              {busy ? "Testing" : "Save & test"}
-            </Button>
-          ) : null}
-          {stored ? (
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={() => {
-                save("");
-                toast.success("Gemini key removed from this browser.");
-              }}
-            >
-              Clear
-            </Button>
-          ) : null}
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Stored only in this browser — never written to the shared library. Research uses Gemini Flash
-          (2.5 first, then 3.x if needed). Create the key with{" "}
-          <strong className="font-medium text-foreground">no application restriction</strong> (do not lock
-          it to an HTTP referrer). The key is sent to this site only to call Google; it is not saved on
-          the server.
-        </p>
-      </form>
-
-      <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-        <h2 className="font-display text-lg font-semibold text-foreground">Get a free key</h2>
-        <ol className="list-decimal space-y-2 pl-5">
-          <li>
-            Open{" "}
-            <a
-              href="https://aistudio.google.com/apikey"
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex items-center gap-1 text-primary underline underline-offset-2"
-            >
-              Google AI Studio
-              <ExternalLink className="size-3" />
-            </a>{" "}
-            and sign in with a Google account.
-          </li>
-          <li>
-            Create an API key. Leave application restrictions off — a referrer-locked key fails from this
-            site. The free Gemini Flash quota is enough for song research.
-          </li>
-          <li>Paste it above and hit Save & test. Featured songs work even without a key.</li>
-        </ol>
-      </section>
-
       <section id="troubleshoot" className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold text-foreground">If something isn't working</h2>
         <details className="group border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Gemini says the key is invalid</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Create a new key in Google AI Studio with{" "}
-            <strong className="text-foreground">no application restriction</strong>. Do not lock it to an
-            HTTP referrer, and don't use a Vertex/Cloud key. Paste the whole key — it starts with AIza.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
           <summary className="cursor-pointer text-sm font-medium text-foreground">
-            "Too many users" / Gemini is busy
+            "Gemini is busy. Try again in a minute."
           </summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Google's free Flash models get crowded. Wait a minute and try again. Featured songs (Teen
-            Spirit, Sandman, YYZ…) never need a key — open those while you wait.
+            The server uses Gemini 2.5 Flash only. If that model is overloaded, wait — we do not fall
+            back to another model. Featured demos still work.
           </p>
         </details>
         <details className="border-b border-border pb-3">
@@ -314,13 +227,6 @@ function SettingsPage() {
             On this site, tap Snapshot above the replica. On the real Stomp, PAGE until the display says
             SNAP. Front switches 1–3 then recall verse / chorus / solo. Stomp mode only toggles individual
             effects.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">The same song researched twice</summary>
-          <p className="mt-2 text-muted-foreground text-sm">
-            The first successful lookup is stored in the shared library (song, artist, path — never your
-            key). Repeats skip Gemini. Featured songs always load from the built-in library.
           </p>
         </details>
         <details className="border-b border-border pb-3">
@@ -356,15 +262,18 @@ function SettingsPage() {
       <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
         <p>
-          Anyone can open this site. Featured songs load instantly. The first person to research a new
-          song with their Gemini key stores the public preset — song, artist, and HX path only — in a
-          shared library. The next visitor gets that rig with no API call. Your locker, history, and API
-          key stay on your device.
+          Featured demos load instantly and never call Gemini. Custom research uses the server (Gemini
+          2.5 Flash). Paid users share a library — cache hits skip Gemini and do not count toward the{" "}
+          {PAID_MONTHLY_BUILDS}/month fair-use cap. Free visitors cannot browse that library. Unlock is
+          ${LAUNCH_USD} launch / ${PRICE_USD} after, one time, stuck to your email.
         </p>
-        <p>
-          Download a .hlx from any preset and import it in HX Edit (File → Import). Research never uses a
-          second AI provider — only the Gemini key you paste above.
-        </p>
+        {library ? (
+          <p className="text-xs">
+            {library.ok
+              ? `Library backend on · ${library.entries} saved rigs`
+              : "Library is local on this copy — featured songs still work"}
+          </p>
+        ) : null}
         <p>
           <Link to="/" className="text-primary underline underline-offset-2">
             Back to the Lab

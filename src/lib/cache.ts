@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { dbSource, getSql } from "@/lib/db";
 import type { Preset } from "@/data/types";
+import { authMiddleware } from "@/lib/auth/middleware";
+import { emailFor, loadPlan } from "@/lib/billing";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -124,32 +126,40 @@ export const cacheHealth = createServerFn({ method: "GET" }).handler(async () =>
   }
 });
 
-export const listCachedSongs = createServerFn({ method: "GET" }).handler(async () => {
-  try {
-    const sql = await getSql();
-    const rows = await sql<{
-      song: string;
-      artist: string;
-      instrument: string;
-      stomp_model: string;
-      hit_count: number;
-      cache_key: string;
-    }>`
-      select song, artist, instrument, stomp_model, hit_count, cache_key
-      from rig_cache
-      where kind = 'song' and song <> ''
-      order by hit_count desc, updated_at desc
-      limit 24
-    `;
-    return rows.map((r) => ({
-      song: r.song,
-      artist: r.artist,
-      instrument: r.instrument as "guitar" | "bass",
-      stompModel: r.stomp_model as "hx-stomp" | "hx-stomp-xl",
-      hitCount: Number(r.hit_count),
-      key: r.cache_key,
-    }));
-  } catch {
-    return [];
-  }
-});
+export const listSharedLibrary = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    if (!plan.canSharedLibrary) return [];
+    try {
+      const sql = await getSql();
+      const rows = await sql<{
+        song: string;
+        artist: string;
+        instrument: string;
+        stomp_model: string;
+        hit_count: number;
+        cache_key: string;
+      }>`
+        select song, artist, instrument, stomp_model, hit_count, cache_key
+        from rig_cache
+        where kind = 'song' and song <> ''
+        order by hit_count desc, updated_at desc
+        limit 24
+      `;
+      return rows.map((r) => ({
+        song: r.song,
+        artist: r.artist,
+        instrument: r.instrument as "guitar" | "bass",
+        stompModel: r.stomp_model as "hx-stomp" | "hx-stomp-xl",
+        hitCount: Number(r.hit_count),
+        key: r.cache_key,
+      }));
+    } catch {
+      return [];
+    }
+  });
+
+/** Hidden from free users — kept so old imports compile. */
+export const listCachedSongs = listSharedLibrary;

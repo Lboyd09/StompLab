@@ -10,18 +10,28 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as EquivalentsRouteImport } from './routes/equivalents'
 import { Route as GearRouteImport } from './routes/gear'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
+import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
+import { Route as ApiPolarWebhookRouteImport } from './routes/api/polar.webhook'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CatalogRoute = CatalogRouteImport.update({
@@ -54,9 +64,19 @@ const HistoryRoute = HistoryRouteImport.update({
   path: '/history',
   getParentRoute: () => rootRouteImport,
 } as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const UpgradeRoute = UpgradeRouteImport.update({
+  id: '/upgrade',
+  path: '/upgrade',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PresetIdRoute = PresetIdRouteImport.update({
@@ -64,87 +84,132 @@ const PresetIdRoute = PresetIdRouteImport.update({
   path: '/preset/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
+  id: '/api/auth/$',
+  path: '/api/auth/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPolarWebhookRoute = ApiPolarWebhookRouteImport.update({
+  id: '/api/polar/webhook',
+  path: '/api/polar/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/upgrade': typeof UpgradeRoute
   '/preset/$id': typeof PresetIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/upgrade': typeof UpgradeRoute
   '/preset/$id': typeof PresetIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/catalog': typeof CatalogRoute
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
+  '/upgrade': typeof UpgradeRoute
   '/preset/$id': typeof PresetIdRoute
+  '/api/auth/$': typeof ApiAuthSplatRoute
+  '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin'
     | '/catalog'
     | '/create'
     | '/equivalents'
     | '/gear'
     | '/guide'
     | '/history'
+    | '/login'
     | '/settings'
+    | '/upgrade'
     | '/preset/$id'
+    | '/api/auth/$'
+    | '/api/polar/webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin'
     | '/catalog'
     | '/create'
     | '/equivalents'
     | '/gear'
     | '/guide'
     | '/history'
+    | '/login'
     | '/settings'
+    | '/upgrade'
     | '/preset/$id'
+    | '/api/auth/$'
+    | '/api/polar/webhook'
   id:
     | '__root__'
     | '/'
+    | '/admin'
     | '/catalog'
     | '/create'
     | '/equivalents'
     | '/gear'
     | '/guide'
     | '/history'
+    | '/login'
     | '/settings'
+    | '/upgrade'
     | '/preset/$id'
+    | '/api/auth/$'
+    | '/api/polar/webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   CatalogRoute: typeof CatalogRoute
   CreateRoute: typeof CreateRoute
   EquivalentsRoute: typeof EquivalentsRoute
   GearRoute: typeof GearRoute
   GuideRoute: typeof GuideRoute
   HistoryRoute: typeof HistoryRoute
+  LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
+  UpgradeRoute: typeof UpgradeRoute
   PresetIdRoute: typeof PresetIdRoute
+  ApiAuthSplatRoute: typeof ApiAuthSplatRoute
+  ApiPolarWebhookRoute: typeof ApiPolarWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -154,6 +219,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/catalog': {
@@ -198,11 +270,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HistoryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/upgrade': {
+      id: '/upgrade'
+      path: '/upgrade'
+      fullPath: '/upgrade'
+      preLoaderRoute: typeof UpgradeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/preset/$id': {
@@ -212,19 +298,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PresetIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/$': {
+      id: '/api/auth/$'
+      path: '/api/auth/$'
+      fullPath: '/api/auth/$'
+      preLoaderRoute: typeof ApiAuthSplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/polar/webhook': {
+      id: '/api/polar/webhook'
+      path: '/api/polar/webhook'
+      fullPath: '/api/polar/webhook'
+      preLoaderRoute: typeof ApiPolarWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   CatalogRoute: CatalogRoute,
   CreateRoute: CreateRoute,
   EquivalentsRoute: EquivalentsRoute,
   GearRoute: GearRoute,
   GuideRoute: GuideRoute,
   HistoryRoute: HistoryRoute,
+  LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
+  UpgradeRoute: UpgradeRoute,
   PresetIdRoute: PresetIdRoute,
+  ApiAuthSplatRoute: ApiAuthSplatRoute,
+  ApiPolarWebhookRoute: ApiPolarWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

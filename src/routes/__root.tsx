@@ -1,4 +1,4 @@
-import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppShell } from "@/components/layout/app-shell";
@@ -34,7 +34,11 @@ export const Route = createRootRoute({
       },
     ],
   }),
-  component: () => (
+  component: Root,
+});
+
+function Root() {
+  return (
     <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
@@ -42,13 +46,22 @@ export const Route = createRootRoute({
       <body>
         <PreviewHostBridge />
         <AuthProvider>
-          <AppShell>
-            <Outlet />
-          </AppShell>
+          <ShellSwitch />
           <Toaster />
         </AuthProvider>
         <Scripts />
       </body>
     </html>
-  ),
-});
+  );
+}
+
+function ShellSwitch() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const bare = pathname === "/login" || pathname === "/upgrade";
+  if (bare) return <Outlet />;
+  return (
+    <AppShell>
+      <Outlet />
+    </AppShell>
+  );
+}

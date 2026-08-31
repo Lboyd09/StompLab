@@ -84,12 +84,13 @@ function GuidePage() {
 
       <Section title="Research and the shared library">
         <p>
-          Featured songs never need a key. A new title uses your free Google Gemini key, stored only in
-          this browser. The first successful lookup is saved (song, artist, path — never the key) so the
-          next person skips the wait.
+          Featured demos (Sandman, Teen Spirit, Comfortably Numb) never call Gemini. Sign in for three
+          free custom songs. After that, a one-time unlock ($19 launch) opens any song, Create, History,
+          and the shared library. Cache hits do not count toward the 50 builds/month cap.
         </p>
         <p>
-          Add guitars and amps in Gear first. Research will mention what to grab from your locker.
+          Add guitars and amps in Gear first. Research will mention what to grab from your locker. Paid
+          lockers sync to your email.
         </p>
       </Section>
 

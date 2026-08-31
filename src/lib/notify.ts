@@ -1,12 +1,16 @@
 import { toast } from "sonner";
 import type { ResearchErr } from "./research";
 
-export function notifyResearchError(err: ResearchErr, goSettings: () => void) {
-  if (err.needKey) {
-    toast.error(err.error, {
-      action: { label: "Add key", onClick: goSettings },
-      duration: 9000,
-    });
+export function notifyResearchError(
+  err: ResearchErr,
+  go: { login: () => void; upgrade: () => void },
+) {
+  if (err.reason === "signin") {
+    toast.error(err.error, { action: { label: "Sign in", onClick: go.login }, duration: 8000 });
+    return;
+  }
+  if (err.reason === "paywall" || err.reason === "quota") {
+    toast.error(err.error, { action: { label: "Unlock", onClick: go.upgrade }, duration: 8000 });
     return;
   }
   toast.error(err.error);
@@ -16,5 +20,5 @@ export function notifyResearchSource(source: "library" | "cache" | "gemini" | "l
   if (source === "library") toast.success("Loaded from the built-in library. No API used.");
   else if (source === "cache") toast.success("Already in the shared library. No API used.");
   else if (source === "local") toast.success("Matched from the HX catalog.");
-  else toast.success("Researched with your Gemini key and saved for everyone.");
+  else toast.success("Researched and saved.");
 }

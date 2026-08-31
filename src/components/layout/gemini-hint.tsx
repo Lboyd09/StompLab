@@ -1,23 +1,40 @@
 import { Link } from "@tanstack/react-router";
-import { useAppStore } from "@/store/app-store";
+import type { Plan } from "@/lib/plan";
 
-export function GeminiHint() {
-  const key = useAppStore((s) => s.geminiKey);
-  if (key.trim()) {
+export function GeminiHint({ plan }: { plan: Plan }) {
+  if (!plan.signedIn) {
     return (
       <p className="text-xs text-muted-foreground">
-        New songs use Gemini Flash with the key in this browser. Repeats load from the shared
-        library — no extra API call.
+        Featured demos never need an account. Custom songs: sign in for 3 free builds.{" "}
+        <Link to="/login" className="text-primary underline underline-offset-2">
+          Sign in
+        </Link>
       </p>
     );
   }
+  if (plan.paid) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        {plan.monthUsed} of {plan.monthLimit} Gemini builds used this month. Featured, demos, and
+        cache hits do not count.
+      </p>
+    );
+  }
+  if (plan.freeRemaining <= 0) {
+    return (
+      <p className="text-xs text-muted-foreground">
+        0 free songs left.{" "}
+        <Link to="/upgrade" className="text-primary underline underline-offset-2">
+          Unlock StompLab
+        </Link>{" "}
+        to research any song.
+      </p>
+    );
+  }
+  const n = plan.freeRemaining;
   return (
     <p className="text-xs text-muted-foreground">
-      Built-in rigs and the shared library work with no key.{" "}
-      <Link to="/settings" className="text-primary underline underline-offset-2">
-        Add a free Gemini key
-      </Link>{" "}
-      only when you research something new.
+      {n} free song{n === 1 ? "" : "s"} left. Featured demos never count.
     </p>
   );
 }

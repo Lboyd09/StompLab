@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
-import { createCustomSound } from "@/lib/research";
+import { createCustomSoundFn } from "@/lib/research";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/create")({ component: CreatePage });
@@ -24,35 +25,65 @@ function CreatePage() {
   const instrument = useAppStore((s) => s.instrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const gear = useAppStore((s) => s.gear);
-  const geminiKey = useAppStore((s) => s.geminiKey);
   const savePreset = useAppStore((s) => s.savePreset);
+  const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
   const [busy, setBusy] = useState(false);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (description.trim().length < 4) return;
+    if (!plan.signedIn) {
+      await navigate({ to: "/login", search: { next: "/create" } });
+      return;
+    }
+    if (!plan.canCreate) {
+      await navigate({ to: "/upgrade" });
+      return;
+    }
     setBusy(true);
     try {
-      const result = await createCustomSound({
-        description: description.trim(),
-        instrument,
-        stompModel,
-        userGear: gear,
-        apiKey: geminiKey,
+      const result = await createCustomSoundFn({
+        data: {
+          description: description.trim(),
+          instrument,
+          stompModel,
+          userGear: gear,
+        },
       });
       if (!result.ok) {
-        notifyResearchError(result, () => void navigate({ to: "/settings" }));
+        if (result.reason === "paywall" || result.reason === "quota") {
+          await navigate({ to: "/upgrade" });
+          return;
+        }
+        if (result.reason === "signin") {
+          await navigate({ to: "/login", search: { next: "/create" } });
+          return;
+        }
+        notifyResearchError(result, {
+          login: () => void navigate({ to: "/login" }),
+          upgrade: () => void navigate({ to: "/upgrade" }),
+        });
         return;
       }
       savePreset(result.preset);
       notifyResearchSource(result.source);
+      await refresh();
       await navigate({ to: "/preset/$id", params: { id: result.preset.id } });
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not build that sound");
+      const message = err instanceof Error ? err.message : "Could not build that sound";
+      if (message === "Unauthorized") {
+        await navigate({ to: "/login", search: { next: "/create" } });
+        return;
+      }
+      toast.error(message);
     } finally {
       setBusy(false);
     }
+  }
+
+  if (!isPending && plan.signedIn && !plan.canCreate) {
+    return <Navigate to="/upgrade" />;
   }
 
   return (
@@ -65,7 +96,16 @@ function CreatePage() {
         </p>
       </header>
 
-      <form onSubmit={onSubmit} className="space-y-3">
+      {!plan.signedIn && !isPending ? (
+        <p className="text-sm text-muted-foreground">
+          Sign in for {plan.freeRemaining} free custom builds.{" "}
+          <Link to="/login" search={{ next: "/create" }} className="text-primary underline underline-offset-2">
+            Sign in
+          </Link>
+        </p>
+      ) : null}
+
+      <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
         <Label htmlFor="desc">Sound, pedalboard, or amp</Label>
         <Textarea
           id="desc"
@@ -73,11 +113,11 @@ function CreatePage() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Dumble-ish overdrive into a Twin, with a slow Univibe and a short plate…"
         />
-        <Button type="submit" disabled={busy || description.trim().length < 4}>
+        <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}
         </Button>
-        <GeminiHint />
+        <GeminiHint plan={plan} />
       </form>
 
       <div className="space-y-2">

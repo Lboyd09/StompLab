@@ -1,7 +1,8 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { FEATURED } from "@/data/featured";
 import { Button } from "@/components/ui/button";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/history")({ component: HistoryPage });
@@ -11,7 +12,13 @@ function HistoryPage() {
   const removePreset = useAppStore((s) => s.removePreset);
   const savePreset = useAppStore((s) => s.savePreset);
   const stompModel = useAppStore((s) => s.stompModel);
+  const { plan, isPending } = usePlan();
   const user = presets.filter((p) => p.source !== "featured");
+
+  if (!isPending && !plan.canHistory) {
+    if (!plan.signedIn) return <Navigate to="/login" search={{ next: "/history" }} />;
+    return <Navigate to="/upgrade" />;
+  }
 
   return (
     <div className="space-y-8">

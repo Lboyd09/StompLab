@@ -3,16 +3,18 @@ import { ArrowRight, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { FEATURED } from "@/data/featured";
-import { listCachedSongs, lookupCache } from "@/lib/cache";
+import { DEMO_IDS, FEATURED } from "@/data/featured";
+import { listSharedLibrary, lookupCache } from "@/lib/cache";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { newId, withStompModel } from "@/lib/preset-utils";
-import { researchSong } from "@/lib/research";
+import { matchFeatured, researchSongFn } from "@/lib/research";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/")({
@@ -31,26 +33,31 @@ function Home() {
   const instrument = useAppStore((s) => s.instrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const gear = useAppStore((s) => s.gear);
-  const geminiKey = useAppStore((s) => s.geminiKey);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
+  const { plan, refresh } = usePlan();
   const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
   const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState("");
   const [library, setLibrary] = useState<
     { song: string; artist: string; instrument: string; stompModel: string; hitCount: number; key: string }[]
   >([]);
 
   const featured = FEATURED.filter((p) => p.instrument === instrument);
-  const featuredSet = new Set(
-    FEATURED.map((p) => featuredKey(p.song ?? "", p.artist, p.instrument)),
-  );
+  const demos = featured.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
+  const rest = featured.filter((p) => !(DEMO_IDS as readonly string[]).includes(p.id));
+  const featuredSet = new Set(FEATURED.map((p) => featuredKey(p.song ?? "", p.artist, p.instrument)));
 
   useEffect(() => {
-    listCachedSongs()
+    if (!plan.canSharedLibrary) {
+      setLibrary([]);
+      return;
+    }
+    listSharedLibrary()
       .then(setLibrary)
-      .catch(() => undefined);
-  }, []);
+      .catch(() => setLibrary([]));
+  }, [plan.canSharedLibrary]);
 
   useEffect(() => {
     if (search.q) setSong(search.q);
@@ -63,33 +70,6 @@ function Home() {
       !featuredSet.has(featuredKey(row.song, row.artist, row.instrument)),
   );
 
-  async function onResearch(e: React.FormEvent) {
-    e.preventDefault();
-    if (!song.trim()) return;
-    setBusy(true);
-    try {
-      const result = await researchSong({
-        song: song.trim(),
-        artist: artist.trim() || undefined,
-        instrument,
-        stompModel,
-        userGear: gear,
-        apiKey: geminiKey,
-      });
-      if (!result.ok) {
-        notifyResearchError(result, () => void navigate({ to: "/settings" }));
-        return;
-      }
-      savePreset(result.preset);
-      notifyResearchSource(result.source);
-      await navigate({ to: "/preset/$id", params: { id: result.preset.id } });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Research failed");
-    } finally {
-      setBusy(false);
-    }
-  }
-
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return;
@@ -98,7 +78,74 @@ function Home() {
     void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
+  async function onResearch(e: React.FormEvent) {
+    e.preventDefault();
+    if (!song.trim()) return;
+    const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel);
+    if (featuredHit) {
+      savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
+      notifyResearchSource("library");
+      await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
+      return;
+    }
+    if (!plan.signedIn) {
+      await navigate({ to: "/login", search: { next: "/" } });
+      return;
+    }
+    if (!plan.canResearch) {
+      await navigate({ to: "/upgrade" });
+      return;
+    }
+    setBusy(true);
+    setStatus("Researching…");
+    try {
+      const result = await researchSongFn({
+        data: {
+          song: song.trim(),
+          artist: artist.trim() || undefined,
+          instrument,
+          stompModel,
+          userGear: gear,
+        },
+      });
+      if (!result.ok) {
+        if (result.reason === "paywall" || result.reason === "quota") {
+          await navigate({ to: "/upgrade" });
+          return;
+        }
+        if (result.reason === "signin") {
+          await navigate({ to: "/login", search: { next: "/" } });
+          return;
+        }
+        notifyResearchError(result, {
+          login: () => void navigate({ to: "/login" }),
+          upgrade: () => void navigate({ to: "/upgrade" }),
+        });
+        setStatus(result.error);
+        return;
+      }
+      savePreset(result.preset);
+      notifyResearchSource(result.source);
+      await refresh();
+      await navigate({ to: "/preset/$id", params: { id: result.preset.id } });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Research failed";
+      if (message === "Unauthorized") {
+        await navigate({ to: "/login", search: { next: "/" } });
+        return;
+      }
+      toast.error(message);
+      setStatus(message);
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function openCached(key: string) {
+    if (!plan.canSharedLibrary) {
+      await navigate({ to: "/upgrade" });
+      return;
+    }
     setBusy(true);
     try {
       const cached = await lookupCache({ data: { key } });
@@ -122,17 +169,19 @@ function Home() {
 
   return (
     <div className="space-y-10">
+      <UpgradeBanner plan={plan} />
+
       <section className="max-w-2xl space-y-3">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">HX Stomp laboratory</p>
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
           Research a song. Copy the preset onto your Stomp.
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
-          Name a track. See it on the unit. Download a .hlx HX Edit can import. Repeats are free.
+          Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
         </p>
       </section>
 
-      <form onSubmit={onResearch} className="max-w-2xl space-y-4">
+      <form onSubmit={(e) => void onResearch(e)} className="max-w-2xl space-y-4">
         <div className="grid gap-3 sm:grid-cols-[1fr_180px_auto]">
           <div className="space-y-1.5">
             <Label htmlFor="song">Song</Label>
@@ -164,25 +213,26 @@ function Home() {
           Using {instrument} · {stompModel === "hx-stomp" ? "HX Stomp (3 switches)" : "HX Stomp XL (8 switches)"}.
           Change both in the header.
         </p>
-        <GeminiHint />
+        <GeminiHint plan={plan} />
+        {status && busy === false && !plan.canResearch ? (
+          <p className="text-sm text-destructive">{status}</p>
+        ) : null}
       </form>
 
       <section className="space-y-4">
         <div className="flex items-end justify-between">
-          <h2 className="font-display text-lg font-semibold">Start with a known rig</h2>
-          <span className="text-xs text-muted-foreground">{instrument} · no key needed</span>
+          <h2 className="font-display text-lg font-semibold">Demo — one tap, always works</h2>
+          <span className="text-xs text-muted-foreground">Never Gemini</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((p) => (
+        <div className="grid gap-3 sm:grid-cols-3">
+          {demos.map((p) => (
             <button
               key={p.id}
               type="button"
               onClick={() => openFeatured(p.id)}
               className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
             >
-              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                {p.artist}
-              </div>
+              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
               <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
               <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
               <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
@@ -194,11 +244,38 @@ function Home() {
         </div>
       </section>
 
-      {community.length ? (
+      {rest.length ? (
+        <section className="space-y-4">
+          <div className="flex items-end justify-between">
+            <h2 className="font-display text-lg font-semibold">More known rigs</h2>
+            <span className="text-xs text-muted-foreground">{instrument} · free</span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {rest.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => openFeatured(p.id)}
+                className="group rounded-xl border border-border bg-card p-5 text-left hover:border-primary/50"
+              >
+                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
+                <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
+                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
+                <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
+                  Open on Stomp
+                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                </div>
+              </button>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
+      {plan.canSharedLibrary && community.length ? (
         <section className="space-y-4">
           <div className="flex items-end justify-between">
             <h2 className="font-display text-lg font-semibold">Shared library</h2>
-            <span className="text-xs text-muted-foreground">Researched once, kept for everyone</span>
+            <span className="text-xs text-muted-foreground">Paid · cache hits do not count</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {community.map((row) => (
@@ -232,9 +309,9 @@ function Home() {
         </CardHeader>
         <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
           <p>
-            <span className="block font-medium text-foreground">1. Look it up</span>
-            Featured songs are instant. A new title uses your Gemini key once, then the shared library
-            keeps it.
+            <span className="block font-medium text-foreground">1. Demo or research</span>
+            Sandman, Teen Spirit, and Comfortably Numb are instant. A new title uses the server Gemini
+            once. Unlock to keep researched rigs across visits.
           </p>
           <p>
             <span className="block font-medium text-foreground">2. Play the replica</span>
