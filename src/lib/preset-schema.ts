@@ -144,7 +144,7 @@ export function extractJson(text: string): unknown {
 export function parsePresetJson(json: unknown): PresetOutT {
   const result = PresetOut.safeParse(json);
   if (result.success) return result.data;
-  throw new Error("Gemini sent a preset we couldn't read. Try that song again.");
+  throw new Error("We couldn't read that preset. Try that song again.");
 }
 
 export function toPreset(

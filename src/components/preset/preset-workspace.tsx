@@ -3,14 +3,17 @@ import type { FootswitchAssign, Preset } from "@/data/types";
 import { copyHlx, downloadHlx, hlxFilename } from "@/lib/hlx";
 import {
   blockModel,
+  canDownloadPreset,
   deviceFor,
   dspLoad,
   featuredOriginal,
   formatParam,
+  isDemoId,
   sortedBlocks,
   withSnapshot,
   withStompModel,
 } from "@/lib/preset-utils";
+import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
@@ -43,12 +46,14 @@ export function PresetWorkspace({
   const defaultFsMode = useAppStore((s) => s.defaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
+  const { plan } = usePlan();
   const [copying, setCopying] = useState(false);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
   const exportMode = fsMode === "preset" ? "stomp" : fsMode;
   const original = featuredOriginal(preset.id);
+  const canDownload = canDownloadPreset(preset.id, plan);
 
   useEffect(() => {
     if (defaultFsMode === "snapshot") setFsMode("snapshot");
@@ -138,6 +143,7 @@ export function PresetWorkspace({
   }
 
   function onDownload() {
+    if (!canDownload) return;
     if (confirmDownload && !window.confirm(`Download ${hlxFilename(preset)} for HX Edit?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
     toast.success(
@@ -148,6 +154,7 @@ export function PresetWorkspace({
   }
 
   async function onCopy() {
+    if (!canDownload) return;
     setCopying(true);
     try {
       await copyHlx(preset, { fsMode: exportMode });
@@ -190,17 +197,32 @@ export function PresetWorkspace({
               )}
             </h1>
             <div className="flex flex-col items-end gap-1">
-              <div className="flex flex-wrap justify-end gap-2">
-                <Button type="button" onClick={onDownload}>
-                  Download .hlx
-                </Button>
-                <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
-                  {copying ? "Copying" : "Copy JSON"}
-                </Button>
-              </div>
-              <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                HX Edit · File · Import · {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
-              </p>
+              {canDownload ? (
+                <>
+                  <div className="flex flex-wrap justify-end gap-2">
+                    <Button type="button" onClick={onDownload}>
+                      Download .hlx
+                    </Button>
+                    <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
+                      {copying ? "Copying" : "Copy JSON"}
+                    </Button>
+                  </div>
+                  <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                    HX Edit · File · Import · {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
+                  </p>
+                </>
+              ) : (
+                <>
+                  <Button asChild>
+                    <Link to="/upgrade">Unlock .hlx download</Link>
+                  </Button>
+                  <p className="max-w-[16rem] text-right text-[10px] leading-relaxed text-muted-foreground">
+                    {isDemoId(preset.id)
+                      ? "Demo download should be open — refresh if this is stuck."
+                      : "Look at the replica for free. This known rig downloads after unlock. Demos still download."}
+                  </p>
+                </>
+              )}
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
@@ -233,9 +255,13 @@ export function PresetWorkspace({
         </div>
         <p className="text-xs text-muted-foreground">
           {fsMode === "snapshot"
-            ? "Snapshot — tap a numbered switch, then tap a song section. Download writes this onto the unit."
+            ? canDownload
+              ? "Snapshot — tap a numbered switch, then tap a song section. Download writes this onto the unit."
+              : "Snapshot — tap a numbered switch, then tap a song section. Unlock to write this onto the unit."
             : fsMode === "stomp"
-              ? "Stomp — tap a numbered switch, then tap an effect. Download writes this onto the unit."
+              ? canDownload
+                ? "Stomp — tap a numbered switch, then tap an effect. Download writes this onto the unit."
+                : "Stomp — tap a numbered switch, then tap an effect. Unlock to write this onto the unit."
               : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
         </p>
 

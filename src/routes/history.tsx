@@ -1,5 +1,6 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
+import { PaywallCard } from "@/components/layout/paywall-card";
 import { FEATURED } from "@/data/featured";
 import { Button } from "@/components/ui/button";
 import { usePlan } from "@/lib/use-plan";
@@ -15,9 +16,16 @@ function HistoryPage() {
   const { plan, isPending } = usePlan();
   const user = presets.filter((p) => p.source !== "featured");
 
-  if (!isPending && !plan.canHistory) {
-    if (!plan.signedIn) return <Navigate to="/login" search={{ next: "/history" }} />;
-    return <Navigate to="/upgrade" />;
+  if (isPending) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (!plan.canHistory) {
+    return (
+      <PaywallCard
+        title="History is in the full Lab"
+        body="Keep every song you research, reopen it later, and jump back into the replica. Free stays on the three demos — this page is the paid unlock, not a sign-in wall."
+      />
+    );
   }
 
   return (

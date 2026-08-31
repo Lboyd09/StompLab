@@ -1,8 +1,9 @@
-import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { PaywallCard } from "@/components/layout/paywall-card";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -83,7 +84,12 @@ function CreatePage() {
   }
 
   if (!isPending && plan.signedIn && !plan.canCreate) {
-    return <Navigate to="/upgrade" />;
+    return (
+      <PaywallCard
+        title="You've used the three free custom songs"
+        body="Unlock to describe any sound, keep history, and download every rig — not just the demos."
+      />
+    );
   }
 
   return (

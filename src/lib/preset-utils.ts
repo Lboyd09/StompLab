@@ -1,4 +1,4 @@
-import { FEATURED } from "@/data/featured";
+import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
@@ -69,6 +69,27 @@ const TAP_FS: FootswitchAssign = {
 export function featuredOriginal(id: string): Preset | undefined {
   const base = featuredBaseId(id);
   return FEATURED.find((p) => p.id === base || p.id === id);
+}
+
+export function isDemoId(id: string): boolean {
+  const base = featuredBaseId(id);
+  return (DEMO_IDS as readonly string[]).includes(base);
+}
+
+export function isFeaturedKnownId(id: string): boolean {
+  const base = featuredBaseId(id);
+  return FEATURED.some((p) => p.id === base || p.id === id);
+}
+
+/** Demos + custom builds download on free. Other known/featured rigs are replica-only until unlock. */
+export function canDownloadPreset(
+  id: string,
+  plan: { paid?: boolean; admin?: boolean } | null | undefined,
+): boolean {
+  if (plan?.paid || plan?.admin) return true;
+  if (isDemoId(id)) return true;
+  if (isFeaturedKnownId(id)) return false;
+  return true;
 }
 
 export function withStompModel(preset: Preset, model: StompModelId): Preset {

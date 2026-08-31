@@ -16,6 +16,7 @@ import {
   resolveOgCardAsset,
   snapshotOgIdentity,
   stripInstallParams,
+  renderInstallPageHtml,
 } from "./grok-pwa-shared.mjs";
 import { renderInstallPage } from "./grok-pwa-plugin.mjs";
 
@@ -478,7 +479,9 @@ test("rejects hosts that are not plain slugs", () => {
 
 test("renders install page markup", () => {
   const html = renderInstallPage("wild-race.grok.me", "/?install=1&platform=ios");
-  assert.match(html, /Add Wild Race to your/);
+  // Plugin always bakes src/lib/og/site.json so homescreen name is Stomp Lab, not the host slug.
+  assert.match(html, /Add Stomp Lab to your/);
+  assert.equal(html.includes("Grok App"), false);
   assert.match(html, /\/__grok\/install\/styles\.css/);
   assert.match(html, /href="\/"/);
   assert.equal(html.includes("{{APP_NAME}}"), false);
@@ -506,6 +509,16 @@ test("vercel hosts use baked site title and app icons", () => {
   assert.equal(manifest.icons[0].src, "/icon-192.png");
 });
 
+test("install page uses site title on vercel hosts, not Grok App", () => {
+  const html = renderInstallPageHtml("<h1>Add {{APP_NAME}} to your Home Screen</h1>", {
+    host: "stomplab.vercel.app",
+    url: "/?install=1&platform=ios",
+    site: { title: "Stomp Lab" },
+  });
+  assert.match(html, /Add Stomp Lab to your/);
+  assert.equal(html.includes("Grok App"), false);
+});
+
 // Tripwires: the deployed-app path only works if Nitro scans server/ — an
 // accidental edit that drops serverDir or the middleware file would otherwise
 // fail silently (published apps would just render the app for ?install=1).
@@ -528,5 +541,12 @@ test("vite plugin bakes og identity as a virtual module", () => {
   const plugin = readFileSync(join(TEMPLATE_ROOT, "scripts/grok-pwa-plugin.mjs"), "utf8");
   assert.match(plugin, /virtual:grok-og-identity/);
   assert.match(plugin, /snapshotOgIdentity/);
+  assert.match(plugin, /renderWebManifest\(requestHost\(req\),\s*snapshotOgIdentity\(\)\.site\)/);
+});
+
+test("nitro middleware passes baked site into the manifest", () => {
+  const middleware = readFileSync(join(TEMPLATE_ROOT, "server/middleware/grok-pwa.ts"), "utf8");
+  assert.match(middleware, /renderWebManifest\(requestHost\(event\),\s*grokOgIdentity\.site\)/);
+  assert.match(middleware, /site:\s*grokOgIdentity\.site/);
 });
 

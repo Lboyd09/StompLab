@@ -88,7 +88,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
     return {
       ok: false,
       reason: "quota",
-      error: "You've used this month's 50 Gemini builds. Featured songs and cache hits still work. Resets next calendar month.",
+      error: "You've used this month's 50 custom builds. Featured songs and library hits still work. Resets next calendar month.",
     };
   }
   return {
@@ -283,7 +283,7 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
       return {
         ok: false,
         reason: "paywall",
-        error: "Catalog browse is free. Gemini pedal matching unlocks with StompLab.",
+        error: "Catalog browse is free. Pedal matching unlocks with StompLab.",
       };
     }
 

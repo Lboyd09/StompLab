@@ -8,7 +8,7 @@ import { extractJson } from "./preset-schema";
 const MODEL = "google/gemini-2.5-flash";
 const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
 const GENERATE_MS = 28000;
-const BUSY = "Gemini is busy. Try again in a minute.";
+const BUSY = "Research is busy. Try again in a minute.";
 
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
@@ -48,7 +48,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
 export async function geminiJson(prompt: string): Promise<unknown> {
   const token = gatewayToken();
   if (!token) {
-    throw new Error("Gemini isn't configured on the server yet. Try a featured song, or try again later.");
+    throw new Error("Song research isn't configured on this copy yet. Try a featured demo, or try again later.");
   }
 
   let res: Response;
@@ -95,7 +95,7 @@ export async function geminiJson(prompt: string): Promise<unknown> {
       message = raw.slice(0, 220);
     }
     if (isBusyStatus(res.status, message)) throw new Error(BUSY);
-    throw new Error(message || `Gemini error ${res.status}`);
+    throw new Error(message || `Research failed (${res.status}). Try again.`);
   }
 
   let content = "";
@@ -105,13 +105,13 @@ export async function geminiJson(prompt: string): Promise<unknown> {
     };
     content = body.choices?.[0]?.message?.content ?? "";
   } catch {
-    throw new Error("Gemini sent a broken response.");
+    throw new Error("Could not read that answer. Try the song again.");
   }
-  if (!content.trim()) throw new Error("Gemini returned an empty answer.");
+  if (!content.trim()) throw new Error("Empty answer. Try again.");
   try {
     return extractJson(content);
   } catch {
-    throw new Error("Gemini JSON could not be read. Try again.");
+    throw new Error("Could not read that preset. Try the song again.");
   }
 }
 

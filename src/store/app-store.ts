@@ -27,6 +27,9 @@ type AppState = {
   showDsp: boolean;
   confirmDownload: boolean;
   showFsNumbers: boolean;
+  largeControls: boolean;
+  lcdBright: boolean;
+  reduceMotion: boolean;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -43,6 +46,9 @@ type AppState = {
   setDefaultFsMode: (mode: FsModePref) => void;
   setShowDsp: (show: boolean) => void;
   setShowFsNumbers: (show: boolean) => void;
+  setLargeControls: (large: boolean) => void;
+  setLcdBright: (bright: boolean) => void;
+  setReduceMotion: (reduce: boolean) => void;
   setConfirmDownload: (confirm: boolean) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
@@ -70,7 +76,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   theme: "dark",
   defaultFsMode: "auto",
   showDsp: true,
-  showFsNumbers: false,
+  showFsNumbers: true,
+  largeControls: false,
+  lcdBright: false,
+  reduceMotion: false,
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -92,6 +101,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       defaultFsMode: settings.defaultFsMode,
       showDsp: settings.showDsp,
       showFsNumbers: settings.showFsNumbers,
+      largeControls: settings.largeControls,
+      lcdBright: settings.lcdBright,
+      reduceMotion: settings.reduceMotion,
       confirmDownload: settings.confirmDownload,
       geminiKey: loadGeminiKey(),
       presets: loadPresets(),
@@ -121,6 +133,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   setShowFsNumbers: (showFsNumbers) => {
     persist({ showFsNumbers });
     set({ showFsNumbers });
+  },
+  setLargeControls: (largeControls) => {
+    persist({ largeControls });
+    set({ largeControls });
+  },
+  setLcdBright: (lcdBright) => {
+    persist({ lcdBright });
+    set({ lcdBright });
+  },
+  setReduceMotion: (reduceMotion) => {
+    persist({ reduceMotion });
+    set({ reduceMotion });
   },
   setConfirmDownload: (confirmDownload) => {
     persist({ confirmDownload });

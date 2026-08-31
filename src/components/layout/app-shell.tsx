@@ -45,6 +45,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const gear = useAppStore((s) => s.gear);
   const savePreset = useAppStore((s) => s.savePreset);
   const theme = useAppStore((s) => s.theme);
+  const lcdBright = useAppStore((s) => s.lcdBright);
+  const largeControls = useAppStore((s) => s.largeControls);
+  const reduceMotion = useAppStore((s) => s.reduceMotion);
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
   const catalogFind =
@@ -73,6 +76,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     apply(theme !== "light");
     return undefined;
   }, [theme]);
+
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.lcd = lcdBright ? "bright" : "normal";
+    root.dataset.controls = largeControls ? "large" : "normal";
+    root.dataset.motion = reduceMotion ? "reduce" : "ok";
+  }, [lcdBright, largeControls, reduceMotion]);
 
   const modelHits = useMemo(
     () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 6) : []),

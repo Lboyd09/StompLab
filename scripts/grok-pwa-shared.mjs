@@ -151,31 +151,50 @@ export function stripInstallParams(url) {
   return rest ? `${path}?${rest}` : path;
 }
 
-export function renderInstallPageHtml(template, { host, url } = {}) {
+export function renderInstallPageHtml(template, { host, url, site } = {}) {
+  const name = String(site?.title ?? "").trim() || appNameFromHost(host);
   return String(template)
-    .replaceAll("{{APP_NAME}}", escapeHtml(appNameFromHost(host)))
+    .replaceAll("{{APP_NAME}}", escapeHtml(name))
     .replaceAll("{{APP_URL}}", escapeHtml(stripInstallParams(url)));
 }
 
-export function renderWebManifest(hostHeader) {
-  const name = appNameFromHost(hostHeader);
+export function renderWebManifest(hostHeader, site = {}) {
+  const fromSite = String(site?.title ?? "").trim();
+  const name = fromSite || appNameFromHost(hostHeader);
+  const shortName = String(site?.shortName ?? site?.short_name ?? "").trim() || name;
+  const customIcons = Boolean(fromSite);
   return JSON.stringify(
     {
       name,
-      short_name: name,
+      short_name: shortName,
       id: "/",
       start_url: "/",
       scope: "/",
       display: "standalone",
       background_color: "#000000",
-      theme_color: "#000000",
-      icons: [
-        {
-          src: "/__grok/icon-180.png",
-          sizes: "180x180",
-          type: "image/png",
-        },
-      ],
+      theme_color: "#0B0C0E",
+      icons: customIcons
+        ? [
+            {
+              src: "/icon-192.png",
+              sizes: "192x192",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "/icon-512.png",
+              sizes: "512x512",
+              type: "image/png",
+              purpose: "any maskable",
+            },
+          ]
+        : [
+            {
+              src: "/__grok/icon-180.png",
+              sizes: "180x180",
+              type: "image/png",
+            },
+          ],
     },
     null,
     2,
@@ -437,7 +456,9 @@ export function injectGrokPwaHead(html, ctx = {}) {
   const missing = grokPwaHeadTags(appName)
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
-      if (key === "apple-touch-icon") return !next.includes('href="/__grok/icon-180.png"');
+      if (key === "apple-touch-icon") {
+        return !next.includes('href="/__grok/icon-180.png"') && !next.includes('href="/icon-192.png"');
+      }
       return !next.includes(`name="${key}"`);
     })
     .map(([, tag]) => tag);

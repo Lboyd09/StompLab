@@ -19,6 +19,14 @@ function SettingsPage() {
   const setDefaultFsMode = useAppStore((s) => s.setDefaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
   const setShowDsp = useAppStore((s) => s.setShowDsp);
+  const showFsNumbers = useAppStore((s) => s.showFsNumbers);
+  const setShowFsNumbers = useAppStore((s) => s.setShowFsNumbers);
+  const largeControls = useAppStore((s) => s.largeControls);
+  const setLargeControls = useAppStore((s) => s.setLargeControls);
+  const lcdBright = useAppStore((s) => s.lcdBright);
+  const setLcdBright = useAppStore((s) => s.setLcdBright);
+  const reduceMotion = useAppStore((s) => s.reduceMotion);
+  const setReduceMotion = useAppStore((s) => s.setReduceMotion);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
   const setConfirmDownload = useAppStore((s) => s.setConfirmDownload);
   const instrument = useAppStore((s) => s.instrument);
@@ -46,7 +54,7 @@ function SettingsPage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Your {unitLabel} · {instrument}. Theme, unit, and how the replica behaves. Research runs on
-          the server — you never paste a Gemini key.
+          the server — nothing to paste.
         </p>
       </header>
 
@@ -182,6 +190,62 @@ function SettingsPage() {
             </span>
           </span>
         </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={showFsNumbers}
+            onChange={(e) => setShowFsNumbers(e.target.checked)}
+          />
+          <span>
+            Number the footswitches 1–6
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              1 is top-left. Same map the .hlx writes onto the unit.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={largeControls}
+            onChange={(e) => setLargeControls(e.target.checked)}
+          />
+          <span>
+            Larger knobs and switches
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Easier on a phone. The hardware still has the same layout.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={lcdBright}
+            onChange={(e) => setLcdBright(e.target.checked)}
+          />
+          <span>
+            Brighter LCD
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              More glow on the replica screen. Off matches a dim stage unit.
+            </span>
+          </span>
+        </label>
+        <label className="flex items-start gap-3 text-sm">
+          <input
+            type="checkbox"
+            className="mt-1 size-4 accent-primary"
+            checked={reduceMotion}
+            onChange={(e) => setReduceMotion(e.target.checked)}
+          />
+          <span>
+            Reduce motion
+            <span className="mt-0.5 block text-xs text-muted-foreground">
+              Cuts animations on this site.
+            </span>
+          </span>
+        </label>
         <p className="text-sm text-muted-foreground">
           Footswitches on the replica are numbered 1–6, starting top-left. That is the same map the .hlx
           writes onto the unit.
@@ -206,11 +270,25 @@ function SettingsPage() {
         <h2 className="font-display text-lg font-semibold text-foreground">If something isn't working</h2>
         <details className="group border-b border-border pb-3">
           <summary className="cursor-pointer text-sm font-medium text-foreground">
-            "Gemini is busy. Try again in a minute."
+            Sign in, sign up, or forgot password
           </summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            The server uses Gemini 2.5 Flash only. If that model is overloaded, wait — we do not fall
-            back to another model. Featured demos still work.
+            Email and a password of 8+ characters. No Google, no X. This site does not email reset
+            links. If you already paid, use the same email you used at checkout. If sign-in sits
+            there doing nothing, refresh once and try again.{" "}
+            <Link to="/login" className="text-primary underline underline-offset-2">
+              Open sign in
+            </Link>
+            .
+          </p>
+        </details>
+        <details className="group border-b border-border pb-3">
+          <summary className="cursor-pointer text-sm font-medium text-foreground">
+            "Research is busy. Try again in a minute."
+          </summary>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Custom songs run on the server. If it's overloaded, wait — we do not switch models.
+            Featured demos still work.
           </p>
         </details>
         <details className="border-b border-border pb-3">
@@ -262,10 +340,10 @@ function SettingsPage() {
       <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
         <p>
-          Featured demos load instantly and never call Gemini. Custom research uses the server (Gemini
-          2.5 Flash). Paid users share a library — cache hits skip Gemini and do not count toward the{" "}
-          {PAID_MONTHLY_BUILDS}/month fair-use cap. Free visitors cannot browse that library. Unlock is
-          ${LAUNCH_USD} launch / ${PRICE_USD} after, one time, stuck to your email.
+          Featured demos load instantly. Custom research uses the server. Paid users share a library
+          — cache hits skip a new build and do not count toward the {PAID_MONTHLY_BUILDS}/month
+          fair-use cap. Free visitors cannot browse that library. Unlock is ${LAUNCH_USD} launch / $
+          {PRICE_USD} after, one time, stuck to your email.
         </p>
         {library ? (
           <p className="text-xs">

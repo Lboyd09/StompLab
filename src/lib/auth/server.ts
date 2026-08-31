@@ -91,7 +91,7 @@ export const authConfigured =
 // it derives the origin per-request from the (proxied) host, validated against the
 // preview allowlist, which makes the OAuth `redirect_uri` the concrete preview URL
 // the broker's preview client accepts.
-const explicitBaseURL = env("BETTER_AUTH_URL");
+const explicitBaseURL = env("BETTER_AUTH_URL")?.replace(/\/$/, "");
 // Explicit `string[]` (not a readonly tuple) — Better Auth's DynamicBaseURLConfig
 // requires a mutable `allowedHosts: string[]`.
 const previewAllowedHosts: string[] = [...PREVIEW_ALLOWED_HOSTS];
@@ -103,10 +103,36 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
+
+/** Extra hosts for Vercel production (stomplab.vercel.app) — sign-in fails as Invalid origin without these. */
+function extraAuthHosts(): string[] {
+  const hosts = new Set<string>(["stomplab.vercel.app"]);
+  const addHost = (raw?: string) => {
+    const v = (raw ?? "").trim().replace(/\/$/, "");
+    if (!v) return;
+    try {
+      hosts.add(v.startsWith("http") ? new URL(v).host : v.replace(/^https?:\/\//, ""));
+    } catch {
+      hosts.add(v.replace(/^https?:\/\//, ""));
+    }
+  };
+  addHost(env("VERCEL_URL"));
+  addHost(env("VERCEL_PROJECT_PRODUCTION_URL"));
+  addHost(env("APP_ORIGIN"));
+  addHost(env("POLAR_SUCCESS_ORIGIN"));
+  return [...hosts].filter(Boolean);
+}
+function extraAuthOrigins(): string[] {
+  return extraAuthHosts().flatMap((h) => [`https://${h}`, `http://${h}`]);
+}
+
+const extraHosts = extraAuthHosts();
+const extraOrigins = extraAuthOrigins();
+
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]", ...extraHosts],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
@@ -116,13 +142,14 @@ const baseURL = explicitBaseURL ?? {
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
 const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
+  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS, ...extraOrigins]
   : [
       // Host wildcards (matched against Origin's host)
       ...previewAllowedHosts,
       // Full-origin wildcards (matched against Origin)
       ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
       ...LOCAL_DEV_ORIGINS,
+      ...extraOrigins,
     ];
 
 const databaseUrl = env("DATABASE_URL");
@@ -211,7 +238,16 @@ export const auth = betterAuth({
   session: { cookieCache: { enabled: true, maxAge: 300 } },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
-  ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+  ...(emailAndPasswordEnabled
+    ? {
+        emailAndPassword: {
+          enabled: true,
+          autoSignIn: true,
+          minPasswordLength: 8,
+          requireEmailVerification: false,
+        },
+      }
+    : {}),
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a

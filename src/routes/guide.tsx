@@ -84,9 +84,10 @@ function GuidePage() {
 
       <Section title="Research and the shared library">
         <p>
-          Featured demos (Sandman, Teen Spirit, Comfortably Numb) never call Gemini. Sign in for three
-          free custom songs. After that, a one-time unlock ($19 launch) opens any song, Create, History,
-          and the shared library. Cache hits do not count toward the 50 builds/month cap.
+          Featured demos (Sandman, Teen Spirit, Comfortably Numb) never need an account and always
+          download. Sign in for three free custom songs. After that, a one-time unlock ($19 launch)
+          opens any song, Create, History, Gear, and the shared library. Cache hits do not count
+          toward the 50 builds/month cap.
         </p>
         <p>
           Add guitars and amps in Gear first. Research will mention what to grab from your locker. Paid

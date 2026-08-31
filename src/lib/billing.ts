@@ -22,7 +22,23 @@ async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const ent = await sql<{ paid: boolean }>`
     select paid from entitlements where user_id = ${userId} limit 1
   `;
-  const paidRow = Boolean(ent[0]?.paid);
+  let paidRow = Boolean(ent[0]?.paid);
+  if (!paidRow && isAdminEmail(email)) {
+    try {
+      await sql`
+        insert into entitlements (user_id, email, paid, paid_at, updated_at)
+        values (${userId}, ${email ?? ""}, true, now(), now())
+        on conflict (user_id) do update set
+          paid = true,
+          email = excluded.email,
+          paid_at = coalesce(entitlements.paid_at, now()),
+          updated_at = now()
+      `;
+      paidRow = true;
+    } catch {
+      paidRow = true;
+    }
+  }
   const lifetime = await sql<{ n: number }>`
     select count(*)::int as n from build_events where user_id = ${userId}
   `;

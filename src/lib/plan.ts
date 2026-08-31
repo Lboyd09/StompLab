@@ -26,6 +26,7 @@ export type Plan = {
   canResearch: boolean;
   canCreate: boolean;
   canHistory: boolean;
+  canGear: boolean;
   canXlRegen: boolean;
   canLockerSync: boolean;
   canSharedLibrary: boolean;
@@ -48,6 +49,7 @@ export function emptyPlan(): Plan {
     canResearch: false,
     canCreate: false,
     canHistory: false,
+    canGear: false,
     canXlRegen: false,
     canLockerSync: false,
     canSharedLibrary: false,
@@ -82,6 +84,7 @@ export function assemblePlan(opts: {
     canResearch: canBuild,
     canCreate: canBuild,
     canHistory: paid,
+    canGear: paid,
     canXlRegen: paid,
     canLockerSync: paid,
     canSharedLibrary: paid,

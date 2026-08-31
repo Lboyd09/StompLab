@@ -4,7 +4,7 @@ import { ALL_MODELS } from "../data/catalog.ts";
 import { FEATURED } from "../data/featured.ts";
 import { HELIX_IDS } from "../data/helix-ids.ts";
 import { buildHlx } from "./hlx.ts";
-import { featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
+import { canDownloadPreset, featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
   const p = FEATURED.find((x) => x.id === id);
@@ -225,5 +225,23 @@ describe("visual FS map", () => {
     const fs = tone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
     assert.equal(fs.dsp0.block0["@fs_index"], 4);
     assert.equal((hlx.data as { device: number }).device, 2162699);
+  });
+});
+
+describe("free vs paid download gates", () => {
+  const free = { paid: false, admin: false };
+  const paid = { paid: true, admin: false };
+  it("lets free users download demos and custom builds, not other known rigs", () => {
+    assert.equal(canDownloadPreset("featured-sandman", free), true);
+    assert.equal(canDownloadPreset("featured-sandman-hx-stomp", free), true);
+    assert.equal(canDownloadPreset("featured-teen-spirit-hx-stomp-xl", free), true);
+    assert.equal(canDownloadPreset("featured-numb", free), true);
+    assert.equal(canDownloadPreset("featured-yyz", free), false);
+    assert.equal(canDownloadPreset("featured-schism-hx-stomp", free), false);
+    assert.equal(canDownloadPreset("custom-abc123", free), true);
+  });
+  it("lets paid and admin download everything", () => {
+    assert.equal(canDownloadPreset("featured-yyz", paid), true);
+    assert.equal(canDownloadPreset("featured-schism", { paid: false, admin: true }), true);
   });
 });

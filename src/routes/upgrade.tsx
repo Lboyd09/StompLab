@@ -16,7 +16,7 @@ export const Route = createFileRoute("/upgrade")({
 
 const PERKS = [
   "Type any song. Get a Stomp .hlx that sounds like the record.",
-  `${PAID_MONTHLY_BUILDS} new Gemini builds every calendar month.`,
+  `${PAID_MONTHLY_BUILDS} new custom builds every calendar month.`,
   "Create custom sounds. History. XL snapshot 4. Gear locker sync.",
   "Shared library of researched rigs — cache hits do not count.",
   "Featured demos stay free forever. No ads after you pay.",
@@ -81,7 +81,7 @@ function UpgradePage() {
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
           <h1 className="font-display text-3xl font-semibold">You're unlocked</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.monthUsed} of {plan.monthLimit} Gemini builds used this month. Featured songs never
+            {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured songs never
             count.
           </p>
           <Button asChild>
@@ -97,7 +97,7 @@ function UpgradePage() {
       <div className="mx-auto w-full max-w-lg space-y-8">
         <div className="space-y-3">
           <Link to="/" className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            Stomp Lab
+            ← Back to Lab
           </Link>
           <h1 className="font-display text-4xl font-semibold tracking-tight">
             Type any song.
@@ -149,10 +149,10 @@ function UpgradePage() {
 
         <p className="text-sm text-muted-foreground">
           Not ready?{" "}
-          <Link to="/" className="text-primary underline underline-offset-2">
+          <a href="/" className="text-primary underline underline-offset-2">
             Play the three demo songs
-          </Link>{" "}
-          — Sandman, Teen Spirit, Comfortably Numb. No Gemini. Always works.
+          </a>{" "}
+          — Sandman, Teen Spirit, Comfortably Numb. Always works.
         </p>
       </div>
     </main>

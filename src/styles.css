@@ -364,3 +364,27 @@ html.light {
     animation-duration: 0.01ms !important;
   }
 }
+
+html[data-motion="reduce"] * {
+  transition-duration: 0.01ms !important;
+  animation-duration: 0.01ms !important;
+}
+
+html[data-lcd="bright"] .hx-lcd {
+  box-shadow:
+    inset 0 0 0 1px #2a4a32,
+    0 0 0 3px #0a0c0e,
+    0 0 0 4px #2c3036,
+    0 0 28px #7dff9a44;
+  color: #f2fff4;
+}
+
+html[data-controls="large"] .hx-fs-cap {
+  width: 68px;
+  height: 68px;
+}
+
+html[data-controls="large"] .hx-hw-btn {
+  min-height: 32px;
+  min-width: 48px;
+}

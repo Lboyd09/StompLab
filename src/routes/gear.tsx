@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
+import { PaywallCard } from "@/components/layout/paywall-card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -20,7 +21,7 @@ function GearPage() {
   const addGear = useAppStore((s) => s.addGear);
   const removeGear = useAppStore((s) => s.removeGear);
   const setGear = useAppStore((s) => s.setGear);
-  const { plan } = usePlan();
+  const { plan, isPending } = usePlan();
   const [kind, setKind] = useState<UserGear["kind"]>("guitar");
   const [name, setName] = useState("");
   const [notes, setNotes] = useState("");
@@ -39,6 +40,18 @@ function GearPage() {
     // Pull once when paid unlocks — don't re-run on every locker edit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan.canLockerSync]);
+
+  if (isPending) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (!plan.canGear) {
+    return (
+      <PaywallCard
+        title="Gear locker is in the full Lab"
+        body="Save the guitars, basses, and amps you actually own. Research then tells you which piece to grab — and when to skip the Stomp amp and run four-cable method into a real head."
+      />
+    );
+  }
 
   function persist(next: UserGear[]) {
     if (plan.canLockerSync) void pushMyGear({ data: { gear: next } }).catch(() => undefined);

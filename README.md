@@ -6,11 +6,11 @@ Stomp Lab maps recorded/live guitar and bass rigs onto the HX Stomp / HX Stomp X
 
 ## What visitors do
 
-1. Open a demo (Enter Sandman, Smells Like Teen Spirit, Comfortably Numb) — always free, never Gemini.
+1. Open a demo (Enter Sandman, Smells Like Teen Spirit, Comfortably Numb) — always free, always downloadable.
 2. Sign in with email. Three custom songs are free. Then a one-time unlock ($19 launch / $29) via Polar.
 3. Download `.hlx` → HX Edit → File → Import. Put the unit in **Snapshot mode** so FS1–FS3 recall intro / verse / chorus.
 
-Paid users get 50 Gemini builds per calendar month. Featured, demos, and cache hits do not count. The shared library is paid-only.
+Paid users get 50 custom builds per calendar month. Featured, demos, and cache hits do not count. Other known rigs are replica-only until unlock. The shared library is paid-only.
 
 ## Stack
 
@@ -26,7 +26,9 @@ Paid users get 50 Gemini builds per calendar month. Featured, demos, and cache h
 2. Import the project in Vercel.
 3. Neon Postgres is already attached (`DATABASE_URL`).
 4. Set on Vercel:
-   - `AI_GATEWAY_API_KEY` (or rely on `VERCEL_OIDC_TOKEN`)
+   - `BETTER_AUTH_URL=https://stomplab.vercel.app`
+   - `BETTER_AUTH_SECRET` (long random string — keep it stable or sessions reset)
+   - `AI_GATEWAY_API_KEY` from Vercel AI Gateway (no Google Cloud billing required)
    - `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID`, `POLAR_WEBHOOK_SECRET`
    - optional `POLAR_DISCOUNT_ID` for the $19 launch coupon, `POLAR_SERVER=sandbox` while testing
 5. Polar webhook URL: `https://stomplab.vercel.app/api/polar/webhook`

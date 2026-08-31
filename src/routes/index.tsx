@@ -222,7 +222,7 @@ function Home() {
       <section className="space-y-4">
         <div className="flex items-end justify-between">
           <h2 className="font-display text-lg font-semibold">Demo — one tap, always works</h2>
-          <span className="text-xs text-muted-foreground">Never Gemini</span>
+          <span className="text-xs text-muted-foreground">Free download</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {demos.map((p) => (
@@ -248,7 +248,7 @@ function Home() {
         <section className="space-y-4">
           <div className="flex items-end justify-between">
             <h2 className="font-display text-lg font-semibold">More known rigs</h2>
-            <span className="text-xs text-muted-foreground">{instrument} · free</span>
+            <span className="text-xs text-muted-foreground">{instrument} · replica</span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((p) => (
@@ -262,7 +262,7 @@ function Home() {
                 <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
                 <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
                 <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
-                  Open on Stomp
+                  View replica
                   <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                 </div>
               </button>
@@ -310,8 +310,8 @@ function Home() {
         <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
           <p>
             <span className="block font-medium text-foreground">1. Demo or research</span>
-            Sandman, Teen Spirit, and Comfortably Numb are instant. A new title uses the server Gemini
-            once. Unlock to keep researched rigs across visits.
+            Sandman, Teen Spirit, and Comfortably Numb are instant and downloadable. Other known
+            rigs are view-only until you unlock. A new title uses the server once.
           </p>
           <p>
             <span className="block font-medium text-foreground">2. Play the replica</span>

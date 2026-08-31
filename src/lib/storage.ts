@@ -16,6 +16,9 @@ export type Settings = {
   showDsp: boolean;
   confirmDownload: boolean;
   showFsNumbers: boolean;
+  largeControls: boolean;
+  lcdBright: boolean;
+  reduceMotion: boolean;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -25,7 +28,10 @@ const DEFAULT_SETTINGS: Settings = {
   defaultFsMode: "auto",
   showDsp: true,
   confirmDownload: false,
-  showFsNumbers: false,
+  showFsNumbers: true,
+  largeControls: false,
+  lcdBright: false,
+  reduceMotion: false,
 };
 
 function readJson<T>(key: string, fallback: T): T {

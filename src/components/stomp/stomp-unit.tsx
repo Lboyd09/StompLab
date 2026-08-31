@@ -3,6 +3,7 @@ import { toast } from "sonner";
 import type { Preset } from "@/data/types";
 import { deviceFor, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
+import { useAppStore } from "@/store/app-store";
 import { Knob } from "./knob";
 import { LcdScreen } from "./lcd";
 
@@ -58,6 +59,8 @@ export function StompUnit({
   const pageParams = params.slice(page * 3, page * 3 + 3);
   const [volume, setVolume] = useState(7);
   const lastHome = useRef(0);
+  const showFsNumbers = useAppStore((s) => s.showFsNumbers);
+  const largeControls = useAppStore((s) => s.largeControls);
 
   const switches = useMemo(() => {
     const n = xl ? 6 : 3;
@@ -166,6 +169,7 @@ export function StompUnit({
             key={p?.name ?? `empty-${i}`}
             label={p?.name ?? "—"}
             value={p?.value ?? 0}
+            size={largeControls ? "lg" : "md"}
             disabled={!p || !selected}
             onChange={
               p && selected
@@ -226,7 +230,7 @@ export function StompUnit({
   );
 
   function renderSwitch(index: number) {
-    const numbered = index <= 6;
+    const numbered = index <= 6 && showFsNumbers;
     return (
       <Footswitch
         key={index}

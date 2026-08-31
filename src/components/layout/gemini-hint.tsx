@@ -15,8 +15,8 @@ export function GeminiHint({ plan }: { plan: Plan }) {
   if (plan.paid) {
     return (
       <p className="text-xs text-muted-foreground">
-        {plan.monthUsed} of {plan.monthLimit} Gemini builds used this month. Featured, demos, and
-        cache hits do not count.
+        {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured, demos, and
+        library hits do not count.
       </p>
     );
   }

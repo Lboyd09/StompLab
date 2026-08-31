@@ -10,7 +10,7 @@ function block(
   return { id, modelId, enabled, path: "main", position, params };
 }
 
-/** Lab demos — always free, never Gemini. */
+/** Lab demos — always free, always downloadable. */
 export const DEMO_IDS = ["featured-sandman", "featured-teen-spirit", "featured-numb"] as const;
 
 export const FEATURED: Preset[] = [
