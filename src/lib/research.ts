@@ -6,7 +6,7 @@ import { DEVICE_MAP } from "@/data/categories";
 import type { Preset, UserGear } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
-import { eqCacheKey, lookupCache, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
+import { eqCacheKey, lookupCacheRaw, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
 import { geminiJson } from "./gemini";
 import {
   GearSchema,
@@ -17,10 +17,27 @@ import {
   systemForDevice,
   toPreset,
 } from "./preset-schema";
-import { newId, withStompModel } from "./preset-utils";
+import { isDemoId, newId, withStompModel } from "./preset-utils";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+function findFeaturedSource(
+  song: string,
+  artist: string | undefined,
+  instrument: "guitar" | "bass",
+): (typeof FEATURED)[number] | undefined {
+  const s = norm(song);
+  const a = norm(artist ?? "");
+  return FEATURED.find((p) => {
+    if (p.instrument !== instrument) return false;
+    const ps = norm(p.song ?? "");
+    const pa = norm(p.artist ?? "");
+    if (ps === s) return !a || pa.includes(a) || a.includes(pa);
+    if (s.length < 5) return false;
+    return ps.includes(s) || (s.includes(ps) && ps.length >= 5);
+  });
 }
 
 export function matchFeatured(
@@ -29,16 +46,7 @@ export function matchFeatured(
   instrument: "guitar" | "bass",
   stompModel: "hx-stomp" | "hx-stomp-xl",
 ): Preset | null {
-  const s = norm(song);
-  const a = norm(artist ?? "");
-  const hit = FEATURED.find((p) => {
-    if (p.instrument !== instrument) return false;
-    const ps = norm(p.song ?? "");
-    const pa = norm(p.artist ?? "");
-    if (ps === s) return !a || pa.includes(a) || a.includes(pa);
-    if (s.length < 5) return false;
-    return ps.includes(s) || (s.includes(ps) && ps.length >= 5);
-  });
+  const hit = findFeaturedSource(song, artist, instrument);
   if (!hit) return null;
   return withStompModel({ ...hit, id: newId("pst"), createdAt: Date.now() }, stompModel);
 }
@@ -80,7 +88,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
     return {
       ok: false,
       reason: "quota",
-      error: "You've used this month's 50 custom builds. Featured songs and library hits still work. Resets next calendar month.",
+      error: "You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.",
     };
   }
   return {
@@ -117,38 +125,50 @@ export const researchSongFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ResearchIn.parse(input))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
-    const featured = matchFeatured(data.song, data.artist, data.instrument, data.stompModel);
-    if (featured) {
+    const featuredSrc = findFeaturedSource(data.song, data.artist, data.instrument);
+    if (featuredSrc && isDemoId(featuredSrc.id)) {
+      const featured = withStompModel(
+        { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
+        data.stompModel,
+      );
       return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
     }
 
     const email = await emailFor(context.userId);
     const plan = await loadPlan(context.userId, email);
-    const key = songCacheKey(data.song, data.artist, data.instrument, data.stompModel);
 
-    if (plan.canSharedLibrary) {
-      try {
-        const cached = await lookupCache({ data: { key } });
-        if (cached.hit && cached.preset) {
-          const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-          return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
-        }
-      } catch {
-        /* miss */
-      }
+    if (featuredSrc && plan.paid) {
+      const featured = withStompModel(
+        { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
+        data.stompModel,
+      );
+      return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
     }
 
+    const key = songCacheKey(data.song, data.artist, data.instrument, data.stompModel);
+
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+
+    try {
+      const cached = await lookupCacheRaw(key);
+      if (cached.hit && cached.preset) {
+        const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+        if (!plan.paid) await recordBuild(context.userId, "song", data.song.trim());
+        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+      }
+    } catch {
+      /* miss */
+    }
 
     try {
       const catalog = compactCatalogForPrompt(data.instrument);
       const prompt = `${systemForDevice(data.stompModel, data.instrument)}
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
-Research the original recorded ${data.instrument} tone. Be specific about album, year, and the chain that was actually used. The HX path should sound like that record, not a generic genre patch.
+Research the original recorded ${data.instrument} tone. Album, year, and the chain that was actually used.
 ${gearLine(data.userGear)}
 
-Catalog (id | name | based on | dsp):
+Catalog (id|basedOn):
 ${catalog}
 
 JSON schema:
@@ -193,19 +213,18 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
     const plan = await loadPlan(context.userId, email);
     const key = soundCacheKey(data.description, data.instrument, data.stompModel);
 
-    if (plan.canSharedLibrary) {
-      try {
-        const cached = await lookupCache({ data: { key } });
-        if (cached.hit && cached.preset) {
-          const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-          return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
-        }
-      } catch {
-        /* miss */
-      }
-    }
-
     if (!plan.canCreate) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+
+    try {
+      const cached = await lookupCacheRaw(key);
+      if (cached.hit && cached.preset) {
+        const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+        if (!plan.paid) await recordBuild(context.userId, "create", data.description.slice(0, 80));
+        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+      }
+    } catch {
+      /* miss */
+    }
 
     try {
       const catalog = compactCatalogForPrompt(data.instrument);
@@ -215,7 +234,7 @@ Build this sound on the ${DEVICE_MAP[data.stompModel].name}:
 ${data.description}
 ${gearLine(data.userGear)}
 
-Catalog (id | name | based on | dsp):
+Catalog (id|basedOn):
 ${catalog}
 
 JSON schema:
@@ -260,23 +279,21 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
     const plan = await loadPlan(context.userId, email);
     const key = eqCacheKey(data.query);
 
-    if (plan.canSharedLibrary) {
-      try {
-        const cached = await lookupCache({ data: { key } });
-        if (cached.hit && Array.isArray(cached.matches) && cached.matches.length) {
-          return { ok: true, matches: cached.matches as EqMatch[], source: "cache" };
-        }
-      } catch {
-        /* miss */
-      }
-    }
-
     if (!plan.paid) {
       return {
         ok: false,
         reason: "paywall",
         error: "Catalog browse is free. Pedal matching unlocks with StompLab.",
       };
+    }
+
+    try {
+      const cached = await lookupCacheRaw(key);
+      if (cached.hit && Array.isArray(cached.matches) && cached.matches.length) {
+        return { ok: true, matches: cached.matches as EqMatch[], source: "cache" };
+      }
+    } catch {
+      /* miss */
     }
 
     try {
@@ -303,7 +320,6 @@ ${catalog}`,
       };
     }
   });
-
 
 const ReviseIn = z.object({
   song: z.string().min(1).max(120),
@@ -333,7 +349,7 @@ Current path: ${data.current}
 Note from the player: ${data.note}
 ${gearLine(data.userGear)}
 
-Catalog (id | name | based on | dsp):
+Catalog (id|basedOn):
 ${catalog}
 
 JSON schema:

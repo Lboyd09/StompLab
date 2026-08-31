@@ -19,7 +19,7 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
         </p>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li>Type any song. Download a .hlx HX Edit can import.</li>
-          <li>History, gear locker, and XL snapshot 4.</li>
+          <li>History of the songs you built. Gear locker and XL snapshot 4 after unlock.</li>
           <li>50 custom builds a month. The three demos stay free.</li>
         </ul>
         <Button asChild className="w-full">

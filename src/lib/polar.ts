@@ -13,6 +13,68 @@ export function polarConfigured() {
   return Boolean(polarToken() && (process.env.POLAR_PRODUCT_ID ?? "").trim());
 }
 
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? (value as Record<string, unknown>)
+    : {};
+}
+
+function payloadData(payload: Record<string, unknown>): Record<string, unknown> {
+  const nested = asRecord(payload.data);
+  return Object.keys(nested).length ? nested : payload;
+}
+
+export function polarEventType(payload: Record<string, unknown>): string {
+  return String(payload.type ?? payload.event ?? "")
+    .trim()
+    .toLowerCase();
+}
+
+/** Only these Polar statuses mean money actually moved. Never "confirmed" / "complete". */
+export function polarStatusIsPaid(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const data = payloadData(payload);
+  const status = String(data.status ?? data.payment_status ?? "")
+    .trim()
+    .toLowerCase();
+  return status === "succeeded" || status === "paid";
+}
+
+/**
+ * Checkout.created fires the moment Unlock is clicked — before anyone pays.
+ * order.created is pending. Only order.paid, or a checkout whose status is
+ * succeeded/paid, counts.
+ */
+export function polarEventIsPaid(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const type = polarEventType(payload);
+  if (
+    type.includes("refund") ||
+    type.includes("fail") ||
+    type.includes("expir") ||
+    type.includes("cancel")
+  ) {
+    return false;
+  }
+  if (type === "checkout.created" || type.endsWith("checkout.created")) return false;
+  if (type === "order.created" || type.endsWith("order.created")) return false;
+  if (type === "order.paid" || type.endsWith("order.paid")) return true;
+  if (type.startsWith("checkout.") || type === "") return polarStatusIsPaid(payload);
+  return false;
+}
+
+export function isRealPolarOrderId(id: string | null | undefined): boolean {
+  const v = String(id ?? "").trim();
+  if (v.length < 8) return false;
+  if (/^checkout[_-]/i.test(v)) return false;
+  return true;
+}
+
+export function purchaseLooksPaid(raw: unknown): boolean {
+  if (!raw || typeof raw !== "object") return false;
+  return polarEventIsPaid(raw as Record<string, unknown>);
+}
+
 export async function createPolarCheckout(opts: {
   email: string;
   userId: string;
@@ -76,17 +138,41 @@ export async function fetchPolarCheckout(id: string): Promise<Record<string, unk
 }
 
 export function extractOrder(payload: Record<string, unknown>) {
-  const data = (payload.data ?? payload) as Record<string, unknown>;
-  const customer = (data.customer ?? {}) as Record<string, unknown>;
-  const metadata = (data.metadata ?? payload.metadata ?? {}) as Record<string, unknown>;
+  const type = polarEventType(payload);
+  const data = payloadData(payload);
+  const nestedOrder = asRecord(data.order);
+  const customer = asRecord(data.customer);
+  const metadata = {
+    ...asRecord(payload.metadata),
+    ...asRecord(nestedOrder.metadata),
+    ...asRecord(data.metadata),
+  };
   const email = String(
-    data.customer_email ?? customer.email ?? metadata.email ?? "",
-  ).trim().toLowerCase();
+    data.customer_email ?? customer.email ?? metadata.email ?? nestedOrder.customer_email ?? "",
+  )
+    .trim()
+    .toLowerCase();
   const userId = String(metadata.user_id ?? "").trim();
-  const orderId = String(data.id ?? data.order_id ?? "").trim();
-  const checkoutId = String(data.checkout_id ?? data.id ?? "").trim();
-  const amount =
-    Number(data.amount ?? data.total_amount ?? data.net_amount ?? 0) || 0;
-  const customerId = String(data.customer_id ?? customer.id ?? "").trim();
-  return { email, userId, orderId, checkoutId, amount, customerId, data };
+
+  const dataOrderId = String(data.order_id ?? nestedOrder.id ?? "").trim();
+  const dataId = String(data.id ?? "").trim();
+  const fromOrder = type.startsWith("order.");
+  const fromCheckout = type.startsWith("checkout.");
+
+  let orderId = dataOrderId;
+  if (!orderId && fromOrder) orderId = dataId;
+  if (!isRealPolarOrderId(orderId) || (fromCheckout && orderId === dataId)) {
+    orderId = isRealPolarOrderId(dataOrderId) ? dataOrderId : "";
+  }
+
+  let checkoutId = String(data.checkout_id ?? nestedOrder.checkout_id ?? "").trim();
+  if (!checkoutId && fromCheckout) checkoutId = dataId;
+  if (!checkoutId && !fromOrder && !fromCheckout) {
+    // Raw checkout GET has id = checkout, order_id = order.
+    checkoutId = dataId;
+  }
+
+  const amount = Number(data.amount ?? data.total_amount ?? data.net_amount ?? nestedOrder.amount ?? 0) || 0;
+  const customerId = String(data.customer_id ?? customer.id ?? nestedOrder.customer_id ?? "").trim();
+  return { email, userId, orderId, checkoutId, amount, customerId, data, metadata };
 }

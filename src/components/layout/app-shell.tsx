@@ -7,21 +7,22 @@ import {
   Library,
   Search,
   Settings,
-  SlidersHorizontal,
   Sparkles,
   Wrench,
+  X,
 } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
 import { searchModels } from "@/data/catalog";
-import { FEATURED } from "@/data/featured";
+import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { overlayUserGear } from "@/lib/preset-schema";
-import { withStompModel } from "@/lib/preset-utils";
+import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
 import { Onboarding } from "./onboarding";
+import { usePlan } from "@/lib/use-plan";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -36,6 +37,14 @@ const DESKTOP_NAV = [
   { to: "/equivalents", label: "Equivalents", icon: ArrowRightLeft },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
+
+function Mark() {
+  return (
+    <span className="grid size-8 place-items-center rounded-md bg-primary font-display text-[11px] font-bold tracking-tight text-primary-foreground">
+      SL
+    </span>
+  );
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
@@ -54,8 +63,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const catalogFind =
     pathname === "/catalog" && (location.search as { tab?: string }).tab === "find";
   const navigate = useNavigate();
+  const { plan } = usePlan();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     hydrate();
@@ -104,20 +115,39 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return pathname === to;
   }
 
+  function closeSearch() {
+    setOpen(false);
+    setQ("");
+  }
+
+  function openSong(p: (typeof FEATURED)[number]) {
+    const demo = isDemoId(p.id) || (DEMO_IDS as readonly string[]).includes(p.id);
+    if (!demo && !plan.paid) {
+      closeSearch();
+      void navigate({ to: "/upgrade" });
+      return;
+    }
+    const preset = overlayUserGear(withStompModel({ ...p, createdAt: Date.now() }, stompModel), gear);
+    savePreset(preset);
+    closeSearch();
+    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+  }
+
+  const results = open && q.trim().length >= 2;
+
   return (
     <div className="min-h-dvh bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link to="/" className="flex shrink-0 items-center gap-2">
-              <span className="grid size-8 place-items-center rounded-md bg-primary text-primary-foreground">
-                <SlidersHorizontal className="size-4" />
-              </span>
-              <span className="font-display text-sm font-semibold tracking-[0.18em] uppercase">
+              <Mark />
+              <span className="hidden font-display text-sm font-semibold tracking-[0.18em] uppercase sm:inline">
                 Stomp Lab
               </span>
             </Link>
-            <div className="relative min-w-0 flex-1">
+
+            <div className="relative hidden min-w-0 flex-1 md:block">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={q}
@@ -130,83 +160,88 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 placeholder="Search songs, models, pedals…"
                 className="h-10 pl-9"
                 aria-label="Search songs and catalog"
+                autoComplete="off"
+                suppressHydrationWarning
               />
-              {open && q.trim().length >= 2 ? (
-                <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
-                  {songHits.map((p) => (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-                      onMouseDown={() => {
-                        const preset = overlayUserGear(
-                          withStompModel({ ...p, createdAt: Date.now() }, stompModel),
-                          gear,
-                        );
-                        savePreset(preset);
-                        setQ("");
-                        void navigate({ to: "/preset/$id", params: { id: preset.id } });
-                      }}
-                    >
-                      <span>
-                        <span className="block text-sm">{p.song}</span>
-                        <span className="block text-xs text-muted-foreground">{p.artist}</span>
-                      </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Song
-                      </span>
-                    </button>
-                  ))}
-                  {modelHits.map((m) => (
-                    <button
-                      key={m.id}
-                      type="button"
-                      className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-                      onMouseDown={() => {
-                        setQ("");
-                        void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
-                      }}
-                    >
-                      <span>
-                        <span className="block text-sm">{m.name}</span>
-                        <span className="block text-xs text-muted-foreground">{m.basedOn}</span>
-                      </span>
-                      <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-                        {CATEGORIES.find((c) => c.id === m.category)?.short}
-                      </span>
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
-                    onMouseDown={() => {
-                      const song = q.trim();
-                      setQ("");
-                      void navigate({ to: "/", search: { q: song } });
-                    }}
-                  >
-                    <span className="text-sm">Research “{q.trim()}”</span>
-                    <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-                      Lab
-                    </span>
-                  </button>
-                </div>
+              {results ? (
+                <SearchResults
+                  songHits={songHits}
+                  modelHits={modelHits}
+                  q={q}
+                  paid={plan.paid}
+                  onSong={openSong}
+                  onModel={(m) => {
+                    closeSearch();
+                    void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
+                  }}
+                  onResearch={() => {
+                    const song = q.trim();
+                    closeSearch();
+                    void navigate({ to: "/", search: { q: song } });
+                  }}
+                />
               ) : null}
             </div>
-            <div className="max-w-[42vw] shrink-0 overflow-hidden sm:max-w-none">
+
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                type="button"
+                className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
+                aria-label={open ? "Close search" : "Search"}
+                onClick={() => {
+                  setOpen((v) => !v);
+                  window.setTimeout(() => searchRef.current?.focus(), 30);
+                }}
+              >
+                {open ? <X className="size-4" /> : <Search className="size-4" />}
+              </button>
               <AuthSlot />
+              <Link
+                to="/settings"
+                aria-label="Settings"
+                className={cn(
+                  "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card",
+                  pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                <Settings className="size-4" />
+              </Link>
             </div>
-            <Link
-              to="/settings"
-              aria-label="Settings"
-              className={cn(
-                "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card",
-                pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <Settings className="size-4" />
-            </Link>
           </div>
+
+          {open ? (
+            <div className="relative md:hidden">
+              <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                ref={searchRef}
+                value={q}
+                onChange={(e) => setQ(e.target.value)}
+                placeholder="Song, model, pedal…"
+                className="h-11 pl-9"
+                aria-label="Search songs and catalog"
+                autoComplete="off"
+              />
+              {results ? (
+                <SearchResults
+                  songHits={songHits}
+                  modelHits={modelHits}
+                  q={q}
+                  paid={plan.paid}
+                  onSong={openSong}
+                  onModel={(m) => {
+                    closeSearch();
+                    void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
+                  }}
+                  onResearch={() => {
+                    const song = q.trim();
+                    closeSearch();
+                    void navigate({ to: "/", search: { q: song } });
+                  }}
+                />
+              ) : null}
+            </div>
+          ) : null}
+
           <div className="flex flex-wrap items-center gap-2">
             <div className="flex rounded-full bg-secondary p-1">
               {(["guitar", "bass"] as const).map((id) => (
@@ -279,6 +314,72 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ))}
         </div>
       </nav>
+    </div>
+  );
+}
+
+function SearchResults({
+  songHits,
+  modelHits,
+  q,
+  paid,
+  onSong,
+  onModel,
+  onResearch,
+}: {
+  songHits: typeof FEATURED;
+  modelHits: ReturnType<typeof searchModels>;
+  q: string;
+  paid: boolean;
+  onSong: (p: (typeof FEATURED)[number]) => void;
+  onModel: (m: ReturnType<typeof searchModels>[number]) => void;
+  onResearch: () => void;
+}) {
+  return (
+    <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+      {songHits.map((p) => {
+        const locked = !paid && !isDemoId(p.id);
+        return (
+          <button
+            key={p.id}
+            type="button"
+            className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
+            onMouseDown={() => onSong(p)}
+          >
+            <span>
+              <span className="block text-sm">{p.song}</span>
+              <span className="block text-xs text-muted-foreground">{p.artist}</span>
+            </span>
+            <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+              {locked ? "Unlock" : "Song"}
+            </span>
+          </button>
+        );
+      })}
+      {modelHits.map((m) => (
+        <button
+          key={m.id}
+          type="button"
+          className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
+          onMouseDown={() => onModel(m)}
+        >
+          <span>
+            <span className="block text-sm">{m.name}</span>
+            <span className="block text-xs text-muted-foreground">{m.basedOn}</span>
+          </span>
+          <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+            {CATEGORIES.find((c) => c.id === m.category)?.short}
+          </span>
+        </button>
+      ))}
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
+        onMouseDown={onResearch}
+      >
+        <span className="text-sm">Research “{q.trim()}”</span>
+        <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">Lab</span>
+      </button>
     </div>
   );
 }

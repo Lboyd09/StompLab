@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { adminDashboard, adminDeleteCache, probeResearchFn } from "@/lib/billing";
-import { isAdminEmail } from "@/lib/plan";
+import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
@@ -12,6 +12,7 @@ type Probe = Awaited<ReturnType<typeof probeResearchFn>>;
 
 function AdminPage() {
   const { user, isPending } = useCurrentUserState();
+  const { plan, isPending: planPending } = usePlan();
   const [dash, setDash] = useState<Dash | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
@@ -24,9 +25,9 @@ function AdminPage() {
       .catch((err) => setError(err instanceof Error ? err.message : "Unauthorized"));
   }, [user, isPending]);
 
-  if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isPending || planPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
-  if (!isAdminEmail(user.primaryEmail) && error) {
+  if (!plan.admin) {
     return (
       <div className="space-y-2">
         <h1 className="font-display text-2xl font-semibold">Not found</h1>

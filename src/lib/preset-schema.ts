@@ -274,7 +274,7 @@ export function jsonSchemaHint() {
   return `{
   "name": "preset name <=18 chars",
   "tempo": 120,
-  "summary": "2-4 sentences: album/year, the real rig, and which HX stand-ins you used",
+  "summary": "album/year, the real rig, HX stand-ins. <=400 chars",
   "originalGear": [{"role":"Guitar|Bass|Amp|Pedal|Cab","name":"real gear","notes":"era / how it was used"}],
   "blocks": [{"modelId":"scream-808","enabled":true,"params":{"Drive":2.0,"Output":7.5,"Mic":0}}],
   "snapshots": [{"name":"Verse","color":"#7d9a6a","enabledModelIds":["scream-808"],"paramOverrides":{"brit-2204":{"Drive":4.2}},"notes":""}],

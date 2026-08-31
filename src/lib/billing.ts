@@ -3,7 +3,15 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan } from "./plan";
-import { createPolarCheckout, extractOrder, fetchPolarCheckout } from "./polar";
+import {
+  createPolarCheckout,
+  extractOrder,
+  fetchPolarCheckout,
+  isRealPolarOrderId,
+  polarEventIsPaid,
+  polarStatusIsPaid,
+  purchaseLooksPaid,
+} from "./polar";
 import type { UserGear } from "@/data/types";
 
 export async function emailFor(userId: string): Promise<string | null> {
@@ -16,29 +24,129 @@ export async function emailFor(userId: string): Promise<string | null> {
   }
 }
 
+type EntRow = {
+  paid: boolean;
+  paid_source?: string | null;
+  polar_order_id?: string | null;
+  email?: string | null;
+};
+
+async function markAdminPaid(userId: string, email: string) {
+  const sql = await getSql();
+  try {
+    await sql`
+      insert into entitlements (user_id, email, paid, paid_source, paid_at, updated_at)
+      values (${userId}, ${email}, true, ${"admin"}, now(), now())
+      on conflict (user_id) do update set
+        paid = true,
+        paid_source = 'admin',
+        email = excluded.email,
+        paid_at = coalesce(entitlements.paid_at, now()),
+        updated_at = now()
+    `;
+  } catch {
+    await sql`
+      insert into entitlements (user_id, email, paid, paid_at, updated_at)
+      values (${userId}, ${email}, true, now(), now())
+      on conflict (user_id) do update set
+        paid = true,
+        email = excluded.email,
+        paid_at = coalesce(entitlements.paid_at, now()),
+        updated_at = now()
+    `;
+  }
+}
+
+async function revokeStolenGrant(userId: string) {
+  const sql = await getSql();
+  try {
+    await sql`
+      update entitlements
+      set paid = false, paid_source = '', polar_order_id = '', updated_at = now()
+      where user_id = ${userId}
+    `;
+  } catch {
+    await sql`
+      update entitlements
+      set paid = false, polar_order_id = '', updated_at = now()
+      where user_id = ${userId}
+    `;
+  }
+}
+
+function orderIdFromPurchase(raw: unknown, fallback: string): string {
+  if (raw && typeof raw === "object") {
+    const extracted = extractOrder(raw as Record<string, unknown>);
+    if (isRealPolarOrderId(extracted.orderId)) return extracted.orderId;
+  }
+  return isRealPolarOrderId(fallback) ? fallback : "";
+}
+
+/**
+ * Paid is true only for the exact admin email, or a Polar row that looks like
+ * a real payment (order.paid / checkout succeeded). Checkout.created grants
+ * are revoked here so the back button cannot unlock the Lab.
+ */
+async function paidVerifiedFor(userId: string, email: string | null, row: EntRow | undefined): Promise<boolean> {
+  if (isAdminEmail(email)) {
+    await markAdminPaid(userId, email ?? "");
+    return true;
+  }
+  const sql = await getSql();
+  const source = String(row?.paid_source ?? "").trim().toLowerCase();
+  const storedOrder = String(row?.polar_order_id ?? "").trim();
+  if (row?.paid && source === "polar" && isRealPolarOrderId(storedOrder)) {
+    return true;
+  }
+
+  let purchases: { polar_order_id: string; raw: unknown }[] = [];
+  try {
+    purchases = await sql<{ polar_order_id: string; raw: unknown }>`
+      select polar_order_id, raw from purchases where user_id = ${userId}
+    `;
+  } catch {
+    purchases = [];
+  }
+  const good = purchases.find((p) => {
+    const oid = orderIdFromPurchase(p.raw, p.polar_order_id);
+    return purchaseLooksPaid(p.raw) && isRealPolarOrderId(oid);
+  });
+  if (good) {
+    const oid = orderIdFromPurchase(good.raw, good.polar_order_id);
+    try {
+      await sql`
+        update entitlements
+        set paid = true, paid_source = ${"polar"}, polar_order_id = ${oid}, updated_at = now()
+        where user_id = ${userId}
+      `;
+    } catch {
+      await sql`
+        update entitlements
+        set paid = true, polar_order_id = ${oid}, updated_at = now()
+        where user_id = ${userId}
+      `;
+    }
+    return true;
+  }
+
+  if (row?.paid) await revokeStolenGrant(userId);
+  return false;
+}
+
 export async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const sql = await getSql();
   const month = yearMonth();
-  const ent = await sql<{ paid: boolean }>`
-    select paid from entitlements where user_id = ${userId} limit 1
-  `;
-  let paidRow = Boolean(ent[0]?.paid);
-  if (!paidRow && isAdminEmail(email)) {
-    try {
-      await sql`
-        insert into entitlements (user_id, email, paid, paid_at, updated_at)
-        values (${userId}, ${email ?? ""}, true, now(), now())
-        on conflict (user_id) do update set
-          paid = true,
-          email = excluded.email,
-          paid_at = coalesce(entitlements.paid_at, now()),
-          updated_at = now()
-      `;
-      paidRow = true;
-    } catch {
-      paidRow = true;
-    }
+  let ent: EntRow[] = [];
+  try {
+    ent = await sql<EntRow>`
+      select paid, paid_source, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+    `;
+  } catch {
+    ent = await sql<EntRow>`
+      select paid, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+    `;
   }
+  const paid = await paidVerifiedFor(userId, email, ent[0]);
   const lifetime = await sql<{ n: number }>`
     select count(*)::int as n from build_events where user_id = ${userId}
   `;
@@ -48,7 +156,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
   return assemblePlan({
     userId,
     email,
-    paid: paidRow,
+    paid,
     freeUsed: Number(lifetime[0]?.n ?? 0),
     monthUsed: Number(monthly[0]?.n ?? 0),
   });
@@ -57,20 +165,9 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Plan> => {
-    const dbEmail = await emailFor(context.userId);
-    let sessionEmail: string | null = null;
-    try {
-      const { getSessionUser } = await import("@/lib/auth/verify.server");
-      const session = await getSessionUser();
-      if (session?.id === context.userId) sessionEmail = session.email;
-    } catch {
-      /* cookie/session lookup is best-effort */
-    }
-    const email = isAdminEmail(dbEmail)
-      ? dbEmail
-      : isAdminEmail(sessionEmail)
-        ? sessionEmail
-        : dbEmail || sessionEmail;
+    // Email comes ONLY from the user row for this session's userId.
+    // Never prefer a cached session email — that is how iCloud became admin.
+    const email = await emailFor(context.userId);
     return loadPlan(context.userId, email);
   });
 
@@ -87,19 +184,42 @@ export async function grantPaid(opts: {
   customerId: string;
   raw: unknown;
 }) {
+  if (!isRealPolarOrderId(opts.orderId)) {
+    throw new Error("Refusing to grant without a Polar order id.");
+  }
+  if (opts.raw && typeof opts.raw === "object" && !polarEventIsPaid(opts.raw as Record<string, unknown>)) {
+    const statusOk = polarStatusIsPaid(opts.raw as Record<string, unknown>);
+    if (!statusOk) throw new Error("Refusing to grant on an unpaid Polar event.");
+  }
   const sql = await getSql();
-  await sql`
-    insert into entitlements (user_id, email, paid, polar_customer_id, polar_order_id, amount_cents, paid_at, updated_at)
-    values (${opts.userId}, ${opts.email}, true, ${opts.customerId}, ${opts.orderId}, ${opts.amountCents}, now(), now())
-    on conflict (user_id) do update set
-      paid = true,
-      email = excluded.email,
-      polar_customer_id = coalesce(nullif(excluded.polar_customer_id, ''), entitlements.polar_customer_id),
-      polar_order_id = coalesce(nullif(excluded.polar_order_id, ''), entitlements.polar_order_id),
-      amount_cents = excluded.amount_cents,
-      paid_at = coalesce(entitlements.paid_at, now()),
-      updated_at = now()
-  `;
+  try {
+    await sql`
+      insert into entitlements (user_id, email, paid, paid_source, polar_customer_id, polar_order_id, amount_cents, paid_at, updated_at)
+      values (${opts.userId}, ${opts.email}, true, ${"polar"}, ${opts.customerId}, ${opts.orderId}, ${opts.amountCents}, now(), now())
+      on conflict (user_id) do update set
+        paid = true,
+        paid_source = 'polar',
+        email = excluded.email,
+        polar_customer_id = coalesce(nullif(excluded.polar_customer_id, ''), entitlements.polar_customer_id),
+        polar_order_id = coalesce(nullif(excluded.polar_order_id, ''), entitlements.polar_order_id),
+        amount_cents = excluded.amount_cents,
+        paid_at = coalesce(entitlements.paid_at, now()),
+        updated_at = now()
+    `;
+  } catch {
+    await sql`
+      insert into entitlements (user_id, email, paid, polar_customer_id, polar_order_id, amount_cents, paid_at, updated_at)
+      values (${opts.userId}, ${opts.email}, true, ${opts.customerId}, ${opts.orderId}, ${opts.amountCents}, now(), now())
+      on conflict (user_id) do update set
+        paid = true,
+        email = excluded.email,
+        polar_customer_id = coalesce(nullif(excluded.polar_customer_id, ''), entitlements.polar_customer_id),
+        polar_order_id = coalesce(nullif(excluded.polar_order_id, ''), entitlements.polar_order_id),
+        amount_cents = excluded.amount_cents,
+        paid_at = coalesce(entitlements.paid_at, now()),
+        updated_at = now()
+    `;
+  }
   try {
     await sql.query(
       `insert into purchases (user_id, email, polar_order_id, polar_checkout_id, amount_cents, raw)
@@ -120,6 +240,10 @@ export async function grantPaid(opts: {
 }
 
 export async function grantPaidByEmail(email: string, order: ReturnType<typeof extractOrder>, raw: unknown) {
+  if (!polarEventIsPaid(raw && typeof raw === "object" ? (raw as Record<string, unknown>) : {})) {
+    return false;
+  }
+  if (!isRealPolarOrderId(order.orderId)) return false;
   const sql = await getSql();
   let userId = order.userId;
   if (!userId && email) {
@@ -153,6 +277,10 @@ export const startCheckout = createServerFn({ method: "POST" })
     if (!email) {
       return { ok: false as const, error: "Your account needs an email before checkout." };
     }
+    const plan = await loadPlan(context.userId, email);
+    if (plan.paid) {
+      return { ok: false as const, error: "This account is already unlocked." };
+    }
     const origin =
       process.env.POLAR_SUCCESS_ORIGIN ??
       process.env.APP_ORIGIN ??
@@ -170,19 +298,29 @@ export const confirmCheckout = createServerFn({ method: "POST" })
   .handler(async ({ context, data }) => {
     const checkout = await fetchPolarCheckout(data.checkoutId);
     if (!checkout) return { ok: false as const, error: "Could not confirm that payment yet. Wait a few seconds." };
-    const status = String(checkout.status ?? checkout.payment_status ?? "");
-    const paid = /succeeded|paid|confirmed|complete/i.test(status) || Boolean(checkout.order_id);
-    if (!paid) return { ok: false as const, error: "Payment is still processing." };
-    const email = (await emailFor(context.userId)) ?? "";
+    if (!polarStatusIsPaid(checkout)) {
+      return { ok: false as const, error: "Payment is still processing. Finish checkout — going back does not unlock." };
+    }
     const order = extractOrder(checkout);
+    if (!isRealPolarOrderId(order.orderId)) {
+      return { ok: false as const, error: "Polar has not issued an order yet. Finish payment first." };
+    }
+    const email = (await emailFor(context.userId)) ?? "";
+    const metaUser = String(order.userId ?? "").trim();
+    if (metaUser && metaUser !== context.userId) {
+      return { ok: false as const, error: "That checkout belongs to a different account." };
+    }
+    if (order.email && email && order.email !== email.toLowerCase()) {
+      return { ok: false as const, error: "That checkout belongs to a different email." };
+    }
     await grantPaid({
       userId: context.userId,
       email: order.email || email,
-      orderId: order.orderId || data.checkoutId,
+      orderId: order.orderId,
       checkoutId: data.checkoutId,
       amountCents: order.amount,
       customerId: order.customerId,
-      raw: checkout,
+      raw: { type: "checkout.updated", ...checkout, status: checkout.status ?? "succeeded" },
     });
     return { ok: true as const, plan: await loadPlan(context.userId, email) };
   });
@@ -297,7 +435,34 @@ export const adminDashboard = createServerFn({ method: "GET" })
     } catch {
       notes = [];
     }
-    return { purchases, usage, failures, cache, feedback: notes };
+    const entitlements = await sql<{
+      user_id: string;
+      email: string;
+      paid: boolean;
+      paid_source: string;
+      polar_order_id: string;
+    }>`
+      select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
+      from entitlements
+      where paid = true
+      order by updated_at desc
+      limit 100
+    `.catch(async () => {
+      return sql<{
+        user_id: string;
+        email: string;
+        paid: boolean;
+        paid_source: string;
+        polar_order_id: string;
+      }>`
+        select user_id, email, paid, '' as paid_source, polar_order_id
+        from entitlements
+        where paid = true
+        order by updated_at desc
+        limit 100
+      `;
+    });
+    return { purchases, usage, failures, cache, feedback: notes, entitlements };
   });
 
 export const adminDeleteCache = createServerFn({ method: "POST" })
@@ -354,6 +519,72 @@ export const pushMyGear = createServerFn({ method: "POST" })
     return { ok: true as const };
   });
 
+export type Profile = {
+  displayName: string;
+  instrument: "guitar" | "bass";
+  stompModel: "hx-stomp" | "hx-stomp-xl";
+  genres: string[];
+};
+
+export const saveMyProfile = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z
+      .object({
+        displayName: z.string().max(80).optional().default(""),
+        instrument: z.enum(["guitar", "bass"]).optional().default("guitar"),
+        stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]).optional().default("hx-stomp"),
+        genres: z.array(z.string().max(32)).max(12).optional().default([]),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    const sql = await getSql();
+    const genres = data.genres.join(",");
+    try {
+      await sql`
+        insert into profiles (user_id, display_name, instrument, stomp_model, genres, onboarded_at, updated_at)
+        values (${context.userId}, ${data.displayName}, ${data.instrument}, ${data.stompModel}, ${genres}, now(), now())
+        on conflict (user_id) do update set
+          display_name = excluded.display_name,
+          instrument = excluded.instrument,
+          stomp_model = excluded.stomp_model,
+          genres = excluded.genres,
+          onboarded_at = coalesce(profiles.onboarded_at, now()),
+          updated_at = now()
+      `;
+    } catch {
+      /* table may not exist yet on a lagging migrate */
+    }
+    return { ok: true as const };
+  });
+
+export const getMyProfile = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<Profile | null> => {
+    try {
+      const sql = await getSql();
+      const rows = await sql<{
+        display_name: string;
+        instrument: string;
+        stomp_model: string;
+        genres: string;
+      }>`
+        select display_name, instrument, stomp_model, genres
+        from profiles where user_id = ${context.userId} limit 1
+      `;
+      const row = rows[0];
+      if (!row) return null;
+      return {
+        displayName: row.display_name,
+        instrument: row.instrument === "bass" ? "bass" : "guitar",
+        stompModel: row.stomp_model === "hx-stomp-xl" ? "hx-stomp-xl" : "hx-stomp",
+        genres: row.genres ? row.genres.split(",").filter(Boolean) : [],
+      };
+    } catch {
+      return null;
+    }
+  });
 
 export const submitFeedbackFn = createServerFn({ method: "POST" })
   .validator((input: unknown) =>

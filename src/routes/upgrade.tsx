@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
 import { FREE_BUILDS, LAUNCH_USD, PAID_MONTHLY_BUILDS, PRICE_USD } from "@/lib/plan";
@@ -18,8 +19,8 @@ const PERKS = [
   "Type any song. Get a Stomp .hlx that sounds like the record.",
   `${PAID_MONTHLY_BUILDS} new custom builds every calendar month.`,
   "Create custom sounds. History. XL snapshot 4. Gear locker sync.",
-  "Shared library of researched rigs — cache hits do not count.",
-  "Featured demos stay free forever. No ads after you pay.",
+  "Repeat research of a song you already built does not spend a Gemini call.",
+  "Featured demos stay free forever. One-time unlock — not a subscription.",
 ];
 
 function UpgradePage() {
@@ -61,6 +62,10 @@ function UpgradePage() {
     }
     setBusy(true);
     try {
+      const latest = await refresh();
+      if (latest.paid) {
+        return;
+      }
       const res = await startCheckout();
       if (!res.ok) {
         setError(res.error);
@@ -82,14 +87,15 @@ function UpgradePage() {
     );
   }
 
-  if (plan.paid && !confirming) {
+  // Never flash unlocked just because a checkout was created. Must be Polar-verified.
+  if (plan.paid && !confirming && !search.checkout_id) {
     return (
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
           <h1 className="font-display text-3xl font-semibold">{plan.admin ? "Admin — full Lab" : "You're unlocked"}</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured songs never
+            {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured demos never
             count.
           </p>
           <Button asChild>
@@ -115,6 +121,7 @@ function UpgradePage() {
             One-time unlock. Featured demos stay free. After {FREE_BUILDS} custom songs, this is the
             door.
           </p>
+          <RigDisclaimer />
         </div>
 
         <div className="rounded-xl border border-border bg-card p-6">
@@ -151,7 +158,8 @@ function UpgradePage() {
           </Button>
           {error ? <p className="mt-3 text-sm text-destructive">{error}</p> : null}
           <p className="mt-3 text-xs text-muted-foreground">
-            Checkout is Polar (merchant of record). The unlock sticks to {user?.primaryEmail || "your email"}.
+            Checkout is Polar (merchant of record). Going back before you pay does not unlock anything.
+            The unlock sticks to {user?.primaryEmail || "your email"} after Polar says the order is paid.
           </p>
         </div>
 

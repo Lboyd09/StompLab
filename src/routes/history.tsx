@@ -1,7 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
-import { PaywallCard } from "@/components/layout/paywall-card";
-import { FEATURED } from "@/data/featured";
+import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { Button } from "@/components/ui/button";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -15,16 +14,25 @@ function HistoryPage() {
   const stompModel = useAppStore((s) => s.stompModel);
   const { plan, isPending } = usePlan();
   const user = presets.filter((p) => p.source !== "featured");
+  const demos = FEATURED.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
 
   if (isPending) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
-  if (!plan.canHistory) {
+  if (!plan.signedIn) {
     return (
-      <PaywallCard
-        title="History is in the full Lab"
-        body="Keep every song you research, reopen it later, and jump back into the replica. Free stays on the three demos — this page is the paid unlock, not a sign-in wall."
-      />
+      <div className="mx-auto max-w-lg space-y-4 py-4">
+        <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Sign in to keep the songs you research. Free accounts keep their 3 custom builds here. Demos
+          never need an account.
+        </p>
+        <Button asChild>
+          <Link to="/login" search={{ next: "/history" }}>
+            Sign in
+          </Link>
+        </Button>
+      </div>
     );
   }
 
@@ -33,7 +41,7 @@ function HistoryPage() {
       <header className="space-y-2">
         <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
         <p className="text-sm text-muted-foreground">
-          Songs you researched and sounds you built. Featured rigs stay as a starting library.
+          Songs you researched and sounds you built with your free or paid builds.
         </p>
       </header>
 
@@ -63,9 +71,9 @@ function HistoryPage() {
       )}
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Library</h2>
+        <h2 className="font-display text-lg font-semibold">Demos</h2>
         <ul className="grid gap-2 sm:grid-cols-2">
-          {FEATURED.map((p) => {
+          {demos.map((p) => {
             const id = `${p.id}-${stompModel}`;
             return (
               <li key={p.id}>
@@ -79,16 +87,10 @@ function HistoryPage() {
                       id,
                       stompModel,
                       createdAt: Date.now(),
-                      footswitches:
-                        stompModel === "hx-stomp"
-                          ? p.footswitches.filter((f) => f.index <= 3)
-                          : p.footswitches,
                     });
                   }}
                 >
-                  <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                    {p.artist} · {p.instrument}
-                  </div>
+                  <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
                   <div className="font-medium">{p.song}</div>
                 </Link>
               </li>

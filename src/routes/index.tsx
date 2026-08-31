@@ -1,7 +1,8 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { ArrowRight, Loader2 } from "lucide-react";
+import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { ResearchProgress } from "@/components/layout/research-progress";
@@ -10,13 +11,13 @@ import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
-import { listSharedLibrary, lookupCache } from "@/lib/cache";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
-import { newId, withStompModel } from "@/lib/preset-utils";
+import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
+import { FREE_BUILDS } from "@/lib/plan";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>): { q?: string } => ({
@@ -24,10 +25,6 @@ export const Route = createFileRoute("/")({
   }),
   component: Home,
 });
-
-function featuredKey(song: string, artist: string | undefined, instrument: string) {
-  return `${song}|${artist ?? ""}|${instrument}`.toLowerCase();
-}
 
 function Home() {
   const navigate = useNavigate();
@@ -42,39 +39,22 @@ function Home() {
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
-  const [library, setLibrary] = useState<
-    { song: string; artist: string; instrument: string; stompModel: string; hitCount: number; key: string }[]
-  >([]);
 
   const featured = FEATURED.filter((p) => p.instrument === instrument);
   const demos = featured.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
   const rest = featured.filter((p) => !(DEMO_IDS as readonly string[]).includes(p.id));
-  const featuredSet = new Set(FEATURED.map((p) => featuredKey(p.song ?? "", p.artist, p.instrument)));
-
-  useEffect(() => {
-    if (!plan.canSharedLibrary) {
-      setLibrary([]);
-      return;
-    }
-    listSharedLibrary()
-      .then(setLibrary)
-      .catch(() => setLibrary([]));
-  }, [plan.canSharedLibrary]);
 
   useEffect(() => {
     if (search.q) setSong(search.q);
   }, [search.q]);
 
-  const community = library.filter(
-    (row) =>
-      row.instrument === instrument &&
-      row.stompModel === stompModel &&
-      !featuredSet.has(featuredKey(row.song, row.artist, row.instrument)),
-  );
-
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return;
+    if (!isDemoId(src.id) && !plan.paid) {
+      void navigate({ to: "/upgrade" });
+      return;
+    }
     const preset = overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear);
     savePreset(preset);
     void navigate({ to: "/preset/$id", params: { id: preset.id } });
@@ -85,10 +65,25 @@ function Home() {
     if (!song.trim()) return;
     const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel);
     if (featuredHit) {
-      savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
-      notifyResearchSource("library");
-      await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
-      return;
+      const src = FEATURED.find(
+        (p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song,
+      );
+      if (src && isDemoId(src.id)) {
+        savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
+        notifyResearchSource("library");
+        await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
+        return;
+      }
+      if (src && !plan.paid) {
+        await navigate({ to: "/upgrade" });
+        return;
+      }
+      if (src && plan.paid) {
+        savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
+        notifyResearchSource("library");
+        await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
+        return;
+      }
     }
     if (planPending) return;
     if (!plan.signedIn) {
@@ -150,31 +145,7 @@ function Home() {
     }
   }
 
-  async function openCached(key: string) {
-    if (!plan.canSharedLibrary) {
-      await navigate({ to: "/upgrade" });
-      return;
-    }
-    setBusy(true);
-    try {
-      const cached = await lookupCache({ data: { key } });
-      if (!cached.hit || !cached.preset) {
-        toast.error("That rig is no longer in the shared library.");
-        return;
-      }
-      const preset = overlayUserGear(
-        { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
-        gear,
-      );
-      savePreset(preset);
-      notifyResearchSource("cache");
-      await navigate({ to: "/preset/$id", params: { id: preset.id } });
-    } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not open that rig");
-    } finally {
-      setBusy(false);
-    }
-  }
+  const used = plan.signedIn && !plan.paid ? Math.min(FREE_BUILDS, plan.freeUsed) : 0;
 
   return (
     <div className="space-y-10">
@@ -183,12 +154,34 @@ function Home() {
       <section className="max-w-2xl space-y-3">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">HX Stomp laboratory</p>
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-          Research a song. Copy the preset onto your Stomp.
+          Type a song.
+          <span className="block text-muted-foreground">Copy it onto your Stomp.</span>
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
           Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
         </p>
+        <RigDisclaimer />
       </section>
+
+      {plan.signedIn && !plan.paid ? (
+        <div className="flex max-w-2xl items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
+          <div className="flex gap-1.5" aria-hidden>
+            {Array.from({ length: FREE_BUILDS }).map((_, i) => (
+              <span
+                key={i}
+                className={
+                  i < used
+                    ? "size-2.5 rounded-full bg-muted-foreground/40"
+                    : "size-2.5 rounded-full bg-primary"
+                }
+              />
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">
+            {plan.freeRemaining} free custom build{plan.freeRemaining === 1 ? "" : "s"} left
+          </p>
+        </div>
+      ) : null}
 
       <form onSubmit={(e) => void onResearch(e)} className="max-w-2xl space-y-4">
         <SongTypeahead
@@ -250,51 +243,33 @@ function Home() {
         <section className="space-y-4">
           <div className="flex items-end justify-between">
             <h2 className="font-display text-lg font-semibold">More known rigs</h2>
-            <span className="text-xs text-muted-foreground">{instrument} · replica</span>
+            <span className="text-xs text-muted-foreground">
+              {plan.paid ? `${instrument} · replica` : "Unlock to open"}
+            </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {rest.map((p) => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => openFeatured(p.id)}
-                className="group rounded-xl border border-border bg-card p-5 text-left hover:border-primary/50"
-              >
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
-                <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
-                <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
-                <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
-                  View replica
-                  <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-                </div>
-              </button>
-            ))}
-          </div>
-        </section>
-      ) : null}
-
-      {plan.canSharedLibrary && community.length ? (
-        <section className="space-y-4">
-          <div className="flex items-end justify-between">
-            <h2 className="font-display text-lg font-semibold">Shared library</h2>
-            <span className="text-xs text-muted-foreground">Paid · cache hits do not count</span>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {community.map((row) => (
-              <button
-                key={row.key}
-                type="button"
-                disabled={busy}
-                onClick={() => void openCached(row.key)}
-                className="rounded-xl border border-border bg-card p-5 text-left hover:border-primary/40"
-              >
-                <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {row.artist || "Unknown artist"}
-                </div>
-                <div className="mt-1 font-display text-lg font-semibold">{row.song}</div>
-                <p className="mt-2 text-xs text-muted-foreground">Opened {row.hitCount} times</p>
-              </button>
-            ))}
+            {rest.map((p) => {
+              const locked = !plan.paid;
+              return (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => openFeatured(p.id)}
+                  className="group rounded-xl border border-border bg-card p-5 text-left hover:border-primary/50"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
+                    {locked ? <Lock className="size-3.5 text-muted-foreground" /> : null}
+                  </div>
+                  <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
+                  <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
+                  <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
+                    {locked ? "Unlock this rig" : "View replica"}
+                    <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+                  </div>
+                </button>
+              );
+            })}
           </div>
         </section>
       ) : null}
@@ -313,7 +288,7 @@ function Home() {
           <p>
             <span className="block font-medium text-foreground">1. Demo or research</span>
             Sandman, Teen Spirit, and Comfortably Numb are instant and downloadable. Other known
-            rigs are view-only until you unlock. A new title uses the server once.
+            rigs unlock with the Lab. A new title uses one of your {FREE_BUILDS} free custom builds.
           </p>
           <p>
             <span className="block font-medium text-foreground">2. Play the replica</span>

@@ -4,6 +4,7 @@ export const LAUNCH_USD = 19;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
 
+/** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
 export function isAdminEmail(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase() === ADMIN_EMAIL;
 }
@@ -65,7 +66,9 @@ export function assemblePlan(opts: {
   monthUsed: number;
 }): Plan {
   const month = yearMonth();
-  const paid = opts.paid || isAdminEmail(opts.email);
+  const admin = isAdminEmail(opts.email);
+  // `opts.paid` must already be Polar-verified (or admin). Never trust a raw flag.
+  const paid = admin || opts.paid;
   const freeUsed = opts.freeUsed;
   const freeRemaining = Math.max(0, FREE_BUILDS - freeUsed);
   const monthUsed = opts.monthUsed;
@@ -75,7 +78,7 @@ export function assemblePlan(opts: {
     userId: opts.userId,
     email: opts.email,
     paid,
-    admin: isAdminEmail(opts.email),
+    admin,
     freeUsed,
     freeRemaining,
     monthUsed: paid ? monthUsed : freeUsed,
@@ -83,11 +86,12 @@ export function assemblePlan(opts: {
     month,
     canResearch: canBuild,
     canCreate: canBuild,
-    canHistory: paid,
+    canHistory: true,
     canGear: paid,
     canXlRegen: paid,
     canLockerSync: paid,
-    canSharedLibrary: paid,
+    // Never a browseable library. Cache-on-research is handled in research.ts.
+    canSharedLibrary: false,
     blockedReason: canBuild ? null : paid ? "quota" : "paywall",
   };
 }

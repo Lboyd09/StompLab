@@ -25,6 +25,7 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
 import { FeedbackCard } from "../layout/feedback-card";
+import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 
@@ -269,6 +270,7 @@ export function PresetWorkspace({
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
+          <RigDisclaimer />
         </header>
 
         <div className="flex flex-wrap items-center gap-2">

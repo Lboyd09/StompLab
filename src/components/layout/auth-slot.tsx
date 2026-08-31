@@ -1,5 +1,4 @@
 import { Link } from "@tanstack/react-router";
-import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 
 export function AuthSlot() {
@@ -17,5 +16,18 @@ export function AuthSlot() {
       </Link>
     );
   }
-  return <UserButton />;
+  const letter = (user.displayName ?? user.primaryEmail ?? "A").charAt(0).toUpperCase();
+  return (
+    <Link
+      to="/account"
+      aria-label="Account"
+      className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-md border border-border bg-card text-sm font-medium"
+    >
+      {user.profileImageUrl ? (
+        <img src={user.profileImageUrl} alt="" className="size-10 object-cover" />
+      ) : (
+        letter
+      )}
+    </Link>
+  );
 }

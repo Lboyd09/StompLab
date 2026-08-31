@@ -92,7 +92,7 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
 
 async function googleGenerate(key: string, prompt: string): Promise<string> {
   const url = `${GOOGLE_GENERATE}?key=${encodeURIComponent(key)}`;
-  const payload: RequestInit = {
+  let payload: RequestInit = {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -103,8 +103,9 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 8192,
+        maxOutputTokens: 4096,
         responseMimeType: "application/json",
+        thinkingConfig: { thinkingBudget: 0 },
       },
     }),
   };
@@ -126,6 +127,21 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
     if (res.ok) break;
     if (res.status === 429 && attempt === 0) {
       await new Promise((r) => setTimeout(r, 900));
+      continue;
+    }
+    if (res.status === 400 && attempt === 0 && /thinking/i.test(raw)) {
+      payload = {
+        ...payload,
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM }] },
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.2,
+            maxOutputTokens: 4096,
+            responseMimeType: "application/json",
+          },
+        }),
+      };
       continue;
     }
     throw new Error(friendlyGoogleError(res.status, raw));
@@ -164,7 +180,8 @@ async function gatewayGenerate(token: string, prompt: string): Promise<string> {
       body: JSON.stringify({
         model: GATEWAY_MODEL,
         temperature: 0.2,
-        max_tokens: 8192,
+        max_tokens: 4096,
+        reasoning_effort: "none",
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },

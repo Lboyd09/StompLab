@@ -2,10 +2,8 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { UserButton } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { cacheHealth } from "@/lib/cache";
-import { FREE_BUILDS, LAUNCH_USD, PAID_MONTHLY_BUILDS, PRICE_USD } from "@/lib/plan";
+import { FREE_BUILDS, LAUNCH_USD, PRICE_USD } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -37,7 +35,6 @@ function SettingsPage() {
   const { plan, isPending: planPending } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
   const [mounted, setMounted] = useState(false);
-  const [library, setLibrary] = useState<{ ok: boolean; entries: number } | null>(null);
 
   useEffect(() => {
     setMounted(true);
@@ -46,12 +43,6 @@ function SettingsPage() {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
-
-  useEffect(() => {
-    cacheHealth()
-      .then((h) => setLibrary({ ok: h.ok, entries: h.entries }))
-      .catch(() => setLibrary({ ok: false, entries: 0 }));
-  }, []);
 
   const unitLabel = stompModel === "hx-stomp-xl" ? "HX Stomp XL" : "HX Stomp";
   const accountPending = !mounted || authPending || planPending;
@@ -73,10 +64,13 @@ function SettingsPage() {
         ) : user ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
-              <UserButton />
+              <div>
+                <p className="text-sm font-medium">{user.displayName || "Signed in"}</p>
+                <p className="text-xs text-muted-foreground">{user.primaryEmail}</p>
+              </div>
               {plan.paid ? (
                 <span className="text-sm text-muted-foreground">
-                  {plan.monthUsed} / {PAID_MONTHLY_BUILDS} builds this month
+                  {plan.monthUsed} / {plan.monthLimit} builds this month
                 </span>
               ) : (
                 <span className="text-sm text-muted-foreground">
@@ -84,11 +78,16 @@ function SettingsPage() {
                 </span>
               )}
             </div>
-            {!plan.paid ? (
+            <div className="flex flex-wrap gap-2">
               <Button asChild variant="secondary">
-                <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+                <Link to="/account">Account</Link>
               </Button>
-            ) : null}
+              {!plan.paid ? (
+                <Button asChild>
+                  <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+                </Button>
+              ) : null}
+            </div>
           </>
         ) : (
           <>
@@ -286,9 +285,12 @@ function SettingsPage() {
             Sign in, sign up, or forgot password
           </summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Email and a password of 8+ characters. No Google, no X. This site does not email reset
-            links. If you already paid, use the same email you used at checkout. If sign-in sits
-            there doing nothing, refresh once and try again.{" "}
+            Email and a password of 8+ characters. No Google, no X. Change your password from{" "}
+            <Link to="/account" className="text-primary underline underline-offset-2">
+              Account
+            </Link>
+            . This site does not email reset links. If you already paid, use the same email you used at
+            checkout. If sign-in sits there doing nothing, refresh once and try again.{" "}
             <Link to="/login" className="text-primary underline underline-offset-2">
               Open sign in
             </Link>
@@ -353,18 +355,11 @@ function SettingsPage() {
       <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
         <p>
-          Featured demos load instantly. Custom research uses the server. Paid users share a library
-          — cache hits skip a new build and do not count toward the {PAID_MONTHLY_BUILDS}/month
-          fair-use cap. Free visitors cannot browse that library. Unlock is ${LAUNCH_USD} launch / $
-          {PRICE_USD} after, one time, stuck to your email.
+          Featured demos load instantly. Custom research uses the server. If you research a song that
+          was already built, we reuse that result so you are not billed twice — there is no public
+          library to browse. Free accounts get {FREE_BUILDS} custom builds plus the three demos.
+          Unlock is ${LAUNCH_USD} launch / ${PRICE_USD} after, one time, stuck to your email.
         </p>
-        {library ? (
-          <p className="text-xs">
-            {library.ok
-              ? `Library backend on · ${library.entries} saved rigs`
-              : "Library is local on this copy — featured songs still work"}
-          </p>
-        ) : null}
         <p>
           <Link to="/" className="text-primary underline underline-offset-2">
             Back to the Lab

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { grantPaidByEmail } from "@/lib/billing";
-import { extractOrder } from "@/lib/polar";
+import { extractOrder, polarEventIsPaid } from "@/lib/polar";
 import { verifyPolarWebhook } from "@/lib/polar-webhook";
 
 export const Route = createFileRoute("/api/polar/webhook")({
@@ -17,13 +17,13 @@ export const Route = createFileRoute("/api/polar/webhook")({
         } catch {
           return new Response("bad json", { status: 400 });
         }
-        const type = String(payload.type ?? payload.event ?? "");
-        if (!/order|checkout/i.test(type)) {
+        // checkout.created / order.created / confirmed MUST NOT unlock.
+        if (!polarEventIsPaid(payload)) {
           return new Response("ok");
         }
         const order = extractOrder(payload);
         const email = order.email;
-        if (!email) return new Response("ok");
+        if (!email || !order.orderId) return new Response("ok");
         try {
           await grantPaidByEmail(email, order, payload);
         } catch {

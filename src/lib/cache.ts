@@ -45,37 +45,48 @@ const SaveEqIn = z.object({
 
 type EqHit = { modelId: string; closeness: string; how: string };
 
-export const lookupCache = createServerFn({ method: "POST" })
-  .validator((input: unknown) => LookupIn.parse(input))
-  .handler(async ({ data }) => {
-    const miss = {
-      hit: false as const,
-      kind: "",
-      preset: null as Preset | null,
-      matches: [] as EqHit[],
-      hitCount: 0,
+const miss = {
+  hit: false as const,
+  kind: "",
+  preset: null as Preset | null,
+  matches: [] as EqHit[],
+  hitCount: 0,
+};
+
+/** Internal cache read — used by research so we never list a public library. */
+export async function lookupCacheRaw(key: string) {
+  try {
+    const sql = await getSql();
+    const rows = await sql<{
+      preset: Preset | null;
+      matches: EqHit[] | null;
+      kind: string;
+      hit_count: number;
+    }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${key} limit 1`;
+    const row = rows[0];
+    if (!row) return miss;
+    await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${key}`;
+    return {
+      hit: true as const,
+      kind: row.kind,
+      preset: row.preset,
+      matches: Array.isArray(row.matches) ? row.matches : [],
+      hitCount: Number(row.hit_count) + 1,
     };
-    try {
-      const sql = await getSql();
-      const rows = await sql<{
-        preset: Preset | null;
-        matches: EqHit[] | null;
-        kind: string;
-        hit_count: number;
-      }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${data.key} limit 1`;
-      const row = rows[0];
-      if (!row) return miss;
-      await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${data.key}`;
-      return {
-        hit: true as const,
-        kind: row.kind,
-        preset: row.preset,
-        matches: Array.isArray(row.matches) ? row.matches : [],
-        hitCount: Number(row.hit_count) + 1,
-      };
-    } catch {
-      return miss;
-    }
+  } catch {
+    return miss;
+  }
+}
+
+export const lookupCache = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => LookupIn.parse(input))
+  .handler(async ({ context, data }) => {
+    const email = await emailFor(context.userId);
+    const plan = await loadPlan(context.userId, email);
+    // Guessing cache keys must still consume a research slot for free users.
+    if (!plan.paid && !plan.canResearch) return miss;
+    return lookupCacheRaw(data.key);
   });
 
 export const saveSongCache = createServerFn({ method: "POST" })
@@ -126,40 +137,19 @@ export const cacheHealth = createServerFn({ method: "GET" }).handler(async () =>
   }
 });
 
+/** Intentionally empty — shared cache is not a browseable library. */
 export const listSharedLibrary = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
-  .handler(async ({ context }) => {
-    const email = await emailFor(context.userId);
-    const plan = await loadPlan(context.userId, email);
-    if (!plan.canSharedLibrary) return [];
-    try {
-      const sql = await getSql();
-      const rows = await sql<{
-        song: string;
-        artist: string;
-        instrument: string;
-        stomp_model: string;
-        hit_count: number;
-        cache_key: string;
-      }>`
-        select song, artist, instrument, stomp_model, hit_count, cache_key
-        from rig_cache
-        where kind = 'song' and song <> ''
-        order by hit_count desc, updated_at desc
-        limit 24
-      `;
-      return rows.map((r) => ({
-        song: r.song,
-        artist: r.artist,
-        instrument: r.instrument as "guitar" | "bass",
-        stompModel: r.stomp_model as "hx-stomp" | "hx-stomp-xl",
-        hitCount: Number(r.hit_count),
-        key: r.cache_key,
-      }));
-    } catch {
-      return [];
-    }
+  .handler(async () => {
+    return [] as {
+      song: string;
+      artist: string;
+      instrument: "guitar" | "bass";
+      stompModel: "hx-stomp" | "hx-stomp-xl";
+      hitCount: number;
+      key: string;
+    }[];
   });
 
-/** Hidden from free users — kept so old imports compile. */
+/** Hidden from visitors — kept so old imports compile. */
 export const listCachedSongs = listSharedLibrary;
