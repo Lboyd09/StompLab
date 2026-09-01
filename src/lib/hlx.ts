@@ -1,5 +1,6 @@
 import { MODEL_MAP } from "@/data/catalog";
-import { helixIdFor } from "@/data/helix-ids";
+import { helixIdFor, isHxStompModelId } from "@/data/helix-ids";
+import { factoryParamsFor } from "@/data/helix-params";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
 
@@ -35,8 +36,9 @@ const INPUT_MODEL = "HelixStomp_AppDSPFlowInput";
 const OUTPUT_MAIN = "HelixStomp_AppDSPFlowOutputMain";
 const OUTPUT_SEND = "HelixStomp_AppDSPFlowOutputSend";
 
-const SKIP_CATEGORIES = new Set<CategoryId>(["mic"]);
-const SKIP_MODELS = new Set(["split-y", "split-a-b", "crossover-split", "merge"]);
+const SKIP_CATEGORIES = new Set<CategoryId>(["mic", "ir"]);
+const SKIP_MODELS = new Set(["split-y", "split-a-b", "crossover-split", "merge", "impulse-response"]);
+const MAX_PATH_BLOCKS = 8;
 
 /** HX Edit @type integers from factory .hlx. Strings like "amp" are rejected. */
 function blockType(category: CategoryId, isAmp: boolean, hasCab: boolean): number {
@@ -52,26 +54,76 @@ function blockType(category: CategoryId, isAmp: boolean, hasCab: boolean): numbe
 /**
  * UI knob names → real HX Edit parameter names from phelix Defaults /
  * factory .hlx (Scream 808: Gain/Tone/Level; 70s Chorus: ChorusIntensity /
- * VibratoRate / Mix / Mode; Stupor OD: Drive/Tone/Level).
+ * VibratoRate / Mix / Mode; Stupor OD / Deez One: Drive/Tone/Level).
  */
 const PARAM_RENAMES: Record<string, Record<string, string>> = {
   "scream-808": { Drive: "Gain", Treble: "Tone", Output: "Level" },
   "stupor-od": { Treble: "Tone", Output: "Level" },
-  "vermin-dist": { Drive: "Distortion", Treble: "Filter", Output: "Volume" },
-  minotaur: { Drive: "Gain", Output: "Level" },
-  "heir-apparent": { Drive: "Gain", Output: "Level" },
+  "deez-one-vintage": { Treble: "Tone", Output: "Level" },
+  "deez-one-mod": { Treble: "Tone", Output: "Level" },
+  "hedgehog-d9": { Drive: "Gain", Treble: "Tone", Output: "Level" },
+  "top-secret-od": { Drive: "Gain", Output: "Level" },
+  "vermin-dist": { Drive: "Gain", Treble: "Filter", Output: "Level" },
+  minotaur: { Drive: "Gain", Treble: "Tone", Output: "Level" },
+  "heir-apparent": { Drive: "Gain", Treble: "Tone", Output: "Level" },
+  "kinky-boost": { Treble: "Boost", Output: "Level" },
   "deluxe-comp": { Gain: "Level" },
   "kinky-comp": { Threshold: "Sensitivity", Gain: "Level" },
-  "bighorn-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Volume" },
-  "triangle-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Volume" },
+  "bighorn-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Level" },
+  "triangle-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Level" },
   "knuckle-dragon": { Drive: "Gain", Output: "Level" },
-  "uk-wah-846": { "Dc Bias": "DcBias" },
+  "uk-wah-846": { Position: "Pedal", "Dc Bias": "DcBias" },
+  "teardrop-310": { Position: "Pedal" },
+  fassel: { Position: "Pedal" },
+  weeper: { Position: "Pedal" },
+  chrome: { Position: "Pedal" },
+  "chrome-custom": { Position: "Pedal" },
+  throaty: { Position: "Pedal" },
+  "vetta-wah": { Position: "Pedal" },
+  colorful: { Position: "Pedal" },
+  conductor: { Position: "Pedal" },
   "70s-chorus": { Depth: "ChorusIntensity", Rate: "VibratoRate" },
+  "hot-springs": { Decay: "Dwell" },
+  "volume-pedal": { Position: "Pedal", Level: "Pedal" },
+  "moon-nrm": { Drive: "NrmDrive" },
+  "moon-brt": { Drive: "BrtDrive" },
+  "moon-jump": { Drive: "NrmDrive" },
+  "cali-iv-lead": { Drive: "LeadDrive" },
 };
+
+const THREE_KNOB_DIST = new Set([
+  "scream-808",
+  "stupor-od",
+  "deez-one-vintage",
+  "deez-one-mod",
+  "hedgehog-d9",
+  "top-secret-od",
+  "minotaur",
+  "heir-apparent",
+  "kinky-boost",
+  "valve-driver",
+  "compulsive-drive",
+  "vermin-dist",
+  "arbitrator-fuzz",
+  "pocket-fuzz",
+  "bighorn-fuzz",
+  "triangle-fuzz",
+  "classic-dist-legacy",
+  "screamer-legacy",
+  "overdrive-legacy",
+]);
 
 const DROP_BY_MODEL: Record<string, Set<string>> = {
   "stupor-od": new Set(["Bass", "Mid", "Mix"]),
+  "deez-one-vintage": new Set(["Bass", "Mid", "Mix"]),
+  "deez-one-mod": new Set(["Bass", "Mid", "Mix"]),
   "scream-808": new Set(["Bass", "Mid", "Mix"]),
+  "hedgehog-d9": new Set(["Bass", "Mid", "Mix"]),
+  "top-secret-od": new Set(["Bass", "Mid", "Mix"]),
+  minotaur: new Set(["Bass", "Mid", "Mix"]),
+  "heir-apparent": new Set(["Bass", "Mid", "Mix"]),
+  "kinky-boost": new Set(["Bass", "Mid", "Mix"]),
+  "vermin-dist": new Set(["Bass", "Mid", "Mix"]),
   "70s-chorus": new Set(["Tone"]),
   "kinky-comp": new Set(["Attack", "Release", "Mix"]),
 };
@@ -80,7 +132,6 @@ const GENERIC_RENAME: Record<string, string> = {
   "Ch Vol": "ChVol",
   "Low Cut": "LowCut",
   "High Cut": "HighCut",
-  Predelay: "PreDelay",
   "Early Refl": "EarlyReflections",
   "Thr Low": "ThrLow",
   "Thr Mid": "ThrMid",
@@ -88,12 +139,49 @@ const GENERIC_RENAME: Record<string, string> = {
   "Dc Bias": "DcBias",
   "Vol Min": "VolumeMin",
   "Vol Max": "VolumeMax",
+  Position: "Pedal",
+  "2.2k": "2200Hz",
+  "6.6k": "6600Hz",
+  "31Hz": "31p25Hz",
+  "62Hz": "62p5Hz",
+  "1k": "1kHz",
+  "2k": "2kHz",
+  "4k": "4kHz",
+  "8k": "8kHz",
+  "16k": "16kHz",
 };
 
 /** Params HX Edit will reject or ignore as unknown on most blocks. */
 const DROP_PARAMS = new Set(["Mix", "Mic"]);
 
-const KEEP_MIX = new Set<CategoryId>(["modulation", "delay", "reverb", "filter", "wah"]);
+const KEEP_MIX = new Set<CategoryId>(["modulation", "delay", "reverb", "filter", "wah", "volume"]);
+
+const BOOLEAN_PARAMS = new Set(["Mode", "Bright"]);
+
+/**
+ * Factory-known HX Edit param names per category. Anything else is dropped so
+ * HX Edit never sees an unrecognized knob and rejects the whole preset.
+ */
+const CATEGORY_HLX_PARAMS: Record<CategoryId, Set<string>> = {
+  distortion: new Set(["Drive", "Gain", "Tone", "Level", "Bass", "Mid", "Treble", "Output", "Distortion", "Filter", "Volume", "Sustain"]),
+  dynamics: new Set(["Threshold", "Gain", "Attack", "Release", "Mix", "Level", "Sensitivity", "Decay", "Open", "Hold", "Rise", "ThrLow", "ThrMid", "ThrHigh"]),
+  eq: new Set(["Bass", "Mid", "Treble", "Level", "LowCut", "HighCut", "Freq", "Q", "Gain", "Tilt", "LowFreq", "LowGain", "HighFreq", "HighGain", "Body", "Tone", "80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz", "31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz"]),
+  modulation: new Set(["Rate", "Depth", "Mix", "Tone", "ChorusIntensity", "VibratoRate", "VibratoDepth", "Mode", "Headroom", "Speed", "Shape", "Spread", "Manual", "Feedback", "Level"]),
+  delay: new Set(["Time", "Feedback", "Mix", "Mod", "Scale", "Heads", "Wow", "Flutter", "Spread", "Offset", "Depth", "LowCut", "HighCut", "Pitch", "Delay", "DryThru"]),
+  reverb: new Set(["Decay", "Dwell", "Predelay", "PreDelay", "Mix", "LowCut", "HighCut", "Motion", "Pitch", "Level", "Drip"]),
+  pitch: new Set(["Shift", "Mix", "Key", "Delay", "Heel", "Toe", "Control", "Interval", "Voice", "Level"]),
+  filter: new Set(["Freq", "Q", "Mix", "Speed", "Range", "Level"]),
+  wah: new Set(["Position", "Pedal", "Mix", "DcBias", "Level"]),
+  volume: new Set(["Level", "VolumeMin", "VolumeMax", "Gain", "Pan"]),
+  looper: new Set(["Play", "Rec", "Overdub"]),
+  "amp-guitar": new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Master", "ChVol", "Sag", "Hum", "Ripple", "Bias", "BiasX", "Bright", "Cut", "Depth", "Resonance", "80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz"]),
+  "amp-bass": new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Master", "ChVol", "Hum", "Ripple", "Bias", "BiasX"]),
+  preamp: new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Level"]),
+  cab: new Set(["LowCut", "HighCut", "Distance", "EarlyReflections", "Level"]),
+  mic: new Set(),
+  ir: new Set(["LowCut", "HighCut", "Mix", "Level"]),
+  "send-return": new Set(["Send", "Return", "Mix"]),
+};
 
 type HlxJson = Record<string, unknown>;
 
@@ -102,17 +190,50 @@ function clamp01(n: number) {
 }
 
 function exportableBlocks(preset: Preset): StompBlock[] {
-  return sortedBlocks(preset).filter((b) => {
+  const kept = sortedBlocks(preset).filter((b) => {
     const model = MODEL_MAP[b.modelId];
     if (!model) return false;
     if (SKIP_CATEGORIES.has(model.category)) return false;
     if (SKIP_MODELS.has(b.modelId)) return false;
-    return Boolean(helixIdFor(b.modelId));
+    const hid = helixIdFor(b.modelId);
+    if (!hid || !isHxStompModelId(hid)) return false;
+    return true;
   });
+  const cabs = kept.filter((b) => MODEL_MAP[b.modelId]?.category === "cab");
+  const others = kept.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab").slice(0, MAX_PATH_BLOCKS);
+  return [...others, ...cabs.slice(0, 2)];
 }
 
 function helixParamName(modelId: string, uiName: string): string {
-  return PARAM_RENAMES[modelId]?.[uiName] ?? GENERIC_RENAME[uiName] ?? uiName.replace(/\s+/g, "");
+  const explicit = PARAM_RENAMES[modelId]?.[uiName];
+  if (explicit) return explicit;
+  const generic = GENERIC_RENAME[uiName];
+  const collapsed = uiName.replace(/\s+/g, "");
+  const hid = helixIdFor(modelId);
+  const factory = hid ? factoryParamsFor(hid) : undefined;
+  if (factory) {
+    if (factory.has(uiName)) return uiName;
+    if (generic && factory.has(generic)) return generic;
+    if (factory.has(collapsed)) return collapsed;
+    const aliases: Record<string, string[]> = {
+      Drive: ["Gain", "NrmDrive", "BrtDrive", "LeadDrive", "Drive"],
+      Treble: ["Tone", "Filter", "Boost", "Treble"],
+      Output: ["Level", "Volume", "Boost", "Output"],
+      Position: ["Pedal", "Position"],
+      Decay: ["Dwell", "Decay"],
+      Depth: ["ChorusIntensity", "Depth"],
+      Rate: ["VibratoRate", "Speed", "Rate"],
+      Mod: ["Depth", "Rate", "Mod"],
+      Gain: ["Level", "Gain"],
+      Predelay: ["Predelay", "PreDelay"],
+      Volume: ["Level", "Volume"],
+      Distortion: ["Gain", "Drive", "Distortion"],
+    };
+    for (const cand of aliases[uiName] ?? []) {
+      if (factory.has(cand)) return cand;
+    }
+  }
+  return generic ?? collapsed;
 }
 
 function toHlxValue(
@@ -123,6 +244,10 @@ function toHlxValue(
 ): number | boolean | undefined {
   if (uiName === "Mic") return undefined;
   const n = Number.isFinite(value) ? value : 5;
+  const helixName = helixParamName(modelId, uiName);
+  if (BOOLEAN_PARAMS.has(uiName) || BOOLEAN_PARAMS.has(helixName)) {
+    return n >= 5;
+  }
   if (uiName === "Low Cut" || uiName === "LowCut") {
     return Math.round(20 + clamp01(n / 10) * 480);
   }
@@ -153,44 +278,59 @@ function knownParamNames(modelId: string): Set<string> | null {
   return new Set(model.params);
 }
 
+function allowedHlxNames(modelId: string, category: CategoryId): Set<string> {
+  const hid = helixIdFor(modelId);
+  const factory = hid ? factoryParamsFor(hid) : undefined;
+  if (factory && factory.size) return new Set(factory);
+  if (THREE_KNOB_DIST.has(modelId)) {
+    return new Set(["Drive", "Gain", "Tone", "Level", "Distortion", "Filter", "Volume", "Sustain", "Output", "Treble"]);
+  }
+  return CATEGORY_HLX_PARAMS[category] ?? new Set();
+}
+
+function finiteHlx(value: number | boolean | undefined): value is number | boolean {
+  if (typeof value === "boolean") return true;
+  return typeof value === "number" && Number.isFinite(value);
+}
+
 function blockParams(block: StompBlock): Record<string, number | boolean> {
   const model = MODEL_MAP[block.modelId];
   const category = model?.category ?? "distortion";
-  const allowed = knownParamNames(block.modelId);
-  const dropModel = DROP_BY_MODEL[block.modelId];
+  const allowedUi = knownParamNames(block.modelId);
+  const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
+  const allowedHlx = allowedHlxNames(block.modelId, category);
   const out: Record<string, number | boolean> = {};
   for (const [uiName, raw] of Object.entries(block.params)) {
     if (dropModel?.has(uiName)) continue;
     if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
-    if (allowed && !allowed.has(uiName)) continue;
+    if (allowedUi && !allowedUi.has(uiName)) continue;
     const value = toHlxValue(block.modelId, uiName, raw, category);
-    if (value === undefined) continue;
-    out[helixParamName(block.modelId, uiName)] = value;
+    if (!finiteHlx(value)) continue;
+    const pname = helixParamName(block.modelId, uiName);
+    if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
+    out[pname] = value;
   }
-  if (category === "delay" || category === "reverb") {
-    out.Level = out.Level ?? 0;
-  }
-  if (category === "amp-guitar" || category === "amp-bass") {
-    out.Hum = out.Hum ?? 0.05;
-    out.Ripple = out.Ripple ?? 0.05;
-    out.Bias = out.Bias ?? 0.5;
-    out.BiasX = out.BiasX ?? 0.5;
+  if (Object.keys(out).length && (category === "amp-guitar" || category === "amp-bass")) {
+    if (allowedHlx.has("Hum")) out.Hum = typeof out.Hum === "number" ? out.Hum : 0.05;
+    if (allowedHlx.has("Ripple")) out.Ripple = typeof out.Ripple === "number" ? out.Ripple : 0.05;
+    if (allowedHlx.has("Bias")) out.Bias = typeof out.Bias === "number" ? out.Bias : 0.5;
+    if (allowedHlx.has("BiasX")) out.BiasX = typeof out.BiasX === "number" ? out.BiasX : 0.5;
   }
   if (block.modelId.startsWith("cali-iv")) {
     // Factory Cali IV Rhythm 2.hlx graphic bands, 0 dB default.
-    out["80Hz"] = out["80Hz"] ?? 0;
-    out["240Hz"] = out["240Hz"] ?? 0;
-    out["750Hz"] = out["750Hz"] ?? 0;
-    out["2200Hz"] = out["2200Hz"] ?? 0;
-    out["6600Hz"] = out["6600Hz"] ?? 0;
+    if (allowedHlx.has("80Hz")) out["80Hz"] = out["80Hz"] ?? 0;
+    if (allowedHlx.has("240Hz")) out["240Hz"] = out["240Hz"] ?? 0;
+    if (allowedHlx.has("750Hz")) out["750Hz"] = out["750Hz"] ?? 0;
+    if (allowedHlx.has("2200Hz")) out["2200Hz"] = out["2200Hz"] ?? 0;
+    if (allowedHlx.has("6600Hz")) out["6600Hz"] = out["6600Hz"] ?? 0;
   }
   if (block.modelId === "70s-chorus") {
-    out.ChorusIntensity = out.ChorusIntensity ?? 0.57;
-    out.VibratoRate = out.VibratoRate ?? 0.34;
-    out.VibratoDepth = 0.5;
-    out.Mix = out.Mix ?? 0.5;
-    out.Mode = false;
-    out.Headroom = 0;
+    if (allowedHlx.has("ChorusIntensity")) out.ChorusIntensity = out.ChorusIntensity ?? 0.57;
+    if (allowedHlx.has("VibratoRate")) out.VibratoRate = out.VibratoRate ?? 0.34;
+    if (allowedHlx.has("VibratoDepth")) out.VibratoDepth = out.VibratoDepth ?? 0.5;
+    if (allowedHlx.has("Mix")) out.Mix = out.Mix ?? 0.5;
+    if (allowedHlx.has("Mode")) out.Mode = false;
+    if (allowedHlx.has("Headroom")) out.Headroom = 0;
   }
   return out;
 }
@@ -344,13 +484,17 @@ function snapshotControllers(
     if (!over) return;
     const model = MODEL_MAP[block.modelId];
     const category = model?.category ?? "distortion";
-    const dropModel = DROP_BY_MODEL[block.modelId];
+    const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
+    const allowedHlx = allowedHlxNames(block.modelId, category);
     const params: Record<string, { "@fs_enabled": boolean; "@value": number | boolean }> = {};
     for (const [uiName, raw] of Object.entries(over)) {
       if (dropModel?.has(uiName)) continue;
+      if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
       const value = toHlxValue(block.modelId, uiName, raw, category);
-      if (value === undefined) continue;
-      params[helixParamName(block.modelId, uiName)] = { "@fs_enabled": false, "@value": value };
+      if (!finiteHlx(value)) continue;
+      const pname = helixParamName(block.modelId, uiName);
+      if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
+      params[pname] = { "@fs_enabled": false, "@value": value };
     }
     if (Object.keys(params).length) controllers[`block${i}`] = params;
   });
@@ -368,14 +512,17 @@ function buildControllerSection(preset: Preset, others: StompBlock[], maxSnapsho
       if (!over) return;
       const model = MODEL_MAP[block.modelId];
       const category = model?.category ?? "distortion";
-      const dropModel = DROP_BY_MODEL[block.modelId];
+      const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
       const key = `block${i}`;
       if (!variations.has(key)) variations.set(key, new Map());
+      const allowedHlx = allowedHlxNames(block.modelId, category);
       for (const [uiName, raw] of Object.entries(over)) {
         if (dropModel?.has(uiName)) continue;
+        if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
         const value = toHlxValue(block.modelId, uiName, raw, category);
-        if (typeof value !== "number") continue;
+        if (typeof value !== "number" || !Number.isFinite(value)) continue;
         const pname = helixParamName(block.modelId, uiName);
+        if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
         if (!variations.get(key)!.has(pname)) variations.get(key)!.set(pname, new Set());
         variations.get(key)!.get(pname)!.add(value);
       }
@@ -462,6 +609,11 @@ function emptySnapshot(index: number, others: StompBlock[], tempo: number) {
   };
 }
 
+function sanitizeLabel(s: string, max: number) {
+  const clean = s.replace(/[^\w\s+\-.'&]/g, " ").replace(/\s+/g, " ").trim();
+  return (clean || "Stomp Lab").slice(0, max);
+}
+
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
   const blocks = exportableBlocks(preset);
   const { dsp, others } = buildDsp(blocks);
@@ -495,7 +647,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
     const hwIndex = visualToHardwareFs(i + 1, preset.stompModel === "hx-stomp-xl");
     tone[`snapshot${i}`] = snap
       ? {
-          "@name": snap.name.slice(0, 10).toUpperCase(),
+          "@name": sanitizeLabel(snap.name, 10).toUpperCase(),
           "@tempo": tempo,
           "@valid": true,
           "@pedalstate": 0,
@@ -514,7 +666,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
       device: DEVICE_IDS[preset.stompModel],
       device_version: HLX_APP_VERSION,
       meta: {
-        name: (preset.name || "Stomp Lab").slice(0, 32),
+        name: sanitizeLabel(preset.name || "Stomp Lab", 32),
         application: "HX Edit",
         build_sha: HLX_BUILD_SHA,
         modifieddate: Math.floor(Date.now() / 1000),

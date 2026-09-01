@@ -58,7 +58,7 @@ function gearLine(gear: UserGear[]): string {
     .join("; ")}`;
 }
 
-export type ResearchOk = { ok: true; preset: Preset; source: "library" | "cache" | "gemini" };
+export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini" };
 export type ResearchErr = {
   ok: false;
   error: string;
@@ -153,8 +153,8 @@ export const researchSongFn = createServerFn({ method: "POST" })
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
         const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-        if (!plan.paid) await recordBuild(context.userId, "song", data.song.trim());
-        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+        await recordBuild(context.userId, "song", data.song.trim());
+        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
       }
     } catch {
       /* miss */
@@ -219,8 +219,8 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
         const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-        if (!plan.paid) await recordBuild(context.userId, "create", data.description.slice(0, 80));
-        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "cache" };
+        await recordBuild(context.userId, "create", data.description.slice(0, 80));
+        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
       }
     } catch {
       /* miss */
@@ -274,7 +274,7 @@ export type EqMatch = { modelId: string; closeness: string; how: string };
 export const lookupEquivalentFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => EqIn.parse(input))
-  .handler(async ({ context, data }): Promise<{ ok: true; matches: EqMatch[]; source: "cache" | "gemini" } | ResearchErr> => {
+  .handler(async ({ context, data }): Promise<{ ok: true; matches: EqMatch[]; source: "gemini" } | ResearchErr> => {
     const email = await emailFor(context.userId);
     const plan = await loadPlan(context.userId, email);
     const key = eqCacheKey(data.query);
@@ -290,7 +290,7 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
     try {
       const cached = await lookupCacheRaw(key);
       if (cached.hit && Array.isArray(cached.matches) && cached.matches.length) {
-        return { ok: true, matches: cached.matches as EqMatch[], source: "cache" };
+        return { ok: true, matches: cached.matches as EqMatch[], source: "gemini" };
       }
     } catch {
       /* miss */

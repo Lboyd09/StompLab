@@ -3,26 +3,26 @@ import type { HxModel } from "./types";
 
 export const FX_MODELS: HxModel[] = [
   // —— Distortion (HX) ——
-  m("distortion", "Kinky Boost", "Xotic EP Booster", "Clean-ish boost with a little hair. Parks in front of an amp to wake it up without stealing the amp's voice.", "ep booster,xotic,boost,ep3,echoplex preamp", { dsp: "light", abbrev: "Bst" }),
-  m("distortion", "Heir Apparent", "Analog Man Prince of Tone", "Lower-gain boutique overdrive. Open, touchy, and great as an always-on grit layer.", "prince of tone,analog man,pot,overdrive", { dsp: "light" }),
+  m("distortion", "Kinky Boost", "Xotic EP Booster", "Clean-ish boost with a little hair. Parks in front of an amp to wake it up without stealing the amp's voice.", "ep booster,xotic,boost,ep3,echoplex preamp", { dsp: "light", abbrev: "Bst", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Heir Apparent", "Analog Man Prince of Tone", "Lower-gain boutique overdrive. Open, touchy, and great as an always-on grit layer.", "prince of tone,analog man,pot,overdrive", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
   m("distortion", "Tone Sovereign", "Analog Man King of Tone", "Dual-voiced boutique overdrive. Blues to crunch with a sweet midrange that loves Strats.", "king of tone,analog man,kot,overdrive", { dsp: "light" }),
-  m("distortion", "Deranged Master", "MESA/Boogie Flux-Drive", "Smooth Mesa overdrive. Pushes a clean amp into singing saturation without getting fizzy.", "flux-drive,mesa,boogie,overdrive", { dsp: "light" }),
-  m("distortion", "Minotaur", "Klon Centaur", "Transparent overdrive that thickens and adds harmonic weight. The classic always-on boost.", "klon,centaur,ktr,gold,overdrive", { dsp: "light", abbrev: "Kln" }),
+  m("distortion", "Deranged Master", "Dallas Arbiter Rangemaster Treble Booster", "Germanium treble booster. Wakes a dark amp without adding much gain of its own.", "rangemaster,dallas,arbiter,treble booster,boost", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Minotaur", "Klon Centaur", "Transparent overdrive that thickens and adds harmonic weight. The classic always-on boost.", "klon,centaur,ktr,gold,overdrive", { dsp: "light", abbrev: "Kln", params: ["Drive", "Treble", "Output"] }),
   m("distortion", "Teemah", "Paul Cochrane Timmy", "Transparent, EQ-flexible overdrive. Stacks cleanly and fixes dark or ice-picky amps.", "timmy,paul cochrane,overdrive", { dsp: "light" }),
   m("distortion", "Compulsive Drive", "Fulltone OCD", "Open, amp-like overdrive from edge-of-breakup to punchy distortion. HP/LP modes in spirit.", "ocd,fulltone,overdrive", { dsp: "light", abbrev: "OCD" }),
   m("distortion", "Valve Driver", "Chandler Tube Driver", "Tube-driven overdrive with a singing, slightly compressed lead quality.", "chandler,tube driver,overdrive", { dsp: "light" }),
-  m("distortion", "Top Secret OD", "DOD YJM308", "Tight, articulate overdrive associated with Yngwie. Cuts without getting thin.", "yjm308,dod,yngwie,overdrive", { dsp: "light" }),
-  m("distortion", "Scream 808", "Ibanez TS808 Tube Screamer", "The mid-hump classic. Pushes Marshalls into saturated lead and tightens bass on high-gain amps.", "tube screamer,ts808,ts9,ibanez,overdrive", { dsp: "light", abbrev: "TS" }),
-  m("distortion", "Hedgehog D9", "Maxon SD-9 Sonic Distortion", "Grittier than a Screamer, still mid-forward. A secret weapon into British stacks.", "sd-9,maxon,sd9,distortion", { dsp: "light" }),
-  m("distortion", "Stupor OD", "BOSS SD-1 Super OverDrive", "Asymmetric clipping, a little more aggressive than a Screamer. Cheap-sounding in the best way. Closest HX model to a BOSS DS-1.", "sd-1,sd1,boss,overdrive,ds-1,ds1,distortion", { dsp: "light" }),
+  m("distortion", "Top Secret OD", "DOD YJM308 / Overdrive Preamp 250 family", "Tight, articulate overdrive associated with Yngwie. Cuts without getting thin. Same family as the DOD 250.", "yjm308,dod,yngwie,overdrive,dod 250,od-250,preamp 250", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Scream 808", "Ibanez TS808 Tube Screamer", "The mid-hump classic. Pushes Marshalls into saturated lead and tightens bass on high-gain amps. Drive low / Level high as a tightener.", "tube screamer,ts808,ts-808,ts9,ts-9,ibanez,overdrive", { dsp: "light", abbrev: "TS", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Hedgehog D9", "Maxon SD-9 Sonic Distortion", "Grittier than a Screamer, still mid-forward. A secret weapon into British stacks.", "sd-9,sd9,maxon,sonic distortion,distortion", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Stupor OD", "BOSS SD-1 Super OverDrive", "Asymmetric clipping, a little more aggressive than a Screamer. Cheap-sounding in the best way. This is the SD-1, not the DS-1.", "sd-1,sd1,boss sd-1,boss sd1,super overdrive,overdrive", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
   m("distortion", "Horizon Drive", "Horizon Precision Drive", "Modern metal overdrive/boost with a tight, gate-friendly voicing. Built for palm mutes.", "horizon,precision drive,metal,boost", { dsp: "light" }),
   m("distortion", "KWB", "Ben Adrian KWB", "High-gain distortion with a unique mid structure. Heavy riffs without a wall of fizz.", "kwb,ben adrian,distortion", { dsp: "medium" }),
   m("distortion", "German Mottled", "Tech 21 SansAmp GT2 XXL", "Amp-in-a-box distortion with British high-gain flavor. Works as a preamp into a power section.", "sansamp,gt2,tech 21,xxl", { dsp: "medium" }),
   m("distortion", "Legendary Drive", "Carvin VLD1 Drive (hi-gain channel)", "High-gain preamp-style distortion. Thick, modern, and very saturated.", "carvin,vld1,drive", { dsp: "medium" }),
   m("distortion", "Swedish Chainsaw", "BOSS HM-2 Heavy Metal (MIJ)", "The chainsaw. Max the mids and highs for Swedish death metal, or tame it for 90s grind.", "hm-2,hm2,boss,chainsaw,entombed", { dsp: "medium", abbrev: "HM2" }),
-  m("distortion", "Vermin Dist", "ProCo RAT", "Gritty, fuzzy distortion. The filter knob is the whole personality — from violin to garage.", "rat,proco,pro co,distortion", { dsp: "light", abbrev: "Rat" }),
-  m("distortion", "Deez One Vintage", "DOD Overdrive/Preamp 250 (vintage)", "Simple, bright, biting overdrive. One of the original amp-pushers.", "dod 250,preamp 250,overdrive", { dsp: "light" }),
-  m("distortion", "Deez One Mod", "DOD Overdrive/Preamp 250 (modded)", "A smoother 250. Same circuit idea with the icepick filed down.", "dod 250,modded,overdrive", { dsp: "light" }),
+  m("distortion", "Vermin Dist", "ProCo RAT", "Gritty, fuzzy distortion. The filter knob is the whole personality — from violin to garage.", "rat,proco,pro co,distortion", { dsp: "light", abbrev: "Rat", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Deez One Vintage", "BOSS DS-1 Distortion (Made-in-Japan)", "The Helix DS-1. Mid-scooped, compressed MIJ distortion — Kurt Cobain, Nevermind, and every other DS-1 into a loud amp. Drive around noon, not dime'd.", "ds-1,ds1,boss ds-1,boss ds1,ds 1,distortion,mij,nirvana,cobain,keeley", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
+  m("distortion", "Deez One Mod", "BOSS DS-1 Distortion (Keeley mod)", "Keeley-modded DS-1. Same DS-1 circuit with the icepick and squash filed down. Use when the record is a modded Boss yellow.", "ds-1,ds1,boss ds-1,keeley,ds 1,distortion,mod", { dsp: "light", params: ["Drive", "Treble", "Output"] }),
   m("distortion", "Dhyana Drive", "Hermida Zendrive", "Dumble-adjacent, touch-sensitive overdrive. Blooms when you dig in.", "zendrive,hermida,dumble,overdrive", { dsp: "light" }),
   m("distortion", "Knuckle Dragon", "Suhr Riot", "High-gain distortion pedal with tight low end. Modern metal in a box.", "suhr riot,riot,distortion", { dsp: "medium" }),
   m("distortion", "Arbitrator Fuzz", "Arbiter Fuzz Face", "Germanium-style fuzz that cleans up with the guitar volume knob. Hendrix rhythm home.", "fuzz face,arbiter,dallas,fuzz", { dsp: "light", abbrev: "FzF" }),
@@ -83,8 +83,8 @@ export const FX_MODELS: HxModel[] = [
   m("eq", "Low/High Shelf", "Line 6 Original", "Broad shelves. Tilt the whole tone darker or brighter without a mid notch.", "shelf,eq", { dsp: "light", params: ["Low Freq", "Low Gain", "High Freq", "High Gain"] }),
   m("eq", "Parametric", "Line 6 Original", "Sweepable mid with Q. Surgical fix for a honky cab or a scooped bass.", "parametric,peaking,eq", { dsp: "light", params: ["Freq", "Q", "Gain", "Level"] }),
   m("eq", "Tilt", "Line 6 Original", "One knob from dark to bright around a pivot frequency. Fast analog-style balance.", "tilt,eq", { dsp: "light", params: ["Tilt", "Freq", "Level"] }),
-  m("eq", "10 Band Graphic", "MXR 10-Band Graphic EQ", "Ten sliders, studio and pedalboard staple. Shape a DI or fix a room.", "mxr,10 band,graphic eq,m108", { dsp: "medium", params: ["31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1k", "2k", "4k", "8k", "16k"] }),
-  m("eq", "Cali Q Graphic", "MESA/Boogie Mark IV Graphic EQ", "The five-band Mesa graphic. Scooped 'V' for metal, or mid boost for fusion.", "mesa,mark iv,graphic eq,5 band", { dsp: "light", params: ["80Hz", "240Hz", "750Hz", "2.2k", "6.6k"] }),
+  m("eq", "10 Band Graphic", "MXR 10-Band Graphic EQ", "Ten sliders, studio and pedalboard staple. Shape a DI or fix a room.", "mxr,10 band,graphic eq,m108", { dsp: "medium", params: ["31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz"] }),
+  m("eq", "Cali Q Graphic", "MESA/Boogie Mark IV Graphic EQ", "The five-band Mesa graphic. Scooped 'V' for metal, or mid boost for fusion.", "mesa,mark iv,graphic eq,5 band", { dsp: "light", params: ["80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz"] }),
   m("eq", "Acoustic Sim", "Line 6 Original", "Turns a magnetic pickup toward an acoustic-ish body. Best with a little reverb and chorus.", "acoustic,simulator,piezo", { dsp: "medium", params: ["Body", "Tone", "Level"] }),
 
   // —— Modulation ——
@@ -137,7 +137,7 @@ export const FX_MODELS: HxModel[] = [
   m("modulation", "Rotary Drum/Horn Legacy", "Leslie 145", "Legacy Leslie. Use 145 Rotary for HX.", "leslie,rotary", { io: "legacy", dsp: "heavy" }),
 
   // —— Delay ——
-  m("delay", "Simple Delay", "Line 6 Original", "Clean digital delay. Time, feedback, mix. The utility echo.", "digital delay,utility", { dsp: "light" }),
+  m("delay", "Simple Delay", "Line 6 Original", "Clean digital delay. Time, feedback, mix. The utility echo.", "digital delay,utility", { dsp: "light", params: ["Time", "Feedback", "Mix", "Scale"] }),
   m("delay", "Mod/Chorus Echo", "Line 6 Original", "Delay with chorus on the repeats. 80s rack echo.", "mod delay,chorus echo", { dsp: "medium" }),
   m("delay", "Dual Delay", "Line 6 Original", "Two delay lines, usually L/R. Independent times for dotted/straight patterns.", "dual delay,stereo,dotted", { io: "stereo", dsp: "medium" }),
   m("delay", "Multitap 4", "Line 6 Original", "Four taps. Rhythmic patterns from one throw.", "multitap,rhythmic", { io: "stereo", dsp: "medium" }),
@@ -244,7 +244,7 @@ export const FX_MODELS: HxModel[] = [
 
   // —— Wah ——
   m("wah", "UK Wah 846", "Vox V846", "The British wah. Vocal, slightly darker than a Cry Baby. Clapton/Hendrix era.", "vox,v846,wah,clyde", { dsp: "light" }),
-  m("wah", "Teardrop 310", "Dunlop Cry Baby Fasel 310", "Italian Fasel inductor Cry Baby. The modern standard vocal wah.", "cry baby,dunlop,fasel,gcb95,wah", { dsp: "light", abbrev: "Cry" }),
+  m("wah", "Teardrop 310", "Dunlop Cry Baby Fasel 310", "Italian Fasel inductor Cry Baby. The modern standard vocal wah.", "cry baby,crybaby,dunlop,fasel,gcb95,gcb-95,wah", { dsp: "light", abbrev: "Cry" }),
   m("wah", "Fassel", "Dunlop Cry Baby Super", "Brighter Cry Baby voicing with the Fasel inductor character.", "cry baby,fasel,dunlop,wah", { dsp: "light" }),
   m("wah", "Weeper", "Arbiter Cry Baby", "Early Cry Baby. A little rawer, very 60s.", "cry baby,arbiter,wah", { dsp: "light" }),
   m("wah", "Chrome", "Vox V847", "Standard Vox wah. Quacky, mid-forward.", "vox,v847,wah", { dsp: "light" }),

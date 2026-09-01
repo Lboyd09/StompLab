@@ -30,7 +30,7 @@ export const FEATURED: Preset[] = [
       { role: "Guitar", name: "1969 Fender Mustang (L) / 1965 Jaguar (R)", notes: "Single coils, doubled left/right. Kurt also used Strats with a bridge humbucker on some takes." },
       { role: "Amp (intro)", name: "Fender Twin Reverb", notes: "Guitar Chalk: the opening riff is a clean Twin platform + Small Clone. Headroom, spring tank, no pedal dirt." },
       { role: "Pedal", name: "EHX Small Clone", notes: "Depth switch ON. Intro and pre-chorus. Bypassed for the dry verse and the loud chorus." },
-      { role: "Pedal", name: "BOSS DS-1", notes: "Nevermind dirt, gain ~1 o'clock — not dime'd. Off for the clean intro. Helix has no DS-1; Stupor OD (SD-1 family) is the stand-in." },
+      { role: "Pedal", name: "BOSS DS-1", notes: "Nevermind dirt, Distortion ~noon — not dime'd. Off for the clean intro. Helix model: Deez One Vintage (MIJ DS-1)." },
       { role: "Amp (dirt)", name: "Mesa/Boogie Studio .22 Preamp + Crown", notes: "Nevermind rack. One HX amp (Cali IV Rhythm 2) with intro Drive ~1.6 stands in for the Twin so we don't load two amps." },
       { role: "Cab", name: "Marshall 1960 4×12, SM57 / 414 / U87", notes: "Close, dry. SM57 is the Stomp default." },
     ],
@@ -39,7 +39,7 @@ export const FEATURED: Preset[] = [
       { item: "Bridge pickup, guitar volume at 7 for verses", why: "Kurt didn't switch channels — he turned the guitar down." },
     ],
     blocks: [
-      block("b1", "stupor-od", { Drive: 7.0, Bass: 5.0, Mid: 6.6, Treble: 5.6, Output: 6.0 }, 0, false),
+      block("b1", "deez-one-vintage", { Drive: 5.2, Treble: 5.4, Output: 6.0 }, 0, false),
       block("b2", "70s-chorus", { Rate: 3.4, Depth: 7.2, Mix: 6.5, Tone: 5.4 }, 1),
       block("b3", "cali-iv-rhythm-2", { Drive: 1.6, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.2, Master: 5.6, "Ch Vol": 5.2, Sag: 3.4 }, 2),
       block("b4", "4x12-cali-v30", { Mic: 0, Distance: 2.0, "Low Cut": 2.4, "High Cut": 7.0, "Early Refl": 2.4 }, 3),
@@ -64,7 +64,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b1", "b3", "b4"],
         notes: "DS-1 on, Small Clone OFF — the dry muted verse riff. Play lighter; guitar volume ~7.",
         paramOverrides: {
-          b3: { Drive: 4.2, "Ch Vol": 5.4, Presence: 4.4, Treble: 5.4 },
+          b3: { Drive: 3.4, "Ch Vol": 5.4, Presence: 4.4, Treble: 5.4 },
         },
       },
       {
@@ -74,7 +74,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b1", "b3", "b4"],
         notes: "Small Clone OFF — the loud HELLO chorus. Amp slammed. Use this for the solo too.",
         paramOverrides: {
-          b3: { Drive: 6.8, "Ch Vol": 6.8, Presence: 5.4, Treble: 5.6 },
+          b3: { Drive: 4.8, "Ch Vol": 6.4, Presence: 5.0, Treble: 5.6 },
         },
       },
       {
@@ -85,7 +85,7 @@ export const FEATURED: Preset[] = [
         notes: "XL snapshot 4. Small Clone ON — the watery 'hello, hello, hello' pre-chorus.",
         paramOverrides: {
           b2: { Mix: 6.5, Depth: 7.2 },
-          b3: { Drive: 4.6, "Ch Vol": 5.8, Presence: 4.6 },
+          b3: { Drive: 3.6, "Ch Vol": 5.8, Presence: 4.6 },
         },
       },
     ],
@@ -96,9 +96,9 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import: PAGE until the scribbles say INTRO / VERSE / CHORUS.",
-      "Path: Stupor OD → 70s Chorus → Cali IV Rhythm 2 → 4x12 Cali V30 → Hot Springs.",
+      "Path: Deez One Vintage (DS-1) → 70s Chorus → Cali IV Rhythm 2 → 4x12 Cali V30 → Hot Springs.",
       "Intro (FS1): DS-1 OFF, Small Clone ON, Drive 1.6, spring Mix 3.2. Guitar Chalk Twin + Clone.",
-      "Verse (FS2): DS-1 ON, clone OFF, Drive 4.2. Chorus (FS3): clone OFF, Drive 6.8.",
+      "Verse (FS2): DS-1 ON (Drive 5.2), clone OFF, amp Drive 3.4. Chorus (FS3): clone OFF, amp Drive 4.8 — not dime'd.",
       "On HX Stomp XL, snapshot 4 (PRE) is the watery hello — Small Clone + DS-1. Replica switch 4 (bottom-left).",
       "One amp on purpose. A real Twin + Mesa would blow the Stomp DSP; intro Drive is the Twin stand-in.",
       "Download the .hlx. HX Edit: File → Import. PAGE enters Snapshot mode.",
@@ -133,8 +133,8 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "uk-wah-846", { Position: 3.5, Mix: 10, "Dc Bias": 5, Level: 5 }, 0, true),
-      block("b2", "scream-808", { Drive: 2.0, Bass: 4.5, Mid: 6.6, Treble: 5.4, Output: 7.6 }, 1, false),
-      block("b3", "cali-rectifire", { Drive: 1.8, Bass: 5.0, Mid: 6.0, Treble: 5.8, Presence: 3.8, Master: 5.4, "Ch Vol": 5.4, Sag: 3.2 }, 2),
+      block("b2", "scream-808", { Drive: 1.6, Treble: 5.4, Output: 7.4 }, 1, false),
+      block("b3", "cali-rectifire", { Drive: 1.6, Bass: 5.0, Mid: 6.0, Treble: 5.8, Presence: 3.8, Master: 5.4, "Ch Vol": 5.4, Sag: 3.2 }, 2),
       block("b4", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 6.8, "Early Refl": 2.2 }, 3),
       block("b5", "hard-gate", { Threshold: 5.8, Decay: 2.0 }, 4, false),
     ],
@@ -144,10 +144,10 @@ export const FEATURED: Preset[] = [
         name: "Intro",
         color: "#c5c9c2",
         enabledBlocks: ["b1", "b3", "b4"],
-        notes: "CLEAN intro. Wah on EXP 1, Tube Screamer off, gate off, Recto Drive 1.8 so the arpeggio rings.",
+        notes: "CLEAN intro. Wah on EXP 1, Tube Screamer off, gate off, Recto Drive 1.6 so the arpeggio rings.",
         paramOverrides: {
           b1: { Position: 4.0 },
-          b3: { Drive: 1.8, "Ch Vol": 5.4, Presence: 3.8, Treble: 5.8 },
+          b3: { Drive: 1.6, "Ch Vol": 5.4, Presence: 3.8, Treble: 5.8 },
         },
       },
       {
@@ -155,9 +155,9 @@ export const FEATURED: Preset[] = [
         name: "Rhythm",
         color: "#e24a3a",
         enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Main chug. Wah off, TS-9 on, gate on, Recto Drive 5.8.",
+        notes: "Main chug. Wah off, TS-9 on, gate on, Recto Drive 4.2.",
         paramOverrides: {
-          b3: { Drive: 5.8, "Ch Vol": 6.2, Presence: 4.8, Treble: 5.4 },
+          b3: { Drive: 4.2, "Ch Vol": 6.0, Presence: 4.6, Treble: 5.4 },
         },
       },
       {
@@ -165,9 +165,9 @@ export const FEATURED: Preset[] = [
         name: "Lead",
         color: "#f5d000",
         enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Kirk solo bump — same chain, louder.",
+        notes: "Kirk solo bump — same chain, a little louder, not more gain.",
         paramOverrides: {
-          b3: { Drive: 6.2, "Ch Vol": 7.2, Presence: 6.0, Treble: 5.8 },
+          b3: { Drive: 4.6, "Ch Vol": 6.8, Presence: 5.4, Treble: 5.6 },
         },
       },
     ],
@@ -179,8 +179,8 @@ export const FEATURED: Preset[] = [
     programming: [
       "SNAPSHOT MODE. After import: press the Stomp PAGE button until the scribble strips say INTRO / RHYTHM / LEAD. FS1–FS3 recall those snapshots.",
       "Path: UK Wah 846 → Scream 808 → Cali Rectifire → 4x12 Cali V30 → Hard Gate.",
-      "Intro snapshot: wah ON, TS OFF, gate OFF, Drive 1.8. That is the clean arpeggio.",
-      "Rhythm snapshot: wah OFF, TS ON (Drive 2 / Level 7.6), gate ON, Recto Drive 5.8.",
+      "Intro snapshot: wah ON, TS OFF, gate OFF, Drive 1.6. That is the clean arpeggio.",
+      "Rhythm snapshot: wah OFF, TS ON (Drive 1.6 / Level 7.4), gate ON, Recto Drive 4.2 — tight, not a wall.",
       "Assign EXP 1 to Wah Position for the intro lick.",
     ],
     tips: [
@@ -593,7 +593,7 @@ export const FEATURED: Preset[] = [
     name: "Paranoid",
     tempo: 82,
     summary:
-      "OK Computer (1997). Three songs in one: a nasal Tele into a clean Fender Eighty-Five, a Marshall Shredmaster for the heavy section, and a Space Echo + Small Stone for the 6/8 weep. Snapshots are mandatory. Helix has no Shredmaster — Knuckle Dragon (Suhr Riot) is a high-gain pedal into a clean amp, which is how Jonny used it. No gate.",
+      "OK Computer (1997). Three songs in one: a nasal Tele into a clean Fender Eighty-Five, a Marshall Shredmaster for the heavy section, and a Space Echo + Small Stone for the 6/8 weep. Snapshots are mandatory. Helix has no Shredmaster — KWB is the high-gain pedal into a clean amp, which is how Jonny used it. No gate.",
     originalGear: [
       { role: "Guitar", name: "Fender Telecaster Plus (Lace Sensor)", notes: "Jonny's nasal, mid-forward dry core." },
       { role: "Pedal", name: "Marshall Shredmaster", notes: "The heavy-section dirt, into a clean amp. Not an amp channel." },
@@ -606,7 +606,7 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "pebble-phaser", { Rate: 2.6, Depth: 4.4, Mix: 4.2, Tone: 5.4 }, 0, false),
-      block("b2", "knuckle-dragon", { Drive: 6.4, Bass: 5.6, Mid: 4.2, Treble: 5.4, Output: 5.6, Mix: 10 }, 1, false),
+      block("b2", "kwb", { Drive: 6.4, Bass: 5.6, Treble: 5.4, Output: 5.6 }, 1, false),
       block("b3", "us-deluxe-nrm", { Drive: 3.2, Bass: 5.0, Mid: 5.8, Treble: 6.2, Presence: 4.8, Master: 5.6, "Ch Vol": 6.0, Sag: 3.2 }, 2),
       block("b4", "1x12-us-deluxe", { Mic: 0, Distance: 2.4, "Low Cut": 2.2, "High Cut": 7.8, "Early Refl": 3.0 }, 3),
       block("b5", "cosmos-echo", { Time: 3.4, Feedback: 3.2, Mix: 2.4, Mod: 2.0, Scale: 5 }, 4),
@@ -652,9 +652,9 @@ export const FEATURED: Preset[] = [
       { index: 3, label: "WEEP", color: "#22e07a", action: "snapshot", snapshotId: "s3", notes: "6/8 breakdown / solo." },
     ],
     programming: [
-      "Path: Pebble Phaser → Knuckle Dragon → US Deluxe Nrm → 1x12 US Deluxe → Cosmos Echo → Hall.",
+      "Path: Pebble Phaser → KWB → US Deluxe Nrm → 1x12 US Deluxe → Cosmos Echo → Hall.",
       "Snapshots turn fuzz/phaser/delay on and off AND recall delay mix. Don't try to stomp them individually on a 3-switch unit.",
-      "Pebble Phaser is the Small Stone. Knuckle Dragon stands in for the Shredmaster (high-gain pedal into a clean amp).",
+      "Pebble Phaser is the Small Stone. KWB stands in for the Shredmaster (high-gain pedal into a clean amp).",
       "Cosmos Echo Mix 2.4 in Snap 1, off in Snap 2, Mix 4.0 in Snap 3.",
       "In Snapshot edit, check that delay mix and amp Channel Volume are snapshot-controlled.",
     ],
@@ -678,16 +678,16 @@ export const FEATURED: Preset[] = [
     originalGear: [
       { role: "Guitar", name: "Fender Jaguar / Mustang", notes: "Single coil, slightly dark." },
       { role: "Pedal", name: "EHX Small Clone", notes: "Always on. The watery line is the riff." },
-      { role: "Pedal", name: "BOSS DS-1", notes: "On for the louder hits. Stupor OD stand-in." },
+      { role: "Pedal", name: "BOSS DS-1", notes: "On for the louder hits. Deez One Vintage (MIJ DS-1)." },
       { role: "Amp", name: "Mesa Studio Pre / Fender Bassman", notes: "Same Nevermind rack as Teen Spirit." },
     ],
     recommendedGear: [
       { item: "Jaguar / Mustang / Strat", why: "The riff is a single-coil line, not a Les Paul." },
     ],
     blocks: [
-      block("b1", "stupor-od", { Drive: 6.4, Bass: 5.0, Mid: 6.2, Treble: 5.4, Output: 5.8 }, 0, false),
+      block("b1", "deez-one-vintage", { Drive: 5.0, Treble: 5.2, Output: 5.8 }, 0, false),
       block("b2", "70s-chorus", { Rate: 3.2, Depth: 7.4, Mix: 6.2, Tone: 5.2 }, 1),
-      block("b3", "cali-iv-rhythm-2", { Drive: 3.6, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.4, Master: 5.4, "Ch Vol": 5.6, Sag: 4.0 }, 2),
+      block("b3", "cali-iv-rhythm-2", { Drive: 2.8, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.4, Master: 5.4, "Ch Vol": 5.6, Sag: 4.0 }, 2),
       block("b4", "4x12-cali-v30", { Mic: 0, Distance: 2.2, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.6 }, 3),
     ],
     snapshots: [
@@ -698,7 +698,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b2", "b3", "b4"],
         notes: "DS-1 off. Small Clone is the riff. Amp almost clean.",
         paramOverrides: {
-          b3: { Drive: 3.2, "Ch Vol": 5.4 },
+          b3: { Drive: 2.6, "Ch Vol": 5.4 },
         },
       },
       {
@@ -708,7 +708,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b1", "b2", "b3", "b4"],
         notes: "DS-1 on, clone still on.",
         paramOverrides: {
-          b3: { Drive: 5.4, "Ch Vol": 6.4 },
+          b3: { Drive: 4.0, "Ch Vol": 6.2 },
         },
       },
       {
@@ -718,7 +718,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b1", "b2", "b3", "b4"],
         notes: "A little more Drive.",
         paramOverrides: {
-          b3: { Drive: 6.0, "Ch Vol": 6.8, Presence: 5.2 },
+          b3: { Drive: 4.4, "Ch Vol": 6.6, Presence: 5.0 },
         },
       },
     ],
@@ -728,7 +728,7 @@ export const FEATURED: Preset[] = [
       { index: 3, label: "SOLO", color: "#f5d000", action: "snapshot", snapshotId: "s3", notes: "Solo bump." },
     ],
     programming: [
-      "Snapshot mode. Path: Stupor OD (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 2 → 4x12 Cali V30.",
+      "Snapshot mode. Path: Deez One Vintage (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 2 → 4x12 Cali V30.",
       "70s Chorus Rate 3.2 Depth 7.4 Mix 6.2. Depth switch ON. Do not bypass it — the song disappears.",
     ],
     tips: [
@@ -758,7 +758,7 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "uk-wah-846", { Position: 4.0, Mix: 10, "Dc Bias": 5, Level: 5 }, 0, false),
-      block("b2", "scream-808", { Drive: 1.8, Bass: 4.6, Mid: 6.4, Treble: 5.2, Output: 6.8 }, 1),
+      block("b2", "scream-808", { Drive: 1.8, Treble: 5.2, Output: 6.8 }, 1),
       block("b3", "brit-2204", { Drive: 5.4, Bass: 4.8, Mid: 6.6, Treble: 5.6, Presence: 5.0, Master: 5.6, "Ch Vol": 6.0, Sag: 4.0 }, 2),
       block("b4", "4x12-greenback-25", { Mic: 0, Distance: 2.0, "Low Cut": 2.4, "High Cut": 7.2, "Early Refl": 2.4 }, 3),
     ],

@@ -151,17 +151,27 @@ function Home() {
     <div className="space-y-10">
       <UpgradeBanner plan={plan} pending={planPending} />
 
-      <section className="max-w-2xl space-y-3">
+      <section className="max-w-2xl space-y-4">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">HX Stomp laboratory</p>
         <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
           Type a song.
-          <span className="block text-muted-foreground">Copy it onto your Stomp.</span>
+          <span className="block text-muted-foreground">Get a preset that sounds like the record.</span>
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
-          Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
+          Research the tracking rig. See it on the unit. Download a .hlx HX Edit can import. Three
+          demos always work — no account required.
         </p>
         <RigDisclaimer />
       </section>
+
+      {plan.signedIn && plan.paid ? (
+        <div className="max-w-2xl rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground tabular-nums">
+            {plan.monthUsed} / {plan.monthLimit}
+          </span>{" "}
+          custom builds used this month
+        </div>
+      ) : null}
 
       {plan.signedIn && !plan.paid ? (
         <div className="flex max-w-2xl items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
@@ -199,7 +209,7 @@ function Home() {
         <div className="flex items-end">
           <Button type="submit" disabled={busy || planPending} className="w-full sm:w-auto">
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {busy ? "Researching" : "Build preset"}
+            {busy ? "Researching" : "Build this preset"}
           </Button>
         </div>
         {busy ? <ResearchProgress pct={progress} /> : null}
@@ -287,8 +297,7 @@ function Home() {
         <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
           <p>
             <span className="block font-medium text-foreground">1. Demo or research</span>
-            Sandman, Teen Spirit, and Comfortably Numb are instant and downloadable. Other known
-            rigs unlock with the Lab. A new title uses one of your {FREE_BUILDS} free custom builds.
+            Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
           </p>
           <p>
             <span className="block font-medium text-foreground">2. Play the replica</span>

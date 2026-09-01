@@ -116,8 +116,11 @@ function LoginPage() {
     <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-2">
-          <a href="/" className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            ← Back to Lab
+          <a href="/" className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold tracking-[-0.08em] normal-case text-mark-foreground">
+              SL
+            </span>
+            Back to Lab
           </a>
           <h1 className="font-display text-3xl font-semibold tracking-tight">
             {mode === "in" ? "Sign in" : "Create account"}

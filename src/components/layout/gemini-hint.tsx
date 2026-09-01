@@ -18,8 +18,7 @@ export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean })
   if (plan.paid) {
     return (
       <p className="text-xs text-muted-foreground">
-        {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Demos never count. Repeat
-        research of a song you already built uses the saved result.
+        {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Demos never count.
       </p>
     );
   }

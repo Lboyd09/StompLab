@@ -82,12 +82,12 @@ function GuidePage() {
         </ol>
       </Section>
 
-      <Section title="Research and the shared library">
+      <Section title="Research and builds">
         <p>
           Featured demos (Sandman, Teen Spirit, Comfortably Numb) never need an account and always
           download. Sign in for three free custom songs. After that, a one-time unlock ($19 launch)
-          opens any song, Create, History, Gear, and the shared library. Cache hits do not count
-          toward the 50 builds/month cap.
+          opens any song, Create, History, and Gear. Each custom research counts toward your 50
+          builds this month — demos never do.
         </p>
         <p>
           Add guitars and amps in Gear first. Research will mention what to grab from your locker. Paid

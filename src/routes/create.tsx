@@ -5,6 +5,8 @@ import { toast } from "sonner";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
+import { UpgradeBanner } from "@/components/layout/upgrade-banner";
+import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -103,12 +105,15 @@ function CreatePage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <UpgradeBanner plan={plan} pending={isPending} />
       <header className="space-y-2">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Custom rig</p>
         <h1 className="font-display text-3xl font-semibold tracking-tight">Describe a sound</h1>
-        <p className="text-sm text-muted-foreground">
-          A pedalboard, an amp stack, a feeling. Stomp Lab turns it into an HX path with knobs and
-          footswitch programming for your {stompModel === "hx-stomp" ? "HX Stomp" : "HX Stomp XL"}.
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Pedalboard, amp stack, or a feeling. You get a path on the replica and a .hlx HX Edit will
+          import — for your {stompModel === "hx-stomp" ? "HX Stomp" : "HX Stomp XL"}.
         </p>
+        <RigDisclaimer />
       </header>
 
       {!plan.signedIn && !isPending ? (

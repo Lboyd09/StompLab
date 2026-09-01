@@ -22,6 +22,8 @@
   --color-danger: #c4453c;
   --color-lcd: #7dff9a;
   --color-aluminum: #c5c9c2;
+  --color-mark: #000000;
+  --color-mark-foreground: #e8e6df;
 
   --radius-sm: 6px;
   --radius-md: 10px;

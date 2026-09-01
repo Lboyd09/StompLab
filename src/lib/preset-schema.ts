@@ -271,71 +271,44 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{
-  "name": "preset name <=18 chars",
-  "tempo": 120,
-  "summary": "album/year, the real rig, HX stand-ins. <=400 chars",
-  "originalGear": [{"role":"Guitar|Bass|Amp|Pedal|Cab","name":"real gear","notes":"era / how it was used"}],
-  "blocks": [{"modelId":"scream-808","enabled":true,"params":{"Drive":2.0,"Output":7.5,"Mic":0}}],
-  "snapshots": [{"name":"Verse","color":"#7d9a6a","enabledModelIds":["scream-808"],"paramOverrides":{"brit-2204":{"Drive":4.2}},"notes":""}],
-  "footswitches": [{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro","notes":""}],
-  "programming": ["step"],
-  "tips": ["how to play it so it sounds like the record"]
-}
-Every params value MUST be a JSON number 0-10. Cab Mic is 0 (SM57) through 12 — never a mic name string.`;
+  return `{"name":"<=18 chars","tempo":120,"summary":"album/year, real rig, HX stand-ins. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real gear","notes":""}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"}],"programming":["step"],"tips":["how to play it like the record"]}
+Params MUST be JSON numbers 0-10. Cab Mic is 0 (SM57) — never a string.`;
 }
 
-const STAND_INS = `Common HX stand-ins when Helix has no exact model:
-- BOSS DS-1 → stupor-od (SD-1, same family). Helix has no DS-1.
-- EHX Small Clone → 70s-chorus (CE-1 family; depth up, rate moderate).
-- Marshall Shredmaster → knuckle-dragon (high-gain pedal into a clean amp).
-- Marshall Silver Jubilee 2555 → placater-dirty.
-- Mesa Studio Preamp → cali-iv-rhythm-2.
-- Fender Twin Reverb → us-deluxe-nrm (do NOT load a second amp — snapshot Drive down + hot-springs for the Twin intro).
-- Korg SDD-3000 → vintage-digital.
-- Binson Echorec → cosmos-echo.
-- Roland RE-201 Space Echo → cosmos-echo.
-- Maestro Echoplex EP-3 → transistor-tape.
-- EHX Deluxe Memory Man → elephant-man.
-- Mu-Tron III → mutant-filter.
-- Dunlop Cry Baby → uk-wah-846.
-- Ibanez TS-9 / TS808 as a tightener (Drive low, Level high) → scream-808.
-- Fender spring tank → hot-springs.
-Never invent modelIds. Prefer HX models over Legacy. Every block MUST have a factory HD2_* mapping — skip anything you cannot find in the catalog.`;
+const STAND_INS = `HX stand-ins (use these ids, never invent):
+- BOSS DS-1 → deez-one-vintage (MIJ) or deez-one-mod (Keeley). NEVER stupor-od (that is the SD-1).
+- BOSS SD-1 → stupor-od.
+- Ibanez TS-9/TS808 tightener (Drive 1–2.5, Level 7–8) → scream-808.
+- EHX Small Clone / BOSS CE-1 → 70s-chorus.
+- ProCo RAT → vermin-dist. Klon → minotaur. Big Muff → bighorn-fuzz or triangle-fuzz.
+- Marshall Shredmaster → kwb. Silver Jubilee 2555 → placater-dirty.
+- Mesa Dual Rectifier → cali-rectifire. Mesa Mark / Studio Pre → cali-iv-rhythm-2.
+- Fender Twin → us-deluxe-nrm (ONE amp only; intro Drive 1.5–2.5 + hot-springs).
+- Marshall JCM-800 → brit-2203 or brit-2204. Plexi → brit-plexi-brt.
+- Korg SDD-3000 → vintage-digital. Memory Man → elephant-man. Space Echo → cosmos-echo. Echorec → cosmos-echo. EP-3 → transistor-tape.
+- Cry Baby → teardrop-310 or uk-wah-846. Mu-Tron III → mutant-filter. Whammy → pitch-wham.
+Only catalog modelId values. Prefer HX over Legacy.`;
 
 export function systemForDevice(stompModel: "hx-stomp" | "hx-stomp-xl", instrument: "guitar" | "bass") {
   const d = DEVICE_MAP[stompModel];
-  return `You are a session guitar/bass tech who programs Line 6 HX Stomp presets that SOUND LIKE THE RECORD.
-Return ONLY valid JSON matching the schema. No markdown, no commentary.
+  return `Session tech. Program a Line 6 ${d.name} preset that sounds like the RECORD. JSON only.
+Max ${d.maxBlocks} blocks, ${d.snapshots} snapshots, ${d.footswitches} FS, 1 DSP, 1 amp. Instrument: ${instrument}.
 
-Device: ${d.name}. Max ${d.maxBlocks} blocks, ${d.footswitches} footswitches, ${d.snapshots} snapshots, ${d.looper} looper, 1 DSP chip.
-Instrument: ${instrument}.
-
-Accuracy rules — reconstruct the real recorded (or best-known live) rig, then map it:
-- Name the album and year in summary. Prefer the studio tracking rig over a later tour unless asked for live.
-- Primary sources, in order: Guitar Chalk song/amp-settings articles, producer/tech interviews (Butch Vig, Bob Rock, Alan Parsons, Phil Taylor), album credits, well-known rig rundowns. If sources conflict, pick the most-cited RECORD-era rig and say so in summary.
-- Put REAL guitars, pedals, amps, cabs, mics in originalGear. Then map each piece to the closest catalog modelId.
-- Every block must earn its place on that recording. Do not pad with unused gate, compressor, EQ, chorus, or hall reverb.
-- Params are 0–10 floats. NEVER put a string in params (no "SM57", no "dotted 8th"). Cab Mic is the number 0 for SM57.
-- When a setting is documented (TS Drive low / Level high, muff sustain up, dotted-8th delay, Twin spring, etc.), use it. Invent only what is undocumented, matching that player's known values.
-- The preset must be playable on one DSP: skip Poly Pitch / Poly Wham / 12 String / Trinity Chorus unless the song needs them. NEVER load two amps — bypassed blocks still cost DSP. Snapshot Drive / Ch Vol instead.
+Tone:
+- Album + year in summary. Studio tracking rig first.
+- originalGear = real guitars/pedals/amps/cabs. Then map each to a catalog id.
+- Every block must be on that recording. No spare gate/comp/chorus/hall.
+- Params 0–10 numbers. Cab Mic = 0 (SM57). Never strings in params.
+- GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain.
+- One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp.
+- Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
 
 ${STAND_INS}
 
-Signal order:
-- Do NOT force Gate/Comp → Filter → Drive → Amp → Cab → Mod → Delay → Reverb.
-- If the song has a documented order (delay before amp, fuzz after amp, wah last, etc.), use that order.
-- If order is unknown, use common sense for that style (dirt into amp, time-based after, unless the artist is famous for pre-amp echo).
-- Do NOT add a noise gate or compressor unless the part actually uses one (metal tightness, country squash, bass leveling). Many classic tones have neither.
-- Amp and cab belong together as a pair when you are modeling a miked amp. Skip the cab for DI / FRFR / 4-cable-method / "amp as preamp into a real power amp" tones. Never split amp and cab to opposite ends of the chain.
+Order: documented order if known (delay before amp, wah last, etc.). Else dirt → amp → cab → time. Amp+cab as a pair.
 
-Footswitches vs snapshots — map the SONG, not a generic chain:
-- Break the track into real sections (intro / verse / pre-chorus / chorus / solo / breakdown).
-- You MUST emit one snapshot per distinct section, up to the device max (${d.snapshots}). Names like Intro, Verse, Chorus, Solo.
-- Snapshots must SOUND different: toggle the pedals that actually change (chorus, wah, muff, delay) AND put Drive / Ch Vol / Mix in paramOverrides. A chorus snapshot with the same blocks as the verse is wrong.
-- If the record has a clean, chorused, or quiet intro (Smells Like Teen Spirit = Twin Reverb + Small Clone, no DS-1; Enter Sandman wah arpeggio), that is SNAPSHOT 1. Do not start the preset on the heavy chorus tone. Documented clean intros get their own snapshot.
-- Footswitches 1..${Math.min(3, d.footswitches)} MUST be action "snapshot" recalling those sections in order. Do NOT put TAP or a lone bypass on FS1–FS3. TAP is the hardware TAP switch (index 8 on XL). Extra bypass stomps are only allowed on XL indexes 1–3 after the snapshot row.
-- On HX Stomp, Snapshot mode is required so FS1–FS3 recall those snapshots.
+Snapshots = song sections (Intro/Verse/Chorus/Solo), up to ${d.snapshots}. They MUST sound different: toggle the pedals that change AND put Drive/Ch Vol/Mix in paramOverrides. Documented clean intros (Teen Spirit Twin+Clone no DS-1; Sandman wah arpeggio) are SNAPSHOT 1.
+FS 1..${Math.min(3, d.footswitches)} = action "snapshot" in section order. No TAP on FS1–3.
 
-programming is step-by-step on the unit, including snapshot parameter recall. tips are how to pick, volume-knob, and play so it sounds like the record — not generic advice.`;
+programming = unit steps. tips = pick/volume so it matches the record.`;
 }

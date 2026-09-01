@@ -10,7 +10,7 @@ export function AuthSlot() {
     return (
       <Link
         to="/login"
-        className="grid h-10 shrink-0 place-items-center rounded-md border border-border bg-card px-3 text-xs font-medium"
+        className="grid h-10 shrink-0 place-items-center rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground"
       >
         Sign in
       </Link>

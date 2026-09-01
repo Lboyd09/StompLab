@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ALL_MODELS } from "../data/catalog.ts";
 import { FEATURED } from "../data/featured.ts";
-import { HELIX_IDS } from "../data/helix-ids.ts";
+import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
+import { factoryParamsFor } from "../data/helix-params.ts";
+import type { Preset } from "../data/types.ts";
 import { buildHlx } from "./hlx.ts";
 import { canDownloadPreset, featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
@@ -22,19 +24,32 @@ describe("HELIX_IDS", () => {
     assert.equal(HELIX_IDS["bighorn-fuzz"], "HD2_DistRamsHead");
     assert.equal(HELIX_IDS["4x12-cali-v30"], "HD2_Cab4X12CaliV30");
     assert.equal(HELIX_IDS["70s-chorus"], "HD2_Chorus70sChorus");
-    assert.equal(HELIX_IDS["stupor-od"], "HD2_DistStuporOD");
+    assert.equal(HELIX_IDS["deez-one-vintage"], "HD2_DistDeezOneVintage");
+    assert.equal(HELIX_IDS["deez-one-mod"], "HD2_DistDeezOneMod");
     assert.equal(HELIX_IDS["scream-808"], "HD2_DistScream808");
+    assert.equal(HELIX_IDS["ampeg-scrambler"], "HD2_DistAmpegScramblerOD");
+    assert.equal(HELIX_IDS["tape-echo-legacy"], "HD2_DL4TapeEchoStereo");
+    assert.equal(HELIX_IDS["poly-pitch"], "L6SPB_PolyPitch");
+    assert.equal(HELIX_IDS["acoustic-sim"], "L6SPB_AcousGtrSim");
+    assert.equal(HELIX_IDS["german-mottled"], undefined);
+    assert.equal(HELIX_IDS["knuckle-dragon"], undefined);
+    assert.equal(helixIdFor("knuckle-dragon"), undefined);
+    assert.equal(helixIdFor("german-mottled"), undefined);
     for (const id of Object.values(HELIX_IDS)) {
       assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(id), false, id);
+      assert.ok(isHxStompModelId(id), id);
     }
   });
 
-  it("covers every non-legacy non-mic catalog model", () => {
-    const skip = new Set(["split-y", "split-a-b", "crossover-split", "merge"]);
+  it("covers every exportable non-legacy non-mic catalog model", () => {
     for (const m of ALL_MODELS) {
       if (m.io === "legacy" || m.category === "mic") continue;
-      if (skip.has(m.id)) continue;
+      if (UNEXPORTABLE_MODELS.has(m.id)) {
+        assert.equal(helixIdFor(m.id), undefined, m.id);
+        continue;
+      }
       assert.ok(HELIX_IDS[m.id], `missing factory id for ${m.id}`);
+      assert.ok(helixIdFor(m.id), m.id);
     }
   });
 });
@@ -44,25 +59,28 @@ describe("buildHlx Teen Spirit", () => {
   const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
   const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
 
-  it("emits factory Cali IV R2 + 70s Chorus + Stupor OD + Cali V30 cab", () => {
+  it("emits factory Cali IV R2 + 70s Chorus + Deez One Vintage + Cali V30 cab", () => {
     assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR2");
     assert.equal(dsp0.block2["@type"], 3);
     assert.equal(dsp0.block2["@cab"], "cab0");
     assert.equal(dsp0.block1["@model"], "HD2_Chorus70sChorus");
-    assert.equal(dsp0.block0["@model"], "HD2_DistStuporOD");
+    assert.equal(dsp0.block0["@model"], "HD2_DistDeezOneVintage");
     assert.equal(dsp0.cab0["@model"], "HD2_Cab4X12CaliV30");
   });
 
-  it("remaps 70s Chorus and Stupor OD to real param names", () => {
+  it("remaps 70s Chorus and Deez One to real param names", () => {
     assert.equal(typeof dsp0.block1.ChorusIntensity, "number");
     assert.equal(dsp0.block1.Rate, undefined);
     assert.equal(dsp0.block1.Depth, undefined);
     assert.equal(dsp0.block1.Mode, false);
     assert.equal(typeof dsp0.block0.Tone, "number");
     assert.equal(typeof dsp0.block0.Level, "number");
+    assert.equal(dsp0.block0.Drive, 0.52);
     assert.equal(dsp0.block0.Treble, undefined);
     assert.equal(dsp0.block0.Output, undefined);
     assert.equal(dsp0.block0.Bass, undefined);
+    assert.equal(dsp0.block0.Mid, undefined);
+    assert.equal(dsp0.block0.Mix, undefined);
   });
 
   it("Pre snapshot enables Small Clone; Chorus snapshot bypasses it", () => {
@@ -190,7 +208,7 @@ describe("visual FS map", () => {
     assert.equal(intro?.index, 1);
   });
 
-  it("exports only factory HD2 ids for every featured rig", () => {
+  it("exports only factory HD2/L6SPB ids for every featured rig", () => {
     for (const p of FEATURED) {
       const hlx = buildHlx(p);
       const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
@@ -199,8 +217,9 @@ describe("visual FS map", () => {
         if (!k.startsWith("block") && k !== "cab0") continue;
         const model = String(block["@model"] ?? "");
         if (!model) continue;
-        assert.match(model, /^HD2_/, `${p.id} ${k} ${model}`);
+        assert.match(model, /^(HD2_|L6SPB_)/, `${p.id} ${k} ${model}`);
         assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
+        assert.equal(model.includes("AmpegScrambler") && !model.endsWith("OD"), false, model);
       }
       const primary = p.footswitches.filter((f) => f.index <= 3);
       assert.ok(primary.length >= 3, p.id);
@@ -256,5 +275,196 @@ describe("free vs paid download gates", () => {
   it("lets paid and admin download everything", () => {
     assert.equal(canDownloadPreset("featured-yyz", paid), true);
     assert.equal(canDownloadPreset("featured-schism", { paid: false, admin: true }), true);
+  });
+});
+
+describe("HLX import safety", () => {
+  it("strips unknown knobs that would make HX Edit reject the preset", () => {
+    const src = featured("featured-teen-spirit");
+    const dirty = {
+      ...src,
+      blocks: src.blocks.map((b) =>
+        b.modelId === "deez-one-vintage"
+          ? { ...b, params: { ...b.params, Bass: 8, Mid: 9, Mix: 10, NotAKnob: 4 } }
+          : b,
+      ),
+    };
+    const hlx = buildHlx(dirty);
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+    assert.equal(dsp0.block0["@model"], "HD2_DistDeezOneVintage");
+    assert.equal(dsp0.block0.Bass, undefined);
+    assert.equal(dsp0.block0.Mid, undefined);
+    assert.equal(dsp0.block0.Mix, undefined);
+    assert.equal(dsp0.block0.NotAKnob, undefined);
+    assert.equal(typeof dsp0.block0.Drive, "number");
+    assert.equal(typeof dsp0.block0.Tone, "number");
+    assert.equal(typeof dsp0.block0.Level, "number");
+  });
+
+  it("keeps Sandman Recto Drive well below dime'd", () => {
+    const hlx = buildHlx(featured("featured-sandman"));
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+    assert.ok((dsp0.block2.Drive as number) <= 0.2);
+    const snap1 = tone.snapshot1 as {
+      controllers: { dsp0: Record<string, Record<string, { "@value": number }>> };
+    };
+    const drive = snap1.controllers.dsp0.block2?.Drive?.["@value"];
+    assert.ok(typeof drive === "number" && drive <= 0.45);
+  });
+
+  it("never writes Mix on distortion or Level on delays for featured rigs", () => {
+    for (const p of FEATURED) {
+      const hlx = buildHlx(p);
+      const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+      const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+      for (const [k, block] of Object.entries(dsp0)) {
+        if (!k.startsWith("block")) continue;
+        const model = String(block["@model"] ?? "");
+        assert.match(model, /^(HD2_|L6SPB_)/, `${p.id} ${k} ${model}`);
+        if (model.startsWith("HD2_Dist")) {
+          assert.equal(block.Mix, undefined, `${p.id} ${k} Mix`);
+        }
+        if (model.startsWith("HD2_Delay")) {
+          const factory = factoryParamsFor(model);
+          if (block.Level !== undefined && factory) {
+            assert.ok(factory.has("Level"), `${p.id} ${k} delay Level`);
+          }
+        }
+      }
+    }
+  });
+});
+
+function miniPreset(modelId: string, extraParams: Record<string, number> = {}): Preset {
+  const params: Record<string, number> = {
+    Drive: 5,
+    Treble: 5,
+    Output: 6,
+    Mix: 5,
+    Bass: 5,
+    Mid: 5,
+    Master: 5,
+    Presence: 5,
+    "Ch Vol": 5,
+    Time: 4,
+    Feedback: 3,
+    Decay: 3,
+    Predelay: 2,
+    Position: 5,
+    Distance: 2,
+    "Low Cut": 2,
+    "High Cut": 7,
+    Mic: 0,
+    ...extraParams,
+  };
+  return {
+    id: "t",
+    createdAt: 0,
+    source: "custom",
+    song: "t",
+    artist: "t",
+    instrument: "guitar",
+    stompModel: "hx-stomp",
+    name: "Factory Check",
+    tempo: 120,
+    summary: "",
+    originalGear: [],
+    recommendedGear: [],
+    blocks: [{ id: "b1", modelId, enabled: true, path: "main", position: 0, params }],
+    snapshots: [],
+    footswitches: [
+      { index: 1, label: "A", color: "#c5c9c2", action: "snapshot", notes: "" },
+      { index: 2, label: "B", color: "#c5c9c2", action: "snapshot", notes: "" },
+      { index: 3, label: "C", color: "#c5c9c2", action: "snapshot", notes: "" },
+    ],
+    programming: [],
+    tips: [],
+  };
+}
+
+function dspBlocks(preset: Preset) {
+  const hlx = buildHlx(preset);
+  const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+  return tone.dsp0 as Record<string, Record<string, unknown>>;
+}
+
+describe("exhaustive HX Edit model export", () => {
+  it("exports every catalog model with a factory @model or skips it", () => {
+    const exported = new Set<string>();
+    for (const m of ALL_MODELS) {
+      if (m.category === "mic") continue;
+      const hid = helixIdFor(m.id);
+      const dsp = dspBlocks(miniPreset(m.id));
+      const blocks = Object.entries(dsp).filter(([k]) => k.startsWith("block") || k.startsWith("cab"));
+      if (!hid) {
+        for (const [k, b] of blocks) {
+          const model = String(b["@model"] ?? "");
+          assert.ok(
+            !model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_"),
+            `unexportable ${m.id} wrote ${k} ${model}`,
+          );
+        }
+        continue;
+      }
+      const match = blocks.find(([, b]) => b["@model"] === hid);
+      assert.ok(match, `${m.id} should export ${hid}`);
+      const model = String(match[1]["@model"]);
+      assert.ok(isHxStompModelId(model), `${m.id} ${model}`);
+      assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
+      assert.equal(/^HD2_DistAmpegScrambler$/.test(model), false, model);
+      exported.add(model);
+      const factory = factoryParamsFor(model);
+      if (!factory) continue;
+      for (const key of Object.keys(match[1])) {
+        if (key.startsWith("@")) continue;
+        assert.ok(factory.has(key), `${m.id} wrote unknown knob ${key} on ${model}`);
+      }
+    }
+    assert.ok(exported.has("HD2_DistDeezOneVintage"));
+    assert.ok(exported.has("HD2_DistScream808"));
+    assert.ok(exported.has("HD2_DistAmpegScramblerOD"));
+    assert.ok(exported.has("HD2_DL4TapeEchoStereo"));
+    assert.ok(exported.has("L6SPB_PolyPitch"));
+    assert.equal(exported.has("HD2_DistGermanMottled"), false);
+    assert.equal(exported.has("HD2_DistKnuckleDragon"), false);
+    assert.equal(exported.has("HD2_PitchPolyPitch"), false);
+    assert.equal(exported.has("HD2_DelayPolySustain"), false);
+  });
+
+  it("maps wah Position to Pedal and DS-1/RAT/AC30 to factory knobs", () => {
+    const wah = dspBlocks(miniPreset("uk-wah-846")).block0;
+    assert.equal(wah["@model"], "HD2_WahUKWah846");
+    assert.equal(typeof wah.Pedal, "number");
+    assert.equal(wah.Position, undefined);
+    const rat = dspBlocks(miniPreset("vermin-dist")).block0;
+    assert.equal(rat["@model"], "HD2_DistVerminDist");
+    assert.equal(typeof rat.Gain, "number");
+    assert.equal(typeof rat.Filter, "number");
+    assert.equal(typeof rat.Level, "number");
+    assert.equal(rat.Distortion, undefined);
+    assert.equal(rat.Volume, undefined);
+    const ac30 = dspBlocks(miniPreset("essex-a30")).block0;
+    assert.equal(ac30["@model"], "HD2_AmpEssexA30");
+    assert.equal(typeof ac30.Drive, "number");
+    assert.equal(ac30.Mid, undefined);
+    const spring = dspBlocks(miniPreset("hot-springs")).block0;
+    assert.equal(spring["@model"], "HD2_ReverbHxSpring");
+    assert.equal(typeof spring.Dwell, "number");
+    assert.equal(spring.Decay, undefined);
+    assert.equal(spring.Predelay, undefined);
+    assert.equal(spring.PreDelay, undefined);
+  });
+
+  it("never emits a block for models HX Edit does not have", () => {
+    for (const id of ["knuckle-dragon", "german-mottled", "glitch-delay", "poly-sustain", "shimmer"]) {
+      const dsp = dspBlocks(miniPreset(id));
+      for (const [k, block] of Object.entries(dsp)) {
+        if (!k.startsWith("block") && !k.startsWith("cab")) continue;
+        const model = String(block["@model"] ?? "");
+        assert.ok(!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_"), `${id} ${k} ${model}`);
+      }
+    }
   });
 });

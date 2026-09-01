@@ -1,9 +1,11 @@
-/** Maps Stomp Lab model ids to HX Edit HD2_* strings (firmware 3.80).
+/** Maps Stomp Lab model ids to HX Edit HD2_* / L6SPB_* strings (firmware 3.80).
  *
- * IDs are taken from factory HX Stomp .hlx dumps and the Helix model index
- * (helix-stadium-tools 2026-05-07, phelix block JSON, mattbreit/hxstomp).
- * Helix Stadium names (Agoura_*, VIC_*, HX2_*, CabMicIr_*, *Mono suffix) are
- * NOT valid on HX Stomp and HX Edit will report them as unrecognized models.
+ * IDs are taken from factory HX Stomp .hlx dumps, phelix block JSON @model
+ * fields, and the helix-preset-viewer index. Helix Stadium names
+ * (Agoura_*, VIC_*, HX2_*, CabMicIr_*, *Mono suffix) are NOT valid on HX Stomp
+ * and HX Edit will report them as unrecognized models.
+ * Legacy DL4 tape/analog models use the *Stereo suffix in real HX Edit files.
+ * Poly Pitch/Wham/Capo/Detune and Acoustic Sim are L6SPB_* (not HD2_PitchPoly*).
  */
 export const HELIX_IDS: Record<string, string> = {
   "kinky-boost": "HD2_DistKinkyBoost",
@@ -20,14 +22,12 @@ export const HELIX_IDS: Record<string, string> = {
   "stupor-od": "HD2_DistStuporOD",
   "horizon-drive": "HD2_DistHorizonDrive",
   kwb: "HD2_DistKWB",
-  "german-mottled": "HD2_DistGermanMottled",
   "legendary-drive": "HD2_DistLegendaryDrive",
   "swedish-chainsaw": "HD2_DistSwedishChainsaw",
   "vermin-dist": "HD2_DistVerminDist",
   "deez-one-vintage": "HD2_DistDeezOneVintage",
   "deez-one-mod": "HD2_DistDeezOneMod",
   "dhyana-drive": "HD2_DistDhyanaDrive",
-  "knuckle-dragon": "HD2_DistKnuckleDragon",
   "arbitrator-fuzz": "HD2_DistArbitratorFuzz",
   "pocket-fuzz": "HD2_DistPocketFuzz",
   "bighorn-fuzz": "HD2_DistRamsHead",
@@ -40,7 +40,7 @@ export const HELIX_IDS: Record<string, string> = {
   "xenomorph-fuzz": "HD2_DistXenomorphFuzz",
   megaphone: "HD2_DistMegaphone",
   bitcrusher: "HD2_DistBitcrusher",
-  "ampeg-scrambler": "HD2_DistAmpegScrambler",
+  "ampeg-scrambler": "HD2_DistAmpegScramblerOD",
   "zeroamp-bass-di": "HD2_DistZeroAmpBassDI",
   "obsidian-7000": "HD2_DistObsidian7000",
   "clawthorn-drive": "HD2_DistClawthornDrive",
@@ -83,7 +83,7 @@ export const HELIX_IDS: Record<string, string> = {
   tilt: "HD2_EQSimpleTilt",
   "10-band-graphic": "HD2_EQGraphic10Band",
   "cali-q-graphic": "HD2_CaliQ",
-  "acoustic-sim": "HD2_EQAcousticSim",
+  "acoustic-sim": "L6SPB_AcousGtrSim",
   "optical-trem": "HD2_TremoloOpticalTrem",
   "60s-bias-trem": "HD2_Tremolo60sBiasTrem",
   "tremolo-autopan": "HD2_TremoloTremolo",
@@ -106,7 +106,7 @@ export const HELIX_IDS: Record<string, string> = {
   "122-rotary": "HD2_Rotary122Rotary",
   "145-rotary": "HD2_Rotary145Rotary",
   "double-take": "HD2_DelayDoubleDouble",
-  "poly-detune": "HD2_PitchPolyDetune",
+  "poly-detune": "L6SPB_PolyChorus",
   "am-ring-mod": "HD2_RingModulatorAMRingMod",
   "pitch-ring-mod": "HD2_RingModulatorPitchRingMod",
   "pattern-tremolo-legacy": "HD2_MM4PatternTrem",
@@ -151,31 +151,27 @@ export const HELIX_IDS: Record<string, string> = {
   "adriatic-swell": "HD2_DelaySwellAdriatic",
   "elephant-man": "HD2_DelayElephantMan",
   "multi-pass": "HD2_DelayMultiPass",
-  "poly-sustain": "HD2_DelayPolySustain",
-  "glitch-delay": "HD2_DelayGlitchDelay",
   "ping-pong-legacy": "HD2_DL4PingPong",
-  "dynamic-legacy": "HD2_DL4DynamicDelay",
+  "dynamic-legacy": "HD2_DL4DynamicDelayStereo",
   "stereo-legacy": "HD2_DL4StereoDelay",
   "digital-legacy": "HD2_DL4DigDelay",
   "dig-w-mod-legacy": "HD2_DL4DigDelayWithMod",
   "reverse-legacy": "HD2_DL4Reverse",
   "lo-res-legacy": "HD2_DL4LowResDelay",
-  "tube-echo-legacy": "HD2_DL4TubeEcho",
-  "tape-echo-legacy": "HD2_DL4TapeEcho",
-  "sweep-echo-legacy": "HD2_DL4SweepEcho",
-  "echo-platter-legacy": "HD2_DL4EchoPlatter",
-  "analog-echo-legacy": "HD2_DL4AnalogDelay",
-  "analog-w-mod-legacy": "HD2_DL4AnalogDelayMod",
-  "auto-volume-echo-legacy": "HD2_DL4AutoVol",
-  "multi-head-legacy": "HD2_DL4Multihead",
+  "tube-echo-legacy": "HD2_DL4TubeEchoStereo",
+  "tape-echo-legacy": "HD2_DL4TapeEchoStereo",
+  "sweep-echo-legacy": "HD2_DL4SweepEchoStereo",
+  "echo-platter-legacy": "HD2_DL4EchoPlatterStereo",
+  "analog-echo-legacy": "HD2_DL4AnalogDelayStereo",
+  "analog-w-mod-legacy": "HD2_DL4AnalogDelayStereoMod",
+  "auto-volume-echo-legacy": "HD2_DL4AutoVolStereo",
+  "multi-head-legacy": "HD2_DL4MultiheadStereo",
   glitz: "HD2_ReverbGlitz",
   ganymede: "HD2_ReverbGanymede",
   searchlights: "HD2_ReverbSearchlights",
   plateaux: "HD2_ReverbPlateaux",
   "double-tank": "HD2_ReverbDoubleTank",
   "hot-springs": "HD2_ReverbHxSpring",
-  shimmer: "HD2_ReverbShimmer",
-  "dynamic-hall": "HD2_ReverbDynamicHall",
   hall: "HD2_ReverbHall",
   room: "HD2_ReverbRoom",
   chamber: "HD2_ReverbChamber",
@@ -201,10 +197,9 @@ export const HELIX_IDS: Record<string, string> = {
   "simple-pitch": "HD2_PitchSimplePitch",
   "dual-pitch": "HD2_PitchDualPitch",
   "3-osc-synth": "HD2_SynthSubtractive",
-  "poly-pitch": "HD2_PitchPolyPitch",
-  "poly-wham": "HD2_PitchPolyWham",
-  "poly-capo": "HD2_PitchPolyCapo",
-  "12-string": "HD2_Pitch12String",
+  "poly-pitch": "L6SPB_PolyPitch",
+  "poly-wham": "L6SPB_PolyWham",
+  "poly-capo": "L6SPB_PolyDowntune",
   "3-note-generator": "HD2_Synth3NoteGenerator",
   "4-osc-generator": "HD2_Synth4OSCGenerator",
   "bass-octaver-legacy": "HD2_DM4BassOctaver",
@@ -243,7 +238,6 @@ export const HELIX_IDS: Record<string, string> = {
   gain: "HD2_VolPanGain",
   pan: "HD2_VolPanPan",
   "stereo-width": "HD2_VolPanStereoWidth",
-  "stereo-imager": "HD2_VolPanStereoImager",
   "1-switch-looper": "HD2_LooperOneSwitch",
   "6-switch-looper": "HD2_Looper",
   send: "HD2_SendMono1",
@@ -433,6 +427,33 @@ export const HELIX_IDS: Record<string, string> = {
   "7-dynamic": "HD2_Mic7Dynamic",
 };
 
-export function helixIdFor(modelId: string): string | undefined {
-  return HELIX_IDS[modelId];
+export function isHxStompModelId(id: string): boolean {
+  if (!id) return false;
+  if (/Agoura_|VIC_|HX2_|CabMicIr_/.test(id)) return false;
+  return id.startsWith("HD2_") || id.startsWith("L6SPB_");
 }
+
+/** Catalog ids that exist in the UI but have no HX Stomp 3.80 @model. Never export. */
+export const UNEXPORTABLE_MODELS = new Set([
+  "german-mottled",
+  "knuckle-dragon",
+  "poly-sustain",
+  "glitch-delay",
+  "12-string",
+  "shimmer",
+  "dynamic-hall",
+  "stereo-imager",
+  "split-y",
+  "split-a-b",
+  "crossover-split",
+  "merge",
+  "impulse-response",
+]);
+
+export function helixIdFor(modelId: string): string | undefined {
+  if (UNEXPORTABLE_MODELS.has(modelId)) return undefined;
+  const id = HELIX_IDS[modelId];
+  if (!id || !isHxStompModelId(id)) return undefined;
+  return id;
+}
+

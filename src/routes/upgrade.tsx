@@ -16,11 +16,11 @@ export const Route = createFileRoute("/upgrade")({
 });
 
 const PERKS = [
-  "Type any song. Get a Stomp .hlx that sounds like the record.",
-  `${PAID_MONTHLY_BUILDS} new custom builds every calendar month.`,
+  "Type any song. Get a Stomp .hlx that HX Edit will import.",
+  `${PAID_MONTHLY_BUILDS} custom builds every calendar month.`,
   "Create custom sounds. History. XL snapshot 4. Gear locker sync.",
-  "Repeat research of a song you already built does not spend a Gemini call.",
-  "Featured demos stay free forever. One-time unlock — not a subscription.",
+  "Every custom research counts as one build — demos stay free forever.",
+  "One-time unlock. Not a subscription.",
 ];
 
 function UpgradePage() {
@@ -110,8 +110,11 @@ function UpgradePage() {
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-lg space-y-8">
         <div className="space-y-3">
-          <Link to="/" className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            ← Back to Lab
+          <Link to="/" className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold tracking-[-0.08em] normal-case text-mark-foreground">
+              SL
+            </span>
+            Back to Lab
           </Link>
           <h1 className="font-display text-4xl font-semibold tracking-tight">
             Type any song.

@@ -21,7 +21,6 @@ import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
-import { Onboarding } from "./onboarding";
 import { usePlan } from "@/lib/use-plan";
 
 const NAV = [
@@ -40,7 +39,7 @@ const DESKTOP_NAV = [
 
 function Mark() {
   return (
-    <span className="grid size-8 place-items-center rounded-md bg-primary font-display text-[11px] font-bold tracking-tight text-primary-foreground">
+    <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold tracking-[-0.08em] text-mark-foreground">
       SL
     </span>
   );
@@ -294,7 +293,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <Onboarding />
       <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">{children}</main>
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
