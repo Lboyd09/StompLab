@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
+import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
+import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
 import { systemForDevice } from "../lib/preset-schema.ts";
 
@@ -60,5 +61,29 @@ describe("research prompt", () => {
     assert.match(prompt, /deez-one-vintage/);
     assert.match(prompt, /NEVER stupor-od/);
     assert.match(prompt, /never dime Drive/i);
+  });
+
+  it("names a based-on original for every catalog model", () => {
+    for (const m of ALL_MODELS) {
+      assert.ok(m.basedOn.trim().length >= 3, m.id);
+    }
+  });
+
+  it("omits amp and cab from HX Effects catalog prompts", () => {
+    const fx = compactCatalogForPrompt("guitar", "hx-effects");
+    assert.equal(fx.includes("amp-guitar") || fx.includes("# Guitar Amps"), false);
+    assert.equal(/cali-rectifire|essex-a30|4x12-cali-v30/.test(fx), false);
+    assert.match(fx, /deez-one-vintage/);
+  });
+});
+
+describe("devices", () => {
+  it("lists Helix family and marks POD Go as non-hlx", () => {
+    assert.equal(DEVICE_MAP["helix-floor"].hlxDeviceId, 2162689);
+    assert.equal(DEVICE_MAP["helix-lt"].hlxDeviceId, 2162691);
+    assert.equal(DEVICE_MAP["hx-effects"].hlxDeviceId, 2162692);
+    assert.equal(DEVICE_MAP["hx-effects"].hasAmpCab, false);
+    assert.equal(DEVICE_MAP["pod-go"].exportFormat, "none");
+    assert.equal(STOMP_DEVICES.length, 6);
   });
 });

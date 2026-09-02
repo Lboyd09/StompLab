@@ -1,3 +1,5 @@
+import type { PlanInterval } from "./plan";
+
 function polarBase() {
   const explicit = process.env.POLAR_API_URL?.replace(/\/$/, "");
   if (explicit) return explicit;
@@ -9,8 +11,15 @@ function polarToken() {
   return (process.env.POLAR_ACCESS_TOKEN ?? process.env.POLAR_OAT ?? "").trim();
 }
 
+export function polarProductId(interval: PlanInterval): string {
+  if (interval === "year") {
+    return (process.env.POLAR_PRODUCT_ID_YEARLY ?? "").trim();
+  }
+  return (process.env.POLAR_PRODUCT_ID_MONTHLY ?? process.env.POLAR_PRODUCT_ID ?? "").trim();
+}
+
 export function polarConfigured() {
-  return Boolean(polarToken() && (process.env.POLAR_PRODUCT_ID ?? "").trim());
+  return Boolean(polarToken() && (polarProductId("month") || polarProductId("year")));
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -63,6 +72,29 @@ export function polarEventIsPaid(payload: Record<string, unknown> | null | undef
   return false;
 }
 
+export function polarEventIsSubscriptionGrant(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const type = polarEventType(payload);
+  const status = String(payloadData(payload).status ?? "")
+    .trim()
+    .toLowerCase();
+  if (type === "subscription.active" || type.endsWith("subscription.active")) return true;
+  if (type === "subscription.uncanceled" || type.endsWith("subscription.uncanceled")) return true;
+  if (type === "subscription.created" || type.endsWith("subscription.created")) {
+    return status === "active" || status === "trialing";
+  }
+  if (type === "subscription.updated" || type.endsWith("subscription.updated")) {
+    return status === "active" || status === "trialing";
+  }
+  return false;
+}
+
+export function polarEventIsSubscriptionRevoke(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const type = polarEventType(payload);
+  return type === "subscription.revoked" || type.endsWith("subscription.revoked");
+}
+
 export function isRealPolarOrderId(id: string | null | undefined): boolean {
   const v = String(id ?? "").trim();
   if (v.length < 8) return false;
@@ -70,30 +102,44 @@ export function isRealPolarOrderId(id: string | null | undefined): boolean {
   return true;
 }
 
+export function isRealPolarSubscriptionId(id: string | null | undefined): boolean {
+  const v = String(id ?? "").trim();
+  return v.length >= 8;
+}
+
 export function purchaseLooksPaid(raw: unknown): boolean {
   if (!raw || typeof raw !== "object") return false;
-  return polarEventIsPaid(raw as Record<string, unknown>);
+  const rec = raw as Record<string, unknown>;
+  return polarEventIsPaid(rec) || polarEventIsSubscriptionGrant(rec);
+}
+
+export function subscriptionStatusIsActive(status: string | null | undefined): boolean {
+  const s = String(status ?? "").trim().toLowerCase();
+  // canceled = still in the paid period until Polar sends subscription.revoked
+  return s === "active" || s === "trialing" || s === "canceled";
 }
 
 export async function createPolarCheckout(opts: {
   email: string;
   userId: string;
   successUrl: string;
+  interval: PlanInterval;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const token = polarToken();
-  const productId = (process.env.POLAR_PRODUCT_ID ?? "").trim();
+  const productId = polarProductId(opts.interval);
   if (!token || !productId) {
+    const needed =
+      opts.interval === "year" ? "POLAR_PRODUCT_ID_YEARLY" : "POLAR_PRODUCT_ID_MONTHLY";
     return {
       ok: false,
-      error:
-        "Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and POLAR_PRODUCT_ID on Vercel, then try Unlock again.",
+      error: `Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and ${needed} on Vercel, then try Subscribe again.`,
     };
   }
   const body: Record<string, unknown> = {
     products: [productId],
     success_url: opts.successUrl,
     customer_email: opts.email,
-    metadata: { user_id: opts.userId, email: opts.email },
+    metadata: { user_id: opts.userId, email: opts.email, interval: opts.interval },
   };
   const discount = (process.env.POLAR_DISCOUNT_ID ?? "").trim();
   if (discount) body.discount_id = discount;
@@ -137,14 +183,36 @@ export async function fetchPolarCheckout(id: string): Promise<Record<string, unk
   return (await res.json()) as Record<string, unknown>;
 }
 
+export function extractInterval(payload: Record<string, unknown>): PlanInterval | "" {
+  const data = payloadData(payload);
+  const metadata = {
+    ...asRecord(payload.metadata),
+    ...asRecord(data.metadata),
+    ...asRecord(asRecord(data.order).metadata),
+  };
+  const fromMeta = String(metadata.interval ?? "").trim().toLowerCase();
+  if (fromMeta === "year" || fromMeta === "yearly") return "year";
+  if (fromMeta === "month" || fromMeta === "monthly") return "month";
+  const rec = String(
+    data.recurring_interval ?? data.recurringInterval ?? asRecord(data.product).recurring_interval ?? "",
+  )
+    .trim()
+    .toLowerCase();
+  if (rec === "year" || rec === "yearly") return "year";
+  if (rec === "month" || rec === "monthly") return "month";
+  return "";
+}
+
 export function extractOrder(payload: Record<string, unknown>) {
   const type = polarEventType(payload);
   const data = payloadData(payload);
   const nestedOrder = asRecord(data.order);
+  const nestedSub = asRecord(data.subscription);
   const customer = asRecord(data.customer);
   const metadata = {
     ...asRecord(payload.metadata),
     ...asRecord(nestedOrder.metadata),
+    ...asRecord(nestedSub.metadata),
     ...asRecord(data.metadata),
   };
   const email = String(
@@ -158,6 +226,7 @@ export function extractOrder(payload: Record<string, unknown>) {
   const dataId = String(data.id ?? "").trim();
   const fromOrder = type.startsWith("order.");
   const fromCheckout = type.startsWith("checkout.");
+  const fromSub = type.startsWith("subscription.");
 
   let orderId = dataOrderId;
   if (!orderId && fromOrder) orderId = dataId;
@@ -167,12 +236,33 @@ export function extractOrder(payload: Record<string, unknown>) {
 
   let checkoutId = String(data.checkout_id ?? nestedOrder.checkout_id ?? "").trim();
   if (!checkoutId && fromCheckout) checkoutId = dataId;
-  if (!checkoutId && !fromOrder && !fromCheckout) {
-    // Raw checkout GET has id = checkout, order_id = order.
+  if (!checkoutId && !fromOrder && !fromCheckout && !fromSub) {
     checkoutId = dataId;
   }
 
+  let subscriptionId = String(
+    data.subscription_id ?? nestedSub.id ?? nestedOrder.subscription_id ?? "",
+  ).trim();
+  if (!subscriptionId && fromSub) subscriptionId = dataId;
+  if (!isRealPolarSubscriptionId(subscriptionId)) subscriptionId = "";
+
   const amount = Number(data.amount ?? data.total_amount ?? data.net_amount ?? nestedOrder.amount ?? 0) || 0;
   const customerId = String(data.customer_id ?? customer.id ?? nestedOrder.customer_id ?? "").trim();
-  return { email, userId, orderId, checkoutId, amount, customerId, data, metadata };
+  const interval = extractInterval(payload);
+  const subStatus = String(data.status ?? nestedSub.status ?? "")
+    .trim()
+    .toLowerCase();
+  return {
+    email,
+    userId,
+    orderId,
+    checkoutId,
+    subscriptionId,
+    amount,
+    customerId,
+    interval,
+    subStatus,
+    data,
+    metadata,
+  };
 }

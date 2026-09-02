@@ -2,7 +2,10 @@ import { useLayoutEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { STOMP_DEVICES } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
+import type { StompModelId } from "@/data/types";
+import { parseStompModelId } from "@/data/types";
 import { saveMyProfile } from "@/lib/billing";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { withStompModel } from "@/lib/preset-utils";
@@ -10,7 +13,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
-const KEY = "stomplab.onboarded.v2";
+export const ONBOARD_KEY = "stomplab.onboarded.v2";
 const PROFILE_KEY = "stomplab.profile.v1";
 
 const GENRES = [
@@ -31,7 +34,7 @@ const GENRES = [
 type ProfileDraft = {
   displayName: string;
   instrument: "guitar" | "bass";
-  stompModel: "hx-stomp" | "hx-stomp-xl";
+  stompModel: StompModelId;
   genres: string[];
 };
 
@@ -50,7 +53,7 @@ function loadDraft(): ProfileDraft {
     return {
       displayName: typeof parsed.displayName === "string" ? parsed.displayName : "",
       instrument: parsed.instrument === "bass" ? "bass" : "guitar",
-      stompModel: parsed.stompModel === "hx-stomp-xl" ? "hx-stomp-xl" : "hx-stomp",
+      stompModel: parseStompModelId(parsed.stompModel),
       genres: Array.isArray(parsed.genres) ? parsed.genres.filter((g) => typeof g === "string") : [],
     };
   } catch {
@@ -66,7 +69,7 @@ function persistDraft(draft: ProfileDraft) {
   }
 }
 
-export function Onboarding() {
+export function Onboarding({ onFinished }: { onFinished?: () => void }) {
   const navigate = useNavigate();
   const { user } = useCurrentUserState();
   const setInstrument = useAppStore((s) => s.setInstrument);
@@ -79,7 +82,7 @@ export function Onboarding() {
 
   useLayoutEffect(() => {
     try {
-      if (!window.localStorage.getItem(KEY)) {
+      if (!window.localStorage.getItem(ONBOARD_KEY)) {
         setDraft(loadDraft());
         setOpen(true);
       }
@@ -98,7 +101,7 @@ export function Onboarding() {
 
   function finish(openDemoId?: string) {
     try {
-      window.localStorage.setItem(KEY, "1");
+      window.localStorage.setItem(ONBOARD_KEY, "1");
     } catch {
       /* ignore */
     }
@@ -116,6 +119,7 @@ export function Onboarding() {
       }).catch(() => undefined);
     }
     setOpen(false);
+    onFinished?.();
     if (openDemoId) {
       const src = FEATURED.find((p) => p.id === openDemoId);
       if (src) {
@@ -134,7 +138,7 @@ export function Onboarding() {
   const demos = FEATURED.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
 
   return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-background/80 p-4 backdrop-blur-sm sm:place-items-center">
+    <div className="fixed inset-0 z-[70] grid place-items-end bg-background/80 p-4 backdrop-blur-sm sm:place-items-center">
       <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
           Welcome · {step + 1} / 5
@@ -173,28 +177,27 @@ export function Onboarding() {
           <>
             <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Which unit?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              The replica and the .hlx file follow this. XL gets eight switches and four snapshots.
+              The chain and the file follow this. POD Go shows the chain only — it does not use .hlx.
             </p>
-            <div className="mt-5 grid gap-2">
-              {(
-                [
-                  ["hx-stomp", "HX Stomp", "3 switches · 3 snapshots"],
-                  ["hx-stomp-xl", "HX Stomp XL", "8 switches · 4 snapshots"],
-                ] as const
-              ).map(([id, label, hint]) => (
+            <div className="mt-5 grid max-h-72 gap-2 overflow-y-auto">
+              {STOMP_DEVICES.map((d) => (
                 <button
-                  key={id}
+                  key={d.id}
                   type="button"
-                  onClick={() => patch({ stompModel: id })}
+                  onClick={() => patch({ stompModel: d.id })}
                   className={cn(
-                    "rounded-lg border px-4 py-4 text-left",
-                    draft.stompModel === id
+                    "rounded-lg border px-4 py-3 text-left",
+                    draft.stompModel === d.id
                       ? "border-primary bg-secondary text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground",
                   )}
                 >
-                  <span className="block font-medium">{label}</span>
-                  <span className="block text-xs">{hint}</span>
+                  <span className="block font-medium">{d.name}</span>
+                  <span className="block text-xs">
+                    {d.footswitches} switches · {d.snapshots} snapshots
+                    {d.exportFormat === "none" ? " · no .hlx" : ""}
+                    {!d.hasAmpCab ? " · no amp/cab" : ""}
+                  </span>
                 </button>
               ))}
             </div>

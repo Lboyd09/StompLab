@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
@@ -10,7 +11,9 @@ import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
+import type { PlaybackTarget } from "@/data/types";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { isDemoId, withStompModel } from "@/lib/preset-utils";
@@ -36,6 +39,7 @@ function Home() {
   const { plan, refresh, isPending: planPending } = usePlan();
   const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
+  const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
@@ -107,6 +111,7 @@ function Home() {
           artist: artist.trim() || undefined,
           instrument,
           stompModel,
+          playbackTarget,
           userGear: gear,
         },
       });
@@ -206,6 +211,7 @@ function Home() {
             if (hit.featuredId) openFeatured(hit.featuredId);
           }}
         />
+        <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
         <div className="flex items-end">
           <Button type="submit" disabled={busy || planPending} className="w-full sm:w-auto">
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -214,8 +220,9 @@ function Home() {
         </div>
         {busy ? <ResearchProgress pct={progress} /> : null}
         <p className="text-xs text-muted-foreground">
-          Using {instrument} · {stompModel === "hx-stomp" ? "HX Stomp (3 switches)" : "HX Stomp XL (8 switches)"}.
-          Change both in the header. Type two letters to pick the exact recording.
+          Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
+          Type two letters to pick the exact recording. “Running out of” nudges the cab and mix — it is
+          not a different song.
         </p>
         <GeminiHint plan={plan} pending={planPending} />
         {status && busy === false && !plan.canResearch ? (

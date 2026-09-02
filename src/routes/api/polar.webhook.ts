@@ -1,6 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { grantPaidByEmail } from "@/lib/billing";
-import { extractOrder, polarEventIsPaid } from "@/lib/polar";
+import { grantPaidByEmail, revokeSubscriptionByEmail } from "@/lib/billing";
+import {
+  extractOrder,
+  polarEventIsPaid,
+  polarEventIsSubscriptionGrant,
+  polarEventIsSubscriptionRevoke,
+} from "@/lib/polar";
 import { verifyPolarWebhook } from "@/lib/polar-webhook";
 
 export const Route = createFileRoute("/api/polar/webhook")({
@@ -17,13 +22,21 @@ export const Route = createFileRoute("/api/polar/webhook")({
         } catch {
           return new Response("bad json", { status: 400 });
         }
-        // checkout.created / order.created / confirmed MUST NOT unlock.
-        if (!polarEventIsPaid(payload)) {
+        const order = extractOrder(payload);
+        if (polarEventIsSubscriptionRevoke(payload)) {
+          try {
+            await revokeSubscriptionByEmail(order.email, order.subscriptionId, payload);
+          } catch {
+            return new Response("revoke failed", { status: 500 });
+          }
           return new Response("ok");
         }
-        const order = extractOrder(payload);
+        // checkout.created / order.created / confirmed MUST NOT unlock.
+        if (!polarEventIsPaid(payload) && !polarEventIsSubscriptionGrant(payload)) {
+          return new Response("ok");
+        }
         const email = order.email;
-        if (!email || !order.orderId) return new Response("ok");
+        if (!email || (!order.orderId && !order.subscriptionId)) return new Response("ok");
         try {
           await grantPaidByEmail(email, order, payload);
         } catch {

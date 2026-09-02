@@ -85,8 +85,8 @@ function GuidePage() {
       <Section title="Research and builds">
         <p>
           Featured demos (Sandman, Teen Spirit, Comfortably Numb) never need an account and always
-          download. Sign in for three free custom songs. After that, a one-time unlock ($19 launch)
-          opens any song, Create, History, and Gear. Each custom research counts toward your 50
+          download. Sign in for three free custom songs. After that, subscribe monthly or yearly.
+          Opens any song, Create, History, and Gear. Each custom research counts toward your 50
           builds this month — demos never do.
         </p>
         <p>
@@ -97,10 +97,38 @@ function GuidePage() {
 
       <Section title="Catalog">
         <p>
-          Every HX Stomp model, filtered by guitar or bass from the header. Find equivalent maps a real
-          pedal (TS808, Klon, SVT) to the Line 6 name.
+          Every HX model, filtered by guitar or bass from the header. Find equivalent maps a real
+          pedal (TS808, Klon, SVT) to the Line 6 name. Shop links go to Amazon or Sweetwater for the
+          original gear.
         </p>
       </Section>
+
+      <Section title="Units">
+        <p>
+          HX Stomp and HX Stomp XL are the battle-tested .hlx exports. Helix Floor, Helix LT, and HX
+          Effects use documented device IDs and the same HX model names — HX Effects never includes
+          amp or cab. POD Go uses .podgp, not .hlx, so we show the chain and skip the fake file.
+        </p>
+      </Section>
+
+      <section id="legal" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        <h2 className="font-display text-lg font-semibold text-foreground">Legal</h2>
+        <p>
+          Stomp Lab is an independent research tool. It is not affiliated with, endorsed by, or
+          sponsored by Line 6, Yamaha Guitar Group, Inc., or any manufacturer named in the catalog.
+          Helix, HX Stomp, HX Stomp XL, HX Effects, POD, and POD Go are trademarks of Yamaha Guitar
+          Group, Inc. Other product names identify the gear our models and research refer to.
+        </p>
+        <p>
+          Presets are unofficial starting points — not copies of commercial patches or master
+          recordings. Song titles identify the recording we researched.
+        </p>
+        <p>
+          Some links to Sweetwater and Amazon are affiliate links. If you buy through them, Stomp Lab
+          may earn a commission at no extra cost to you. As an Amazon Associate we earn from
+          qualifying purchases.
+        </p>
+      </section>
 
       <p className="text-sm text-muted-foreground">
         <Link to="/" className="text-primary underline underline-offset-2">

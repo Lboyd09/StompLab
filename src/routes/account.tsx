@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
-import { FREE_BUILDS, LAUNCH_USD, PAID_MONTHLY_BUILDS } from "@/lib/plan";
+import { FREE_BUILDS, PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD } from "@/lib/plan";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
@@ -73,7 +73,8 @@ function AccountPage() {
           <p className="text-sm text-muted-foreground">Admin — full Lab. Exact match: {user.primaryEmail}.</p>
         ) : plan.paid ? (
           <p className="text-sm text-muted-foreground">
-            Unlocked. {plan.monthUsed} of {PAID_MONTHLY_BUILDS} custom builds used this month. Demos never count.
+            Subscribed{plan.planInterval ? ` · ${plan.planInterval === "year" ? "yearly" : "monthly"}` : ""}.{" "}
+            {plan.monthUsed} of {PAID_MONTHLY_BUILDS} custom builds used this month. Demos never count.
           </p>
         ) : (
           <>
@@ -82,7 +83,7 @@ function AccountPage() {
               is open. Gear locker is paid.
             </p>
             <Button asChild>
-              <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+              <Link to="/upgrade">Subscribe — ${PRICE_MONTHLY_USD}/mo</Link>
             </Button>
           </>
         )}

@@ -2,6 +2,7 @@ import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
+import { STOMP_MODEL_IDS } from "@/data/types";
 
 export function blockModel(block: StompBlock) {
   return MODEL_MAP[block.modelId];
@@ -31,7 +32,7 @@ export function dspLoad(preset: Preset): number {
 }
 
 export function deviceFor(preset: Preset) {
-  return DEVICE_MAP[preset.stompModel];
+  return DEVICE_MAP[preset.stompModel] ?? DEVICE_MAP["hx-stomp"];
 }
 
 /**
@@ -46,12 +47,18 @@ export function visualToHardwareFs(index: number, xl: boolean): number {
 }
 
 export function featuredBaseId(id: string): string {
-  return id.replace(/-hx-stomp-xl$/, "").replace(/-hx-stomp$/, "");
+  const sorted = [...STOMP_MODEL_IDS].sort((a, b) => b.length - a.length);
+  for (const model of sorted) {
+    if (id.endsWith(`-${model}`)) return id.slice(0, -(model.length + 1));
+  }
+  return id;
 }
 
 export function stompModelFromId(id: string): StompModelId | undefined {
-  if (id.endsWith("-hx-stomp-xl")) return "hx-stomp-xl";
-  if (id.endsWith("-hx-stomp")) return "hx-stomp";
+  const sorted = [...STOMP_MODEL_IDS].sort((a, b) => b.length - a.length);
+  for (const model of sorted) {
+    if (id.endsWith(`-${model}`)) return model;
+  }
   return undefined;
 }
 
@@ -97,12 +104,13 @@ export function canDownloadPreset(
 }
 
 export function withStompModel(preset: Preset, model: StompModelId): Preset {
-  const maxSnaps = DEVICE_MAP[model].snapshots;
+  const device = DEVICE_MAP[model] ?? DEVICE_MAP["hx-stomp"];
+  const maxSnaps = device.snapshots;
   const snapshots = preset.snapshots.slice(0, maxSnaps);
   const snapIds = new Set(snapshots.map((s) => s.id));
 
   let fs = preset.footswitches.filter((f) => f.index <= 6);
-  if (model === "hx-stomp") {
+  if (device.footswitches <= 3) {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
     fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
@@ -128,7 +136,9 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
         },
       ];
     }
-    fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
+    if (model === "hx-stomp-xl") {
+      fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
+    }
   }
   fs = fs.filter((f) => f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId)));
   fs = fs.sort((a, b) => a.index - b.index);

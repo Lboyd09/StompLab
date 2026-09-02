@@ -1,9 +1,9 @@
-import { CATEGORIES, CATEGORY_MAP } from "./categories";
+import { CATEGORIES, CATEGORY_MAP, DEVICE_MAP } from "./categories";
 import { helixIdFor } from "./helix-ids";
 import { AMP_MODELS } from "./models-amps";
 import { CAB_MODELS } from "./models-cabs";
 import { FX_MODELS } from "./models-fx";
-import type { CategoryId, EquivalentHit, HxModel, Instrument } from "./types";
+import type { CategoryId, EquivalentHit, HxModel, Instrument, StompModelId } from "./types";
 
 export const ALL_MODELS: HxModel[] = [...FX_MODELS, ...AMP_MODELS, ...CAB_MODELS];
 
@@ -156,9 +156,13 @@ export function findEquivalents(query: string, limit = 8): EquivalentHit[] {
   }));
 }
 
-export function compactCatalogForPrompt(instrument?: Instrument): string {
+export function compactCatalogForPrompt(instrument?: Instrument, deviceId?: StompModelId): string {
+  const device = deviceId ? DEVICE_MAP[deviceId] : undefined;
   const rows: string[] = [];
   for (const cat of CATEGORIES) {
+    if (device && !device.hasAmpCab && ["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"].includes(cat.id)) {
+      continue;
+    }
     const models = modelsByCategory(cat.id).filter((m) => {
       if (m.io === "legacy") return false;
       if (cat.id === "mic" || cat.id === "ir") return false;

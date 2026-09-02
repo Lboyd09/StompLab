@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { dbSource, getSql } from "@/lib/db";
+import { STOMP_MODEL_IDS } from "@/data/types";
 import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan } from "@/lib/billing";
@@ -14,12 +15,18 @@ export function songCacheKey(
   artist: string | undefined,
   instrument: string,
   stompModel: string,
+  playbackTarget = "frfr",
 ) {
-  return `song|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}`;
+  return `song|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}`;
 }
 
-export function soundCacheKey(description: string, instrument: string, stompModel: string) {
-  return `sound|${norm(description).slice(0, 180)}|${instrument}|${stompModel}`;
+export function soundCacheKey(
+  description: string,
+  instrument: string,
+  stompModel: string,
+  playbackTarget = "frfr",
+) {
+  return `sound|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}`;
 }
 
 export function eqCacheKey(query: string) {
@@ -33,7 +40,7 @@ const SaveSongIn = z.object({
   song: z.string().max(120),
   artist: z.string().max(120),
   instrument: z.enum(["guitar", "bass"]),
-  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  stompModel: z.enum(STOMP_MODEL_IDS),
   preset: z.unknown(),
 });
 
@@ -145,7 +152,7 @@ export const listSharedLibrary = createServerFn({ method: "GET" })
       song: string;
       artist: string;
       instrument: "guitar" | "bass";
-      stompModel: "hx-stomp" | "hx-stomp-xl";
+      stompModel: string;
       hitCount: number;
       key: string;
     }[];

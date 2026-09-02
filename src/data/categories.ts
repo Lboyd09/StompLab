@@ -169,16 +169,25 @@ export const CATEGORY_MAP: Record<CategoryId, CategoryInfo> = Object.fromEntries
   CATEGORIES.map((c) => [c.id, c]),
 ) as Record<CategoryId, CategoryInfo>;
 
+const AMP_CAB: CategoryId[] = ["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"];
+
 export const STOMP_DEVICES: StompDevice[] = [
   {
     id: "hx-stomp",
     name: "HX Stomp",
     short: "Stomp",
+    family: "stomp",
     footswitches: 3,
     snapshots: 3,
     maxBlocks: 8,
     looper: "1-switch",
     presets: 126,
+    hasAmpCab: true,
+    exportFormat: "hlx",
+    hlxDeviceId: 2162694,
+    inputModel: "HelixStomp_AppDSPFlowInput",
+    outputModel: "HelixStomp_AppDSPFlowOutputMain",
+    outputSend: "HelixStomp_AppDSPFlowOutputSend",
     notes: [
       "One DSP chip — 8 blocks max, poly pitch/whammy are expensive.",
       "Three capacitive-touch footswitches with color LED rings.",
@@ -191,11 +200,18 @@ export const STOMP_DEVICES: StompDevice[] = [
     id: "hx-stomp-xl",
     name: "HX Stomp XL",
     short: "Stomp XL",
+    family: "stomp",
     footswitches: 8,
     snapshots: 4,
     maxBlocks: 8,
     looper: "6-switch",
     presets: 128,
+    hasAmpCab: true,
+    exportFormat: "hlx",
+    hlxDeviceId: 2162699,
+    inputModel: "HelixStomp_AppDSPFlowInput",
+    outputModel: "HelixStomp_AppDSPFlowOutputMain",
+    outputSend: "HelixStomp_AppDSPFlowOutputSend",
     notes: [
       "Same HX engine and 8-block / 1-DSP limit as HX Stomp.",
       "Eight capacitive-touch footswitches in two rows of four.",
@@ -204,11 +220,97 @@ export const STOMP_DEVICES: StompDevice[] = [
       "Same 320×240 LCD and three edit knobs as HX Stomp.",
     ],
   },
+  {
+    id: "helix-floor",
+    name: "Helix Floor",
+    short: "Floor",
+    family: "helix",
+    footswitches: 12,
+    snapshots: 8,
+    maxBlocks: 8,
+    looper: "6-switch",
+    presets: 1024,
+    hasAmpCab: true,
+    exportFormat: "hlx",
+    hlxDeviceId: 2162689,
+    inputModel: "HD2_AppDSPFlowInput",
+    outputModel: "HD2_AppDSPFlowOutput",
+    notes: [
+      "Dual-DSP Helix. We still write a single 8-block path so HX Edit will import.",
+      "Device id 2162689. Import in HX Edit with Helix Floor connected or Helix Native in Floor mode.",
+      "Twelve footswitches, eight snapshots. Extra switches stay empty for you to assign.",
+    ],
+  },
+  {
+    id: "helix-lt",
+    name: "Helix LT",
+    short: "LT",
+    family: "helix",
+    footswitches: 12,
+    snapshots: 8,
+    maxBlocks: 8,
+    looper: "6-switch",
+    presets: 1024,
+    hasAmpCab: true,
+    exportFormat: "hlx",
+    hlxDeviceId: 2162691,
+    inputModel: "HD2_AppDSPFlowInput",
+    outputModel: "HD2_AppDSPFlowOutput",
+    notes: [
+      "Same HX models as Helix Floor. Device id 2162691.",
+      "Single 8-block path in the .hlx so the file stays importable.",
+    ],
+  },
+  {
+    id: "hx-effects",
+    name: "HX Effects",
+    short: "FX",
+    family: "effects",
+    footswitches: 8,
+    snapshots: 4,
+    maxBlocks: 9,
+    looper: "1-switch",
+    presets: 128,
+    hasAmpCab: false,
+    exportFormat: "hlx",
+    hlxDeviceId: 2162692,
+    inputModel: "HD2_AppDSPFlowInput",
+    outputModel: "HD2_AppDSPFlowOutput",
+    notes: [
+      "No amp, cab, or IR models. Pedals only — sit in front of a real amp or in the loop.",
+      "Device id 2162692. Amp/cab blocks are stripped on export.",
+    ],
+  },
+  {
+    id: "pod-go",
+    name: "POD Go",
+    short: "POD Go",
+    family: "pod",
+    footswitches: 8,
+    snapshots: 4,
+    maxBlocks: 8,
+    looper: "1-switch",
+    presets: 256,
+    hasAmpCab: true,
+    exportFormat: "none",
+    notes: [
+      "POD Go uses .podgp, not .hlx. We will show the chain so you can build it by hand.",
+      "File export is not available — a fake .hlx would fail in HX Edit and in POD Go Edit.",
+    ],
+  },
 ];
 
 export const DEVICE_MAP: Record<string, StompDevice> = Object.fromEntries(
   STOMP_DEVICES.map((d) => [d.id, d]),
 );
+
+export function deviceHasAmpCab(deviceId: string): boolean {
+  return DEVICE_MAP[deviceId]?.hasAmpCab !== false;
+}
+
+export function ampCabCategories(): CategoryId[] {
+  return AMP_CAB;
+}
 
 export const DEFAULT_PARAMS: Record<CategoryId, string[]> = {
   distortion: ["Drive", "Bass", "Mid", "Treble", "Output", "Mix"],

@@ -5,7 +5,7 @@ import { FEATURED } from "../data/featured.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
 import { factoryParamsFor } from "../data/helix-params.ts";
 import type { Preset } from "../data/types.ts";
-import { buildHlx } from "./hlx.ts";
+import { buildHlx, canExportHlx } from "./hlx.ts";
 import { canDownloadPreset, featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
@@ -466,5 +466,39 @@ describe("exhaustive HX Edit model export", () => {
         assert.ok(!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_"), `${id} ${k} ${model}`);
       }
     }
+  });
+});
+
+describe("multi-device export", () => {
+  it("writes documented Helix Floor and LT device ids", () => {
+    const floor = buildHlx({ ...miniPreset("scream-808"), stompModel: "helix-floor" });
+    assert.equal((floor.data as { device: number }).device, 2162689);
+    const dsp = (floor.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlowInput");
+    const lt = buildHlx({ ...miniPreset("scream-808"), stompModel: "helix-lt" });
+    assert.equal((lt.data as { device: number }).device, 2162691);
+  });
+
+  it("strips amp and cab from HX Effects exports", () => {
+    const preset = miniPreset("scream-808");
+    preset.stompModel = "hx-effects";
+    preset.blocks = [
+      { id: "b1", modelId: "scream-808", enabled: true, path: "main", position: 0, params: { Drive: 5, Treble: 5, Output: 5 } },
+      { id: "b2", modelId: "essex-a30", enabled: true, path: "main", position: 1, params: { Drive: 4, Bass: 5, Treble: 5 } },
+      { id: "b3", modelId: "4x12-cali-v30", enabled: true, path: "main", position: 2, params: { Distance: 2 } },
+    ];
+    const hlx = buildHlx(preset);
+    assert.equal((hlx.data as { device: number }).device, 2162692);
+    const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+    const models = Object.entries(dsp)
+      .filter(([k]) => k.startsWith("block") || k.startsWith("cab"))
+      .map(([, b]) => String(b["@model"]));
+    assert.ok(models.includes("HD2_DistScream808"));
+    assert.equal(models.some((m) => m.startsWith("HD2_Amp") || m.startsWith("HD2_Cab")), false);
+  });
+
+  it("refuses to fake a POD Go .hlx", () => {
+    assert.equal(canExportHlx("pod-go"), false);
+    assert.throws(() => buildHlx({ ...miniPreset("scream-808"), stompModel: "pod-go" }));
   });
 });

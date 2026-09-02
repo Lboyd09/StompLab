@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset } from "@/data/types";
-import { copyHlx, downloadHlx, hlxFilename } from "@/lib/hlx";
+import { copyHlx, downloadHlx, hlxFilename, canExportHlx } from "@/lib/hlx";
 import {
   blockModel,
   canDownloadPreset,
@@ -25,6 +25,8 @@ import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
 import { FeedbackCard } from "../layout/feedback-card";
+import { GearShopLinks, AffiliateNote } from "../layout/gear-shop-links";
+import { PresetFeedbackDialog, PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
@@ -54,6 +56,7 @@ export function PresetWorkspace({
   const { plan, isPending: planPending } = usePlan();
   const [copying, setCopying] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
+  const [askFeedback, setAskFeedback] = useState(false);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
@@ -152,6 +155,13 @@ export function PresetWorkspace({
 
   function onDownload() {
     if (!canDownload) return;
+    if (!canExportHlx(preset.stompModel)) {
+      toast.error(
+        `${device.name} does not use .hlx. POD Go uses .podgp — copy the chain by hand for now.`,
+      );
+      setAskFeedback(true);
+      return;
+    }
     if (confirmDownload && !window.confirm(`Download ${hlxFilename(preset)} for HX Edit?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
     toast.success(
@@ -159,6 +169,7 @@ export function PresetWorkspace({
         ? `Saved ${hlxFilename(preset)}. In HX Edit: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
         : "Download was blocked. Use Copy JSON and save it as a .hlx file.",
     );
+    if (ok) setAskFeedback(true);
   }
 
   async function onRevise(note: string) {
@@ -211,6 +222,7 @@ export function PresetWorkspace({
   }
 
   return (
+    <>
     <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
       <div className="min-w-0 space-y-6">
         <header className="space-y-2">
@@ -245,7 +257,7 @@ export function PresetWorkspace({
                 <>
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button type="button" onClick={onDownload}>
-                      Download .hlx
+                      {canExportHlx(preset.stompModel) ? "Download .hlx" : "Export unavailable"}
                     </Button>
                     <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
                       {copying ? "Copying" : "Copy JSON"}
@@ -270,6 +282,12 @@ export function PresetWorkspace({
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
+          {!canExportHlx(preset.stompModel) ? (
+            <p className="text-sm text-muted-foreground">
+              {device.name} does not use .hlx (POD Go is .podgp). The chain below is the map — copy it by
+              hand. We will not write a fake Helix file.
+            </p>
+          ) : null}
           <RigDisclaimer />
         </header>
 
@@ -366,6 +384,7 @@ export function PresetWorkspace({
                       {!b.enabled ? <Badge variant="outline">off</Badge> : null}
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">Based on {model.basedOn}</span>
+                    <GearShopLinks name={model.name} basedOn={model.basedOn} compact />
                     <span className="mt-1 block font-mono text-[10px] text-muted-foreground">
                       {Object.entries(b.params)
                         .slice(0, 6)
@@ -392,8 +411,10 @@ export function PresetWorkspace({
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
                 <div className="text-sm font-medium">{g.name}</div>
                 <p className="text-xs text-muted-foreground">{g.notes}</p>
+                <GearShopLinks name={g.name} compact />
               </div>
             ))}
+            {preset.originalGear.length ? <AffiliateNote className="pt-1 text-[10px] leading-relaxed text-muted-foreground" /> : null}
           </CardContent>
         </Card>
 
@@ -408,6 +429,7 @@ export function PresetWorkspace({
                 <div key={g.item}>
                   <div className="text-sm font-medium">{g.item}</div>
                   <p className="text-xs text-muted-foreground">{g.why}</p>
+                  <GearShopLinks name={g.item} compact />
                 </div>
               ))}
             </CardContent>
@@ -530,7 +552,19 @@ export function PresetWorkspace({
           </Card>
         ) : null}
 
-        <FeedbackCard song={preset.song || preset.name} />
+        <Card>
+          <CardHeader>
+            <CardTitle>After you test it</CardTitle>
+            <CardDescription>
+              What you changed on the unit trains the next songs. We will not retune this one by hand.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <PresetFeedbackForm song={preset.song || preset.name} />
+          </CardContent>
+        </Card>
+
+        <FeedbackCard />
 
         {preset.tips.length ? (
           <Card>
@@ -548,5 +582,11 @@ export function PresetWorkspace({
         ) : null}
       </aside>
     </div>
+      <PresetFeedbackDialog
+        song={preset.song || preset.name}
+        open={askFeedback}
+        onClose={() => setAskFeedback(false)}
+      />
+    </>
   );
 }

@@ -15,12 +15,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
 import { searchModels } from "@/data/catalog";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
+import type { StompModelId } from "@/data/types";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
+import { LegalFooter } from "./legal-footer";
+import { Onboarding } from "./onboarding";
+import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
 
 const NAV = [
@@ -65,6 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { plan } = usePlan();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -258,19 +263,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ))}
             </div>
             <div className="flex rounded-full bg-secondary p-1">
-              {STOMP_DEVICES.map((d) => (
-                <button
-                  key={d.id}
-                  type="button"
-                  onClick={() => setStompModel(d.id)}
-                  className={cn(
-                    "h-8 rounded-full px-3.5 text-xs font-medium",
-                    stompModel === d.id ? "bg-primary text-primary-foreground" : "text-muted-foreground",
-                  )}
-                >
-                  {d.short}
-                </button>
-              ))}
+              <label className="sr-only" htmlFor="device">
+                Unit
+              </label>
+              <select
+                id="device"
+                value={stompModel}
+                onChange={(e) => setStompModel(e.target.value as StompModelId)}
+                className="h-8 rounded-full bg-transparent px-3 text-xs font-medium"
+              >
+                {STOMP_DEVICES.map((d) => (
+                  <option key={d.id} value={d.id}>
+                    {d.short}
+                  </option>
+                ))}
+              </select>
             </div>
             <nav className="ml-auto hidden items-center gap-1 md:flex">
               {DESKTOP_NAV.map((item) => (
@@ -293,7 +300,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">{children}</main>
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">
+        {children}
+        <LegalFooter className="mt-16 pb-4" />
+      </main>
+
+      <Onboarding onFinished={() => setShowTutorial(true)} />
+      <Tutorial force={showTutorial} onClose={() => setShowTutorial(false)} />
 
       <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
         <div className="grid grid-cols-5">

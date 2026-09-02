@@ -4,6 +4,8 @@ import {
   extractOrder,
   isRealPolarOrderId,
   polarEventIsPaid,
+  polarEventIsSubscriptionGrant,
+  polarEventIsSubscriptionRevoke,
   polarStatusIsPaid,
   purchaseLooksPaid,
 } from "./polar.ts";
@@ -74,6 +76,22 @@ describe("extractOrder", () => {
     assert.equal(order.userId, "user-1");
     assert.equal(order.email, "a@b.com");
   });
+  it("reads subscription.id on subscription.active", () => {
+    const order = extractOrder({
+      type: "subscription.active",
+      data: {
+        id: "sub_real_99999",
+        status: "active",
+        customer_email: "a@b.com",
+        metadata: { user_id: "user-1", interval: "month" },
+        recurring_interval: "month",
+      },
+    });
+    assert.equal(order.subscriptionId, "sub_real_99999");
+    assert.equal(order.email, "a@b.com");
+    assert.equal(order.interval, "month");
+    assert.equal(order.orderId, "");
+  });
   it("reads checkout.order_id on a succeeded checkout", () => {
     const order = extractOrder({
       type: "checkout.updated",
@@ -102,5 +120,25 @@ describe("purchaseLooksPaid", () => {
   it("rejects stolen checkout.created rows", () => {
     assert.equal(purchaseLooksPaid({ type: "checkout.created", data: { id: "checkout_abc12345" } }), false);
     assert.equal(purchaseLooksPaid({ type: "order.paid", data: { id: "order_abc12345", status: "paid" } }), true);
+  });
+  it("grants on subscription.active", () => {
+    assert.equal(polarEventIsSubscriptionGrant({ type: "subscription.active", data: { id: "sub_abc12345", status: "active" } }), true);
+    assert.equal(purchaseLooksPaid({ type: "subscription.active", data: { id: "sub_abc12345", status: "active" } }), true);
+  });
+  it("does not grant on subscription.canceled", () => {
+    assert.equal(
+      polarEventIsPaid({ type: "subscription.canceled", data: { id: "sub_abc12345", status: "canceled" } }),
+      false,
+    );
+    assert.equal(
+      polarEventIsSubscriptionGrant({ type: "subscription.canceled", data: { id: "sub_abc12345", status: "canceled" } }),
+      false,
+    );
+  });
+  it("revokes on subscription.revoked", () => {
+    assert.equal(
+      polarEventIsSubscriptionRevoke({ type: "subscription.revoked", data: { id: "sub_abc12345", status: "revoked" } }),
+      true,
+    );
   });
 });

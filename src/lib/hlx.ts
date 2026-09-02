@@ -1,7 +1,8 @@
+import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
 import { helixIdFor, isHxStompModelId } from "@/data/helix-ids";
 import { factoryParamsFor } from "@/data/helix-params";
-import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
+import type { CategoryId, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
 
 /**
@@ -21,20 +22,19 @@ import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
  *   @type is an integer, never a string
  */
 
-const DEVICE_IDS = {
-  "hx-stomp": 2162694,
-  "hx-stomp-xl": 2162699,
-} as const;
-
 const HLX_VERSION = 6;
 const HLX_APP_VERSION = 58720256; // 0x03800000 = firmware 3.80
 const HLX_BUILD_SHA = "v3.80";
 const STOMP_SNAPSHOT_CONTROLLER = 9;
-const STOMP_MAX_SNAPSHOTS = { "hx-stomp": 3, "hx-stomp-xl": 4 } as const;
 
-const INPUT_MODEL = "HelixStomp_AppDSPFlowInput";
-const OUTPUT_MAIN = "HelixStomp_AppDSPFlowOutputMain";
-const OUTPUT_SEND = "HelixStomp_AppDSPFlowOutputSend";
+function exportProfile(model: StompModelId) {
+  const d = DEVICE_MAP[model] ?? DEVICE_MAP["hx-stomp"];
+  return d;
+}
+
+export function canExportHlx(model: StompModelId): boolean {
+  return exportProfile(model).exportFormat === "hlx";
+}
 
 const SKIP_CATEGORIES = new Set<CategoryId>(["mic", "ir"]);
 const SKIP_MODELS = new Set(["split-y", "split-a-b", "crossover-split", "merge", "impulse-response"]);
@@ -190,17 +190,21 @@ function clamp01(n: number) {
 }
 
 function exportableBlocks(preset: Preset): StompBlock[] {
+  const device = exportProfile(preset.stompModel);
+  const ampCab = new Set<CategoryId>(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
   const kept = sortedBlocks(preset).filter((b) => {
     const model = MODEL_MAP[b.modelId];
     if (!model) return false;
     if (SKIP_CATEGORIES.has(model.category)) return false;
     if (SKIP_MODELS.has(b.modelId)) return false;
+    if (!device.hasAmpCab && ampCab.has(model.category)) return false;
     const hid = helixIdFor(b.modelId);
     if (!hid || !isHxStompModelId(hid)) return false;
     return true;
   });
-  const cabs = kept.filter((b) => MODEL_MAP[b.modelId]?.category === "cab");
-  const others = kept.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab").slice(0, MAX_PATH_BLOCKS);
+  const max = Math.min(MAX_PATH_BLOCKS, device.maxBlocks);
+  const cabs = device.hasAmpCab ? kept.filter((b) => MODEL_MAP[b.modelId]?.category === "cab") : [];
+  const others = kept.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab").slice(0, max);
   return [...others, ...cabs.slice(0, 2)];
 }
 
@@ -363,7 +367,11 @@ function usesSnapshotMode(preset: Preset): boolean {
   return snaps > 0 && snaps >= stomps;
 }
 
-function buildDsp(blocks: StompBlock[]) {
+function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
+  const device = exportProfile(deviceId);
+  const inputModel = device.inputModel ?? "HelixStomp_AppDSPFlowInput";
+  const outputMain = device.outputModel ?? "HelixStomp_AppDSPFlowOutputMain";
+  const outputSend = device.outputSend ?? outputMain;
   const cabs = blocks.filter((b) => MODEL_MAP[b.modelId]?.category === "cab");
   const others = blocks.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab");
   const hasCab = cabs.length > 0;
@@ -371,26 +379,26 @@ function buildDsp(blocks: StompBlock[]) {
   const dsp: HlxJson = {
     inputA: {
       "@input": 1,
-      "@model": INPUT_MODEL,
+      "@model": inputModel,
       noiseGate: false,
       decay: 0.5,
       threshold: -48.0,
     },
     inputB: {
       "@input": 0,
-      "@model": INPUT_MODEL,
+      "@model": inputModel,
       noiseGate: false,
       decay: 0.5,
       threshold: -48.0,
     },
     outputA: {
-      "@model": OUTPUT_MAIN,
+      "@model": outputMain,
       "@output": 1,
       pan: 0.5,
       gain: 0.0,
     },
     outputB: {
-      "@model": OUTPUT_SEND,
+      "@model": outputSend,
       "@output": 0,
       pan: 0.5,
       gain: 0.0,
@@ -615,9 +623,15 @@ function sanitizeLabel(s: string, max: number) {
 }
 
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
+  const device = exportProfile(preset.stompModel);
+  if (device.exportFormat !== "hlx" || !device.hlxDeviceId) {
+    throw new Error(
+      `${device.name} does not use .hlx. POD Go uses .podgp — we will not write a fake Helix file.`,
+    );
+  }
   const blocks = exportableBlocks(preset);
-  const { dsp, others } = buildDsp(blocks);
-  const maxSnapshots = STOMP_MAX_SNAPSHOTS[preset.stompModel];
+  const { dsp, others } = buildDsp(blocks, preset.stompModel);
+  const maxSnapshots = device.snapshots;
   const tempo = Math.max(40, Math.min(240, Math.round(preset.tempo || 120)));
   const mode = resolveFsMode(preset, opts?.fsMode);
 
@@ -663,7 +677,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
   return {
     version: HLX_VERSION,
     data: {
-      device: DEVICE_IDS[preset.stompModel],
+      device: device.hlxDeviceId,
       device_version: HLX_APP_VERSION,
       meta: {
         name: sanitizeLabel(preset.name || "Stomp Lab", 32),
@@ -694,7 +708,13 @@ export function hlxJson(preset: Preset, opts?: { fsMode?: HlxFsMode }): string {
 }
 
 export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): boolean {
-  const json = hlxJson(preset, opts);
+  if (!canExportHlx(preset.stompModel)) return false;
+  let json: string;
+  try {
+    json = hlxJson(preset, opts);
+  } catch {
+    return false;
+  }
   const blob = new Blob([json], { type: "application/octet-stream" });
   const url = URL.createObjectURL(blob);
   try {
@@ -715,6 +735,9 @@ export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): bool
 }
 
 export async function copyHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): Promise<void> {
+  if (!canExportHlx(preset.stompModel)) {
+    throw new Error("This unit does not use .hlx.");
+  }
   const json = hlxJson(preset, opts);
   if (navigator.clipboard?.writeText) {
     await navigator.clipboard.writeText(json);

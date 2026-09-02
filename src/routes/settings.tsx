@@ -1,9 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
+import { replayTutorial } from "@/components/layout/tutorial";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { FREE_BUILDS, LAUNCH_USD, PRICE_USD } from "@/lib/plan";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -84,7 +85,7 @@ function SettingsPage() {
               </Button>
               {!plan.paid ? (
                 <Button asChild>
-                  <Link to="/upgrade">Unlock StompLab — ${LAUNCH_USD}</Link>
+                  <Link to="/upgrade">Subscribe — ${PRICE_MONTHLY_USD}/mo</Link>
                 </Button>
               ) : null}
             </div>
@@ -92,7 +93,7 @@ function SettingsPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Sign in with email to use {FREE_BUILDS} free custom songs, then unlock for ${LAUNCH_USD}.
+              Sign in with email to use {FREE_BUILDS} free custom songs, then subscribe for ${PRICE_MONTHLY_USD}/mo.
             </p>
             <Button asChild>
               <Link to="/login">Sign in</Link>
@@ -103,6 +104,11 @@ function SettingsPage() {
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Look and feel</h2>
+        <div>
+          <Button type="button" variant="secondary" onClick={() => replayTutorial()}>
+            Replay tutorial
+          </Button>
+        </div>
         <fieldset className="space-y-2">
           <Label>Theme</Label>
           <div className="flex flex-wrap gap-2">
@@ -355,10 +361,10 @@ function SettingsPage() {
       <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
         <p>
-          Featured demos load instantly. Custom research uses the server. If you research a song that
-          was already built, we reuse that result so you are not billed twice — there is no public
-          library to browse. Free accounts get {FREE_BUILDS} custom builds plus the three demos.
-          Unlock is ${LAUNCH_USD} launch / ${PRICE_USD} after, one time, stuck to your email.
+          Featured demos load instantly. Custom research uses the server. Each custom song counts as a
+          build — demos never do. Free accounts get {FREE_BUILDS} custom builds plus the three demos.
+          Subscribe is ${PRICE_MONTHLY_USD}/month or ${PRICE_YEARLY_USD}/year, stuck to your email. Same 50
+          custom builds a month on either plan.
         </p>
         <p>
           <Link to="/" className="text-primary underline underline-offset-2">

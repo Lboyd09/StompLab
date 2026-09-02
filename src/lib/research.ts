@@ -3,7 +3,8 @@ import { z } from "zod";
 import { compactCatalogForPrompt, MODEL_MAP } from "@/data/catalog";
 import { FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
-import type { Preset, UserGear } from "@/data/types";
+import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
+import { STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { eqCacheKey, lookupCacheRaw, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
@@ -44,7 +45,7 @@ export function matchFeatured(
   song: string,
   artist: string | undefined,
   instrument: "guitar" | "bass",
-  stompModel: "hx-stomp" | "hx-stomp-xl",
+  stompModel: StompModelId,
 ): Preset | null {
   const hit = findFeaturedSource(song, artist, instrument);
   if (!hit) return null;
@@ -66,18 +67,23 @@ export type ResearchErr = {
 };
 export type ResearchResult = ResearchOk | ResearchErr;
 
+const DeviceEnum = z.enum(STOMP_MODEL_IDS);
+const PlaybackEnum = z.enum(["frfr", "guitar-amp", "headphones", "pa", "monitors"]);
+
 const ResearchIn = z.object({
   song: z.string().min(1).max(120),
   artist: z.string().max(120).optional(),
   instrument: z.enum(["guitar", "bass"]),
-  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  stompModel: DeviceEnum,
+  playbackTarget: PlaybackEnum.optional().default("frfr"),
   userGear: z.array(GearSchema).optional().default([]),
 });
 
 const CreateIn = z.object({
   description: z.string().min(4).max(800),
   instrument: z.enum(["guitar", "bass"]),
-  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  stompModel: DeviceEnum,
+  playbackTarget: PlaybackEnum.optional().default("frfr"),
   userGear: z.array(GearSchema).optional().default([]),
 });
 
@@ -101,7 +107,8 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
 async function runGeminiPreset(opts: {
   prompt: string;
   instrument: "guitar" | "bass";
-  stompModel: "hx-stomp" | "hx-stomp-xl";
+  stompModel: StompModelId;
+  playbackTarget?: PlaybackTarget;
   source: "song" | "custom";
   song?: string;
   artist?: string;
@@ -116,6 +123,7 @@ async function runGeminiPreset(opts: {
       stompModel: opts.stompModel,
       song: opts.song,
       artist: opts.artist,
+      playbackTarget: opts.playbackTarget,
     }),
     opts.userGear,
   );
@@ -145,7 +153,13 @@ export const researchSongFn = createServerFn({ method: "POST" })
       return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
     }
 
-    const key = songCacheKey(data.song, data.artist, data.instrument, data.stompModel);
+    const key = songCacheKey(
+      data.song,
+      data.artist,
+      data.instrument,
+      data.stompModel,
+      data.playbackTarget,
+    );
 
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
 
@@ -161,8 +175,8 @@ export const researchSongFn = createServerFn({ method: "POST" })
     }
 
     try {
-      const catalog = compactCatalogForPrompt(data.instrument);
-      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
 Research the original recorded ${data.instrument} tone. Album, year, and the chain that was actually used.
@@ -180,6 +194,7 @@ ${jsonSchemaHint()}`;
         source: "song",
         song: data.song,
         artist: data.artist,
+        playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
       await recordBuild(context.userId, "song", data.song.trim());
@@ -211,7 +226,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<ResearchResult> => {
     const email = await emailFor(context.userId);
     const plan = await loadPlan(context.userId, email);
-    const key = soundCacheKey(data.description, data.instrument, data.stompModel);
+    const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget);
 
     if (!plan.canCreate) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
 
@@ -227,8 +242,8 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
     }
 
     try {
-      const catalog = compactCatalogForPrompt(data.instrument);
-      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
 
 Build this sound on the ${DEVICE_MAP[data.stompModel].name}:
 ${data.description}
@@ -244,6 +259,7 @@ ${jsonSchemaHint()}`;
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "custom",
+        playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
       await recordBuild(context.userId, "create", preset.name);
@@ -325,7 +341,8 @@ const ReviseIn = z.object({
   song: z.string().min(1).max(120),
   artist: z.string().max(120).optional(),
   instrument: z.enum(["guitar", "bass"]),
-  stompModel: z.enum(["hx-stomp", "hx-stomp-xl"]),
+  stompModel: DeviceEnum,
+  playbackTarget: PlaybackEnum.optional().default("frfr"),
   note: z.string().min(2).max(240),
   current: z.string().max(2000),
   userGear: z.array(GearSchema).optional().default([]),
@@ -339,10 +356,10 @@ export const revisePresetFn = createServerFn({ method: "POST" })
     const plan = await loadPlan(context.userId, email);
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
     try {
-      const catalog = compactCatalogForPrompt(data.instrument);
-      const prompt = `${systemForDevice(data.stompModel, data.instrument)}
+      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
 
-Revise this HX Stomp path. Keep factory model ids. Only change what the note asks.
+Revise this ${DEVICE_MAP[data.stompModel].name} path. Keep factory model ids. Only change what the note asks.
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
 Current path: ${data.current}
@@ -361,6 +378,7 @@ ${jsonSchemaHint()}`;
         source: "song",
         song: data.song,
         artist: data.artist,
+        playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
       await recordBuild(context.userId, "revise", data.song.trim());

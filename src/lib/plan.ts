@@ -1,8 +1,14 @@
 export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
-export const PRICE_USD = 29;
-export const LAUNCH_USD = 19;
+export const PRICE_MONTHLY_USD = 9;
+export const PRICE_YEARLY_USD = 79;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
+
+/** @deprecated one-time pricing — kept so old imports fail closed on the new cards */
+export const PRICE_USD = PRICE_YEARLY_USD;
+export const LAUNCH_USD = PRICE_MONTHLY_USD;
+
+export type PlanInterval = "month" | "year";
 
 /** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
 export function isAdminEmail(email: string | null | undefined) {
@@ -24,6 +30,8 @@ export type Plan = {
   monthUsed: number;
   monthLimit: number;
   month: string;
+  planInterval: PlanInterval | null;
+  subscriptionStatus: string;
   canResearch: boolean;
   canCreate: boolean;
   canHistory: boolean;
@@ -47,6 +55,8 @@ export function emptyPlan(): Plan {
     monthUsed: 0,
     monthLimit: FREE_BUILDS,
     month,
+    planInterval: null,
+    subscriptionStatus: "",
     canResearch: false,
     canCreate: false,
     canHistory: false,
@@ -64,6 +74,8 @@ export function assemblePlan(opts: {
   paid: boolean;
   freeUsed: number;
   monthUsed: number;
+  planInterval?: PlanInterval | null;
+  subscriptionStatus?: string;
 }): Plan {
   const month = yearMonth();
   const admin = isAdminEmail(opts.email);
@@ -84,6 +96,8 @@ export function assemblePlan(opts: {
     monthUsed: paid ? monthUsed : freeUsed,
     monthLimit: paid ? PAID_MONTHLY_BUILDS : FREE_BUILDS,
     month,
+    planInterval: paid ? (opts.planInterval ?? null) : null,
+    subscriptionStatus: opts.subscriptionStatus ?? "",
     canResearch: canBuild,
     canCreate: canBuild,
     canHistory: true,
@@ -94,4 +108,8 @@ export function assemblePlan(opts: {
     canSharedLibrary: false,
     blockedReason: canBuild ? null : paid ? "quota" : "paywall",
   };
+}
+
+export function yearlySavingsUsd() {
+  return PRICE_MONTHLY_USD * 12 - PRICE_YEARLY_USD;
 }

@@ -1,4 +1,5 @@
 import type { Preset, StompModelId, UserGear } from "@/data/types";
+import { parseStompModelId } from "@/data/types";
 
 const PRESETS_KEY = "stomplab.presets.v1";
 const GEAR_KEY = "stomplab.gear.v1";
@@ -81,7 +82,11 @@ export function saveGear(gear: UserGear[]) {
 
 export function loadSettings(): Settings {
   const raw = readJson<Partial<Settings>>(SETTINGS_KEY, {});
-  return { ...DEFAULT_SETTINGS, ...raw };
+  return {
+    ...DEFAULT_SETTINGS,
+    ...raw,
+    stompModel: parseStompModelId(raw.stompModel, DEFAULT_SETTINGS.stompModel),
+  };
 }
 
 export function saveSettings(settings: Settings) {

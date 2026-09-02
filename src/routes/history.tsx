@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
+import { DEVICE_MAP } from "@/data/categories";
 import { Button } from "@/components/ui/button";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -55,7 +56,7 @@ function HistoryPage() {
             <li key={p.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
               <Link to="/preset/$id" params={{ id: p.id }} className="min-w-0 flex-1">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                  {p.source} · {p.instrument} · {p.stompModel === "hx-stomp" ? "Stomp" : "Stomp XL"}
+                  {p.source} · {p.instrument} · {DEVICE_MAP[p.stompModel]?.short ?? p.stompModel}
                 </div>
                 <div className="font-medium">
                   {p.song ? `${p.song}${p.artist ? ` — ${p.artist}` : ""}` : p.name}

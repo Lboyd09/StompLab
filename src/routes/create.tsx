@@ -6,10 +6,13 @@ import { GeminiHint } from "@/components/layout/gemini-hint";
 import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
+import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { DEVICE_MAP } from "@/data/categories";
+import type { PlaybackTarget } from "@/data/types";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { createCustomSoundFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
@@ -32,6 +35,7 @@ function CreatePage() {
   const savePreset = useAppStore((s) => s.savePreset);
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
+  const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -58,6 +62,7 @@ function CreatePage() {
           description: description.trim(),
           instrument,
           stompModel,
+          playbackTarget,
           userGear: gear,
         },
       });
@@ -111,7 +116,7 @@ function CreatePage() {
         <h1 className="font-display text-3xl font-semibold tracking-tight">Describe a sound</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Pedalboard, amp stack, or a feeling. You get a path on the replica and a .hlx HX Edit will
-          import — for your {stompModel === "hx-stomp" ? "HX Stomp" : "HX Stomp XL"}.
+          import — for your {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}.
         </p>
         <RigDisclaimer />
       </header>
@@ -133,6 +138,7 @@ function CreatePage() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Dumble-ish overdrive into a Twin, with a slow Univibe and a short plate…"
         />
+        <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}

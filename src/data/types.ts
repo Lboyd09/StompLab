@@ -21,7 +21,35 @@ export type CategoryId =
 export type IoType = "mono" | "stereo" | "mono-stereo" | "legacy";
 export type Instrument = "guitar" | "bass" | "both";
 export type DspWeight = "light" | "medium" | "heavy";
-export type StompModelId = "hx-stomp" | "hx-stomp-xl";
+
+export const STOMP_MODEL_IDS = [
+  "hx-stomp",
+  "hx-stomp-xl",
+  "helix-floor",
+  "helix-lt",
+  "hx-effects",
+  "pod-go",
+] as const;
+
+export type StompModelId = (typeof STOMP_MODEL_IDS)[number];
+
+export function isStompModelId(value: string): value is StompModelId {
+  return (STOMP_MODEL_IDS as readonly string[]).includes(value);
+}
+
+export function parseStompModelId(value: string | null | undefined, fallback: StompModelId = "hx-stomp"): StompModelId {
+  return value && isStompModelId(value) ? value : fallback;
+}
+
+export type PlaybackTarget = "frfr" | "guitar-amp" | "headphones" | "pa" | "monitors";
+
+export const PLAYBACK_TARGET_IDS = ["frfr", "guitar-amp", "headphones", "pa", "monitors"] as const;
+
+export function parsePlaybackTarget(value: string | null | undefined): PlaybackTarget {
+  return value && (PLAYBACK_TARGET_IDS as readonly string[]).includes(value)
+    ? (value as PlaybackTarget)
+    : "frfr";
+}
 
 export type HxModel = {
   id: string;
@@ -46,15 +74,25 @@ export type CategoryInfo = {
   lcd: string;
 };
 
+export type DeviceFamily = "stomp" | "helix" | "effects" | "pod";
+export type ExportFormat = "hlx" | "none";
+
 export type StompDevice = {
   id: StompModelId;
   name: string;
   short: string;
+  family: DeviceFamily;
   footswitches: number;
   snapshots: number;
   maxBlocks: number;
   looper: string;
   presets: number;
+  hasAmpCab: boolean;
+  exportFormat: ExportFormat;
+  hlxDeviceId?: number;
+  inputModel?: string;
+  outputModel?: string;
+  outputSend?: string;
   notes: string[];
 };
 
@@ -126,6 +164,7 @@ export type Preset = {
   tips: string[];
   /** How the .hlx should come up on the unit. Snapshot = verse/chorus, Stomp = effects on/off. */
   exportFsMode?: "stomp" | "snapshot";
+  playbackTarget?: PlaybackTarget;
 };
 
 export type UserGear = {

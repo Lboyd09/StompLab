@@ -72,4 +72,27 @@ describe("assemblePlan", () => {
     assert.equal(plan.canHistory, true);
     assert.equal(plan.blockedReason, "paywall");
   });
+  it("gives paid subscribers 50 builds a month on either interval", () => {
+    const monthly = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: true,
+      freeUsed: 3,
+      monthUsed: 12,
+      planInterval: "month",
+    });
+    const yearly = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: true,
+      freeUsed: 3,
+      monthUsed: 12,
+      planInterval: "year",
+    });
+    assert.equal(monthly.monthLimit, 50);
+    assert.equal(yearly.monthLimit, 50);
+    assert.equal(monthly.canResearch, true);
+    assert.equal(monthly.planInterval, "month");
+    assert.equal(yearly.planInterval, "year");
+  });
 });

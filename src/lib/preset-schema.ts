@@ -2,7 +2,8 @@ import { z } from "zod";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import { helixIdFor } from "@/data/helix-ids";
-import type { Preset, StompBlock, UserGear } from "@/data/types";
+import { PLAYBACK_MAP } from "@/data/playback";
+import type { PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
 import { newId } from "./preset-utils";
 
 export const GearSchema = z.object({
@@ -93,7 +94,7 @@ export const PresetOut = z.object({
       }),
     )
     .optional(),
-  blocks: z.array(BlockOut).min(1).max(8),
+  blocks: z.array(BlockOut).min(1).max(16),
   snapshots: z
     .array(
       z.object({
@@ -152,16 +153,21 @@ export function toPreset(
   meta: {
     source: Preset["source"];
     instrument: "guitar" | "bass";
-    stompModel: "hx-stomp" | "hx-stomp-xl";
+    stompModel: StompModelId;
     song?: string;
     artist?: string;
+    playbackTarget?: PlaybackTarget;
   },
 ): Preset {
+  const device = DEVICE_MAP[meta.stompModel] ?? DEVICE_MAP["hx-stomp"];
+  const skipAmpCab = !device.hasAmpCab;
+  const AMP_CAB = new Set(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
   const blocks: StompBlock[] = [];
-  for (const b of out.blocks.slice(0, 8)) {
+  for (const b of out.blocks.slice(0, device.maxBlocks)) {
     const model = MODEL_MAP[b.modelId];
     if (!model) continue;
     if (!helixIdFor(model.id)) continue;
+    if (skipAmpCab && AMP_CAB.has(model.category)) continue;
     const params: Record<string, number> = {};
     for (const p of model.params) {
       const v = b.params?.[p];
@@ -178,7 +184,7 @@ export function toPreset(
   }
   if (!blocks.length) throw new Error("No valid HX models in the response");
 
-  const snapshots = out.snapshots.slice(0, DEVICE_MAP[meta.stompModel].snapshots).map((s, i) => {
+  const snapshots = out.snapshots.slice(0, device.snapshots).map((s, i) => {
     const enabled = s.enabledModelIds?.length
       ? blocks.filter((b) => s.enabledModelIds!.includes(b.modelId)).map((b) => b.id)
       : blocks.filter((b) => b.enabled).map((b) => b.id);
@@ -201,7 +207,7 @@ export function toPreset(
   });
 
   const footswitches = out.footswitches
-    .filter((f) => f.index >= 1 && f.index <= DEVICE_MAP[meta.stompModel].footswitches)
+    .filter((f) => f.index >= 1 && f.index <= device.footswitches)
     .map((f) => {
       const target = f.targetModelId ? blocks.find((b) => b.modelId === f.targetModelId) : undefined;
       const snap = f.snapshotName
@@ -236,6 +242,7 @@ export function toPreset(
     footswitches,
     programming: out.programming,
     tips: out.tips,
+    playbackTarget: meta.playbackTarget,
   };
 }
 
@@ -289,10 +296,23 @@ const STAND_INS = `HX stand-ins (use these ids, never invent):
 - Cry Baby → teardrop-310 or uk-wah-846. Mu-Tron III → mutant-filter. Whammy → pitch-wham.
 Only catalog modelId values. Prefer HX over Legacy.`;
 
-export function systemForDevice(stompModel: "hx-stomp" | "hx-stomp-xl", instrument: "guitar" | "bass") {
-  const d = DEVICE_MAP[stompModel];
+export function systemForDevice(
+  stompModel: StompModelId,
+  instrument: "guitar" | "bass",
+  playbackTarget: PlaybackTarget = "frfr",
+) {
+  const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
+  const play = PLAYBACK_MAP[playbackTarget];
+  const ampRule = d.hasAmpCab
+    ? "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp."
+    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return.";
+  const exportRule =
+    d.exportFormat === "hlx"
+      ? `Export is a .hlx for ${d.name}. Only catalog modelId values.`
+      : `${d.name} cannot export a .hlx (POD Go uses .podgp). Still return a real HX chain they can copy by hand.`;
   return `Session tech. Program a Line 6 ${d.name} preset that sounds like the RECORD. JSON only.
-Max ${d.maxBlocks} blocks, ${d.snapshots} snapshots, ${d.footswitches} FS, 1 DSP, 1 amp. Instrument: ${instrument}.
+Max ${d.maxBlocks} blocks, ${d.snapshots} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
+${exportRule}
 
 Tone:
 - Album + year in summary. Studio tracking rig first.
@@ -300,8 +320,9 @@ Tone:
 - Every block must be on that recording. No spare gate/comp/chorus/hall.
 - Params 0–10 numbers. Cab Mic = 0 (SM57). Never strings in params.
 - GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain.
-- One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp.
+- ${ampRule}
 - Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
+- ${play.prompt}
 
 ${STAND_INS}
 
