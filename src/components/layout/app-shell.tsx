@@ -26,6 +26,8 @@ import { LegalFooter } from "./legal-footer";
 import { Onboarding } from "./onboarding";
 import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { pullMyPresets, pushMyPresets } from "@/lib/billing";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -51,6 +53,10 @@ function Mark() {
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
+  const hydrateOwner = useAppStore((s) => s.hydrateOwner);
+  const replacePresets = useAppStore((s) => s.replacePresets);
+  const presets = useAppStore((s) => s.presets);
+  const ownerId = useAppStore((s) => s.ownerId);
   const instrument = useAppStore((s) => s.instrument);
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
@@ -67,14 +73,50 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     pathname === "/catalog" && (location.search as { tab?: string }).tab === "find";
   const navigate = useNavigate();
   const { plan } = usePlan();
+  const { user, isPending: authPending } = useCurrentUserState();
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
+  const [syncReady, setSyncReady] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    if (authPending) return;
+    setSyncReady(false);
+    const local = hydrateOwner(user?.id ?? null);
+    if (!user) {
+      setSyncReady(true);
+      return;
+    }
+    let cancelled = false;
+    void pullMyPresets()
+      .then((res) => {
+        if (cancelled) return;
+        if (res.presets.length) replacePresets(res.presets);
+        else if (local.presets.length) {
+          void pushMyPresets({ data: { presets: local.presets } }).catch(() => undefined);
+        }
+      })
+      .catch(() => undefined)
+      .finally(() => {
+        if (!cancelled) setSyncReady(true);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, authPending, hydrateOwner, replacePresets]);
+
+  useEffect(() => {
+    if (!user || !syncReady || ownerId !== user.id) return;
+    const timer = window.setTimeout(() => {
+      void pushMyPresets({ data: { presets } }).catch(() => undefined);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [presets, user, syncReady, ownerId]);
 
   useEffect(() => {
     const root = document.documentElement;

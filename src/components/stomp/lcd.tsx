@@ -90,13 +90,20 @@ export function LcdScreen({
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const snap = preset.snapshots[activeSnapshot];
-  const xl = device.footswitches === 8;
-  const strips = scribblesFor(preset, fsMode, xl);
+  const layout = device.layout;
+  const xl = layout === "xl";
+  const showLcdScribbles = layout === "stomp" || layout === "xl";
+  const strips = showLcdScribbles ? scribblesFor(preset, fsMode, xl) : [];
   const topStrips = xl ? strips.slice(0, 3) : [];
   const bottomStrips = xl ? strips.slice(3, 6) : strips;
 
   return (
-    <div className="hx-lcd relative overflow-hidden">
+    <div
+      className={cn(
+        "hx-lcd relative overflow-hidden",
+        (layout === "floor" || layout === "lt") && "hx-lcd-wide",
+      )}
+    >
       <div className="flex items-center justify-between gap-2 px-2 pt-1.5">
         <div className="flex min-w-0 items-center gap-1.5">
           <span className="rounded-[2px] bg-zinc-100 px-1 py-[1px] font-mono text-[10px] font-semibold text-zinc-900">
@@ -174,7 +181,7 @@ export function LcdScreen({
         </div>
       )}
 
-      {view === "tuner" ? null : (
+      {view === "tuner" || !showLcdScribbles ? null : (
         <div className="mt-auto">
           {topStrips.length ? (
             <ScribbleRow items={topStrips} active={assignFsIndex} onTap={onScribbleTap} />

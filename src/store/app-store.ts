@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import {
+  adoptLegacyLocal,
   deletePreset,
   loadGear,
   loadGeminiKey,
@@ -9,6 +10,8 @@ import {
   patchSettings,
   saveGear,
   saveGeminiKey,
+  savePresets,
+  storageOwnerKey,
   type FsModePref,
   type Settings,
   type ThemeId,
@@ -20,6 +23,7 @@ type FsMode = "stomp" | "snapshot" | "preset";
 
 type AppState = {
   hydrated: boolean;
+  ownerId: string;
   instrument: "guitar" | "bass";
   stompModel: StompModelId;
   theme: ThemeId;
@@ -40,6 +44,7 @@ type AppState = {
   activeSnapshot: number;
   assignFsIndex: number;
   hydrate: () => void;
+  hydrateOwner: (userId: string | null) => { presets: Preset[]; gear: UserGear[] };
   setInstrument: (instrument: "guitar" | "bass") => void;
   setStompModel: (stompModel: StompModelId) => void;
   setTheme: (theme: ThemeId) => void;
@@ -53,6 +58,7 @@ type AppState = {
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
+  replacePresets: (presets: Preset[]) => void;
   setGear: (gear: UserGear[]) => void;
   addGear: (item: UserGear) => void;
   removeGear: (id: string) => void;
@@ -71,6 +77,7 @@ function persist(partial: Partial<Settings>) {
 
 export const useAppStore = create<AppState>((set, get) => ({
   hydrated: false,
+  ownerId: "anon",
   instrument: "guitar",
   stompModel: "hx-stomp",
   theme: "dark",
@@ -106,9 +113,18 @@ export const useAppStore = create<AppState>((set, get) => ({
       reduceMotion: settings.reduceMotion,
       confirmDownload: settings.confirmDownload,
       geminiKey: loadGeminiKey(),
-      presets: loadPresets(),
-      gear: loadGear(),
     });
+  },
+  hydrateOwner: (userId) => {
+    const owner = storageOwnerKey(userId);
+    if (get().ownerId === owner && get().hydrated) {
+      return { presets: get().presets, gear: get().gear };
+    }
+    const adopted = adoptLegacyLocal(owner);
+    const presets = adopted.presets.length ? adopted.presets : loadPresets(owner);
+    const gear = adopted.gear.length ? adopted.gear : loadGear(owner);
+    set({ ownerId: owner, presets, gear });
+    return { presets, gear };
   },
   setInstrument: (instrument) => {
     persist({ instrument });
@@ -154,20 +170,24 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveGeminiKey(geminiKey);
     set({ geminiKey });
   },
-  savePreset: (preset) => set({ presets: upsertPreset(preset) }),
-  removePreset: (id) => set({ presets: deletePreset(id) }),
+  savePreset: (preset) => set({ presets: upsertPreset(preset, get().ownerId) }),
+  removePreset: (id) => set({ presets: deletePreset(id, get().ownerId) }),
+  replacePresets: (presets) => {
+    savePresets(presets, get().ownerId);
+    set({ presets });
+  },
   setGear: (gear) => {
-    saveGear(gear);
+    saveGear(gear, get().ownerId);
     set({ gear });
   },
   addGear: (item) => {
     const gear = [item, ...get().gear];
-    saveGear(gear);
+    saveGear(gear, get().ownerId);
     set({ gear });
   },
   removeGear: (id) => {
     const gear = get().gear.filter((g) => g.id !== id);
-    saveGear(gear);
+    saveGear(gear, get().ownerId);
     set({ gear });
   },
   selectBlock: (id) => set({ selectedBlockId: id, lcdView: id ? "edit" : "play", paramPage: 0 }),
@@ -176,5 +196,5 @@ export const useAppStore = create<AppState>((set, get) => ({
   setParamPage: (paramPage) => set({ paramPage }),
   setActiveSnapshot: (activeSnapshot) => set({ activeSnapshot }),
   setAssignFsIndex: (assignFsIndex) => set({ assignFsIndex }),
-  patchCurrent: (preset) => set({ presets: upsertPreset(preset) }),
+  patchCurrent: (preset) => set({ presets: upsertPreset(preset, get().ownerId) }),
 }));

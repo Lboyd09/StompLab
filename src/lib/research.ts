@@ -180,6 +180,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
 Research the original recorded ${data.instrument} tone. Album, year, and the chain that was actually used.
+Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone.
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):

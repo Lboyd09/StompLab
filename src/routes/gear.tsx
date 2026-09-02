@@ -148,7 +148,7 @@ function GearPage() {
               <div>
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</div>
                 <div className="font-medium">{g.name}</div>
-                <GearShopLinks name={g.name} compact />
+                <GearShopLinks name={g.name} source="user" compact />
                 {g.notes ? <p className="mt-1 text-sm text-muted-foreground">{g.notes}</p> : null}
               </div>
               <Button variant="ghost" size="icon" aria-label={`Remove ${g.name}`} onClick={() => onRemove(g.id)}>

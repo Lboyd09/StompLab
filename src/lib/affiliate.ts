@@ -29,13 +29,45 @@ export function sweetwaterSearchUrl(query: string, affiliateId = sweetwaterAffil
   if (!q) return "https://www.sweetwater.com/";
   const url = new URL("https://www.sweetwater.com/store/search.php");
   url.searchParams.set("s", q);
-  if (affiliateId) url.searchParams.set("utm_source", "stomplab");
-  if (affiliateId) url.searchParams.set("utm_medium", "affiliate");
-  if (affiliateId) url.searchParams.set("utm_campaign", affiliateId);
+  if (affiliateId) {
+    url.searchParams.set("utm_source", "stomplab");
+    url.searchParams.set("utm_medium", "affiliate");
+    url.searchParams.set("utm_campaign", affiliateId);
+  }
   return url.toString();
 }
 
+/** Line 6 HX names are DSP models — not products you can buy. */
+export function isShoppableGear(basedOn: string | undefined | null): boolean {
+  const raw = (basedOn ?? "").trim();
+  if (raw.length < 4) return false;
+  if (/^line\s*6/i.test(raw)) return false;
+  if (/original$/i.test(raw) && /line\s*6|helix|hx\b/i.test(raw)) return false;
+  if (/\b(helix|hx stomp|hx effects|pod go|stadium)\b/i.test(raw)) return false;
+  if (/computer[- ]generated|digital model|hx model/i.test(raw)) return false;
+  return true;
+}
+
+/**
+ * Search the real-world pedal/amp. Never the Line 6 nickname
+ * (Deez One, Scream 808) — those are not for sale.
+ */
 export function shopQueryFor(name: string, basedOn?: string): string {
-  const raw = (basedOn && basedOn.toLowerCase() !== "line 6 original" ? basedOn : name).trim();
-  return raw.replace(/\s+/g, " ").slice(0, 80);
+  const raw = (basedOn ?? "").trim();
+  if (!isShoppableGear(raw)) return "";
+  return raw
+    .replace(/\s*\([^)]*\)/g, " ")
+    .replace(/\s*\/\s*.*$/, "")
+    .replace(/\s+family$/i, "")
+    .replace(/\s+with\s+.+$/i, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 80);
+}
+
+export function shopQueryForUserItem(name: string): string {
+  const raw = name.trim();
+  if (raw.length < 3) return "";
+  if (!isShoppableGear(raw) && /^line\s*6/i.test(raw)) return "";
+  return raw.slice(0, 80);
 }

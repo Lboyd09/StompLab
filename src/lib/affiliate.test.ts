@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { amazonSearchUrl, shopQueryFor, sweetwaterSearchUrl } from "./affiliate.ts";
+import { amazonSearchUrl, isShoppableGear, shopQueryFor, shopQueryForUserItem, sweetwaterSearchUrl } from "./affiliate.ts";
 
 describe("affiliate urls", () => {
   it("adds the Amazon associate tag when provided", () => {
@@ -14,8 +14,18 @@ describe("affiliate urls", () => {
     assert.match(url, /sweetwater\.com/);
     assert.match(url, /utm_campaign=abc123/);
   });
-  it("prefers the based-on original over a Line 6 name", () => {
+  it("shops the based-on original, never a Line 6 nickname", () => {
     assert.equal(shopQueryFor("Deez One Vintage", "BOSS DS-1 Distortion"), "BOSS DS-1 Distortion");
-    assert.equal(shopQueryFor("Thrifter Fuzz", "Line 6 Original"), "Thrifter Fuzz");
+    assert.equal(shopQueryFor("Scream 808", "Ibanez TS808"), "Ibanez TS808");
+    assert.equal(shopQueryFor("Thrifter Fuzz", "Line 6 Original"), "");
+    assert.equal(shopQueryFor("Cali Rectifire", "Mesa Dual Rectifier"), "Mesa Dual Rectifier");
+  });
+  it("refuses Line 6 computer-generated names", () => {
+    assert.equal(isShoppableGear("Line 6 Original"), false);
+    assert.equal(isShoppableGear("HX Stomp"), false);
+    assert.equal(isShoppableGear("Helix"), false);
+    assert.equal(isShoppableGear("BOSS DS-1 Distortion"), true);
+    assert.equal(shopQueryForUserItem("Fender Telecaster"), "Fender Telecaster");
+    assert.equal(shopQueryForUserItem("Line 6 Helix Floor"), "");
   });
 });

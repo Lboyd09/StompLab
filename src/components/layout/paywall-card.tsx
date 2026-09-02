@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD } from "@/lib/plan";
+import { PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
 
 export function PaywallCard({ title, body }: { title: string; body: string }) {
   return (
@@ -12,9 +12,9 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
       </div>
       <div className="space-y-4 rounded-xl border border-border bg-card p-6">
         <p className="font-display text-4xl font-semibold tabular-nums">
-          ${PRICE_MONTHLY_USD}
+          {formatUsd(PRICE_MONTHLY_USD)}
           <span className="ml-2 text-base font-normal text-muted-foreground">
-            / mo · or ${PRICE_YEARLY_USD} / year
+            / mo · or {formatUsd(PRICE_YEARLY_USD)} / year
           </span>
         </p>
         <ul className="space-y-2 text-sm text-muted-foreground">

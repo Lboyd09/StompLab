@@ -105,6 +105,294 @@ html.light {
   max-width: 880px;
 }
 
+.hx-chassis-floor {
+  max-width: 1080px;
+  background:
+    linear-gradient(180deg, #2c3138 0%, #16191e 46%, #0c0d10 100%);
+}
+
+.hx-chassis-lt {
+  max-width: 980px;
+  background:
+    linear-gradient(180deg, #1a1c20 0%, #101214 50%, #08090b 100%);
+}
+
+.hx-chassis-effects {
+  max-width: 760px;
+}
+
+.hx-chassis-podgo {
+  max-width: 900px;
+  background:
+    linear-gradient(180deg, #3a3e44 0%, #1c1e22 48%, #121416 100%);
+}
+
+.hx-lcd-wide {
+  max-width: 280px;
+  aspect-ratio: 5 / 3;
+}
+
+.hx-helix-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hx-helix-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  gap: 14px;
+  align-items: start;
+}
+
+.hx-helix-lcd {
+  min-width: 0;
+}
+
+.hx-helix-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.hx-helix-pedals {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  align-items: center;
+  padding-top: 4px;
+}
+
+.hx-helix-fs {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: end;
+}
+
+.hx-helix-modetap {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 28px;
+  padding-bottom: 6px;
+}
+
+.hx-helix-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.hx-helix-row {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(52px, 1fr));
+  gap: 8px;
+  justify-items: center;
+}
+
+.hx-helix-cell {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+}
+
+.hx-effects-board {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.hx-effects-top {
+  display: grid;
+  grid-template-columns: minmax(0, 220px) auto;
+  gap: 16px;
+  align-items: start;
+  justify-content: center;
+}
+
+.hx-effects-lcd {
+  min-width: 0;
+  max-width: 220px;
+}
+
+.hx-effects-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hx-effects-grid .hx-helix-row {
+  grid-template-columns: repeat(4, minmax(56px, 1fr));
+}
+
+.hx-podgo-board {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 18px;
+  align-items: stretch;
+}
+
+.hx-podgo-exp {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-bottom: 8px;
+}
+
+.hx-podgo-main {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.hx-podgo-lcd {
+  width: 100%;
+  max-width: 240px;
+}
+
+.hx-podgo-fs {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(52px, 1fr));
+  gap: 12px 10px;
+  width: 100%;
+  justify-items: center;
+}
+
+.hx-exp {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 84px;
+}
+
+.hx-exp-tread {
+  width: 70px;
+  height: 96px;
+  border-radius: 8px 8px 10px 10px;
+  background:
+    repeating-linear-gradient(
+      180deg,
+      #2e3238 0 7px,
+      #1a1c20 7px 14px
+    );
+  border: 1px solid #3a3e44;
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 12%, transparent),
+    0 8px 0 #0a0b0d,
+    0 12px 18px #000;
+  transform: perspective(280px) rotateX(14deg);
+}
+
+.hx-exp-tall {
+  height: 128px;
+}
+
+.hx-scribble {
+  width: 100%;
+  max-width: 72px;
+  height: 22px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  border-radius: 2px;
+  border: 1px solid #000;
+  background: #0c1014;
+  padding: 0 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #d4b07a;
+  box-shadow: inset 0 0 0 1px #1a221c;
+}
+
+.hx-scribble-on {
+  background: #141a14;
+  color: #e8e6df;
+}
+
+.hx-knob-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 10px;
+}
+
+.hx-helix-controls .hx-knob-row {
+  gap: 8px;
+}
+
+.hx-joystick {
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  border: 1px solid #3a3e44;
+  background: radial-gradient(circle at 35% 30%, #5c6168, #1c1e22 60%, #0a0b0d);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent),
+    0 2px 4px #000;
+}
+
+@media (max-width: 860px) {
+  .hx-helix-top {
+    grid-template-columns: minmax(0, 1fr);
+    justify-items: center;
+  }
+
+  .hx-helix-pedals {
+    flex-direction: row;
+  }
+
+  .hx-helix-fs {
+    grid-template-columns: 1fr;
+  }
+
+  .hx-helix-modetap {
+    flex-direction: row;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .hx-helix-row {
+    grid-template-columns: repeat(6, minmax(44px, 1fr));
+  }
+
+  .hx-podgo-board {
+    grid-template-columns: 1fr;
+  }
+
+  .hx-podgo-exp {
+    order: 2;
+  }
+
+  .hx-effects-top {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+}
+
+@media (max-width: 560px) {
+  .hx-helix-row,
+  .hx-effects-grid .hx-helix-row,
+  .hx-podgo-fs {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
+  .hx-lcd-wide {
+    max-width: 220px;
+  }
+}
+
 .hx-brand {
   display: flex;
   align-items: baseline;
@@ -350,7 +638,10 @@ html.light {
   }
 
   .hx-stomp-lcd,
-  .hx-xl-lcd {
+  .hx-xl-lcd,
+  .hx-lcd-wide,
+  .hx-effects-lcd,
+  .hx-podgo-lcd {
     max-width: 180px;
   }
 

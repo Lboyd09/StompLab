@@ -202,7 +202,7 @@ function exportableBlocks(preset: Preset): StompBlock[] {
     if (!hid || !isHxStompModelId(hid)) return false;
     return true;
   });
-  const max = Math.min(MAX_PATH_BLOCKS, device.maxBlocks);
+  const max = device.hasAmpCab ? Math.min(MAX_PATH_BLOCKS, device.maxBlocks) : device.maxBlocks;
   const cabs = device.hasAmpCab ? kept.filter((b) => MODEL_MAP[b.modelId]?.category === "cab") : [];
   const others = kept.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab").slice(0, max);
   return [...others, ...cabs.slice(0, 2)];

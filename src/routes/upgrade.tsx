@@ -12,6 +12,7 @@ import {
   PRICE_MONTHLY_USD,
   PRICE_YEARLY_USD,
   yearlySavingsUsd,
+  formatUsd,
   type PlanInterval,
 } from "@/lib/plan";
 import { usePlan } from "@/lib/use-plan";
@@ -142,7 +143,7 @@ function UpgradePage() {
             label="Monthly"
             price={PRICE_MONTHLY_USD}
             period="/ month"
-            cta={`Subscribe — $${PRICE_MONTHLY_USD}/mo`}
+            cta={`Subscribe — ${formatUsd(PRICE_MONTHLY_USD)}/mo`}
             busy={busy === "month"}
             confirming={confirming}
             pending={isPending}
@@ -153,9 +154,9 @@ function UpgradePage() {
             label="Yearly"
             price={PRICE_YEARLY_USD}
             period="/ year"
-            badge={`Save $${saving}`}
+            badge={`Save ${formatUsd(saving)}`}
             highlight
-            cta={`Subscribe — $${PRICE_YEARLY_USD}/yr`}
+            cta={`Subscribe — ${formatUsd(PRICE_YEARLY_USD)}/yr`}
             busy={busy === "year"}
             confirming={confirming}
             pending={isPending}
@@ -225,7 +226,7 @@ function PlanCard({
         ) : null}
       </div>
       <p className="mt-3 font-display text-5xl font-semibold tabular-nums">
-        ${price}
+        {formatUsd(price)}
         <span className="ml-1 text-base font-normal text-muted-foreground">{period}</span>
       </p>
       <ul className="mt-6 space-y-3">

@@ -1,6 +1,6 @@
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import type { Preset } from "@/data/types";
+import type { DeviceLayout, Preset } from "@/data/types";
 import { deviceFor, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
@@ -31,6 +31,15 @@ type Props = {
 
 const FS_CYCLE: FsMode[] = ["stomp", "snapshot", "preset"];
 
+const BRAND: Record<DeviceLayout, { left: string; right: string }> = {
+  stomp: { left: "Line 6", right: "HX Stomp" },
+  xl: { left: "Line 6", right: "HX Stomp XL" },
+  floor: { left: "Line 6", right: "Helix" },
+  lt: { left: "Line 6", right: "Helix LT" },
+  effects: { left: "Line 6", right: "HX Effects" },
+  podgo: { left: "Line 6", right: "POD Go" },
+};
+
 export function StompUnit({
   preset,
   selectedBlockId,
@@ -50,7 +59,8 @@ export function StompUnit({
   onAssignFsIndex,
 }: Props) {
   const device = deviceFor(preset);
-  const xl = device.footswitches === 8;
+  const layout = device.layout;
+  const xl = layout === "xl";
   const blocks = sortedBlocks(preset);
   const selected = blocks.find((b) => b.id === selectedBlockId) ?? blocks[0];
   const params = selected ? paramEntries(selected) : [];
@@ -63,9 +73,9 @@ export function StompUnit({
   const largeControls = useAppStore((s) => s.largeControls);
 
   const switches = useMemo(() => {
-    const n = xl ? 6 : 3;
+    const n = layout === "stomp" ? 3 : xl ? 6 : device.footswitches;
     return Array.from({ length: n }, (_, i) => i + 1);
-  }, [xl]);
+  }, [layout, xl, device.footswitches]);
 
   function cycleMode(dir: 1 | -1) {
     const i = FS_CYCLE.indexOf(fsMode);
@@ -92,7 +102,7 @@ export function StompUnit({
 
   function onAction() {
     if (Date.now() - lastHome.current < 900) {
-      toast.success("Saved. On a real Stomp, View + Action writes the preset.");
+      toast.success("Saved. On a real unit, View + Action writes the preset.");
       return;
     }
     if (view === "play") {
@@ -129,11 +139,13 @@ export function StompUnit({
       if (assign?.action === "snapshot" && assign.snapshotId) {
         const idx = preset.snapshots.findIndex((s) => s.id === assign.snapshotId);
         if (idx >= 0) onSnapshot(idx);
+      } else if (preset.snapshots[index - 1]) {
+        onSnapshot(index - 1);
       }
       return;
     }
     if (fsMode === "preset") {
-      if (index === 2 && !xl) onView("tuner");
+      if (index === 2 && layout === "stomp") onView("tuner");
       return;
     }
     const assign = preset.footswitches.find((f) => f.index === index);
@@ -161,7 +173,7 @@ export function StompUnit({
   }
 
   const knobs = (
-    <div className="flex items-end justify-center gap-3 sm:gap-4">
+    <div className="hx-knob-row">
       {([0, 1, 2] as const).map((i) => {
         const p = pageParams[i];
         return (
@@ -184,6 +196,33 @@ export function StompUnit({
       })}
     </div>
   );
+
+  function paramKnobs(count: number, size: "sm" | "md") {
+    return (
+      <div className="hx-knob-row">
+        {Array.from({ length: count }, (_, i) => {
+          const p = params[i];
+          return (
+            <Knob
+              key={p?.name ?? `slot-${i}`}
+              label={p?.name ?? "—"}
+              value={p?.value ?? 0}
+              size={size}
+              disabled={!p || !selected}
+              onChange={
+                p && selected
+                  ? (v) => {
+                      if (view !== "edit") onView("edit");
+                      onChangeParam(selected.id, p.name, v);
+                    }
+                  : undefined
+              }
+            />
+          );
+        })}
+      </div>
+    );
+  }
 
   const well = (
     <div className="hx-well" aria-label="View, knobs, Action, Page">
@@ -229,16 +268,16 @@ export function StompUnit({
     />
   );
 
-  function renderSwitch(index: number) {
-    const numbered = index <= 6 && showFsNumbers;
+  function renderSwitch(index: number, opts?: { hideLabel?: boolean }) {
+    const numbered = index <= device.footswitches && showFsNumbers && !(xl && index > 6);
     return (
       <Footswitch
         key={index}
         index={index}
-        label={scribbleLabel(preset, fsMode, index, xl)}
-        sublabel={index === 7 ? "Edit / Exit" : index === 8 ? "Tuner" : undefined}
-        color={scribbleColor(preset, fsMode, index, activeSnapshot, xl)}
-        lit={isLit(preset, fsMode, index, activeSnapshot, xl, view)}
+        label={opts?.hideLabel ? "" : scribbleLabel(preset, fsMode, index, layout)}
+        sublabel={xl && index === 7 ? "Edit / Exit" : xl && index === 8 ? "Tuner" : undefined}
+        color={scribbleColor(preset, fsMode, index, activeSnapshot, layout)}
+        lit={isLit(preset, fsMode, index, activeSnapshot, layout, view)}
         selected={assignFsIndex === index}
         showNumber={numbered}
         onClick={() => pressFs(index)}
@@ -246,15 +285,29 @@ export function StompUnit({
     );
   }
 
+  const brand = BRAND[layout];
+  const chassisClass =
+    layout === "xl"
+      ? "hx-chassis-xl"
+      : layout === "floor"
+        ? "hx-chassis-floor"
+        : layout === "lt"
+          ? "hx-chassis-lt"
+          : layout === "effects"
+            ? "hx-chassis-effects"
+            : layout === "podgo"
+              ? "hx-chassis-podgo"
+              : "hx-chassis-stomp";
+
   return (
     <div className="min-w-0 overflow-x-auto">
-      <div className={cn("hx-chassis mx-auto w-full", xl ? "hx-chassis-xl" : "hx-chassis-stomp")}>
+      <div className={cn("hx-chassis mx-auto w-full", chassisClass)}>
         <div className="hx-brand">
-          <span className="hx-brand-mark">Line 6</span>
-          <span className="hx-brand-mark">{xl ? "HX Stomp XL" : "HX Stomp"}</span>
+          <span className="hx-brand-mark">{brand.left}</span>
+          <span className="hx-brand-mark">{brand.right}</span>
         </div>
 
-        {xl ? (
+        {layout === "xl" ? (
           <div className="hx-xl-board">
             <div className="hx-xl-fs1">{renderSwitch(1)}</div>
             <div className="hx-xl-fs2">{renderSwitch(2)}</div>
@@ -270,6 +323,54 @@ export function StompUnit({
             <div className="hx-xl-mode">{renderSwitch(7)}</div>
             <div className="hx-xl-tap">{renderSwitch(8)}</div>
           </div>
+        ) : layout === "floor" || layout === "lt" ? (
+          <HelixBoard
+            layout={layout}
+            lcd={lcd}
+            knobs={paramKnobs(6, "sm")}
+            well={well}
+            volume={volume}
+            onVolume={setVolume}
+            onMode={() => cycleMode(1)}
+            onTap={() => onView(view === "tuner" ? "play" : "tuner")}
+            fsMode={fsMode}
+            tuner={view === "tuner"}
+            renderFs={(index) =>
+              renderSwitch(index, { hideLabel: layout === "floor" })
+            }
+            scribble={(index) =>
+              layout === "floor" ? (
+                <ScribbleStrip
+                  label={scribbleLabel(preset, fsMode, index, layout)}
+                  color={scribbleColor(preset, fsMode, index, activeSnapshot, layout)}
+                  active={assignFsIndex === index}
+                  onClick={() => pressFs(index)}
+                />
+              ) : null
+            }
+          />
+        ) : layout === "effects" ? (
+          <EffectsBoard
+            lcd={lcd}
+            knobs={knobs}
+            well={well}
+            renderFs={(index) => renderSwitch(index, { hideLabel: true })}
+            scribble={(index) => (
+              <ScribbleStrip
+                label={scribbleLabel(preset, fsMode, index, layout)}
+                color={scribbleColor(preset, fsMode, index, activeSnapshot, layout)}
+                active={assignFsIndex === index}
+                onClick={() => pressFs(index)}
+              />
+            )}
+          />
+        ) : layout === "podgo" ? (
+          <PodGoBoard
+            lcd={lcd}
+            knobs={paramKnobs(5, "sm")}
+            well={well}
+            renderFs={(index) => renderSwitch(index)}
+          />
         ) : (
           <div className="hx-stomp-board">
             <div className="hx-stomp-lcd">{lcd}</div>
@@ -289,33 +390,238 @@ export function StompUnit({
   );
 }
 
+function HelixBoard({
+  layout,
+  lcd,
+  knobs,
+  well,
+  volume,
+  onVolume,
+  onMode,
+  onTap,
+  fsMode,
+  tuner,
+  renderFs,
+  scribble,
+}: {
+  layout: "floor" | "lt";
+  lcd: ReactNode;
+  knobs: ReactNode;
+  well: ReactNode;
+  volume: number;
+  onVolume: (n: number) => void;
+  onMode: () => void;
+  onTap: () => void;
+  fsMode: FsMode;
+  tuner: boolean;
+  renderFs: (index: number) => ReactNode;
+  scribble: (index: number) => ReactNode;
+}) {
+  const top = [7, 8, 9, 10, 11, 12];
+  const bottom = [1, 2, 3, 4, 5, 6];
+  return (
+    <div className={cn("hx-helix-board", layout === "lt" && "hx-helix-board-lt")}>
+      <div className="hx-helix-top">
+        <div className="hx-helix-lcd">{lcd}</div>
+        <div className="hx-helix-controls">
+          {knobs}
+          <div className="flex items-center justify-center gap-3">
+            <button type="button" className="hx-joystick" aria-label="Joystick" />
+            <Knob label="Vol" value={volume} onChange={onVolume} size="sm" />
+          </div>
+          <div className="flex justify-center">{well}</div>
+        </div>
+        <div className="hx-helix-pedals">
+          {layout === "floor" ? <ExpPedal label="EXP 2" tall /> : null}
+          <ExpPedal label="EXP 1" />
+        </div>
+      </div>
+      <div className="hx-helix-fs">
+        <div className="hx-helix-modetap">
+          <Footswitch
+            index={0}
+            label="MODE"
+            color="#5a5e62"
+            lit={fsMode !== "stomp"}
+            showNumber={false}
+            onClick={onMode}
+          />
+          <Footswitch
+            index={0}
+            label="TAP"
+            sublabel="Tuner"
+            color="#e24a3a"
+            lit={tuner}
+            showNumber={false}
+            onClick={onTap}
+          />
+        </div>
+        <div className="hx-helix-grid">
+          <div className="hx-helix-row">
+            {top.map((index) => (
+              <div key={`t-${index}`} className="hx-helix-cell">
+                {scribble(index)}
+                {renderFs(index)}
+              </div>
+            ))}
+          </div>
+          <div className="hx-helix-row">
+            {bottom.map((index) => (
+              <div key={`b-${index}`} className="hx-helix-cell">
+                {scribble(index)}
+                {renderFs(index)}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function EffectsBoard({
+  lcd,
+  knobs,
+  well,
+  renderFs,
+  scribble,
+}: {
+  lcd: ReactNode;
+  knobs: ReactNode;
+  well: ReactNode;
+  renderFs: (index: number) => ReactNode;
+  scribble: (index: number) => ReactNode;
+}) {
+  const top = [1, 2, 3, 4];
+  const bottom = [5, 6, 7, 8];
+  return (
+    <div className="hx-effects-board">
+      <div className="hx-effects-top">
+        <div className="hx-effects-lcd">{lcd}</div>
+        <div className="flex flex-col items-center gap-3">
+          {knobs}
+          {well}
+        </div>
+      </div>
+      <div className="hx-effects-grid">
+        <div className="hx-helix-row">
+          {top.map((index) => (
+            <div key={`e-t-${index}`} className="hx-helix-cell">
+              {scribble(index)}
+              {renderFs(index)}
+            </div>
+          ))}
+        </div>
+        <div className="hx-helix-row">
+          {bottom.map((index) => (
+            <div key={`e-b-${index}`} className="hx-helix-cell">
+              {scribble(index)}
+              {renderFs(index)}
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PodGoBoard({
+  lcd,
+  knobs,
+  well,
+  renderFs,
+}: {
+  lcd: ReactNode;
+  knobs: ReactNode;
+  well: ReactNode;
+  renderFs: (index: number) => ReactNode;
+}) {
+  return (
+    <div className="hx-podgo-board">
+      <div className="hx-podgo-exp">
+        <ExpPedal label="EXP" tall />
+      </div>
+      <div className="hx-podgo-main">
+        <div className="hx-podgo-lcd">{lcd}</div>
+        <div className="flex flex-wrap items-start justify-center gap-3">
+          {knobs}
+          {well}
+        </div>
+        <div className="hx-podgo-fs">
+          {[5, 6, 7, 8].map((index) => renderFs(index))}
+          {[1, 2, 3, 4].map((index) => renderFs(index))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function ExpPedal({ label, tall }: { label: string; tall?: boolean }) {
+  return (
+    <div className="hx-exp" aria-hidden>
+      <span className={cn("hx-exp-tread", tall && "hx-exp-tall")} />
+      <span className="hx-silk">{label}</span>
+    </div>
+  );
+}
+
+function ScribbleStrip({
+  label,
+  color,
+  active,
+  onClick,
+}: {
+  label: string;
+  color: string;
+  active?: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      className={cn("hx-scribble", active && "hx-scribble-on")}
+      onClick={onClick}
+      style={{ boxShadow: `inset 0 -2px 0 ${color}` }}
+    >
+      {label || "—"}
+    </button>
+  );
+}
+
 function assigned(preset: Preset, index: number) {
   return preset.footswitches.find((f) => f.index === index);
 }
 
-function scribbleLabel(preset: Preset, fsMode: FsMode, index: number, xl: boolean): string {
-  if (xl && index === 7) return "MODE";
-  if (xl && index === 8) return "TAP";
+function scribbleLabel(preset: Preset, fsMode: FsMode, index: number, layout: DeviceLayout): string {
+  if (layout === "xl" && index === 7) return "MODE";
+  if (layout === "xl" && index === 8) return "TAP";
   if (fsMode === "preset") {
-    if (xl) return { 1: "▲", 2: "C", 3: "D", 4: "▼", 5: "A", 6: "B" }[index] ?? "";
-    return ["PRESET-", "TAP", "PRESET+"][index - 1] ?? "";
+    if (layout === "xl") return { 1: "▲", 2: "C", 3: "D", 4: "▼", 5: "A", 6: "B" }[index] ?? "";
+    if (layout === "floor" || layout === "lt") {
+      return ["A", "B", "C", "D", "E", "F", "▲", "1", "2", "3", "4", "▼"][index - 1] ?? "";
+    }
+    if (layout === "stomp") return ["PRESET-", "TAP", "PRESET+"][index - 1] ?? "";
+    return ["A", "B", "C", "D", "E", "F", "G", "TAP"][index - 1] ?? "";
   }
   const a = assigned(preset, index);
   if (a?.label) return a.label;
+  if (preset.snapshots[index - 1]) return preset.snapshots[index - 1].name.slice(0, 8).toUpperCase();
   return "";
 }
 
 function scribbleColor(
   preset: Preset,
-  fsMode: FsMode,
+  _fsMode: FsMode,
   index: number,
-  activeSnapshot: number,
-  xl: boolean,
+  _activeSnapshot: number,
+  layout: DeviceLayout,
 ): string {
-  if (xl && index === 7) return "#5a5e62";
-  if (xl && index === 8) return "#e24a3a";
+  if (layout === "xl" && index === 7) return "#5a5e62";
+  if (layout === "xl" && index === 8) return "#e24a3a";
   const a = assigned(preset, index);
   if (a?.color) return a.color;
+  const snap = preset.snapshots[index - 1];
+  if (snap?.color) return snap.color;
   return "#4a4e54";
 }
 
@@ -324,18 +630,18 @@ function isLit(
   fsMode: FsMode,
   index: number,
   activeSnapshot: number,
-  xl: boolean,
+  layout: DeviceLayout,
   view: LcdView,
 ): boolean {
-  if (view === "tuner") return xl && index === 8;
-  if (xl && index === 7) return fsMode !== "stomp";
-  if (xl && index === 8) return false;
+  if (view === "tuner") return layout === "xl" && index === 8;
+  if (layout === "xl" && index === 7) return fsMode !== "stomp";
+  if (layout === "xl" && index === 8) return false;
   const a = assigned(preset, index);
   if (fsMode === "snapshot") {
     if (a?.action === "snapshot" && a.snapshotId) {
       return preset.snapshots.findIndex((s) => s.id === a.snapshotId) === activeSnapshot;
     }
-    return false;
+    return preset.snapshots[index - 1] ? index - 1 === activeSnapshot : false;
   }
   if (fsMode === "preset") return false;
   if (!a) return false;
@@ -379,7 +685,7 @@ function Footswitch({
     <button
       type="button"
       onClick={onClick}
-      aria-label={label ? `Switch ${index} ${label}` : `Switch ${index}`}
+      aria-label={label ? `Switch ${index || label} ${label}` : `Switch ${index}`}
       aria-pressed={selected}
       className="group flex min-h-11 flex-col items-center gap-1"
     >
@@ -395,9 +701,11 @@ function Footswitch({
       >
         {showNumber ? <span className="font-mono text-[10px] font-semibold text-zinc-300">{index}</span> : null}
       </span>
-      <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
-        {label}
-      </span>
+      {label ? (
+        <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
+          {label}
+        </span>
+      ) : null}
       {sublabel ? <span className="hx-silk">{sublabel}</span> : null}
     </button>
   );

@@ -1,7 +1,7 @@
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
-import type { FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
+import type { CategoryId, FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
 import { STOMP_MODEL_IDS } from "@/data/types";
 
 export function blockModel(block: StompBlock) {
@@ -106,10 +106,37 @@ export function canDownloadPreset(
 export function withStompModel(preset: Preset, model: StompModelId): Preset {
   const device = DEVICE_MAP[model] ?? DEVICE_MAP["hx-stomp"];
   const maxSnaps = device.snapshots;
-  const snapshots = preset.snapshots.slice(0, maxSnaps);
-  const snapIds = new Set(snapshots.map((s) => s.id));
+  let blocks: StompBlock[] = preset.blocks;
+  let snapshots = preset.snapshots.slice(0, maxSnaps);
 
-  let fs = preset.footswitches.filter((f) => f.index <= 6);
+  if (!device.hasAmpCab) {
+    const ampCab = new Set<CategoryId>(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
+    const kept = new Set<string>();
+    blocks = preset.blocks
+      .filter((b) => {
+        const m = MODEL_MAP[b.modelId];
+        if (!m || ampCab.has(m.category)) return false;
+        kept.add(b.id);
+        return true;
+      })
+      .map((b, i) => ({ ...b, position: i }))
+      .slice(0, device.maxBlocks);
+    snapshots = snapshots.map((s) => ({
+      ...s,
+      enabledBlocks: s.enabledBlocks.filter((id) => kept.has(id)),
+      paramOverrides: s.paramOverrides
+        ? Object.fromEntries(Object.entries(s.paramOverrides).filter(([id]) => kept.has(id)))
+        : undefined,
+    }));
+  } else if (blocks.length > device.maxBlocks) {
+    blocks = blocks.slice(0, device.maxBlocks);
+  }
+
+  const snapIds = new Set(snapshots.map((s) => s.id));
+  let fs = preset.footswitches.filter(
+    (f) => f.index >= 1 && f.index <= device.footswitches && f.action !== "mode" && f.action !== "tap",
+  );
+
   if (device.footswitches <= 3) {
     const low = fs.filter((f) => f.index <= 3);
     const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
@@ -122,29 +149,34 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
     } else {
       fs = [...low, ...high.filter((h) => !low.some((l) => l.index === h.index - 3))];
     }
-    const fourth = snapshots[3];
-    if (fourth && !fs.some((f) => f.snapshotId === fourth.id) && !fs.some((f) => f.index === 4)) {
+    for (let i = 0; i < Math.min(snapshots.length, Math.min(device.footswitches, 8)); i++) {
+      const index = i + 1;
+      const snap = snapshots[i];
+      if (!snap) continue;
+      if (fs.some((f) => f.index === index || f.snapshotId === snap.id)) continue;
       fs = [
-        ...fs.filter((f) => f.index !== 4),
+        ...fs.filter((f) => f.index !== index),
         {
-          index: 4,
-          label: fourth.name.slice(0, 8).toUpperCase(),
-          color: fourth.color,
+          index,
+          label: snap.name.slice(0, 8).toUpperCase(),
+          color: snap.color,
           action: "snapshot" as const,
-          snapshotId: fourth.id,
-          notes: fourth.notes,
+          snapshotId: snap.id,
+          notes: snap.notes,
         },
       ];
     }
-    if (model === "hx-stomp-xl") {
+    if (device.layout === "xl") {
       fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
+    } else {
+      fs = fs.filter((f) => f.index <= device.footswitches);
     }
   }
   fs = fs.filter((f) => f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId)));
   fs = fs.sort((a, b) => a.index - b.index);
   const base = featuredBaseId(preset.id);
   const id = base.startsWith("featured-") ? `${base}-${model}` : preset.id;
-  return { ...preset, id, stompModel: model, footswitches: fs, snapshots };
+  return { ...preset, id, stompModel: model, blocks, footswitches: fs, snapshots };
 }
 
 export function resolveNamedPreset(id: string, model: StompModelId, stored: Preset[]): Preset | null {

@@ -15,7 +15,7 @@ type Props = {
 
 export function FsAssignPanel({ preset, fsIndex, fsMode, onAssign, onReset }: Props) {
   const device = deviceFor(preset);
-  const xl = device.footswitches === 8;
+  const xl = device.layout === "xl";
   const current = preset.footswitches.find((f) => f.index === fsIndex);
   const locked = xl && (fsIndex === 7 || fsIndex === 8);
   const snapshotMode = fsMode === "snapshot";

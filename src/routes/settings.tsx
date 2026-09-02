@@ -4,7 +4,7 @@ import { replayTutorial } from "@/components/layout/tutorial";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD } from "@/lib/plan";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -85,7 +85,7 @@ function SettingsPage() {
               </Button>
               {!plan.paid ? (
                 <Button asChild>
-                  <Link to="/upgrade">Subscribe — ${PRICE_MONTHLY_USD}/mo</Link>
+                  <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
                 </Button>
               ) : null}
             </div>
@@ -93,7 +93,7 @@ function SettingsPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Sign in with email to use {FREE_BUILDS} free custom songs, then subscribe for ${PRICE_MONTHLY_USD}/mo.
+              Sign in with email to use {FREE_BUILDS} free custom songs, then subscribe for {formatUsd(PRICE_MONTHLY_USD)}/mo.
             </p>
             <Button asChild>
               <Link to="/login">Sign in</Link>
@@ -363,7 +363,7 @@ function SettingsPage() {
         <p>
           Featured demos load instantly. Custom research uses the server. Each custom song counts as a
           build — demos never do. Free accounts get {FREE_BUILDS} custom builds plus the three demos.
-          Subscribe is ${PRICE_MONTHLY_USD}/month or ${PRICE_YEARLY_USD}/year, stuck to your email. Same 50
+          Subscribe is {formatUsd(PRICE_MONTHLY_USD)}/month or {formatUsd(PRICE_YEARLY_USD)}/year, stuck to your email. Same 50
           custom builds a month on either plan.
         </p>
         <p>

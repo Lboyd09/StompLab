@@ -3,6 +3,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn } from "@/lib/billing";
+import { AFFILIATE_SETUP } from "@/lib/copy";
+import { formatUsd } from "@/lib/plan";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
@@ -87,6 +89,43 @@ function AdminPage() {
       </header>
 
       {error && !dash ? <p className="text-sm text-destructive">{error}</p> : null}
+
+      <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Accounts in user" />
+        <Stat
+          label="Subscribed"
+          value={String(dash?.subscribedCount ?? "—")}
+          hint="Paid, not revoked"
+        />
+        <Stat
+          label="Subscription revenue"
+          value={dash ? formatUsd((dash.revenueCents ?? 0) / 100) : "—"}
+          hint="Sum of Polar orders"
+        />
+        <Stat
+          label="Affiliate clicks"
+          value={String((dash?.affiliateClicks ?? []).reduce((n, r) => n + r.n, 0))}
+          hint="Amazon / Sweetwater — $ lives on their dashboards"
+        />
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Money setup</h2>
+        <ul className="space-y-1 text-sm">
+          <li>Polar products: {dash?.polarReady ? "ready" : "missing POLAR_PRODUCT_ID_MONTHLY / YEARLY"}</li>
+          <li>Amazon tag: {dash?.amazonReady ? "set" : "missing VITE_AMAZON_ASSOCIATE_TAG"}</li>
+          <li>Sweetwater id: {dash?.sweetwaterReady ? "set" : "missing VITE_SWEETWATER_AFFILIATE_ID"}</li>
+        </ul>
+        {(dash?.affiliateClicks ?? []).length ? (
+          <Table
+            cols={["Vendor", "Clicks"]}
+            rows={(dash?.affiliateClicks ?? []).map((r) => [r.vendor, String(r.n)])}
+          />
+        ) : (
+          <p className="text-sm text-muted-foreground">No affiliate clicks yet.</p>
+        )}
+        <p className="text-xs leading-relaxed text-muted-foreground">{AFFILIATE_SETUP}</p>
+      </section>
 
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Research backend</h2>
@@ -296,6 +335,16 @@ function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
           ))}
         </tbody>
       </table>
+    </div>
+  );
+}
+
+function Stat({ label, value, hint }: { label: string; value: string; hint: string }) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
+      <p className="mt-2 font-display text-3xl font-semibold tabular-nums">{value}</p>
+      <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
   );
 }

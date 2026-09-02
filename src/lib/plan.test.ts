@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, assemblePlan, emptyPlan, isAdminEmail } from "./plan.ts";
+import { ADMIN_EMAIL, assemblePlan, emptyPlan, formatUsd, isAdminEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("matches only the exact admin gmail", () => {
@@ -94,5 +94,15 @@ describe("assemblePlan", () => {
     assert.equal(monthly.canResearch, true);
     assert.equal(monthly.planInterval, "month");
     assert.equal(yearly.planInterval, "year");
+  });
+});
+
+describe("prices", () => {
+  it("is $6.99 a month and $75 a year", () => {
+    assert.equal(PRICE_MONTHLY_USD, 6.99);
+    assert.equal(PRICE_YEARLY_USD, 75);
+    assert.equal(formatUsd(6.99), "$6.99");
+    assert.equal(formatUsd(75), "$75");
+    assert.equal(yearlySavingsUsd(), 8.88);
   });
 });

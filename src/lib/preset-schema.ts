@@ -278,8 +278,8 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"album/year, real rig, HX stand-ins. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real gear","notes":""}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"}],"programming":["step"],"tips":["how to play it like the record"]}
-Params MUST be JSON numbers 0-10. Cab Mic is 0 (SM57) — never a string.`;
+  return `{"name":"<=18 chars","tempo":120,"summary":"album/year, real rig, HX stand-ins. Distinctive parts named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real gear","notes":""}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""},{"name":"Solo","color":"#e24a3a","enabledModelIds":["deez-one-vintage","kinky-boost"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":5.5,"Ch Vol":7.2}},"notes":"lead — not the rhythm tone"}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"},{"index":4,"label":"SOLO","color":"#e24a3a","action":"snapshot","snapshotName":"Solo"}],"programming":["step"],"tips":["how to play it like the record"]}
+Params MUST be JSON numbers 0-10. Cab Mic is 0 (SM57) — never a string. If the song has a solo or signature trick, it MUST appear as its own snapshot.`;
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
@@ -305,18 +305,19 @@ export function systemForDevice(
   const play = PLAYBACK_MAP[playbackTarget];
   const ampRule = d.hasAmpCab
     ? "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp."
-    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return.";
+    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
   const exportRule =
     d.exportFormat === "hlx"
-      ? `Export is a .hlx for ${d.name}. Only catalog modelId values.`
+      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
       : `${d.name} cannot export a .hlx (POD Go uses .podgp). Still return a real HX chain they can copy by hand.`;
+  const snapCount = d.snapshots;
   return `Session tech. Program a Line 6 ${d.name} preset that sounds like the RECORD. JSON only.
-Max ${d.maxBlocks} blocks, ${d.snapshots} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
+Max ${d.maxBlocks} blocks, ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
 ${exportRule}
 
 Tone:
 - Album + year in summary. Studio tracking rig first.
-- originalGear = real guitars/pedals/amps/cabs. Then map each to a catalog id.
+- originalGear = real guitars/pedals/amps/cabs (the actual products). Then map each to a catalog id.
 - Every block must be on that recording. No spare gate/comp/chorus/hall.
 - Params 0–10 numbers. Cab Mic = 0 (SM57). Never strings in params.
 - GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain.
@@ -328,8 +329,12 @@ ${STAND_INS}
 
 Order: documented order if known (delay before amp, wah last, etc.). Else dirt → amp → cab → time. Amp+cab as a pair.
 
-Snapshots = song sections (Intro/Verse/Chorus/Solo), up to ${d.snapshots}. They MUST sound different: toggle the pedals that change AND put Drive/Ch Vol/Mix in paramOverrides. Documented clean intros (Teen Spirit Twin+Clone no DS-1; Sandman wah arpeggio) are SNAPSHOT 1.
-FS 1..${Math.min(3, d.footswitches)} = action "snapshot" in section order. No TAP on FS1–3.
+Arrangement (mandatory — this is how you miss a song):
+- Name the recorded sections in snapshot order: Intro, Verse, Chorus, Solo, Bridge, Outro. Drop a name only if that section is not on the record.
+- A guitar solo, lead break, or "wacky"/signature part (country-bend solo, tapping, talk box, harmonic, octave, reverse, volume swell, filter trick) MUST be its own snapshot. A solo is almost never the rhythm tone: boost on, delay/reverb Mix up, amp Drive or Ch Vol +1–2, maybe a different OD. Put those in paramOverrides AND toggle the extra block.
+- Signature tricks get an enabled block that other snaps bypass — do not flatten the song into verse/chorus only.
+- Snapshots MUST sound different. Documented clean intros (Teen Spirit Twin+Clone no DS-1; Sandman wah arpeggio) are SNAPSHOT 1.
+- Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in section order. No TAP on FS1–3. MODE/TAP are hardware extras — do not spend numbered FS on them.
 
 programming = unit steps. tips = pick/volume so it matches the record.`;
 }

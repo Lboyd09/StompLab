@@ -501,4 +501,36 @@ describe("multi-device export", () => {
     assert.equal(canExportHlx("pod-go"), false);
     assert.throws(() => buildHlx({ ...miniPreset("scream-808"), stompModel: "pod-go" }));
   });
+
+  it("writes 8 snapshot slots on Helix Floor and keeps HD2 I/O", () => {
+    const src = featured("featured-teen-spirit");
+    const floor = withStompModel(src, "helix-floor");
+    assert.equal(floor.footswitches.some((f) => f.action === "mode"), false);
+    const hlx = buildHlx(floor);
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    assert.equal((hlx.data as { device: number }).device, 2162689);
+    assert.ok(tone.snapshot7);
+    assert.equal(tone.snapshot8, undefined);
+    const dsp = tone.dsp0 as Record<string, Record<string, unknown>>;
+    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlowInput");
+    assert.equal(dsp.outputA["@model"], "HD2_AppDSPFlowOutput");
+  });
+
+  it("strips amp/cab when the replica is switched to HX Effects", () => {
+    const fx = withStompModel(featured("featured-teen-spirit"), "hx-effects");
+    assert.equal(
+      fx.blocks.some((b) => {
+        const cat = b.modelId.includes("cali") || b.modelId.includes("4x12") || b.modelId.includes("amp");
+        return cat;
+      }),
+      false,
+    );
+    const hlx = buildHlx(fx);
+    const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+    const models = Object.entries(dsp)
+      .filter(([k]) => k.startsWith("block") || k.startsWith("cab"))
+      .map(([, b]) => String(b["@model"]));
+    assert.equal(models.some((m) => m.startsWith("HD2_Amp") || m.startsWith("HD2_Cab")), false);
+    assert.ok(models.length >= 1);
+  });
 });

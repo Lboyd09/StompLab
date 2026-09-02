@@ -1,10 +1,10 @@
 export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
-export const PRICE_MONTHLY_USD = 9;
-export const PRICE_YEARLY_USD = 79;
+export const PRICE_MONTHLY_USD = 6.99;
+export const PRICE_YEARLY_USD = 75;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
 
-/** @deprecated one-time pricing — kept so old imports fail closed on the new cards */
+/** @deprecated aliases so leftover one-time copy still compiles */
 export const PRICE_USD = PRICE_YEARLY_USD;
 export const LAUNCH_USD = PRICE_MONTHLY_USD;
 
@@ -17,6 +17,10 @@ export function isAdminEmail(email: string | null | undefined) {
 
 export function yearMonth(d = new Date()) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+}
+
+export function formatUsd(n: number) {
+  return n.toLocaleString("en-US", { style: "currency", currency: "USD" }).replace(/\.00$/, "");
 }
 
 export type Plan = {
@@ -79,7 +83,6 @@ export function assemblePlan(opts: {
 }): Plan {
   const month = yearMonth();
   const admin = isAdminEmail(opts.email);
-  // `opts.paid` must already be Polar-verified (or admin). Never trust a raw flag.
   const paid = admin || opts.paid;
   const freeUsed = opts.freeUsed;
   const freeRemaining = Math.max(0, FREE_BUILDS - freeUsed);
@@ -104,12 +107,11 @@ export function assemblePlan(opts: {
     canGear: paid,
     canXlRegen: paid,
     canLockerSync: paid,
-    // Never a browseable library. Cache-on-research is handled in research.ts.
     canSharedLibrary: false,
     blockedReason: canBuild ? null : paid ? "quota" : "paywall",
   };
 }
 
 export function yearlySavingsUsd() {
-  return PRICE_MONTHLY_USD * 12 - PRICE_YEARLY_USD;
+  return Math.round((PRICE_MONTHLY_USD * 12 - PRICE_YEARLY_USD) * 100) / 100;
 }

@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, type Plan } from "@/lib/plan";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd, type Plan } from "@/lib/plan";
 
 export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending || plan.paid || plan.admin) return null;
@@ -14,8 +14,8 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
     >
       <span className="text-muted-foreground">
         {lead}
-        <span className="font-medium text-foreground">${PRICE_MONTHLY_USD}/mo</span>
-        <span className="text-muted-foreground"> or ${PRICE_YEARLY_USD}/yr</span>
+        <span className="font-medium text-foreground">{formatUsd(PRICE_MONTHLY_USD)}/mo</span>
+        <span className="text-muted-foreground"> or {formatUsd(PRICE_YEARLY_USD)}/yr</span>
       </span>
       <span className="shrink-0 text-xs font-medium text-primary">Plans</span>
     </Link>

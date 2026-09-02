@@ -22,7 +22,7 @@ function featuredHits(q: string, instrument: "guitar" | "bass"): SongHit[] {
     id: p.id,
     song: p.song ?? p.name,
     artist: p.artist ?? "",
-    album: "Stomp Lab library",
+    album: "Demo",
     artwork: "",
     featuredId: p.id,
   }));

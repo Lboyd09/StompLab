@@ -76,7 +76,7 @@ export function PresetWorkspace({
     }
     setActiveSnapshot(0);
     setLcdView("play");
-    setAssignFsIndex(device.footswitches === 8 ? 4 : 1);
+    setAssignFsIndex(device.layout === "xl" ? 4 : 1);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
@@ -411,7 +411,7 @@ export function PresetWorkspace({
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
                 <div className="text-sm font-medium">{g.name}</div>
                 <p className="text-xs text-muted-foreground">{g.notes}</p>
-                <GearShopLinks name={g.name} compact />
+                <GearShopLinks name={g.name} source="user" compact />
               </div>
             ))}
             {preset.originalGear.length ? <AffiliateNote className="pt-1 text-[10px] leading-relaxed text-muted-foreground" /> : null}
@@ -429,7 +429,7 @@ export function PresetWorkspace({
                 <div key={g.item}>
                   <div className="text-sm font-medium">{g.item}</div>
                   <p className="text-xs text-muted-foreground">{g.why}</p>
-                  <GearShopLinks name={g.item} compact />
+                  <GearShopLinks name={g.item} source="user" compact />
                 </div>
               ))}
             </CardContent>

@@ -61,6 +61,14 @@ describe("research prompt", () => {
     assert.match(prompt, /deez-one-vintage/);
     assert.match(prompt, /NEVER stupor-od/);
     assert.match(prompt, /never dime Drive/i);
+    assert.match(prompt, /solo is almost never the rhythm tone/i);
+    assert.match(prompt, /signature trick/i);
+  });
+
+  it("tells HX Effects it has no amp or cab", () => {
+    const fx = systemForDevice("hx-effects", "guitar");
+    assert.match(fx, /NO amp, cab, preamp, or IR/);
+    assert.equal(/One amp/.test(fx), false);
   });
 
   it("names a based-on original for every catalog model", () => {
@@ -85,5 +93,12 @@ describe("devices", () => {
     assert.equal(DEVICE_MAP["hx-effects"].hasAmpCab, false);
     assert.equal(DEVICE_MAP["pod-go"].exportFormat, "none");
     assert.equal(STOMP_DEVICES.length, 6);
+    assert.equal(DEVICE_MAP["helix-floor"].layout, "floor");
+    assert.equal(DEVICE_MAP["helix-lt"].layout, "lt");
+    assert.equal(DEVICE_MAP["hx-effects"].layout, "effects");
+    assert.equal(DEVICE_MAP["pod-go"].layout, "podgo");
+    assert.equal(DEVICE_MAP["helix-floor"].footswitches, 12);
+    assert.equal(DEVICE_MAP["helix-floor"].snapshots, 8);
+    assert.equal(DEVICE_MAP["hx-effects"].maxBlocks, 9);
   });
 });

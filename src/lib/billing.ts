@@ -8,6 +8,7 @@ import {
   fetchPolarCheckout,
   isRealPolarOrderId,
   isRealPolarSubscriptionId,
+  polarConfigured,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarStatusIsPaid,
@@ -15,6 +16,7 @@ import {
   subscriptionStatusIsActive,
 } from "./polar";
 import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan, type PlanInterval } from "./plan";
+import { amazonAssociateTag, sweetwaterAffiliateId } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
 
@@ -692,7 +694,64 @@ export const adminDashboard = createServerFn({ method: "GET" })
         limit 100
       `;
     });
-    return { purchases, usage, failures, cache, feedback: notes, entitlements, accounts };
+    let userCount = 0;
+    let subscribedCount = 0;
+    let revenueCents = 0;
+    let affiliateClicks: { vendor: string; n: number }[] = [];
+    try {
+      const u = await sql<{ n: number }>`select count(*)::int as n from "user"`;
+      userCount = Number(u[0]?.n ?? 0);
+    } catch {
+      userCount = 0;
+    }
+    try {
+      const s = await sql<{ n: number }>`
+        select count(*)::int as n from entitlements
+        where paid = true
+          and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
+      `;
+      subscribedCount = Number(s[0]?.n ?? 0);
+    } catch {
+      try {
+        const s = await sql<{ n: number }>`select count(*)::int as n from entitlements where paid = true`;
+        subscribedCount = Number(s[0]?.n ?? 0);
+      } catch {
+        subscribedCount = 0;
+      }
+    }
+    try {
+      const r = await sql<{ n: number }>`
+        select coalesce(sum(amount_cents), 0)::int as n
+        from purchases
+        where amount_cents > 0 and user_id not in ('unmatched', 'revoked')
+      `;
+      revenueCents = Number(r[0]?.n ?? 0);
+    } catch {
+      revenueCents = 0;
+    }
+    try {
+      affiliateClicks = await sql<{ vendor: string; n: number }>`
+        select vendor, count(*)::int as n from affiliate_clicks group by vendor order by n desc
+      `;
+    } catch {
+      affiliateClicks = [];
+    }
+    return {
+      purchases,
+      usage,
+      failures,
+      cache,
+      feedback: notes,
+      entitlements,
+      accounts,
+      userCount,
+      subscribedCount,
+      revenueCents,
+      affiliateClicks,
+      polarReady: polarConfigured(),
+      amazonReady: Boolean(amazonAssociateTag()),
+      sweetwaterReady: Boolean(sweetwaterAffiliateId()),
+    };
   });
 
 export const adminDeleteCache = createServerFn({ method: "POST" })
@@ -730,6 +789,66 @@ export const adminInspectCache = createServerFn({ method: "POST" })
       limit 1
     `;
     return { row: rows[0] ?? null };
+  });
+
+export const pullMyPresets = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    try {
+      const sql = await getSql();
+      const rows = await sql<{ presets: Preset[] }>`
+        select presets from user_presets where user_id = ${context.userId} limit 1
+      `;
+      const presets = Array.isArray(rows[0]?.presets) ? rows[0].presets : [];
+      return { presets };
+    } catch {
+      return { presets: [] as Preset[] };
+    }
+  });
+
+export const pushMyPresets = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z
+      .object({
+        presets: z.array(z.unknown()).max(60),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    try {
+      const sql = await getSql();
+      await sql.query(
+        `insert into user_presets (user_id, presets, updated_at) values ($1, $2::jsonb, now())
+         on conflict (user_id) do update set presets = excluded.presets, updated_at = now()`,
+        [context.userId, JSON.stringify(data.presets)],
+      );
+      return { ok: true as const };
+    } catch {
+      return { ok: false as const };
+    }
+  });
+
+export const recordAffiliateClick = createServerFn({ method: "POST" })
+  .validator((input: unknown) =>
+    z
+      .object({
+        vendor: z.enum(["amazon", "sweetwater"]),
+        query: z.string().max(80),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const sql = await getSql();
+      await sql`
+        insert into affiliate_clicks (user_id, vendor, query)
+        values (${""}, ${data.vendor}, ${data.query})
+      `;
+    } catch {
+      /* table may not exist yet */
+    }
+    return { ok: true as const };
   });
 
 export const pullMyGear = createServerFn({ method: "GET" })

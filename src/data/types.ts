@@ -76,12 +76,14 @@ export type CategoryInfo = {
 
 export type DeviceFamily = "stomp" | "helix" | "effects" | "pod";
 export type ExportFormat = "hlx" | "none";
+export type DeviceLayout = "stomp" | "xl" | "floor" | "lt" | "effects" | "podgo";
 
 export type StompDevice = {
   id: StompModelId;
   name: string;
   short: string;
   family: DeviceFamily;
+  layout: DeviceLayout;
   footswitches: number;
   snapshots: number;
   maxBlocks: number;
