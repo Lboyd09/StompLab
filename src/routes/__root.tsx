@@ -20,6 +20,7 @@ export const Route = createRootRoute({
       { name: "theme-color", content: "#0B0C0E" },
       { name: "apple-mobile-web-app-title", content: "StompLab" },
       { name: "application-name", content: "StompLab" },
+      { name: "fo-verify", content: "b1248513-ab47-47bf-8c29-fca6537484f4" },
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
