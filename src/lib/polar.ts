@@ -35,11 +35,11 @@ export function polarFriendlyError(status: number, detail: unknown): string {
   if (status === 401 || status === 403 || lower === "unauthorized" || /invalid token|unauthenticated/.test(lower)) {
     return "Polar rejected the checkout key. On the host, set POLAR_ACCESS_TOKEN from the same Polar org as the products (live vs sandbox must match).";
   }
+  if (/success_url|return url|invalid url/.test(lower)) {
+    return "Polar rejected the return URL. In Polar, allow this site's real domain (the one you just bought) plus stomplab.vercel.app. Set APP_ORIGIN to that https URL on the host.";
+  }
   if (status === 404 || status === 422 || /product|not found|unprocessable|unknown product/.test(lower)) {
     return "Polar does not recognize this product. Create a $6.99/month and a $75/year product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY.";
-  }
-  if (/success_url|return url|invalid url/.test(lower)) {
-    return "Polar rejected the return URL. Add this site's domain in Polar checkout settings.";
   }
   return d || `Polar checkout failed (${status || "network"}). Try again in a minute.`;
 }

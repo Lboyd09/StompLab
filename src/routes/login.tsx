@@ -5,11 +5,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { parseNext } from "@/lib/next-path";
+import { parseCheckoutId, parseNext } from "@/lib/next-path";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>): { next?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
+    checkout_id: typeof s.checkout_id === "string" ? s.checkout_id : undefined,
   }),
   component: LoginPage,
 });
@@ -17,7 +18,7 @@ export const Route = createFileRoute("/login")({
 function friendlyAuthError(raw: string, mode: "in" | "up"): string {
   const m = raw.toLowerCase();
   if (m.includes("invalid origin") || m.includes("forbidden") || m.includes("csrf")) {
-    return "This page couldn't talk to the sign-in server. Refresh once and try again.";
+    return "This address is new to sign-in. Refresh once on the domain you just bought, then try again.";
   }
   if (m.includes("already exists") || m.includes("user already")) {
     return "That email already has an account. Sign in instead.";
@@ -45,8 +46,18 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const next = parseNext(search.next);
+  const checkoutId = parseCheckoutId(search.checkout_id);
+
+  async function goAfterAuth() {
+    if (checkoutId) {
+      await navigate({ to: "/upgrade", search: { checkout_id: checkoutId }, replace: true });
+      return;
+    }
+    await navigate({ to: next, replace: true });
+  }
 
   if (!isPending && user) {
+    if (checkoutId) return <Navigate to="/upgrade" search={{ checkout_id: checkoutId }} />;
     return <Navigate to={next} />;
   }
 
@@ -92,7 +103,7 @@ function LoginPage() {
         if (mode === "up") {
           const session = await authClient.getSession().catch(() => null);
           if (session?.data?.user) {
-            await navigate({ to: next, replace: true });
+            await goAfterAuth();
             return;
           }
         }
@@ -104,7 +115,7 @@ function LoginPage() {
         setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again.");
         return;
       }
-      await navigate({ to: next, replace: true });
+      await goAfterAuth();
     } catch (err) {
       setError(friendlyAuthError(err instanceof Error ? err.message : "", mode));
     } finally {

@@ -19,7 +19,7 @@ import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan, type PlanI
 import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
-
+import { publicOrigin } from "./site-origin";
 
 export async function emailFor(userId: string): Promise<string | null> {
   try {
@@ -32,30 +32,7 @@ export async function emailFor(userId: string): Promise<string | null> {
 }
 
 async function checkoutSuccessOrigin(): Promise<string> {
-  const fallback = (
-    process.env.POLAR_SUCCESS_ORIGIN ??
-    process.env.APP_ORIGIN ??
-    "https://stomplab.vercel.app"
-  ).replace(/\/$/, "");
-  try {
-    const { getRequest } = await import("@tanstack/react-start/server");
-    const req = getRequest();
-    const host = (req?.headers.get("x-forwarded-host") || req?.headers.get("host") || "")
-      .split(",")[0]
-      .trim();
-    const hostname = host.replace(/:\d+$/, "");
-    const proto = (req?.headers.get("x-forwarded-proto") || "https").split(",")[0].trim() || "https";
-    if (
-      hostname &&
-      /(?:^|\.)stomplab\./i.test(hostname) &&
-      !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(hostname)
-    ) {
-      return `${proto}://${host.replace(/\/$/, "")}`;
-    }
-  } catch {
-    /* preview / no request */
-  }
-  return fallback;
+  return publicOrigin();
 }
 
 type EntRow = {

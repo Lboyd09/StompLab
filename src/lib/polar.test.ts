@@ -154,4 +154,7 @@ describe("polarFriendlyError", () => {
     assert.match(polarFriendlyError(422, "Product not found"), /does not recognize this product/);
     assert.match(polarFriendlyError(404, ""), /does not recognize this product/);
   });
+  it("maps a rejected Polar return URL to domain copy", () => {
+    assert.match(polarFriendlyError(422, "Invalid success_url"), /real domain/);
+  });
 });

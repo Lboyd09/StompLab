@@ -163,8 +163,8 @@ function Home() {
           <span className="block text-muted-foreground">Get a preset that sounds like the record.</span>
         </h1>
         <p className="text-base leading-relaxed text-muted-foreground">
-          Research the tracking rig. See it on the unit. Download a .hlx HX Edit can import. Three
-          demos always work — no account required.
+          Research the tracking rig. See it on the unit. Download a .hlx HX Edit can import, or a .pgp
+          for POD Go Edit. Three demos always work — no account required.
         </p>
         <RigDisclaimer />
       </section>

@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -15,6 +15,7 @@ import {
   formatUsd,
   type PlanInterval,
 } from "@/lib/plan";
+import { parseCheckoutId } from "@/lib/next-path";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/upgrade")({
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/upgrade")({
 });
 
 const PERKS = [
-  "Type any song. Get a .hlx HX Edit will import.",
+  "Type any song. Get a .hlx HX Edit will import — or a .pgp for POD Go Edit.",
   `${PAID_MONTHLY_BUILDS} custom builds every calendar month.`,
   "Create custom sounds. History. Extra snapshots. Gear locker sync.",
   "Every custom research counts as one build — demos stay free forever.",
@@ -39,12 +40,18 @@ function UpgradePage() {
   const { plan, refresh, isPending: planPending } = usePlan();
   const [busy, setBusy] = useState<PlanInterval | null>(null);
   const [error, setError] = useState("");
-  const [confirming, setConfirming] = useState(Boolean(search.checkout_id));
+  const checkoutId = parseCheckoutId(search.checkout_id);
+  const [confirming, setConfirming] = useState(Boolean(checkoutId));
 
   useEffect(() => {
-    const id = search.checkout_id;
-    if (!id || !user) {
-      if (!isPending && !user) setConfirming(false);
+    const id = checkoutId;
+    if (!id) {
+      setConfirming(false);
+      return;
+    }
+    if (isPending) return;
+    if (!user) {
+      setConfirming(false);
       return;
     }
     setConfirming(true);
@@ -61,7 +68,7 @@ function UpgradePage() {
         setError(err instanceof Error ? err.message : "Could not confirm payment.");
       })
       .finally(() => setConfirming(false));
-  }, [search.checkout_id, user, isPending, refresh, navigate]);
+  }, [checkoutId, user, isPending, refresh, navigate]);
 
   async function onSubscribe(interval: PlanInterval) {
     setError("");
@@ -106,7 +113,11 @@ function UpgradePage() {
     );
   }
 
-  if (plan.paid && !confirming && !search.checkout_id) {
+  if (!user && checkoutId) {
+    return <Navigate to="/login" search={{ next: "/upgrade", checkout_id: checkoutId }} />;
+  }
+
+  if (plan.paid && !confirming && !checkoutId) {
     return (
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">

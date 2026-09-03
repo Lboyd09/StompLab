@@ -46,6 +46,7 @@ import {
   PREVIEW_CLIENT_ID,
   PREVIEW_CLIENT_SECRET,
 } from "./preview";
+import { configuredAuthHosts, isLoopbackHost, isPublicHostname } from "../site-origin";
 
 // Kick (and share) PGLite bootstrap as soon as the auth server module loads.
 void ensureDbReady();
@@ -104,9 +105,9 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://[::1]:8080",
 ];
 
-/** Extra hosts for Vercel production (stomplab.vercel.app) — sign-in fails as Invalid origin without these. */
+/** Extra hosts so a custom domain + stomplab.vercel.app both sign in. */
 function extraAuthHosts(): string[] {
-  const hosts = new Set<string>(["stomplab.vercel.app"]);
+  const hosts = new Set<string>(configuredAuthHosts());
   const addHost = (raw?: string) => {
     const v = (raw ?? "").trim().replace(/\/$/, "");
     if (!v) return;
@@ -120,6 +121,8 @@ function extraAuthHosts(): string[] {
   addHost(env("VERCEL_PROJECT_PRODUCTION_URL"));
   addHost(env("APP_ORIGIN"));
   addHost(env("POLAR_SUCCESS_ORIGIN"));
+  addHost(env("SITE_URL"));
+  addHost(env("BETTER_AUTH_URL"));
   return [...hosts].filter(Boolean);
 }
 function extraAuthOrigins(): string[] {
@@ -129,28 +132,55 @@ function extraAuthOrigins(): string[] {
 const extraHosts = extraAuthHosts();
 const extraOrigins = extraAuthOrigins();
 
-const baseURL = explicitBaseURL ?? {
-  // Include loopback hosts so dynamic baseURL resolves for local email/password
-  // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]", ...extraHosts],
-  // `auto` → trust both http:// and https:// expansions of allowedHosts
-  // (preview is https; local dev is http).
+const baseURL = {
+  // Always derive from the request Host so a custom domain is not stuck on
+  // stomplab.vercel.app when BETTER_AUTH_URL still points at Vercel.
+  allowedHosts: [
+    ...previewAllowedHosts,
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+    "*.vercel.app",
+    ...extraHosts,
+  ],
   protocol: "auto" as const,
-  fallback: "http://localhost:8080",
+  fallback: explicitBaseURL ?? "http://localhost:8080",
 };
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
-const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS, ...extraOrigins]
-  : [
-      // Host wildcards (matched against Origin's host)
-      ...previewAllowedHosts,
-      // Full-origin wildcards (matched against Origin)
-      ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
-      ...LOCAL_DEV_ORIGINS,
-      ...extraOrigins,
-    ];
+const staticTrustedOrigins: string[] = [
+  ...(explicitBaseURL ? [explicitBaseURL] : []),
+  ...previewAllowedHosts,
+  ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+  ...LOCAL_DEV_ORIGINS,
+  ...extraOrigins,
+];
+
+const trustedOrigins = (request?: Request) => {
+  const fromReq: string[] = [];
+  if (request) {
+    const host = (request.headers.get("x-forwarded-host") || request.headers.get("host") || "")
+      .split(",")[0]
+      .trim()
+      .replace(/:\d+$/, "")
+      .toLowerCase();
+    const origin = (request.headers.get("origin") || "").trim().replace(/\/$/, "");
+    if (origin.startsWith("http://") || origin.startsWith("https://")) {
+      try {
+        const hostname = new URL(origin).hostname.toLowerCase();
+        // Origin is trusted only when it is THIS request's host — never a random site.
+        if (hostname === host && (isPublicHostname(hostname) || isLoopbackHost(hostname))) {
+          fromReq.push(origin);
+        }
+      } catch {
+        /* ignore */
+      }
+    }
+    if (isPublicHostname(host)) fromReq.push(`https://${host}`);
+  }
+  return [...staticTrustedOrigins, ...fromReq];
+};
 
 const databaseUrl = env("DATABASE_URL");
 
