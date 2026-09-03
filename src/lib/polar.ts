@@ -164,13 +164,35 @@ export async function createPolarCheckout(opts: {
         json = {};
       }
       if (res.ok && json.url) return { ok: true, url: json.url };
-      last = json.detail || json.error || `Polar error ${res.status}`;
+      last = polarFriendlyError(res.status, json.detail || json.error);
       if (res.status !== 404) break;
     } catch (err) {
       last = err instanceof Error ? err.message : "Polar network error";
     }
   }
   return { ok: false, error: last };
+}
+
+export function polarFriendlyError(status: number, detail: unknown): string {
+  const raw =
+    typeof detail === "string"
+      ? detail
+      : Array.isArray(detail)
+        ? detail.map((d) => (typeof d === "string" ? d : JSON.stringify(d))).join(" ")
+        : detail && typeof detail === "object"
+          ? JSON.stringify(detail)
+          : "";
+  const d = raw.trim().toLowerCase();
+  if (status === 401 || status === 403 || d === "unauthorized" || d.includes("invalid token") || d.includes("not authenticated")) {
+    return "Polar rejected the checkout key. On Vercel, set POLAR_ACCESS_TOKEN from the same Polar org as the products (live vs sandbox).";
+  }
+  if (status === 404 || status === 422 || /product|not found|unprocessable/.test(d)) {
+    return "Polar does not recognize this product. Create a $6.99/mo and $75/yr product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY.";
+  }
+  if (/success_url|invalid url|redirect/.test(d)) {
+    return "Polar rejected the return URL. Add stomplab.vercel.app under Polar checkout settings.";
+  }
+  return raw.slice(0, 220) || `Checkout failed (${status || "network"}). Try again in a minute.`;
 }
 
 export async function fetchPolarCheckout(id: string): Promise<Record<string, unknown> | null> {

@@ -8,6 +8,7 @@ import {
   polarEventIsSubscriptionRevoke,
   polarStatusIsPaid,
   purchaseLooksPaid,
+  polarFriendlyError,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -140,5 +141,16 @@ describe("purchaseLooksPaid", () => {
       polarEventIsSubscriptionRevoke({ type: "subscription.revoked", data: { id: "sub_abc12345", status: "revoked" } }),
       true,
     );
+  });
+});
+
+describe("polarFriendlyError", () => {
+  it("maps 401/Unauthorized to Polar key copy, not a raw Unauthorized", () => {
+    const msg = polarFriendlyError(401, "Unauthorized");
+    assert.match(msg, /Polar rejected the checkout key/);
+    assert.equal(/unauthorized/i.test(msg), false);
+  });
+  it("maps missing product ids", () => {
+    assert.match(polarFriendlyError(422, "Product not found"), /product/i);
   });
 });

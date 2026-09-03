@@ -8,6 +8,7 @@ describe("affiliate urls", () => {
     assert.match(url, /amazon\.com\/s/);
     assert.match(url, /k=BOSS\+DS-1|k=BOSS%20DS-1/);
     assert.match(url, /tag=stomplab-20/);
+    assert.match(url, /linkCode=ll2/);
   });
   it("builds a Sweetwater search with the campaign id", () => {
     const url = sweetwaterSearchUrl("Ibanez TS808", "abc123");

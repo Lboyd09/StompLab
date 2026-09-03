@@ -21,6 +21,20 @@ export function SongTypeahead({
   const [hits, setHits] = useState<SongHit[]>([]);
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
+  const ignoreBlur = useRef(false);
+  const lastPick = useRef(0);
+
+  function pick(h: SongHit) {
+    const now = Date.now();
+    if (now - lastPick.current < 400) return;
+    lastPick.current = now;
+    ignoreBlur.current = true;
+    onPick(h);
+    setOpen(false);
+    window.setTimeout(() => {
+      ignoreBlur.current = false;
+    }, 400);
+  }
 
   useEffect(() => {
     const q = song.trim();
@@ -51,7 +65,11 @@ export function SongTypeahead({
             setOpen(true);
           }}
           onFocus={() => hits.length && setOpen(true)}
-          onBlur={() => window.setTimeout(() => setOpen(false), 160)}
+          onBlur={() =>
+            window.setTimeout(() => {
+              if (!ignoreBlur.current) setOpen(false);
+            }, 0)
+          }
           placeholder="Smells Like Teen Spirit"
           required
           autoComplete="off"
@@ -63,10 +81,13 @@ export function SongTypeahead({
                 <button
                   type="button"
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-                  onMouseDown={(e) => {
+                  onPointerDown={(e) => {
                     e.preventDefault();
-                    onPick(h);
-                    setOpen(false);
+                    pick(h);
+                  }}
+                  onClick={(e) => {
+                    e.preventDefault();
+                    pick(h);
                   }}
                 >
                   {h.artwork ? (
