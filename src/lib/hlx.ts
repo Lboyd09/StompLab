@@ -73,11 +73,22 @@ const PARAM_RENAMES: Record<string, Record<string, string>> = {
   "vermin-dist": { Drive: "Gain", Treble: "Filter", Output: "Level" },
   minotaur: { Drive: "Gain", Treble: "Tone", Output: "Level" },
   "heir-apparent": { Drive: "Gain", Treble: "Tone", Output: "Level" },
-  "kinky-boost": { Treble: "Boost", Output: "Level" },
+  "kinky-boost": { Treble: "Bright", Output: "Boost" },
   "deluxe-comp": { Gain: "Level" },
   "kinky-comp": { Threshold: "Sensitivity", Gain: "Level" },
   "bighorn-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Level" },
   "triangle-fuzz": { Drive: "Sustain", Treble: "Tone", Output: "Level" },
+  "arbitrator-fuzz": { Drive: "Fuzz", Output: "Level" },
+  "pocket-fuzz": { Output: "Level" },
+  "tycoctavia-fuzz": { Drive: "Fuzz", Output: "Level" },
+  "compulsive-drive": { Drive: "Gain", Treble: "Tone", Output: "Level" },
+  "valve-driver": { Drive: "Gain", Output: "Level" },
+  "swedish-chainsaw": { Output: "Level" },
+  "legendary-drive": { Output: "Volume", Mid: "Middle" },
+  "horizon-drive": { Output: "Level" },
+  "dhyana-drive": { Drive: "Gain", Treble: "Tone", Output: "Level" },
+  teemah: { Drive: "Gain", Output: "Level" },
+  "deranged-master": { Output: "Level" },
   "knuckle-dragon": { Drive: "Gain", Output: "Level" },
   "uk-wah-846": { Position: "Pedal", "Dc Bias": "DcBias" },
   "teardrop-310": { Position: "Pedal" },
@@ -132,7 +143,6 @@ const DROP_BY_MODEL: Record<string, Set<string>> = {
   "kinky-boost": new Set(["Bass", "Mid", "Mix"]),
   "vermin-dist": new Set(["Bass", "Mid", "Mix"]),
   "70s-chorus": new Set(["Tone"]),
-  "kinky-comp": new Set(["Attack", "Release", "Mix"]),
 };
 
 const GENERIC_RENAME: Record<string, string> = {
@@ -158,10 +168,10 @@ const GENERIC_RENAME: Record<string, string> = {
   "16k": "16kHz",
 };
 
-/** Params HX Edit will reject or ignore as unknown on most blocks. */
-const DROP_PARAMS = new Set(["Mix", "Mic"]);
+/** Params that are cab metadata or never factory knobs. Mix is allowlisted per model. */
+const DROP_PARAMS = new Set(["Mic"]);
 
-const KEEP_MIX = new Set<CategoryId>(["modulation", "delay", "reverb", "filter", "wah", "volume"]);
+const KEEP_MIX = new Set<CategoryId>(["modulation", "delay", "reverb", "filter", "wah", "volume", "dynamics"]);
 
 const BOOLEAN_PARAMS = new Set(["Mode", "Bright"]);
 
@@ -203,9 +213,15 @@ function helixParamName(modelId: string, uiName: string): string {
     if (factory.has(uiName)) return uiName;
     if (generic && factory.has(generic)) return generic;
     if (factory.has(collapsed)) return collapsed;
+    const lower = uiName.toLowerCase();
+    const collapsedLower = collapsed.toLowerCase();
+    for (const f of factory) {
+      const fl = f.toLowerCase();
+      if (fl === lower || fl === collapsedLower || f.replace(/\s+/g, "").toLowerCase() === collapsedLower) return f;
+    }
     const aliases: Record<string, string[]> = {
-      Drive: ["Gain", "NrmDrive", "BrtDrive", "LeadDrive", "Drive"],
-      Treble: ["Tone", "Filter", "Boost", "Treble"],
+      Drive: ["Gain", "Fuzz", "Sustain", "NrmDrive", "BrtDrive", "LeadDrive", "Drive", "ODGain"],
+      Treble: ["Tone", "Filter", "Bright", "Boost", "Treble"],
       Output: ["Level", "Volume", "Boost", "Output"],
       Position: ["Pedal", "Position"],
       Decay: ["Dwell", "Decay"],
@@ -216,6 +232,10 @@ function helixParamName(modelId: string, uiName: string): string {
       Predelay: ["Predelay", "PreDelay"],
       Volume: ["Level", "Volume"],
       Distortion: ["Gain", "Drive", "Distortion"],
+      Mid: ["Middle", "Mid"],
+      Bass: ["Bass", "Low"],
+      Mix: ["Mix", "Blend"],
+      Threshold: ["Sensitivity", "Threshold", "PeakReduction"],
     };
     for (const cand of aliases[uiName] ?? []) {
       if (factory.has(cand)) return cand;
@@ -286,14 +306,20 @@ function blockParams(block: StompBlock): Record<string, number | boolean> {
   const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
   const allowedHlx = allowedHlxNames(block.modelId, category);
   const out: Record<string, number | boolean> = {};
-  for (const [uiName, raw] of Object.entries(block.params)) {
+  const names = [...(model?.params ?? []), ...Object.keys(block.params)];
+  const seen = new Set<string>();
+  for (const uiName of names) {
+    if (seen.has(uiName)) continue;
+    seen.add(uiName);
     if (dropModel?.has(uiName)) continue;
     if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
-    if (allowedUi && !allowedUi.has(uiName)) continue;
+    if (allowedUi && !allowedUi.has(uiName) && !(uiName in (block.params ?? {}))) continue;
+    const raw = block.params[uiName] ?? 5;
     const value = toHlxValue(block.modelId, uiName, raw, category);
     if (!finiteHlx(value)) continue;
     const pname = helixParamName(block.modelId, uiName);
     if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
+    if (out[pname] !== undefined && uiName !== pname) continue;
     out[pname] = value;
   }
   if (Object.keys(out).length && (category === "amp-guitar" || category === "amp-bass")) {
@@ -668,7 +694,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
       device_version: HLX_APP_VERSION,
       meta: {
         name: sanitizeLabel(preset.name || "Stomp Lab", 32),
-        application: "HX Edit",
+        application: ext === "pgp" ? "POD Go Edit" : "HX Edit",
         build_sha: HLX_BUILD_SHA,
         modifieddate: Math.floor(Date.now() / 1000),
         appversion: HLX_APP_VERSION,

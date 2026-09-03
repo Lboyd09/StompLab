@@ -36,19 +36,16 @@ export function deviceFor(preset: Preset) {
 }
 
 /**
- * Replica 1 is top-left looking down. On XL the silkscreen / HX Edit numbers
- * invert: hardware FS4/5/6 are the far (top) row, FS1/2/3 are closest to you.
- * Keep visual indices in the preset so intro stays top-left; print the HX Edit
- * number on the cap so the file and the replica agree.
+ * Replica index IS the silkscreen / HX Edit number.
+ * HX Stomp XL: closest row 1–3, far row (toward the LCD) 4–6, MODE=7, TAP=8.
+ * Helix: closest 1–6, far 7–12. POD Go / HX Effects: closest 1–4, far 5–8.
  */
-export function visualToHardwareFs(index: number, xl: boolean): number {
-  if (!xl) return index;
-  const map: Record<number, number> = { 1: 4, 2: 5, 3: 6, 4: 1, 5: 2, 6: 3, 7: 7, 8: 8 };
-  return map[index] ?? index;
+export function visualToHardwareFs(index: number, _xl = false): number {
+  return index;
 }
 
 /** Number HX Edit and the physical silkscreen use for this replica switch. */
-export function hxEditFsNumber(index: number, xl: boolean): number {
+export function hxEditFsNumber(index: number, xl = false): number {
   return visualToHardwareFs(index, xl);
 }
 

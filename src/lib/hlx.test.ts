@@ -153,15 +153,15 @@ describe("buildHlx Enter Sandman", () => {
 });
 
 describe("visual FS map", () => {
-  it("leaves Stomp 1–3 alone and remaps XL top row to hardware 4–6", () => {
+  it("uses silkscreen numbers: replica index is HX Edit FS on every unit including XL", () => {
     assert.equal(visualToHardwareFs(1, false), 1);
     assert.equal(visualToHardwareFs(3, false), 3);
-    assert.equal(visualToHardwareFs(1, true), 4);
-    assert.equal(visualToHardwareFs(2, true), 5);
-    assert.equal(visualToHardwareFs(3, true), 6);
-    assert.equal(visualToHardwareFs(4, true), 1);
-    assert.equal(visualToHardwareFs(5, true), 2);
-    assert.equal(visualToHardwareFs(6, true), 3);
+    assert.equal(visualToHardwareFs(1, true), 1);
+    assert.equal(visualToHardwareFs(2, true), 2);
+    assert.equal(visualToHardwareFs(3, true), 3);
+    assert.equal(visualToHardwareFs(4, true), 4);
+    assert.equal(visualToHardwareFs(5, true), 5);
+    assert.equal(visualToHardwareFs(6, true), 6);
     assert.equal(visualToHardwareFs(7, true), 7);
     assert.equal(visualToHardwareFs(8, true), 8);
   });
@@ -178,7 +178,7 @@ describe("visual FS map", () => {
     assert.equal(stomp?.id, "featured-sandman-hx-stomp");
   });
 
-  it("keeps featured snapshots on replica 1–3 (top). File maps those to hardware FS4–6 (XL far row)", () => {
+  it("keeps featured snapshots on FS 1–3 (closest row). File uses the same numbers.", () => {
     const xl = withStompModel(featured("featured-sandman"), "hx-stomp-xl");
     const snaps = xl.footswitches.filter((f) => f.action === "snapshot");
     assert.deepEqual(
@@ -192,7 +192,7 @@ describe("visual FS map", () => {
     );
   });
 
-  it("puts Teen Spirit intro first and XL pre on visual 4 (bottom-left = hardware FS1)", () => {
+  it("puts Teen Spirit intro first and XL Pre on FS4 (far left)", () => {
     const src = featured("featured-teen-spirit");
     assert.equal(src.snapshots[0]?.name, "Intro");
     assert.equal(src.footswitches[0]?.action, "snapshot");
@@ -230,18 +230,18 @@ describe("visual FS map", () => {
     }
   });
 
-  it("writes XL snapshot 1 to hardware FS4 (far/top row)", () => {
+  it("writes XL snapshot 1 to hardware FS1 (closest left)", () => {
     const xl = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
     const hlx = buildHlx(xl);
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
     const snap0 = tone.snapshot0 as { "@fs_index": number; "@name": string };
     const snap3 = tone.snapshot3 as { "@fs_index": number };
     assert.equal(snap0["@name"], "INTRO");
-    assert.equal(snap0["@fs_index"], 4);
-    assert.equal(snap3["@fs_index"], 1);
+    assert.equal(snap0["@fs_index"], 1);
+    assert.equal(snap3["@fs_index"], 4);
   });
 
-  it("writes XL bypass assigns to the hardware index for that visual switch", () => {
+  it("writes XL bypass assigns to the same silkscreen index", () => {
     const src = featured("featured-teen-spirit");
     const xl = withStompModel(
       {
@@ -255,15 +255,16 @@ describe("visual FS map", () => {
     const hlx = buildHlx(xl, { fsMode: "stomp" });
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
     const fs = tone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
-    assert.equal(fs.dsp0.block0["@fs_index"], 4);
+    assert.equal(fs.dsp0.block0["@fs_index"], 1);
     assert.equal((hlx.data as { device: number }).device, 2162699);
   });
 
-  it("writes a POD Go .pgp with device 2162695 and factory HD2 models only", () => {
+  it("writes a POD Go .pgp with device 2162695, POD Go Edit, and factory HD2 models only", () => {
     const go = withStompModel(featured("featured-teen-spirit"), "pod-go");
     assert.equal(canExportHlx("pod-go"), true);
     const hlx = buildHlx(go);
     assert.equal((hlx.data as { device: number }).device, 2162695);
+    assert.equal((hlx.data as { meta: { application: string } }).meta.application, "POD Go Edit");
     const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
     for (const [k, b] of Object.entries(dsp)) {
       const model = String(b["@model"] ?? "");

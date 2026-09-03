@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, assemblePlan, emptyPlan, formatUsd, isAdminEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd } from "./plan.ts";
+import { ADMIN_EMAIL, assemblePlan, emptyPlan, formatUsd, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("matches only the exact admin gmail", () => {
@@ -10,6 +10,9 @@ describe("isAdminEmail", () => {
     assert.equal(isAdminEmail("someone@gmail.com"), false);
     assert.equal(isAdminEmail(""), false);
     assert.equal(isAdminEmail(null), false);
+    assert.equal(normalizeEmail("  LiamJamesB09@Gmail.com "), ADMIN_EMAIL);
+    assert.equal(isOwnerAccount(ADMIN_EMAIL), true);
+    assert.equal(isOwnerAccount("player@example.com"), false);
   });
 });
 

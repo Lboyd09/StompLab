@@ -337,7 +337,7 @@ Arrangement (mandatory — this is how you miss a song):
 - A guitar solo, lead break, or "wacky"/signature part (country-bend solo, tapping, talk box, harmonic, octave, reverse, volume swell, filter trick) MUST be its own snapshot. A solo is almost never the rhythm tone: boost on, delay/reverb Mix up, amp Drive or Ch Vol +1–2, maybe a different OD. Put those in paramOverrides AND toggle the extra block.
 - Signature tricks get an enabled block that other snaps bypass — do not flatten the song into verse/chorus only.
 - Snapshots MUST sound different. Documented clean intros (Teen Spirit Twin+Clone no DS-1; Sandman wah arpeggio) are SNAPSHOT 1.
-- Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in section order. No TAP on FS1–3. MODE/TAP are hardware extras — do not spend numbered FS on them.
+- Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in section order (closest row first: 1, 2, 3…). No TAP on FS1–3. MODE/TAP are hardware extras — do not spend numbered FS on them.
 
 programming = unit steps. tips = pick/volume so it matches the record.`;
 }

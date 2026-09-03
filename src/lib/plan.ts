@@ -10,12 +10,16 @@ export const LAUNCH_USD = PRICE_MONTHLY_USD;
 
 export type PlanInterval = "month" | "year";
 
-/** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
-export function isAdminEmail(email: string | null | undefined) {
-  return (email ?? "").trim().toLowerCase() === ADMIN_EMAIL;
+export function normalizeEmail(email: string | null | undefined) {
+  return (email ?? "").trim().toLowerCase();
 }
 
-/** Exact admin email. Polar test checkouts from this address still count as Polar revenue. */
+/** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
+export function isAdminEmail(email: string | null | undefined) {
+  return normalizeEmail(email) === ADMIN_EMAIL;
+}
+
+/** Owner row — Polar tests from this address are not customer revenue. */
 export function isOwnerAccount(email: string | null | undefined) {
   return isAdminEmail(email);
 }
@@ -87,6 +91,7 @@ export function assemblePlan(opts: {
   subscriptionStatus?: string;
 }): Plan {
   const month = yearMonth();
+  const email = normalizeEmail(opts.email) || opts.email;
   const admin = isAdminEmail(opts.email);
   const paid = admin || opts.paid;
   const freeUsed = opts.freeUsed;
@@ -96,7 +101,7 @@ export function assemblePlan(opts: {
   return {
     signedIn: true,
     userId: opts.userId,
-    email: opts.email,
+    email,
     paid,
     admin,
     freeUsed,

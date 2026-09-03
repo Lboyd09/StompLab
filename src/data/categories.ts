@@ -216,7 +216,7 @@ export const STOMP_DEVICES: StompDevice[] = [
     outputSend: "HelixStomp_AppDSPFlowOutputSend",
     notes: [
       "Same HX engine and 8-block / 1-DSP limit as HX Stomp.",
-      "Eight capacitive-touch footswitches in two rows of four.",
+      "Eight capacitive-touch footswitches: far row 4–6 (toward the LCD), closest row 1–3, plus dedicated MODE and TAP on the right.",
       "Four snapshots per preset — enough for verse / chorus / bridge / solo.",
       "6-switch looper maps across the extra switches.",
       "Same 320×240 LCD and three edit knobs as HX Stomp.",

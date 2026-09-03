@@ -202,7 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   setOpen(true);
                 }}
                 onFocus={() => setOpen(true)}
-                onBlur={() => window.setTimeout(() => setOpen(false), 0)}
+                onBlur={() => window.setTimeout(() => setOpen(false), 220)}
                 placeholder="Search songs, models, pedals…"
                 className="h-10 pl-9"
                 aria-label="Search songs and catalog"
@@ -390,7 +390,10 @@ function SearchResults({
   onResearch: () => void;
 }) {
   return (
-    <div className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg">
+    <div
+      className="absolute z-50 mt-1 w-full overflow-hidden rounded-lg border border-border bg-card shadow-lg"
+      onMouseDown={(e) => e.preventDefault()}
+    >
       {songHits.map((p) => {
         const locked = !paid && !isDemoId(p.id);
         return (

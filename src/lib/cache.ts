@@ -60,6 +60,13 @@ const miss = {
   hitCount: 0,
 };
 
+function playablePreset(raw: unknown): Preset | null {
+  if (!raw || typeof raw !== "object") return null;
+  const p = raw as Preset;
+  if (!Array.isArray(p.blocks) || !p.blocks.length) return null;
+  return p;
+}
+
 /** Internal cache read — used by research so we never list a public library. */
 export async function lookupCacheRaw(key: string) {
   try {
@@ -72,11 +79,13 @@ export async function lookupCacheRaw(key: string) {
     }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${key} limit 1`;
     const row = rows[0];
     if (!row) return miss;
+    const preset = playablePreset(row.preset);
+    if (row.kind === "song" && !preset) return miss;
     await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${key}`;
     return {
       hit: true as const,
       kind: row.kind,
-      preset: row.preset,
+      preset,
       matches: Array.isArray(row.matches) ? row.matches : [],
       hitCount: Number(row.hit_count) + 1,
     };
@@ -96,22 +105,41 @@ export const lookupCache = createServerFn({ method: "POST" })
     return lookupCacheRaw(data.key);
   });
 
+/** Write (or refresh) a song/sound cache row. Conflict must keep the preset. */
+export async function persistSongCache(data: {
+  key: string;
+  song: string;
+  artist: string;
+  instrument: string;
+  stompModel: string;
+  preset: unknown;
+}): Promise<boolean> {
+  try {
+    const sql = await getSql();
+    const presetJson = JSON.stringify(data.preset);
+    await sql.query(
+      `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset, updated_at)
+       values ($1, 'song', $2, $3, $4, $5, $6::jsonb, now())
+       on conflict (cache_key) do update set
+         preset = excluded.preset,
+         song = excluded.song,
+         artist = excluded.artist,
+         instrument = excluded.instrument,
+         stomp_model = excluded.stomp_model,
+         updated_at = now()`,
+      [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson],
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export const saveSongCache = createServerFn({ method: "POST" })
   .validator((input: unknown) => SaveSongIn.parse(input))
   .handler(async ({ data }) => {
-    try {
-      const sql = await getSql();
-      const presetJson = JSON.stringify(data.preset);
-      await sql.query(
-        `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset)
-         values ($1, 'song', $2, $3, $4, $5, $6::jsonb)
-         on conflict (cache_key) do update set hit_count = rig_cache.hit_count + 1, updated_at = now()`,
-        [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson],
-      );
-      return { saved: true as const };
-    } catch {
-      return { saved: false as const };
-    }
+    const saved = await persistSongCache(data);
+    return { saved };
   });
 
 export const saveEqCache = createServerFn({ method: "POST" })
@@ -122,7 +150,7 @@ export const saveEqCache = createServerFn({ method: "POST" })
       const matchesJson = JSON.stringify(data.matches);
       await sql.query(
         `insert into rig_cache (cache_key, kind, query, matches) values ($1, 'eq', $2, $3::jsonb)
-         on conflict (cache_key) do nothing`,
+         on conflict (cache_key) do update set matches = excluded.matches, updated_at = now()`,
         [data.key, data.query, matchesJson],
       );
       return { saved: true as const };

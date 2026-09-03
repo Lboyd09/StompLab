@@ -395,9 +395,19 @@ export function StompUnit({
         )}
         {xl ? (
           <p className="hx-silk mt-3 text-center">
-            Vol on rear · far row is 4–6 · closest is 1–3 · MODE / TAP on the right
+            You stand here · closest row is 1–3 · far row is 4–6 · MODE / TAP on the right
           </p>
-        ) : null}
+        ) : layout === "podgo" ? (
+          <p className="hx-silk mt-3 text-center">Closest row 1–4 · far row 5–8 · FS8 is TAP / Tuner · EXP on the left</p>
+        ) : layout === "effects" ? (
+          <p className="hx-silk mt-3 text-center">Closest row 1–4 · far row 5–8 · scribble strips match HX Effects</p>
+        ) : layout === "floor" || layout === "lt" ? (
+          <p className="hx-silk mt-3 text-center">
+            You stand here · closest row 1–6 · far row 7–12 · MODE / TAP on the left
+          </p>
+        ) : (
+          <p className="hx-silk mt-3 text-center">Switches 1–3 left to right · Volume on the right · you stand here</p>
+        )}
       </div>
     </div>
   );

@@ -15,7 +15,7 @@ import {
   purchaseLooksPaid,
   subscriptionStatusIsActive,
 } from "./polar";
-import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan, type PlanInterval } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, normalizeEmail, yearMonth, type Plan, type PlanInterval, ADMIN_EMAIL } from "./plan";
 import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -25,9 +25,86 @@ export async function emailFor(userId: string): Promise<string | null> {
   try {
     const sql = await getSql();
     const rows = await sql<{ email: string | null }>`select email from "user" where id = ${userId} limit 1`;
-    return rows[0]?.email ?? null;
+    const raw = rows[0]?.email ?? null;
+    return raw ? normalizeEmail(raw) : null;
   } catch {
     return null;
+  }
+}
+
+/** Every Better Auth user id that shares this email (case-insensitive). */
+export async function siblingUserIds(userId: string, email: string | null): Promise<string[]> {
+  const ids = new Set<string>([userId]);
+  const em = normalizeEmail(email);
+  if (!em) return [...ids];
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ id: string }>(`select id from "user" where lower(email) = $1`, [em]);
+    for (const r of rows) {
+      if (r?.id) ids.add(r.id);
+    }
+  } catch {
+    /* ignore */
+  }
+  return [...ids];
+}
+
+async function countBuildsFor(ids: string[], month?: string): Promise<number> {
+  try {
+    const sql = await getSql();
+    if (month) {
+      const rows = await sql.query<{ n: number }>(
+        `select count(*)::int as n from build_events where user_id = any($1::text[]) and year_month = $2`,
+        [ids, month],
+      );
+      return Number(rows[0]?.n ?? 0);
+    }
+    const rows = await sql.query<{ n: number }>(
+      `select count(*)::int as n from build_events where user_id = any($1::text[])`,
+      [ids],
+    );
+    return Number(rows[0]?.n ?? 0);
+  } catch {
+    let n = 0;
+    try {
+      const sql = await getSql();
+      for (const id of ids) {
+        const rows = month
+          ? await sql<{ n: number }>`select count(*)::int as n from build_events where user_id = ${id} and year_month = ${month}`
+          : await sql<{ n: number }>`select count(*)::int as n from build_events where user_id = ${id}`;
+        n += Number(rows[0]?.n ?? 0);
+      }
+    } catch {
+      /* ignore */
+    }
+    return n;
+  }
+}
+
+async function entitlementForIds(ids: string[], email: string | null): Promise<EntRow | undefined> {
+  const sql = await getSql();
+  const em = normalizeEmail(email);
+  try {
+    const rows = await sql.query<EntRow>(
+      `select paid, paid_source, polar_order_id, polar_subscription_id, plan_interval, subscription_status, email
+       from entitlements
+       where user_id = any($1::text[]) ${em ? "or lower(email) = $2" : ""}
+       order by paid desc, updated_at desc
+       limit 8`,
+      em ? [ids, em] : [ids],
+    );
+    const polar = rows.find((r) => r.paid && String(r.paid_source ?? "").toLowerCase() === "polar");
+    return polar ?? rows[0];
+  } catch {
+    try {
+      const rows = await sql.query<EntRow>(
+        `select paid, paid_source, polar_order_id, email from entitlements where user_id = any($1::text[])`,
+        [ids],
+      );
+      return rows.find((r) => r.paid) ?? rows[0];
+    } catch {
+      return undefined;
+    }
   }
 }
 
@@ -195,49 +272,55 @@ async function paidVerifiedFor(userId: string, email: string | null, row: EntRow
 
 export async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const sql = await getSql();
-  const month = yearMonth();
-  let ent: EntRow[] = [];
+  const em = normalizeEmail(email);
+  const ids = await siblingUserIds(userId, em || email);
+  let ent: EntRow | undefined;
   try {
-    ent = await sql<EntRow>`
-      select paid, paid_source, polar_order_id, polar_subscription_id, plan_interval, subscription_status, email
-      from entitlements where user_id = ${userId} limit 1
-    `;
+    ent = await entitlementForIds(ids, em || email);
   } catch {
     try {
-      ent = await sql<EntRow>`
-        select paid, paid_source, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+      const rows = await sql<EntRow>`
+        select paid, paid_source, polar_order_id, polar_subscription_id, plan_interval, subscription_status, email
+        from entitlements where user_id = ${userId} limit 1
       `;
+      ent = rows[0];
     } catch {
-      ent = await sql<EntRow>`
-        select paid, polar_order_id, email from entitlements where user_id = ${userId} limit 1
-      `;
+      try {
+        const rows = await sql<EntRow>`
+          select paid, paid_source, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+        `;
+        ent = rows[0];
+      } catch {
+        try {
+          const rows = await sql<EntRow>`
+            select paid, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+          `;
+          ent = rows[0];
+        } catch {
+          ent = undefined;
+        }
+      }
     }
   }
-  const paid = await paidVerifiedFor(userId, email, ent[0]);
-  const lifetime = await sql<{ n: number }>`
-    select count(*)::int as n from build_events where user_id = ${userId}
-  `;
-  const monthly = await sql<{ n: number }>`
-    select count(*)::int as n from build_events where user_id = ${userId} and year_month = ${month}
-  `;
-  const intervalRaw = String(ent[0]?.plan_interval ?? "").trim().toLowerCase();
+  const paid = await paidVerifiedFor(userId, em || email, ent);
+  const lifetimeN = await countBuildsFor(ids);
+  const monthlyN = await countBuildsFor(ids, yearMonth());
+  const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
   const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
   return assemblePlan({
     userId,
-    email,
+    email: em || email,
     paid,
-    freeUsed: Number(lifetime[0]?.n ?? 0),
-    monthUsed: Number(monthly[0]?.n ?? 0),
+    freeUsed: lifetimeN,
+    monthUsed: monthlyN,
     planInterval,
-    subscriptionStatus: String(ent[0]?.subscription_status ?? ""),
+    subscriptionStatus: String(ent?.subscription_status ?? ""),
   });
 }
 
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Plan> => {
-    // Email comes ONLY from the user row for this session's userId.
-    // Never prefer a cached session email — that is how iCloud became admin.
     const email = await emailFor(context.userId);
     return loadPlan(context.userId, email);
   });
@@ -274,6 +357,7 @@ export async function grantPaid(opts: {
   const orderId = isRealPolarOrderId(opts.orderId) ? opts.orderId : `sub:${subId}`.slice(0, 80);
   const interval = opts.interval === "year" || opts.interval === "month" ? opts.interval : "";
   const status = (opts.subscriptionStatus || "active").slice(0, 32);
+  const email = normalizeEmail(opts.email) || opts.email;
   const sql = await getSql();
   try {
     await sql`
@@ -282,7 +366,7 @@ export async function grantPaid(opts: {
         polar_subscription_id, plan_interval, subscription_status, amount_cents, paid_at, updated_at
       )
       values (
-        ${opts.userId}, ${opts.email}, true, ${"polar"}, ${opts.customerId}, ${orderId},
+        ${opts.userId}, ${email}, true, ${"polar"}, ${opts.customerId}, ${orderId},
         ${subId}, ${interval}, ${status}, ${opts.amountCents}, now(), now()
       )
       on conflict (user_id) do update set
@@ -302,7 +386,7 @@ export async function grantPaid(opts: {
     try {
       await sql`
         insert into entitlements (user_id, email, paid, paid_source, polar_customer_id, polar_order_id, amount_cents, paid_at, updated_at)
-        values (${opts.userId}, ${opts.email}, true, ${"polar"}, ${opts.customerId}, ${orderId}, ${opts.amountCents}, now(), now())
+        values (${opts.userId}, ${email}, true, ${"polar"}, ${opts.customerId}, ${orderId}, ${opts.amountCents}, now(), now())
         on conflict (user_id) do update set
           paid = true,
           paid_source = 'polar',
@@ -316,7 +400,7 @@ export async function grantPaid(opts: {
     } catch {
       await sql`
         insert into entitlements (user_id, email, paid, polar_customer_id, polar_order_id, amount_cents, paid_at, updated_at)
-        values (${opts.userId}, ${opts.email}, true, ${opts.customerId}, ${orderId}, ${opts.amountCents}, now(), now())
+        values (${opts.userId}, ${email}, true, ${opts.customerId}, ${orderId}, ${opts.amountCents}, now(), now())
         on conflict (user_id) do update set
           paid = true,
           email = excluded.email,
@@ -335,7 +419,7 @@ export async function grantPaid(opts: {
        on conflict do nothing`,
       [
         opts.userId,
-        opts.email,
+        email,
         orderId,
         opts.checkoutId,
         opts.amountCents,
@@ -353,9 +437,10 @@ export async function grantPaidByEmail(email: string, order: ReturnType<typeof e
   if (!grantOk) return false;
   if (!isRealPolarOrderId(order.orderId) && !isRealPolarSubscriptionId(order.subscriptionId)) return false;
   const sql = await getSql();
+  const em = normalizeEmail(email) || email.trim().toLowerCase();
   let userId = order.userId;
-  if (!userId && email) {
-    const rows = await sql<{ id: string }>`select id from "user" where lower(email) = ${email} limit 1`;
+  if (!userId && em) {
+    const rows = await sql<{ id: string }>`select id from "user" where lower(email) = ${em} limit 1`;
     userId = rows[0]?.id ?? "";
   }
   if (!userId) {
@@ -364,7 +449,7 @@ export async function grantPaidByEmail(email: string, order: ReturnType<typeof e
        values ($1, $2, $3, $4, $5, $6::jsonb)`,
       [
         "unmatched",
-        email,
+        em,
         order.orderId || order.subscriptionId,
         order.checkoutId,
         order.amount,
@@ -375,7 +460,7 @@ export async function grantPaidByEmail(email: string, order: ReturnType<typeof e
   }
   await grantPaid({
     userId,
-    email,
+    email: em,
     orderId: order.orderId,
     checkoutId: order.checkoutId,
     amountCents: order.amount,
@@ -824,16 +909,20 @@ async function loadAdminDashboard(empty: {
     let revenueCents = 0;
     let affiliateClicks: { vendor: string; n: number }[] = [];
     try {
-      const u = await sql<{ n: number }>`select count(*)::int as n from "user"`;
+      const u = await sql<{ n: number }>`
+        select count(*)::int as n from "user"
+        where lower(coalesce(email, '')) <> ${ADMIN_EMAIL}
+      `;
       userCount = Number(u[0]?.n ?? 0);
     } catch {
-      userCount = accounts.length;
+      userCount = accounts.filter((a) => !isOwnerAccount(a.email)).length;
     }
     try {
       const s = await sql<{ n: number }>`
         select count(*)::int as n from entitlements
         where paid = true
           and coalesce(paid_source, '') <> 'admin'
+          and lower(coalesce(email, '')) <> ${ADMIN_EMAIL}
           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
       `;
       subscribedCount = Number(s[0]?.n ?? 0);
@@ -841,11 +930,15 @@ async function loadAdminDashboard(empty: {
       try {
         const s = await sql<{ n: number }>`
           select count(*)::int as n from entitlements
-          where paid = true and coalesce(paid_source, '') <> 'admin'
+          where paid = true
+            and coalesce(paid_source, '') <> 'admin'
+            and lower(coalesce(email, '')) <> ${ADMIN_EMAIL}
         `;
         subscribedCount = Number(s[0]?.n ?? 0);
       } catch {
-        subscribedCount = entitlements.filter((e) => e.paid && e.paid_source !== "admin").length;
+        subscribedCount = entitlements.filter(
+          (e) => e.paid && e.paid_source !== "admin" && !isOwnerAccount(e.email),
+        ).length;
       }
     }
     try {
@@ -854,10 +947,25 @@ async function loadAdminDashboard(empty: {
         from purchases
         where amount_cents > 0
           and user_id not in ('unmatched', 'revoked')
+          and lower(coalesce(email, '')) <> ${ADMIN_EMAIL}
+          and user_id not in (select id from "user" where lower(email) = ${ADMIN_EMAIL})
       `;
       revenueCents = Number(r[0]?.n ?? 0);
     } catch {
-      revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
+      try {
+        const r = await sql<{ n: number }>`
+          select coalesce(sum(amount_cents), 0)::int as n
+          from purchases
+          where amount_cents > 0
+            and user_id not in ('unmatched', 'revoked')
+            and lower(coalesce(email, '')) <> ${ADMIN_EMAIL}
+        `;
+        revenueCents = Number(r[0]?.n ?? 0);
+      } catch {
+        revenueCents = purchases
+          .filter((p) => !isOwnerAccount(p.email))
+          .reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
+      }
     }
     try {
       affiliateClicks = await sql<{ vendor: string; n: number }>`
@@ -866,6 +974,8 @@ async function loadAdminDashboard(empty: {
     } catch {
       affiliateClicks = [];
     }
+    purchases = purchases.filter((p) => !isOwnerAccount(p.email));
+    usage = usage.filter((u) => !isOwnerAccount(u.email));
     return {
       purchases,
       usage,
@@ -925,11 +1035,27 @@ export const pullMyPresets = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     try {
       const sql = await getSql();
-      const rows = await sql<{ presets: Preset[] }>`
-        select presets from user_presets where user_id = ${context.userId} limit 1
-      `;
-      const presets = Array.isArray(rows[0]?.presets) ? rows[0].presets : [];
-      return { presets };
+      const email = await emailFor(context.userId);
+      const ids = await siblingUserIds(context.userId, email);
+      let rows: { presets: Preset[] }[] = [];
+      try {
+        rows = await sql.query<{ presets: Preset[] }>(
+          `select presets from user_presets where user_id = any($1::text[])`,
+          [ids],
+        );
+      } catch {
+        rows = await sql<{ presets: Preset[] }>`
+          select presets from user_presets where user_id = ${context.userId} limit 1
+        `;
+      }
+      const byId = new Map<string, Preset>();
+      for (const row of rows) {
+        const list = Array.isArray(row?.presets) ? row.presets : [];
+        for (const p of list) {
+          if (p && typeof p === "object" && p.id && !byId.has(p.id)) byId.set(p.id, p);
+        }
+      }
+      return { presets: [...byId.values()] };
     } catch {
       return { presets: [] as Preset[] };
     }

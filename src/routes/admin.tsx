@@ -114,16 +114,16 @@ function AdminPage() {
       {error && !dash ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account, including yours" />
+        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
         <Stat
           label="Subscribed"
           value={String(dash?.subscribedCount ?? "—")}
-          hint="Polar-paid rows (admin grant is not counted)"
+          hint="Polar-paid customers only — your admin grant and Polar tests are excluded"
         />
         <Stat
           label="Subscription revenue"
           value={dash ? formatUsd((dash.revenueCents ?? 0) / 100) : "—"}
-          hint="All Polar orders with money, including your tests"
+          hint="Customer Polar orders only. Your tests and admin grant are excluded — $0 until someone else pays."
         />
         <Stat
           label="Affiliate clicks"

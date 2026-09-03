@@ -3,6 +3,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { suggestSongsFn, type SongHit } from "@/lib/songs";
 
+function hitKey(h: Pick<SongHit, "song" | "artist">) {
+  return `${h.song.trim().toLowerCase()}|${h.artist.trim().toLowerCase()}`;
+}
+
 export function SongTypeahead({
   song,
   artist,
@@ -22,60 +26,79 @@ export function SongTypeahead({
   const [open, setOpen] = useState(false);
   const box = useRef<HTMLDivElement>(null);
   const ignoreBlur = useRef(false);
+  const picked = useRef("");
   const lastPick = useRef(0);
 
   function pick(hit: SongHit) {
     const now = Date.now();
-    if (now - lastPick.current < 400) return;
+    if (now - lastPick.current < 250) return;
     lastPick.current = now;
     ignoreBlur.current = true;
-    onPick(hit);
+    picked.current = hitKey(hit);
+    setHits([]);
     setOpen(false);
+    onPick(hit);
     window.setTimeout(() => {
       ignoreBlur.current = false;
-    }, 500);
+    }, 600);
   }
 
   useEffect(() => {
     const q = song.trim();
     if (q.length < 2) {
       setHits([]);
+      setOpen(false);
+      return;
+    }
+    if (picked.current && picked.current === hitKey({ song, artist })) {
+      setOpen(false);
       return;
     }
     const handle = window.setTimeout(() => {
       void suggestSongsFn({ data: { q, instrument } })
         .then((rows) => {
+          if (picked.current && picked.current === hitKey({ song, artist })) {
+            setOpen(false);
+            return;
+          }
           setHits(rows);
           setOpen(true);
         })
         .catch(() => setHits([]));
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [song, instrument]);
+  }, [song, artist, instrument]);
 
   return (
-    <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+    <div className="grid gap-3 sm:grid-cols-[1fr_180px]" data-tour="song">
       <div className="relative space-y-1.5" ref={box}>
         <Label htmlFor="song">Song</Label>
         <Input
           id="song"
           value={song}
           onChange={(e) => {
+            picked.current = "";
             onSong(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => hits.length && setOpen(true)}
+          onFocus={() => hits.length && !picked.current && setOpen(true)}
           onBlur={() => {
             window.setTimeout(() => {
               if (!ignoreBlur.current) setOpen(false);
-            }, 0);
+            }, 220);
           }}
           placeholder="Smells Like Teen Spirit"
           required
           autoComplete="off"
         />
         {open && hits.length ? (
-          <ul className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg">
+          <ul
+            className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg"
+            onMouseDown={(e) => e.preventDefault()}
+            onPointerDown={() => {
+              ignoreBlur.current = true;
+            }}
+          >
             {hits.map((h) => (
               <li key={h.id}>
                 <button
@@ -83,10 +106,7 @@ export function SongTypeahead({
                   className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-secondary"
                   onPointerDown={(e) => {
                     e.preventDefault();
-                    pick(h);
-                  }}
-                  onClick={(e) => {
-                    e.preventDefault();
+                    e.stopPropagation();
                     pick(h);
                   }}
                 >

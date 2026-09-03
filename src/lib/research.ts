@@ -8,7 +8,8 @@ import { STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
-import { eqCacheKey, lookupCacheRaw, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
+import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
+import { standingRulesBlock } from "./research-lessons";
 import { geminiJson } from "./gemini";
 import {
   GearSchema,
@@ -66,7 +67,7 @@ async function standingFeedbackLessons(): Promise<string> {
     const rows = await sql<{ closer_tweaks: string; want_preset: string; message: string; rating: number | null }>`
       select closer_tweaks, want_preset, message, rating
       from feedback
-      where kind in ('preset', 'revise')
+      where kind in ('preset', 'revise', 'site')
       order by created_at desc
       limit 40
     `;
@@ -74,17 +75,15 @@ async function standingFeedbackLessons(): Promise<string> {
     for (const r of rows) {
       const tweak = (r.closer_tweaks || "").trim();
       const want = (r.want_preset || "").trim();
+      const msg = (r.message || "").trim();
       if (typeof r.rating === "number" && r.rating <= 2 && want.length >= 8) bits.push(want);
       else if (tweak.length >= 8) bits.push(tweak);
       else if (want.length >= 8) bits.push(want);
+      else if (msg.length >= 12) bits.push(msg);
     }
-    const unique = [...new Set(bits)].slice(0, 8);
-    if (!unique.length) return "";
-    return `\nStanding player notes (general rules for future rigs — NEVER retune a named song from this list):\n${unique
-      .map((s) => `- ${s.slice(0, 160)}`)
-      .join("\n")}`;
+    return standingRulesBlock(bits);
   } catch {
-    return "";
+    return standingRulesBlock([]);
   }
 }
 
@@ -237,16 +236,14 @@ ${jsonSchemaHint()}`;
         userGear: data.userGear,
       });
       await recordBuild(context.userId, "song", data.song.trim());
-      void saveSongCache({
-        data: {
-          key,
-          song: data.song.trim(),
-          artist: (data.artist ?? "").trim(),
-          instrument: data.instrument,
-          stompModel: data.stompModel,
-          preset: publicPreset(preset),
-        },
-      }).catch(() => undefined);
+      await persistSongCache({
+        key,
+        song: data.song.trim(),
+        artist: (data.artist ?? "").trim(),
+        instrument: data.instrument,
+        stompModel: data.stompModel,
+        preset: publicPreset(preset),
+      });
       return { ok: true, preset, source: "gemini" };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Research failed";
@@ -304,16 +301,14 @@ ${jsonSchemaHint()}`;
         userGear: data.userGear,
       });
       await recordBuild(context.userId, "create", preset.name);
-      void saveSongCache({
-        data: {
-          key,
-          song: preset.name,
-          artist: "custom",
-          instrument: data.instrument,
-          stompModel: data.stompModel,
-          preset: publicPreset(preset),
-        },
-      }).catch(() => undefined);
+      await persistSongCache({
+        key,
+        song: preset.name,
+        artist: "custom",
+        instrument: data.instrument,
+        stompModel: data.stompModel,
+        preset: publicPreset(preset),
+      });
       return { ok: true, preset, source: "gemini" };
     } catch (err) {
       const message = err instanceof Error ? err.message : "Could not build that sound";

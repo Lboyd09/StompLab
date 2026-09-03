@@ -24,7 +24,7 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
     return "That email already has an account. Sign in instead.";
   }
   if (m.includes("invalid email or password") || m.includes("invalid password") || m.includes("credential")) {
-    return "Email or password didn't match. Check both, or create a new account.";
+    return "Email or password didn't match. Use the same email you signed up with — creating a second account starts over.";
   }
   if (m.includes("password") && (m.includes("8") || m.includes("least") || m.includes("short"))) {
     return "Password needs at least 8 characters.";
@@ -86,9 +86,24 @@ function LoginPage() {
           name: name.trim() || trimmed.split("@")[0] || "Player",
         });
         if (err) {
-          const msg = friendlyAuthError(err.message || "", "up");
-          setError(msg);
-          if (/already/i.test(err.message || "") || /already/i.test(msg)) setMode("in");
+          if (/already/i.test(err.message || "")) {
+            const { error: signErr } = await authClient.signIn.email({
+              email: trimmed,
+              password,
+              rememberMe: true,
+            });
+            if (!signErr) {
+              const session = await authClient.getSession().catch(() => null);
+              if (session?.data?.user) {
+                await goAfterAuth();
+                return;
+              }
+            }
+            setMode("in");
+            setError("That email already has an account. Sign in with the password you set.");
+            return;
+          }
+          setError(friendlyAuthError(err.message || "", "up"));
           return;
         }
       }
@@ -137,8 +152,9 @@ function LoginPage() {
             {mode === "in" ? "Sign in" : "Create account"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Email and a password. That's it — no Google, no X. Unlock sticks to this email after
-            checkout.
+            Email and a password. That's it — no Google, no X. Unlock and admin
+            stick to this exact email after you sign in, even if you used a
+            different device. Always sign in (don't create a second account).
           </p>
         </div>
 

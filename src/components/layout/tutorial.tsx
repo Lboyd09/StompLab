@@ -2,7 +2,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v3";
+export const TUTORIAL_KEY = "stomplab.tutorial.v4";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type Step = {
@@ -18,28 +18,28 @@ type Step = {
 const STEPS: Step[] = [
   {
     id: "hello",
-    title: "Walk the real Lab",
-    body: "Seven taps. You use the same controls as after the tour. Three demos always work — no account.",
-  },
-  {
-    id: "search",
-    title: "Find a recording",
-    body: "Tap search. Type two letters of a title, then pick the artwork. That is the exact album we research — not a generic cover.",
-    target: "[data-tour='search']",
-    href: "/",
-    waitClick: true,
+    title: "Song in. File out.",
+    body: "Stomp Lab researches a recording and builds a starting preset for the Line 6 box you actually own. You leave with a .hlx or .pgp you import in HX Edit or POD Go Edit — not a playlist of other people's tones.",
   },
   {
     id: "unit",
-    title: "Pick the box you own",
-    body: "Guitar or bass, then the unit in the header. Stomp, XL, Helix, HX Effects, or POD Go. The replica and the file follow this.",
+    title: "Pick your box first",
+    body: "Guitar or bass, then the unit in the header: Stomp, XL, Helix, HX Effects, or POD Go. The replica, the footswitch numbers, and the download all follow this. Wrong unit = wrong file.",
     target: "[data-tour='unit']",
     href: "/",
   },
   {
+    id: "song",
+    title: "One tap on the artwork",
+    body: "Type two letters of the title. Tap the album art once — that is the exact recording we research. Then hit Build this preset. Demos below skip this and always work.",
+    target: "[data-tour='song']",
+    href: "/",
+    waitClick: true,
+  },
+  {
     id: "demo",
-    title: "Open Enter Sandman",
-    body: "Tap this demo card. Always free. You land on the replica with the chain already loaded.",
+    title: "Or open a free demo",
+    body: "Enter Sandman, Teen Spirit, and Numb are always free — no account. Tap the card. You land looking down at the unit with the chain loaded.",
     target: "[data-tour='demo-sandman']",
     href: "/",
     waitClick: true,
@@ -47,15 +47,15 @@ const STEPS: Step[] = [
   {
     id: "replica",
     title: "This is the box, looking down",
-    body: "The numbers on the caps are the ones HX Edit uses. On XL, 4–6 are the far row and 1–3 are closest to you. MODE and TAP sit where they do on the hardware.",
+    body: "The numbers on the caps are the silkscreen / HX Edit numbers. Closest row to you is 1–3 (Stomp XL) or 1–4 (POD Go / HX Effects). Far row is 4–6 or 5–8. MODE and TAP sit where they do on the hardware.",
     target: "[data-tour='replica']",
     href: "/preset/$id",
     presetId: "featured-sandman",
   },
   {
     id: "switch",
-    title: "Tap a numbered switch",
-    body: "Tap the highlighted cap. Then you can assign a song section or an effect. Intro / verse / solo live on snapshots.",
+    title: "Tap switch 1 — that's the intro",
+    body: "Snapshot 1 is the recorded opening. Verse / chorus / solo live on the next numbered switches. Assign a section or bypass an effect from here, then download.",
     target: "[data-tour='replica'] .hx-fs-cap",
     href: "/preset/$id",
     presetId: "featured-sandman",
@@ -63,8 +63,8 @@ const STEPS: Step[] = [
   },
   {
     id: "download",
-    title: "Get it on the box",
-    body: "Tap Download. USB to a computer. HX Edit (or POD Go Edit) → File → Import. Do not drag it onto a setlist. PAGE until SNAP or STOMP matches.",
+    title: "Get it onto the hardware",
+    body: "Tap Download. USB to a computer. HX Edit or POD Go Edit → File → Import. Do not drag the file onto a setlist. PAGE until SNAP or STOMP matches. Three custom songs are free after you sign in; demos never count.",
     target: "[data-tour='download']",
     href: "/preset/$id",
     presetId: "featured-sandman",
@@ -232,13 +232,13 @@ export function Tutorial({
           ))}
         </div>
         <p className="mt-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Walkthrough · {step + 1} / {STEPS.length}
+          First session · {step + 1} / {STEPS.length}
         </p>
         <h2 className="mt-2 font-display text-xl font-semibold tracking-tight">{current.title}</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{current.body}</p>
         {current.waitClick && rect ? (
           <p className="mt-3 rounded-md bg-secondary px-3 py-2 text-xs text-primary">
-            Tap the highlighted control to continue.
+            Tap the highlighted control once to continue.
           </p>
         ) : null}
         <div className="mt-4 flex flex-wrap items-center gap-2">
