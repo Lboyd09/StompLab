@@ -62,6 +62,9 @@ export function PresetWorkspace({
   const displayed = withSnapshot(preset, activeSnapshot);
   const exportMode = fsMode === "preset" ? "stomp" : fsMode;
   const original = featuredOriginal(preset.id);
+  const isPodGo = preset.stompModel === "pod-go";
+  const editor = isPodGo ? "POD Go Edit" : "HX Edit";
+  const exportExt = isPodGo ? "pgp" : "hlx";
   const canDownload = planPending
     ? isDemoId(preset.id) || !isFeaturedKnownId(preset.id)
     : canDownloadPreset(preset.id, plan);
@@ -163,13 +166,12 @@ export function PresetWorkspace({
       return;
     }
     const filename = hlxFilename(preset);
-    const editor = preset.stompModel === "pod-go" ? "POD Go Edit" : "HX Edit";
     if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
     toast.success(
       ok
         ? `Saved ${filename}. In ${editor}: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
-        : `Download was blocked. Use Copy JSON and save it as a ${filename.endsWith(".pgp") ? ".pgp" : ".hlx"} file.`,
+        : `Download was blocked. Use Copy JSON and save it as a ${exportExt} file.`,
     );
     if (ok) setAskFeedback(true);
   }
@@ -215,9 +217,9 @@ export function PresetWorkspace({
     setCopying(true);
     try {
       await copyHlx(preset, { fsMode: exportMode });
-      toast.success("HX Edit JSON copied. Paste into a text file named .hlx and import it.");
+      toast.success(`${editor} JSON copied. Paste into a text file named .${exportExt} and import it.`);
     } catch {
-      toast.error("Could not copy. Try Download .hlx instead.");
+      toast.error(`Could not copy. Try Download .${exportExt} instead.`);
     } finally {
       setCopying(false);
     }
@@ -260,7 +262,7 @@ export function PresetWorkspace({
                   <div className="flex flex-wrap justify-end gap-2">
                     <Button type="button" onClick={onDownload} data-tour="download">
                       {canExportHlx(preset.stompModel)
-                        ? `Download .${preset.stompModel === "pod-go" ? "pgp" : "hlx"}`
+                        ? `Download .${exportExt}`
                         : "Export unavailable"}
                     </Button>
                     <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
@@ -268,14 +270,14 @@ export function PresetWorkspace({
                     </Button>
                   </div>
                   <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {preset.stompModel === "pod-go" ? "POD Go Edit" : "HX Edit"} · File · Import ·{" "}
+                    {editor} · File · Import ·{" "}
                     {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
                   </p>
                 </>
               ) : (
                 <>
                   <Button asChild>
-                    <Link to="/upgrade">Unlock .hlx download</Link>
+                    <Link to="/upgrade">Unlock .{exportExt} download</Link>
                   </Button>
                   <p className="max-w-[16rem] text-right text-[10px] leading-relaxed text-muted-foreground">
                     {isDemoId(preset.id)
@@ -291,7 +293,7 @@ export function PresetWorkspace({
             <p className="text-sm text-muted-foreground">
               {device.name} does not export a preset file. The chain below is the map — copy it by hand.
             </p>
-          ) : preset.stompModel === "pod-go" ? (
+          ) : isPodGo ? (
             <p className="text-sm text-muted-foreground">
               POD Go Edit imports .pgp JSON. File → Import. Helix .hlx will not load on this unit.
             </p>
@@ -505,7 +507,7 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">1.</span>
                 <span>
-                  USB to a computer. Open HX Edit. File → Import the .hlx. Firmware 3.80 or newer. Do not
+                  USB to a computer. Open {editor}. File → Import the .{exportExt}. Firmware 3.80 or newer. Do not
                   drag the file onto a setlist.
                 </span>
               </li>

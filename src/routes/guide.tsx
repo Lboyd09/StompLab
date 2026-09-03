@@ -72,8 +72,13 @@ function GuidePage() {
 
       <Section title="Get it onto the Stomp">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>USB from the Stomp to a computer. Open HX Edit (firmware 3.80 or newer).</li>
-          <li>File → Import. Pick the .hlx. Do not drag it onto a setlist.</li>
+          <li>
+            USB from the unit to a computer. Open HX Edit for Helix family, or POD Go Edit for POD Go
+            (firmware 3.80 or newer).
+          </li>
+          <li>
+            File → Import. Pick the .hlx (Helix / HX) or .pgp (POD Go). Do not drag it onto a setlist.
+          </li>
           <li>Press PAGE on the unit until SNAP or STOMP matches what you downloaded.</li>
           <li>
             Play. Switch 1 is top-left. If a snapshot does nothing, you are still in Stomp mode — PAGE
