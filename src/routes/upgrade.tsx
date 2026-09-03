@@ -80,8 +80,8 @@ function UpgradePage() {
         setError(res.error);
         return;
       }
-      if (!res.url || !/^https?:\/\//.test(res.url)) {
-        setError("Checkout did not return a payment page. Check Polar products on the host.");
+      if (!res.url || !/^https?:\/\//i.test(res.url)) {
+        setError("Polar did not return a checkout page. Check POLAR_ACCESS_TOKEN and the product IDs on the host.");
         return;
       }
       window.location.href = res.url;
@@ -89,6 +89,7 @@ function UpgradePage() {
       const msg = err instanceof Error ? err.message : "Checkout failed.";
       if (/unauthorized/i.test(msg)) {
         await navigate({ to: "/login", search: { next: "/upgrade" } });
+        setError("Sign in again, then tap Subscribe. Polar never sees a guest checkout.");
         return;
       }
       setError(msg);

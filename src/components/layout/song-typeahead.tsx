@@ -24,16 +24,16 @@ export function SongTypeahead({
   const ignoreBlur = useRef(false);
   const lastPick = useRef(0);
 
-  function pick(h: SongHit) {
+  function pick(hit: SongHit) {
     const now = Date.now();
     if (now - lastPick.current < 400) return;
     lastPick.current = now;
     ignoreBlur.current = true;
-    onPick(h);
+    onPick(hit);
     setOpen(false);
     window.setTimeout(() => {
       ignoreBlur.current = false;
-    }, 400);
+    }, 500);
   }
 
   useEffect(() => {
@@ -65,11 +65,11 @@ export function SongTypeahead({
             setOpen(true);
           }}
           onFocus={() => hits.length && setOpen(true)}
-          onBlur={() =>
+          onBlur={() => {
             window.setTimeout(() => {
               if (!ignoreBlur.current) setOpen(false);
-            }, 0)
-          }
+            }, 0);
+          }}
           placeholder="Smells Like Teen Spirit"
           required
           autoComplete="off"

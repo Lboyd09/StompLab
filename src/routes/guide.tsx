@@ -98,7 +98,7 @@ function GuidePage() {
       <Section title="Catalog">
         <p>
           Every HX model, filtered by guitar or bass from the header. Find equivalent maps a real
-          pedal (TS808, Klon, SVT) to the Line 6 name. Shop links go to Amazon or Sweetwater for the
+          pedal (TS808, Klon, SVT) to the Line 6 name. Shop links go to Amazon for the
           original gear.
         </p>
       </Section>
@@ -107,7 +107,7 @@ function GuidePage() {
         <p>
           HX Stomp and HX Stomp XL are the battle-tested .hlx exports. Helix Floor, Helix LT, and HX
           Effects use documented device IDs and the same HX model names — HX Effects never includes
-          amp or cab. POD Go uses .podgp, not .hlx, so we show the chain and skip the fake file.
+          amp or cab. POD Go exports a .pgp for POD Go Edit (not a Helix .hlx).
         </p>
       </Section>
 
@@ -124,7 +124,7 @@ function GuidePage() {
           recordings. Song titles identify the recording we researched.
         </p>
         <p>
-          Some links to Sweetwater and Amazon are affiliate links. If you buy through them, Stomp Lab
+          Some links to Amazon are affiliate links. If you buy through them, Stomp Lab
           may earn a commission at no extra cost to you. As an Amazon Associate we earn from
           qualifying purchases.
         </p>

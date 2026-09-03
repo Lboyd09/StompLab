@@ -1,7 +1,6 @@
 import { useLayoutEffect, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { STOMP_DEVICES } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { StompModelId } from "@/data/types";
@@ -13,23 +12,8 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
-export const ONBOARD_KEY = "stomplab.onboarded.v2";
+export const ONBOARD_KEY = "stomplab.onboarded.v3";
 const PROFILE_KEY = "stomplab.profile.v1";
-
-const GENRES = [
-  "Rock",
-  "Metal",
-  "Blues",
-  "Indie",
-  "Punk",
-  "Funk",
-  "Country",
-  "Worship",
-  "Jazz",
-  "Pop",
-  "Shoegaze",
-  "Ambient",
-] as const;
 
 type ProfileDraft = {
   displayName: string;
@@ -138,10 +122,10 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
   const demos = FEATURED.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
 
   return (
-    <div className="fixed inset-0 z-[70] grid place-items-end bg-background/80 p-4 backdrop-blur-sm sm:place-items-center">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
+    <div className="fixed inset-0 z-[70] grid place-items-end bg-background/85 p-4 backdrop-blur-md sm:place-items-center">
+      <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-2xl">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-          Welcome · {step + 1} / 5
+          Welcome · {step + 1} / 3
         </p>
 
         {step === 0 ? (
@@ -157,7 +141,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
                   type="button"
                   onClick={() => patch({ instrument: id })}
                   className={cn(
-                    "rounded-lg border px-4 py-5 text-left",
+                    "rounded-xl border px-4 py-5 text-left transition-colors",
                     draft.instrument === id
                       ? "border-primary bg-secondary text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground",
@@ -177,7 +161,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
           <>
             <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Which unit?</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              The chain and the file follow this. POD Go shows the chain only — it does not use .hlx.
+              The chain and the file follow this. POD Go exports .pgp for POD Go Edit — not a Helix .hlx.
             </p>
             <div className="mt-5 grid max-h-72 gap-2 overflow-y-auto">
               {STOMP_DEVICES.map((d) => (
@@ -186,7 +170,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
                   type="button"
                   onClick={() => patch({ stompModel: d.id })}
                   className={cn(
-                    "rounded-lg border px-4 py-3 text-left",
+                    "rounded-xl border px-4 py-3 text-left transition-colors",
                     draft.stompModel === d.id
                       ? "border-primary bg-secondary text-foreground"
                       : "border-border text-muted-foreground hover:text-foreground",
@@ -195,7 +179,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
                   <span className="block font-medium">{d.name}</span>
                   <span className="block text-xs">
                     {d.footswitches} switches · {d.snapshots} snapshots
-                    {d.exportFormat === "none" ? " · no .hlx" : ""}
+                    {d.exportFormat === "pgp" ? " · .pgp" : d.exportFormat === "none" ? " · no file" : " · .hlx"}
                     {!d.hasAmpCab ? " · no amp/cab" : ""}
                   </span>
                 </button>
@@ -206,59 +190,9 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
 
         {step === 2 ? (
           <>
-            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">What do you listen to?</h2>
+            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">See it on the replica</h2>
             <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Pick a few. This helps us feature the right starting points — skip if you want.
-            </p>
-            <div className="mt-5 flex flex-wrap gap-2">
-              {GENRES.map((g) => {
-                const on = draft.genres.includes(g);
-                return (
-                  <button
-                    key={g}
-                    type="button"
-                    onClick={() =>
-                      patch({
-                        genres: on ? draft.genres.filter((x) => x !== g) : [...draft.genres, g],
-                      })
-                    }
-                    className={cn(
-                      "h-9 rounded-full border px-3 text-xs font-medium",
-                      on
-                        ? "border-primary bg-primary text-primary-foreground"
-                        : "border-border text-muted-foreground hover:text-foreground",
-                    )}
-                  >
-                    {g}
-                  </button>
-                );
-              })}
-            </div>
-          </>
-        ) : null}
-
-        {step === 3 ? (
-          <>
-            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">What should we call you?</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Optional. Shows on your account. You can leave it blank.
-            </p>
-            <Input
-              className="mt-5"
-              value={draft.displayName}
-              onChange={(e) => patch({ displayName: e.target.value })}
-              placeholder="Name"
-              autoComplete="nickname"
-              maxLength={80}
-            />
-          </>
-        ) : null}
-
-        {step === 4 ? (
-          <>
-            <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">Hear it on the replica</h2>
-            <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-              Open a demo. No account. See the song on the unit, then download the .hlx. That’s the Lab.
+              Next is a short walkthrough on the real Lab — not screenshots. Or jump straight into a demo.
             </p>
             <div className="mt-5 grid gap-2">
               {demos.map((p) => (
@@ -279,7 +213,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
         ) : null}
 
         <div className="mt-5 flex flex-wrap items-center gap-2">
-          {step < 4 ? (
+          {step < 2 ? (
             <Button
               type="button"
               onClick={() => {
@@ -292,7 +226,7 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
             </Button>
           ) : (
             <Button type="button" variant="secondary" onClick={() => finish()}>
-              I’ll look around first
+              Start the walkthrough
             </Button>
           )}
           {step > 0 ? (

@@ -10,7 +10,7 @@ describe("affiliate urls", () => {
     assert.match(url, /tag=stomplab-20/);
     assert.match(url, /linkCode=ll2/);
   });
-  it("builds a Sweetwater search with the campaign id", () => {
+  it("still builds a Sweetwater URL but the shop UI does not use it", () => {
     const url = sweetwaterSearchUrl("Ibanez TS808", "abc123");
     assert.match(url, /sweetwater\.com/);
     assert.match(url, /utm_campaign=abc123/);

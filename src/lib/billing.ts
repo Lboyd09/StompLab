@@ -16,9 +16,10 @@ import {
   subscriptionStatusIsActive,
 } from "./polar";
 import { assemblePlan, emptyPlan, isAdminEmail, yearMonth, type Plan, type PlanInterval } from "./plan";
-import { amazonAssociateTag, sweetwaterAffiliateId } from "./affiliate";
+import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
+
 
 export async function emailFor(userId: string): Promise<string | null> {
   try {
@@ -28,6 +29,33 @@ export async function emailFor(userId: string): Promise<string | null> {
   } catch {
     return null;
   }
+}
+
+async function checkoutSuccessOrigin(): Promise<string> {
+  const fallback = (
+    process.env.POLAR_SUCCESS_ORIGIN ??
+    process.env.APP_ORIGIN ??
+    "https://stomplab.vercel.app"
+  ).replace(/\/$/, "");
+  try {
+    const { getRequest } = await import("@tanstack/react-start/server");
+    const req = getRequest();
+    const host = (req?.headers.get("x-forwarded-host") || req?.headers.get("host") || "")
+      .split(",")[0]
+      .trim();
+    const hostname = host.replace(/:\d+$/, "");
+    const proto = (req?.headers.get("x-forwarded-proto") || "https").split(",")[0].trim() || "https";
+    if (
+      hostname &&
+      /(?:^|\.)stomplab\./i.test(hostname) &&
+      !/localhost|127\.0\.0\.1|0\.0\.0\.0/.test(hostname)
+    ) {
+      return `${proto}://${host.replace(/\/$/, "")}`;
+    }
+  } catch {
+    /* preview / no request */
+  }
+  return fallback;
 }
 
 type EntRow = {
@@ -435,15 +463,12 @@ export const startCheckout = createServerFn({ method: "POST" })
     if (plan.paid) {
       return { ok: false as const, error: "This account is already subscribed." };
     }
-    const origin =
-      process.env.POLAR_SUCCESS_ORIGIN ??
-      process.env.APP_ORIGIN ??
-      "https://stomplab.vercel.app";
+    const origin = await checkoutSuccessOrigin();
     return createPolarCheckout({
       email,
       userId: context.userId,
       interval: data.interval,
-      successUrl: `${origin.replace(/\/$/, "")}/upgrade?checkout_id={CHECKOUT_ID}`,
+      successUrl: `${origin}/upgrade?checkout_id={CHECKOUT_ID}`,
     });
   });
 
@@ -520,76 +545,201 @@ export const adminDashboard = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId);
+    const empty = {
+      purchases: [] as {
+        created_at: string;
+        email: string;
+        polar_order_id: string;
+        polar_checkout_id: string;
+        amount_cents: number;
+      }[],
+      usage: [] as { user_id: string; email: string; year_month: string; n: number }[],
+      failures: [] as { created_at: string; song: string; artist: string; error: string }[],
+      cache: [] as {
+        cache_key: string;
+        song: string;
+        artist: string;
+        instrument: string;
+        stomp_model: string;
+        hit_count: number;
+        summary: string;
+      }[],
+      feedback: [] as {
+        created_at: string;
+        email: string;
+        kind: string;
+        song: string;
+        message: string;
+        rating: number | null;
+        closer_tweaks: string;
+        want_preset: string;
+        want_app: string;
+      }[],
+      entitlements: [] as {
+        user_id: string;
+        email: string;
+        paid: boolean;
+        paid_source: string;
+        polar_order_id: string;
+      }[],
+      accounts: [] as {
+        id: string;
+        email: string;
+        name: string;
+        created_at: string;
+        paid: boolean;
+        subscription_status: string;
+        plan_interval: string;
+        builds: number;
+      }[],
+      userCount: 0,
+      subscribedCount: 0,
+      revenueCents: 0,
+      affiliateClicks: [] as { vendor: string; n: number }[],
+      polarReady: polarConfigured(),
+      amazonReady: Boolean(amazonAssociateTag()),
+    };
+    try {
+      return await loadAdminDashboard(empty);
+    } catch {
+      return empty;
+    }
+  });
+
+async function loadAdminDashboard(empty: {
+  purchases: {
+    created_at: string;
+    email: string;
+    polar_order_id: string;
+    polar_checkout_id: string;
+    amount_cents: number;
+  }[];
+  usage: { user_id: string; email: string; year_month: string; n: number }[];
+  failures: { created_at: string; song: string; artist: string; error: string }[];
+  cache: {
+    cache_key: string;
+    song: string;
+    artist: string;
+    instrument: string;
+    stomp_model: string;
+    hit_count: number;
+    summary: string;
+  }[];
+  feedback: {
+    created_at: string;
+    email: string;
+    kind: string;
+    song: string;
+    message: string;
+    rating: number | null;
+    closer_tweaks: string;
+    want_preset: string;
+    want_app: string;
+  }[];
+  entitlements: {
+    user_id: string;
+    email: string;
+    paid: boolean;
+    paid_source: string;
+    polar_order_id: string;
+  }[];
+  accounts: {
+    id: string;
+    email: string;
+    name: string;
+    created_at: string;
+    paid: boolean;
+    subscription_status: string;
+    plan_interval: string;
+    builds: number;
+  }[];
+  userCount: number;
+  subscribedCount: number;
+  revenueCents: number;
+  affiliateClicks: { vendor: string; n: number }[];
+  polarReady: boolean;
+  amazonReady: boolean;
+}) {
     const sql = await getSql();
-    const purchases = await sql<{
-      created_at: string;
-      email: string;
-      polar_order_id: string;
-      polar_checkout_id: string;
-      amount_cents: number;
-    }>`
-      select created_at::text, email, polar_order_id, polar_checkout_id, amount_cents
-      from purchases
-      order by created_at desc
-      limit 100
-    `;
-    const usage = await sql<{
-      user_id: string;
-      email: string;
-      year_month: string;
-      n: number;
-    }>`
-      select
-        b.user_id,
-        coalesce(e.email, u.email, '') as email,
-        b.year_month,
-        count(*)::int as n
-      from build_events b
-      left join entitlements e on e.user_id = b.user_id
-      left join "user" u on u.id = b.user_id
-      group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
-      order by b.year_month desc, n desc
-      limit 200
-    `;
-    const failures = await sql<{
-      created_at: string;
-      song: string;
-      artist: string;
-      error: string;
-    }>`
-      select created_at::text, song, artist, error
-      from research_failures
-      order by created_at desc
-      limit 80
-    `;
-    const cache = await sql<{
-      cache_key: string;
-      song: string;
-      artist: string;
-      instrument: string;
-      stomp_model: string;
-      hit_count: number;
-      summary: string;
-    }>`
-      select
-        cache_key, song, artist, instrument, stomp_model, hit_count,
-        coalesce(preset->>'summary', '') as summary
-      from rig_cache
-      where kind = 'song'
-      order by updated_at desc
-      limit 80
-    `;
-    let notes: {
-      created_at: string;
-      email: string;
-      kind: string;
-      song: string;
-      message: string;
-      rating: number | null;
-      closer_tweaks: string;
-      want_preset: string;
-      want_app: string;
-    }[] = [];
+    let purchases = empty.purchases;
+    try {
+      purchases = await sql<{
+        created_at: string;
+        email: string;
+        polar_order_id: string;
+        polar_checkout_id: string;
+        amount_cents: number;
+      }>`
+        select created_at::text, email, polar_order_id, polar_checkout_id, amount_cents
+        from purchases
+        order by created_at desc
+        limit 100
+      `;
+    } catch {
+      purchases = [];
+    }
+    let usage = empty.usage;
+    try {
+      usage = await sql<{
+        user_id: string;
+        email: string;
+        year_month: string;
+        n: number;
+      }>`
+        select
+          b.user_id,
+          coalesce(e.email, u.email, '') as email,
+          b.year_month,
+          count(*)::int as n
+        from build_events b
+        left join entitlements e on e.user_id = b.user_id
+        left join "user" u on u.id = b.user_id
+        group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
+        order by b.year_month desc, n desc
+        limit 200
+      `;
+    } catch {
+      usage = [];
+    }
+    let failures = empty.failures;
+    try {
+      failures = await sql<{
+        created_at: string;
+        song: string;
+        artist: string;
+        error: string;
+      }>`
+        select created_at::text, song, artist, error
+        from research_failures
+        order by created_at desc
+        limit 80
+      `;
+    } catch {
+      failures = [];
+    }
+    let cache = empty.cache;
+    try {
+      cache = await sql<{
+        cache_key: string;
+        song: string;
+        artist: string;
+        instrument: string;
+        stomp_model: string;
+        hit_count: number;
+        summary: string;
+      }>`
+        select
+          cache_key, song, artist, instrument, stomp_model, hit_count,
+          coalesce(preset->>'summary', '') as summary
+        from rig_cache
+        where kind = 'song'
+        order by updated_at desc
+        limit 80
+      `;
+    } catch {
+      cache = [];
+    }
+    let notes = empty.feedback;
     try {
       notes = await sql<{
         created_at: string;
@@ -629,16 +779,7 @@ export const adminDashboard = createServerFn({ method: "GET" })
         notes = [];
       }
     }
-    let accounts: {
-      id: string;
-      email: string;
-      name: string;
-      created_at: string;
-      paid: boolean;
-      subscription_status: string;
-      plan_interval: string;
-      builds: number;
-    }[] = [];
+    let accounts = empty.accounts;
     try {
       accounts = await sql<{
         id: string;
@@ -667,33 +808,40 @@ export const adminDashboard = createServerFn({ method: "GET" })
     } catch {
       accounts = [];
     }
-    const entitlements = await sql<{
-      user_id: string;
-      email: string;
-      paid: boolean;
-      paid_source: string;
-      polar_order_id: string;
-    }>`
-      select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
-      from entitlements
-      where paid = true
-      order by updated_at desc
-      limit 100
-    `.catch(async () => {
-      return sql<{
+    let entitlements = empty.entitlements;
+    try {
+      entitlements = await sql<{
         user_id: string;
         email: string;
         paid: boolean;
         paid_source: string;
         polar_order_id: string;
       }>`
-        select user_id, email, paid, '' as paid_source, polar_order_id
+        select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
         from entitlements
         where paid = true
         order by updated_at desc
         limit 100
       `;
-    });
+    } catch {
+      try {
+        entitlements = await sql<{
+          user_id: string;
+          email: string;
+          paid: boolean;
+          paid_source: string;
+          polar_order_id: string;
+        }>`
+          select user_id, email, paid, '' as paid_source, polar_order_id
+          from entitlements
+          where paid = true
+          order by updated_at desc
+          limit 100
+        `;
+      } catch {
+        entitlements = [];
+      }
+    }
     let userCount = 0;
     let subscribedCount = 0;
     let revenueCents = 0;
@@ -702,32 +850,37 @@ export const adminDashboard = createServerFn({ method: "GET" })
       const u = await sql<{ n: number }>`select count(*)::int as n from "user"`;
       userCount = Number(u[0]?.n ?? 0);
     } catch {
-      userCount = 0;
+      userCount = accounts.length;
     }
     try {
       const s = await sql<{ n: number }>`
         select count(*)::int as n from entitlements
         where paid = true
+          and coalesce(paid_source, '') <> 'admin'
           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
       `;
       subscribedCount = Number(s[0]?.n ?? 0);
     } catch {
       try {
-        const s = await sql<{ n: number }>`select count(*)::int as n from entitlements where paid = true`;
+        const s = await sql<{ n: number }>`
+          select count(*)::int as n from entitlements
+          where paid = true and coalesce(paid_source, '') <> 'admin'
+        `;
         subscribedCount = Number(s[0]?.n ?? 0);
       } catch {
-        subscribedCount = 0;
+        subscribedCount = entitlements.filter((e) => e.paid && e.paid_source !== "admin").length;
       }
     }
     try {
       const r = await sql<{ n: number }>`
         select coalesce(sum(amount_cents), 0)::int as n
         from purchases
-        where amount_cents > 0 and user_id not in ('unmatched', 'revoked')
+        where amount_cents > 0
+          and user_id not in ('unmatched', 'revoked')
       `;
       revenueCents = Number(r[0]?.n ?? 0);
     } catch {
-      revenueCents = 0;
+      revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
     }
     try {
       affiliateClicks = await sql<{ vendor: string; n: number }>`
@@ -750,9 +903,8 @@ export const adminDashboard = createServerFn({ method: "GET" })
       affiliateClicks,
       polarReady: polarConfigured(),
       amazonReady: Boolean(amazonAssociateTag()),
-      sweetwaterReady: Boolean(sweetwaterAffiliateId()),
     };
-  });
+}
 
 export const adminDeleteCache = createServerFn({ method: "POST" })
   .middleware([authMiddleware])

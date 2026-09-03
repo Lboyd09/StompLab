@@ -193,7 +193,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </span>
             </Link>
 
-            <div className="relative hidden min-w-0 flex-1 md:block">
+            <div className="relative hidden min-w-0 flex-1 md:block" data-tour="search">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
               <Input
                 value={q}
@@ -202,7 +202,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   setOpen(true);
                 }}
                 onFocus={() => setOpen(true)}
-                onBlur={() => window.setTimeout(() => setOpen(false), 160)}
+                onBlur={() => window.setTimeout(() => setOpen(false), 0)}
                 placeholder="Search songs, models, pedals…"
                 className="h-10 pl-9"
                 aria-label="Search songs and catalog"
@@ -234,6 +234,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 type="button"
                 className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
                 aria-label={open ? "Close search" : "Search"}
+                data-tour="search"
                 onClick={() => {
                   setOpen((v) => !v);
                   window.setTimeout(() => searchRef.current?.focus(), 30);
@@ -288,7 +289,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2" data-tour="unit">
             <div className="flex rounded-full bg-secondary p-1">
               {(["guitar", "bass"] as const).map((id) => (
                 <button
@@ -312,7 +313,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 id="device"
                 value={stompModel}
                 onChange={(e) => setStompModel(e.target.value as StompModelId)}
-                className="h-8 rounded-full bg-transparent px-3 text-xs font-medium"
+                className="h-8 rounded-full bg-transparent px-3 text-base font-medium md:text-xs"
               >
                 {STOMP_DEVICES.map((d) => (
                   <option key={d.id} value={d.id}>
@@ -397,7 +398,14 @@ function SearchResults({
             key={p.id}
             type="button"
             className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-            onMouseDown={() => onSong(p)}
+            onPointerDown={(e) => {
+              e.preventDefault();
+              onSong(p);
+            }}
+            onClick={(e) => {
+              e.preventDefault();
+              onSong(p);
+            }}
           >
             <span>
               <span className="block text-sm">{p.song}</span>
@@ -414,7 +422,14 @@ function SearchResults({
           key={m.id}
           type="button"
           className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-          onMouseDown={() => onModel(m)}
+          onPointerDown={(e) => {
+            e.preventDefault();
+            onModel(m);
+          }}
+          onClick={(e) => {
+            e.preventDefault();
+            onModel(m);
+          }}
         >
           <span>
             <span className="block text-sm">{m.name}</span>
@@ -428,7 +443,14 @@ function SearchResults({
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
-        onMouseDown={onResearch}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          onResearch();
+        }}
+        onClick={(e) => {
+          e.preventDefault();
+          onResearch();
+        }}
       >
         <span className="text-sm">Research “{q.trim()}”</span>
         <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">Lab</span>

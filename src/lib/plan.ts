@@ -15,6 +15,11 @@ export function isAdminEmail(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase() === ADMIN_EMAIL;
 }
 
+/** Exact admin email. Polar test checkouts from this address still count as Polar revenue. */
+export function isOwnerAccount(email: string | null | undefined) {
+  return isAdminEmail(email);
+}
+
 export function yearMonth(d = new Date()) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }

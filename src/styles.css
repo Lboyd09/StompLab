@@ -61,11 +61,18 @@ html.light {
   html {
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    touch-action: manipulation;
   }
   body {
     background: var(--color-background);
     color: var(--color-foreground);
     font-family: var(--font-sans);
+    overscroll-behavior: none;
+  }
+  input,
+  select,
+  textarea {
+    font-size: 16px;
   }
   button:not(:disabled),
   [role="button"]:not(:disabled) {
@@ -168,14 +175,14 @@ html.light {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);
   gap: 14px;
-  align-items: end;
+  align-items: stretch;
 }
 
 .hx-helix-modetap {
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-  gap: 28px;
+  display: grid;
+  grid-template-rows: 1fr 1fr;
+  gap: 14px;
+  align-items: end;
   padding-bottom: 6px;
 }
 
@@ -472,10 +479,11 @@ html.light {
 
 .hx-xl-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(56px, 1fr)) minmax(0, 200px) auto;
+  grid-template-columns: repeat(3, minmax(56px, 1fr)) auto minmax(0, 1fr);
   grid-template-areas:
-    "fs1 fs2 fs3 lcd well"
-    "fs4 fs5 fs6 mode tap";
+    "lcd lcd lcd well well"
+    "fs1 fs2 fs3 mode ."
+    "fs4 fs5 fs6 tap .";
   gap: 16px 10px;
   align-items: center;
   justify-items: center;

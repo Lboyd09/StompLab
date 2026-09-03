@@ -7,6 +7,7 @@ import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/type
 import { STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
+import { getSql } from "@/lib/db";
 import { eqCacheKey, lookupCacheRaw, saveEqCache, saveSongCache, songCacheKey, soundCacheKey } from "./cache";
 import { geminiJson } from "./gemini";
 import {
@@ -57,6 +58,34 @@ function gearLine(gear: UserGear[]): string {
   return `\nPlayer owns (recommend these when they fit; do not invent extras): ${gear
     .map((g) => `${g.kind}: ${g.name}${g.notes ? ` (${g.notes})` : ""}`)
     .join("; ")}`;
+}
+
+async function standingFeedbackLessons(): Promise<string> {
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ closer_tweaks: string; want_preset: string; message: string; rating: number | null }>`
+      select closer_tweaks, want_preset, message, rating
+      from feedback
+      where kind in ('preset', 'revise')
+      order by created_at desc
+      limit 40
+    `;
+    const bits: string[] = [];
+    for (const r of rows) {
+      const tweak = (r.closer_tweaks || "").trim();
+      const want = (r.want_preset || "").trim();
+      if (typeof r.rating === "number" && r.rating <= 2 && want.length >= 8) bits.push(want);
+      else if (tweak.length >= 8) bits.push(tweak);
+      else if (want.length >= 8) bits.push(want);
+    }
+    const unique = [...new Set(bits)].slice(0, 8);
+    if (!unique.length) return "";
+    return `\nStanding player notes (general rules for future rigs — NEVER retune a named song from this list):\n${unique
+      .map((s) => `- ${s.slice(0, 160)}`)
+      .join("\n")}`;
+  } catch {
+    return "";
+  }
 }
 
 export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini" };
@@ -176,10 +205,19 @@ export const researchSongFn = createServerFn({ method: "POST" })
 
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const lessons = await standingFeedbackLessons();
       const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
+${lessons}
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
-Research the original recorded ${data.instrument} tone. Album, year, and the chain that was actually used.
+Research the original recorded ${data.instrument} tone before you pick a single model:
+1. Exact recording (album, year, studio vs live, which player if a band).
+2. Guitar + pickups + selector + volume/tone as played on that track.
+3. Amp head, channel, and documented settings if they exist.
+4. Pedal order as used on that session — not a generic chain.
+5. Cab + speakers + mic + distance.
+6. Technique: pick vs fingers, attack, palm mute, volume-knob clean-up.
+Only then map each real piece to a catalog modelId. If sources disagree, prefer the tracking/studio rig over a later live rig.
 Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone.
 ${gearLine(data.userGear)}
 
@@ -244,7 +282,9 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
 
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const lessons = await standingFeedbackLessons();
       const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
+${lessons}
 
 Build this sound on the ${DEVICE_MAP[data.stompModel].name}:
 ${data.description}
@@ -358,7 +398,9 @@ export const revisePresetFn = createServerFn({ method: "POST" })
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const lessons = await standingFeedbackLessons();
       const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
+${lessons}
 
 Revise this ${DEVICE_MAP[data.stompModel].name} path. Keep factory model ids. Only change what the note asks.
 

@@ -221,8 +221,8 @@ function Home() {
         {busy ? <ResearchProgress pct={progress} /> : null}
         <p className="text-xs text-muted-foreground">
           Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
-          Type two letters to pick the exact recording. “Running out of” nudges the cab and mix — it is
-          not a different song.
+          Type two letters to pick the exact recording. “Playing through” is the speaker you will
+          actually use — FRFR keeps the cab on, guitar amp skips it.
         </p>
         <GeminiHint plan={plan} pending={planPending} />
         {status && busy === false && !plan.canResearch ? (
@@ -241,6 +241,7 @@ function Home() {
               key={p.id}
               type="button"
               aria-label={`Open ${p.song}`}
+              data-tour={p.id === "featured-sandman" ? "demo-sandman" : undefined}
               onClick={() => openFeatured(p.id)}
               className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
             >

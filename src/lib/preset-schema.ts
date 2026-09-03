@@ -308,15 +308,18 @@ export function systemForDevice(
     : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
   const exportRule =
     d.exportFormat === "hlx"
-      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
-      : `${d.name} cannot export a .hlx (POD Go uses .podgp). Still return a real HX chain they can copy by hand.`;
+      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
+      : d.exportFormat === "pgp"
+        ? `Export is a .pgp for POD Go Edit (device ${d.hlxDeviceId ?? "2162695"}). Same HX model ids as Helix. Do not invent models. Skip poly pitch/whammy.`
+        : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
   const snapCount = d.snapshots;
   return `Session tech. Program a Line 6 ${d.name} preset that sounds like the RECORD. JSON only.
 Max ${d.maxBlocks} blocks, ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
 ${exportRule}
 
 Tone:
-- Album + year in summary. Studio tracking rig first.
+- Research the RECORD, not a generic genre patch. Album + year in summary. Studio tracking rig first.
+- Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after that.
 - originalGear = real guitars/pedals/amps/cabs (the actual products). Then map each to a catalog id.
 - Every block must be on that recording. No spare gate/comp/chorus/hall.
 - Params 0–10 numbers. Cab Mic = 0 (SM57). Never strings in params.

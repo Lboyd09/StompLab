@@ -36,14 +36,20 @@ export function deviceFor(preset: Preset) {
 }
 
 /**
- * Replica 1 is top-left. On XL the factory silkscreen is inverted:
- * hardware FS4/5/6 are the top row, FS1/2/3 the closest-to-you row.
- * Map visual → hardware so intro (visual 1) lands on the TOP of the unit.
+ * Replica 1 is top-left looking down. On XL the silkscreen / HX Edit numbers
+ * invert: hardware FS4/5/6 are the far (top) row, FS1/2/3 are closest to you.
+ * Keep visual indices in the preset so intro stays top-left; print the HX Edit
+ * number on the cap so the file and the replica agree.
  */
 export function visualToHardwareFs(index: number, xl: boolean): number {
   if (!xl) return index;
   const map: Record<number, number> = { 1: 4, 2: 5, 3: 6, 4: 1, 5: 2, 6: 3, 7: 7, 8: 8 };
   return map[index] ?? index;
+}
+
+/** Number HX Edit and the physical silkscreen use for this replica switch. */
+export function hxEditFsNumber(index: number, xl: boolean): number {
+  return visualToHardwareFs(index, xl);
 }
 
 export function featuredBaseId(id: string): string {

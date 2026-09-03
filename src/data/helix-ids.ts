@@ -1,14 +1,5 @@
 import { FACTORY_HLX_PARAMS } from "./helix-params";
 
-/** Maps Stomp Lab model ids to HX Edit HD2_* / L6SPB_* strings (firmware 3.80).
- *
- * IDs are taken from factory HX Stomp .hlx dumps, phelix block JSON @model
- * fields, and the helix-preset-viewer index. Helix Stadium names
- * (Agoura_*, VIC_*, HX2_*, CabMicIr_*, *Mono suffix) are NOT valid on HX Stomp
- * and HX Edit will report them as unrecognized models.
- * Legacy DL4 tape/analog models use the *Stereo suffix in real HX Edit files.
- * Poly Pitch/Wham/Capo/Detune and Acoustic Sim are L6SPB_* (not HD2_PitchPoly*).
- */
 export const HELIX_IDS: Record<string, string> = {
   "kinky-boost": "HD2_DistKinkyBoost",
   "heir-apparent": "HD2_DistHeirApparent",
@@ -457,6 +448,8 @@ export function helixIdFor(modelId: string): string | undefined {
   const id = HELIX_IDS[modelId];
   if (!id || !isHxStompModelId(id)) return undefined;
   // HX Edit rejects @model strings that are not on the connected unit.
+  // Only emit ids we have verified against factory HX Stomp 3.80 dumps.
   if (!FACTORY_HLX_PARAMS[id]) return undefined;
   return id;
 }
+

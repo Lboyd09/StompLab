@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset } from "@/data/types";
-import { blockModel, deviceFor, sortedBlocks } from "@/lib/preset-utils";
+import { blockModel, deviceFor, hxEditFsNumber, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 
 type FsMode = "stomp" | "snapshot" | "preset";
@@ -33,14 +33,14 @@ export function FsAssignPanel({ preset, fsIndex, fsMode, onAssign, onReset }: Pr
               ? fsIndex === 7
                 ? "MODE"
                 : "TAP"
-              : `Switch ${fsIndex}`}
+              : `Switch ${hxEditFsNumber(fsIndex, xl)}`}
           </h2>
           <p className="text-sm text-muted-foreground">
             {locked
               ? "These two stay MODE and TAP on the XL."
               : snapshotMode
-                ? "Tap a switch on the replica, then tap a song section."
-                : "Tap a switch on the replica, then tap an effect."}
+                ? "Tap a switch on the replica, then tap a song section. The number is the HX Edit footswitch."
+                : "Tap a switch on the replica, then tap an effect. The number is the HX Edit footswitch."}
           </p>
         </div>
         {onReset ? (

@@ -20,10 +20,12 @@ export function GearShopLinks({
     void recordAffiliateClick({ data: { vendor: "amazon", query: q } }).catch(() => undefined);
   }
 
+  const href = amazonSearchUrl(q);
+
   return (
     <div className={compact ? "mt-1 flex flex-wrap items-center gap-x-2 gap-y-1" : "mt-1.5 flex flex-wrap items-center gap-2"}>
       <a
-        href={amazonSearchUrl(q)}
+        href={href}
         target="_blank"
         rel="noopener noreferrer sponsored nofollow"
         className="text-xs text-primary underline-offset-2 hover:underline"

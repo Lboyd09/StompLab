@@ -3,9 +3,9 @@ import { describe, it } from "node:test";
 import { ALL_MODELS } from "../data/catalog.ts";
 import { FEATURED } from "../data/featured.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
-import { factoryParamsFor } from "../data/helix-params.ts";
+import { factoryParamsFor, FACTORY_HLX_PARAMS } from "../data/helix-params.ts";
 import type { Preset } from "../data/types.ts";
-import { buildHlx, canExportHlx } from "./hlx.ts";
+import { buildHlx, canExportHlx, hlxFilename } from "./hlx.ts";
 import { canDownloadPreset, featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
@@ -258,6 +258,20 @@ describe("visual FS map", () => {
     assert.equal(fs.dsp0.block0["@fs_index"], 4);
     assert.equal((hlx.data as { device: number }).device, 2162699);
   });
+
+  it("writes a POD Go .pgp with device 2162695 and factory HD2 models only", () => {
+    const go = withStompModel(featured("featured-teen-spirit"), "pod-go");
+    assert.equal(canExportHlx("pod-go"), true);
+    const hlx = buildHlx(go);
+    assert.equal((hlx.data as { device: number }).device, 2162695);
+    const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+    for (const [k, b] of Object.entries(dsp)) {
+      const model = String(b["@model"] ?? "");
+      if (!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_")) continue;
+      assert.equal(model.startsWith("L6SPB_"), false, `${k} ${model}`);
+      assert.ok(FACTORY_HLX_PARAMS[model], `${k} ${model}`);
+    }
+  });
 });
 
 describe("free vs paid download gates", () => {
@@ -416,7 +430,8 @@ describe("exhaustive HX Edit model export", () => {
       assert.equal(/^HD2_DistAmpegScrambler$/.test(model), false, model);
       exported.add(model);
       const factory = factoryParamsFor(model);
-      if (!factory) continue;
+      assert.ok(factory, `${m.id} exported ${model} with no factory knob list`);
+      assert.ok(model in FACTORY_HLX_PARAMS, `${m.id} ${model} missing from FACTORY_HLX_PARAMS`);
       for (const key of Object.keys(match[1])) {
         if (key.startsWith("@")) continue;
         assert.ok(factory.has(key), `${m.id} wrote unknown knob ${key} on ${model}`);
@@ -431,6 +446,17 @@ describe("exhaustive HX Edit model export", () => {
     assert.equal(exported.has("HD2_DistKnuckleDragon"), false);
     assert.equal(exported.has("HD2_PitchPolyPitch"), false);
     assert.equal(exported.has("HD2_DelayPolySustain"), false);
+  });
+
+  it("never writes an @model that is missing from FACTORY_HLX_PARAMS", () => {
+    for (const id of ["featured-teen-spirit", "featured-sandman", "featured-numb"]) {
+      const dsp = dspBlocks(featured(id));
+      for (const [k, b] of Object.entries(dsp)) {
+        const model = String(b["@model"] ?? "");
+        if (!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_")) continue;
+        assert.ok(FACTORY_HLX_PARAMS[model], `${id} ${k} wrote unverified ${model}`);
+      }
+    }
   });
 
   it("maps wah Position to Pedal and DS-1/RAT/AC30 to factory knobs", () => {
@@ -497,9 +523,13 @@ describe("multi-device export", () => {
     assert.equal(models.some((m) => m.startsWith("HD2_Amp") || m.startsWith("HD2_Cab")), false);
   });
 
-  it("refuses to fake a POD Go .hlx", () => {
-    assert.equal(canExportHlx("pod-go"), false);
-    assert.throws(() => buildHlx({ ...miniPreset("scream-808"), stompModel: "pod-go" }));
+  it("writes a POD Go .pgp, never a Helix .hlx", () => {
+    assert.equal(canExportHlx("pod-go"), true);
+    const preset = { ...miniPreset("scream-808"), stompModel: "pod-go" as const };
+    const hlx = buildHlx(preset);
+    assert.equal((hlx.data as { device: number }).device, 2162695);
+    assert.equal(hlxFilename(preset).endsWith(".pgp"), true);
+    assert.equal(hlxFilename(preset).endsWith(".hlx"), false);
   });
 
   it("writes 8 snapshot slots on Helix Floor and keeps HD2 I/O", () => {

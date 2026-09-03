@@ -17,15 +17,16 @@ export function PlaybackSelect({
         id="playback"
         value={value}
         onChange={(e) => onChange(e.target.value as PlaybackTarget)}
-        className="h-10 w-full rounded-md border border-border bg-card px-3 text-base"
+        className="h-11 w-full rounded-md border border-border bg-card px-3 text-base"
       >
         {PLAYBACK_TARGETS.map((t) => (
           <option key={t.id} value={t.id}>
-            {t.label} — {t.hint}
+            {t.label}
           </option>
         ))}
       </select>
       <p className="text-xs leading-relaxed text-muted-foreground">{current.hint}</p>
+      <p className="text-[11px] leading-relaxed text-muted-foreground">{current.detail}</p>
     </div>
   );
 }

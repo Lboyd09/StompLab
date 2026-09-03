@@ -6,9 +6,9 @@ import {
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarEventIsSubscriptionRevoke,
+  polarFriendlyError,
   polarStatusIsPaid,
   purchaseLooksPaid,
-  polarFriendlyError,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -151,6 +151,7 @@ describe("polarFriendlyError", () => {
     assert.equal(/unauthorized/i.test(msg), false);
   });
   it("maps missing product ids", () => {
-    assert.match(polarFriendlyError(422, "Product not found"), /product/i);
+    assert.match(polarFriendlyError(422, "Product not found"), /does not recognize this product/);
+    assert.match(polarFriendlyError(404, ""), /does not recognize this product/);
   });
 });

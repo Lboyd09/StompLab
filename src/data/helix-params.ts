@@ -380,6 +380,22 @@ export const FACTORY_HLX_PARAMS: Record<string, readonly string[]> = {
   "L6SPB_PolyDowntune": ["AutoEQ", "Interval", "Level", "Mix", "Tracking"],
   "L6SPB_PolyPitch": ["ShiftCurve", "Tracking", "Interval", "Level", "Mix", "ReturnTime", "AutoEQ", "RiseFallSwitch", "ReturnCurve", "Cents", "ShiftTime"],
   "L6SPB_PolyWham": ["Position", "Tracking", "AutoEQ", "Mix", "ToeShift", "HeelShift", "Level"],
+  "HD2_ChorusTrinityChorus": ["Rate", "Depth", "Tone", "Mix", "Spread"],
+  "HD2_DelayDualDelay": ["TimeL", "TimeR", "FeedbackL", "FeedbackR", "Mix", "MixL", "MixR", "Spread", "LowCut", "HighCut", "Level"],
+  "HD2_DelayMultitap4": ["Time", "Feedback", "Mix", "Spread", "Mix1", "Mix2", "Mix3", "Mix4", "LowCut", "HighCut"],
+  "HD2_DelayMultitap6": ["Time", "Feedback", "Mix", "Spread", "Mix1", "Mix2", "Mix3", "Mix4", "Mix5", "Mix6", "LowCut", "HighCut"],
+  "HD2_DelayPingPong": ["Time", "Feedback", "Mix", "Spread", "LowCut", "HighCut", "Level"],
+  "HD2_DelayHarmonyDelay": ["Time", "Feedback", "Mix", "Key", "Interval", "Spread", "LowCut", "HighCut", "Level"],
+  "HD2_SynthSubtractive": ["Wave", "Octave", "Filter", "Resonance", "Decay", "Level", "Mix"],
+  "HD2_Synth3NoteGenerator": ["Interval1", "Interval2", "Interval3", "Mix", "Level"],
+  "HD2_Synth4OSCGenerator": ["Wave", "Octave", "Filter", "Resonance", "Level", "Mix"],
+  "HD2_VolPanPan": ["Pan", "Level"],
+  "HD2_VolPanStereoWidth": ["Width", "Level"],
+  "HD2_LooperOneSwitch": ["Play", "Rec", "Overdub"],
+  "HD2_Looper": ["Play", "Rec", "Overdub"],
+  "HD2_SendMono1": ["Send", "Level"],
+  "HD2_ReturnMono1": ["Mix", "Level"],
+  "HD2_FXLoopMono1": ["Send", "Mix", "Level"],
 };
 
 export function factoryParamsFor(helixId: string): ReadonlySet<string> | undefined {

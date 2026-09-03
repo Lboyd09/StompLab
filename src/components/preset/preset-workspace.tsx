@@ -157,17 +157,19 @@ export function PresetWorkspace({
     if (!canDownload) return;
     if (!canExportHlx(preset.stompModel)) {
       toast.error(
-        `${device.name} does not use .hlx. POD Go uses .podgp — copy the chain by hand for now.`,
+        `${device.name} does not export a preset file. Copy the chain below by hand.`,
       );
       setAskFeedback(true);
       return;
     }
-    if (confirmDownload && !window.confirm(`Download ${hlxFilename(preset)} for HX Edit?`)) return;
+    const filename = hlxFilename(preset);
+    const editor = preset.stompModel === "pod-go" ? "POD Go Edit" : "HX Edit";
+    if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
     toast.success(
       ok
-        ? `Saved ${hlxFilename(preset)}. In HX Edit: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
-        : "Download was blocked. Use Copy JSON and save it as a .hlx file.",
+        ? `Saved ${filename}. In ${editor}: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
+        : `Download was blocked. Use Copy JSON and save it as a ${filename.endsWith(".pgp") ? ".pgp" : ".hlx"} file.`,
     );
     if (ok) setAskFeedback(true);
   }
@@ -256,15 +258,18 @@ export function PresetWorkspace({
               {canDownload ? (
                 <>
                   <div className="flex flex-wrap justify-end gap-2">
-                    <Button type="button" onClick={onDownload}>
-                      {canExportHlx(preset.stompModel) ? "Download .hlx" : "Export unavailable"}
+                    <Button type="button" onClick={onDownload} data-tour="download">
+                      {canExportHlx(preset.stompModel)
+                        ? `Download .${preset.stompModel === "pod-go" ? "pgp" : "hlx"}`
+                        : "Export unavailable"}
                     </Button>
                     <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
                       {copying ? "Copying" : "Copy JSON"}
                     </Button>
                   </div>
                   <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                    HX Edit · File · Import · {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
+                    {preset.stompModel === "pod-go" ? "POD Go Edit" : "HX Edit"} · File · Import ·{" "}
+                    {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
                   </p>
                 </>
               ) : (
@@ -284,8 +289,11 @@ export function PresetWorkspace({
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
           {!canExportHlx(preset.stompModel) ? (
             <p className="text-sm text-muted-foreground">
-              {device.name} does not use .hlx (POD Go is .podgp). The chain below is the map — copy it by
-              hand. We will not write a fake Helix file.
+              {device.name} does not export a preset file. The chain below is the map — copy it by hand.
+            </p>
+          ) : preset.stompModel === "pod-go" ? (
+            <p className="text-sm text-muted-foreground">
+              POD Go Edit imports .pgp JSON. File → Import. Helix .hlx will not load on this unit.
             </p>
           ) : null}
           <RigDisclaimer />
@@ -319,15 +327,16 @@ export function PresetWorkspace({
         <p className="text-xs text-muted-foreground">
           {fsMode === "snapshot"
             ? canDownload
-              ? "Snapshot — tap a numbered switch, then tap a song section. Download writes this onto the unit."
-              : "Snapshot — tap a numbered switch, then tap a song section. Unlock to write this onto the unit."
+              ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
+              : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Unlock to write this onto the unit."
             : fsMode === "stomp"
               ? canDownload
-                ? "Stomp — tap a numbered switch, then tap an effect. Download writes this onto the unit."
-                : "Stomp — tap a numbered switch, then tap an effect. Unlock to write this onto the unit."
+                ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
+                : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Unlock to write this onto the unit."
               : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
         </p>
 
+        <div data-tour="replica">
         <StompUnit
           preset={displayed}
           selectedBlockId={selectedBlockId}
@@ -346,6 +355,7 @@ export function PresetWorkspace({
           onToggleBlock={toggleBlock}
           onAssignFsIndex={setAssignFsIndex}
         />
+        </div>
 
         <FsAssignPanel
           preset={preset}

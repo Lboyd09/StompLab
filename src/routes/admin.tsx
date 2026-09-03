@@ -1,37 +1,60 @@
-import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn } from "@/lib/billing";
+import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn, requireAdmin } from "@/lib/billing";
 import { AFFILIATE_SETUP } from "@/lib/copy";
 import { formatUsd } from "@/lib/plan";
+import { parseStompModelId } from "@/data/types";
+import type { Preset } from "@/data/types";
 import { usePlan } from "@/lib/use-plan";
+import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
 
 type Dash = Awaited<ReturnType<typeof adminDashboard>>;
 type Probe = Awaited<ReturnType<typeof probeResearchFn>>;
-type Inspect = NonNullable<Awaited<ReturnType<typeof adminInspectCache>>["row"]>;
 
 function AdminPage() {
   const { user, isPending } = useCurrentUserState();
   const { plan, isPending: planPending } = usePlan();
+  const navigate = useNavigate();
+  const savePreset = useAppStore((s) => s.savePreset);
+  const setStompModel = useAppStore((s) => s.setStompModel);
   const [dash, setDash] = useState<Dash | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
   const [probing, setProbing] = useState(false);
-  const [inspect, setInspect] = useState<Inspect | null>(null);
+  const [gate, setGate] = useState<"wait" | "ok" | "no">("wait");
 
   useEffect(() => {
     if (isPending || !user) return;
-    adminDashboard()
-      .then(setDash)
-      .catch((err) => setError(err instanceof Error ? err.message : "Unauthorized"));
+    let cancelled = false;
+    void Promise.all([
+      requireAdmin()
+        .then(() => true)
+        .catch(() => false),
+      adminDashboard()
+        .then((d) => {
+          if (!cancelled) setDash(d);
+          return true;
+        })
+        .catch((err) => {
+          if (!cancelled) setError(err instanceof Error ? err.message : "Could not load admin.");
+          return false;
+        }),
+    ]).then(([ok]) => {
+      if (cancelled) return;
+      setGate(ok ? "ok" : "no");
+    });
+    return () => {
+      cancelled = true;
+    };
   }, [user, isPending]);
 
-  if (isPending || planPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isPending || planPending || gate === "wait") return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
-  if (!plan.admin) {
+  if (gate === "no" && !plan.admin) {
     return (
       <div className="space-y-2">
         <h1 className="font-display text-2xl font-semibold">Not found</h1>
@@ -44,14 +67,24 @@ function AdminPage() {
 
   async function onDelete(key: string) {
     await adminDeleteCache({ data: { key } });
-    if (inspect?.cache_key === key) setInspect(null);
     const next = await adminDashboard();
     setDash(next);
   }
 
-  async function onOpen(key: string) {
+  async function onOpenReplica(key: string) {
     const res = await adminInspectCache({ data: { key } });
-    setInspect(res.row);
+    const raw = res.row?.preset as Preset | null | undefined;
+    if (!raw || !Array.isArray(raw.blocks) || !raw.blocks.length) return;
+    const model = parseStompModelId(res.row?.stomp_model ?? raw.stompModel);
+    const playable: Preset = {
+      ...raw,
+      id: raw.id && !raw.id.startsWith("cache-") ? raw.id : `cache-${key.slice(0, 24)}`,
+      createdAt: Date.now(),
+      stompModel: model,
+    };
+    setStompModel(model);
+    savePreset(playable);
+    await navigate({ to: "/preset/$id", params: { id: playable.id } });
   }
 
   async function onProbe() {
@@ -70,16 +103,6 @@ function AdminPage() {
     }
   }
 
-  const preset = inspect?.preset as
-    | {
-        name?: string;
-        summary?: string;
-        originalGear?: { role: string; name: string }[];
-        blocks?: { modelId: string }[];
-      }
-    | null
-    | undefined;
-
   return (
     <div className="space-y-10">
       <header className="space-y-1">
@@ -91,21 +114,21 @@ function AdminPage() {
       {error && !dash ? <p className="text-sm text-destructive">{error}</p> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Accounts in user" />
+        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account, including yours" />
         <Stat
           label="Subscribed"
           value={String(dash?.subscribedCount ?? "—")}
-          hint="Paid, not revoked"
+          hint="Polar-paid rows (admin grant is not counted)"
         />
         <Stat
           label="Subscription revenue"
           value={dash ? formatUsd((dash.revenueCents ?? 0) / 100) : "—"}
-          hint="Sum of Polar orders"
+          hint="All Polar orders with money, including your tests"
         />
         <Stat
           label="Affiliate clicks"
           value={String((dash?.affiliateClicks ?? []).reduce((n, r) => n + r.n, 0))}
-          hint="Amazon / Sweetwater — $ lives on their dashboards"
+          hint="Amazon — commissions live on the Associates dashboard"
         />
       </section>
 
@@ -114,7 +137,6 @@ function AdminPage() {
         <ul className="space-y-1 text-sm">
           <li>Polar products: {dash?.polarReady ? "ready" : "missing POLAR_PRODUCT_ID_MONTHLY / YEARLY"}</li>
           <li>Amazon tag: {dash?.amazonReady ? "set" : "missing VITE_AMAZON_ASSOCIATE_TAG"}</li>
-          <li>Sweetwater id: {dash?.sweetwaterReady ? "set" : "missing VITE_SWEETWATER_AFFILIATE_ID"}</li>
         </ul>
         {(dash?.affiliateClicks ?? []).length ? (
           <Table
@@ -236,7 +258,7 @@ function AdminPage() {
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Shared cache</h2>
         <p className="text-sm text-muted-foreground">
-          Hidden from players. Open a song to make sure the chain is not stupid, then delete it if it is.
+          Hidden from players. Open a song on the replica — same visual page players use.
         </p>
         <ul className="space-y-2">
           {(dash?.cache ?? []).map((row) => (
@@ -253,8 +275,8 @@ function AdminPage() {
                   {row.summary ? ` · ${row.summary.slice(0, 80)}` : ""}
                 </div>
               </div>
-              <Button type="button" variant="secondary" size="sm" onClick={() => void onOpen(row.cache_key)}>
-                Open
+              <Button type="button" size="sm" onClick={() => void onOpenReplica(row.cache_key)}>
+                Replica
               </Button>
               <Button type="button" variant="secondary" size="sm" onClick={() => void onDelete(row.cache_key)}>
                 Delete
@@ -265,45 +287,6 @@ function AdminPage() {
             <p className="text-sm text-muted-foreground">No cached rigs yet.</p>
           ) : null}
         </ul>
-        {inspect ? (
-          <div className="space-y-3 rounded-xl border border-border bg-card p-5">
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <h3 className="font-display text-lg font-semibold">
-                  {inspect.song} {inspect.artist ? `— ${inspect.artist}` : ""}
-                </h3>
-                <p className="text-xs text-muted-foreground">
-                  {inspect.instrument} · {inspect.stomp_model} · {inspect.hit_count} hits
-                </p>
-              </div>
-              <Button type="button" variant="ghost" size="sm" onClick={() => setInspect(null)}>
-                Close
-              </Button>
-            </div>
-            <p className="text-sm text-muted-foreground">{preset?.summary}</p>
-            {preset?.originalGear?.length ? (
-              <ul className="text-sm">
-                {preset.originalGear.map((g) => (
-                  <li key={`${g.role}-${g.name}`}>
-                    <span className="text-muted-foreground">{g.role}: </span>
-                    {g.name}
-                  </li>
-                ))}
-              </ul>
-            ) : null}
-            {preset?.blocks?.length ? (
-              <p className="font-mono text-xs text-muted-foreground">
-                {preset.blocks.map((b) => b.modelId).join(" → ")}
-              </p>
-            ) : null}
-            <pre className="max-h-80 overflow-auto rounded-md bg-secondary p-3 text-[11px] leading-relaxed">
-              {JSON.stringify(inspect.preset, null, 2)}
-            </pre>
-            <Button type="button" variant="secondary" onClick={() => void onDelete(inspect.cache_key)}>
-              Delete this cache
-            </Button>
-          </div>
-        ) : null}
       </section>
     </div>
   );

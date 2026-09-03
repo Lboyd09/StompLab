@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { DeviceLayout, Preset } from "@/data/types";
-import { deviceFor, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { deviceFor, paramEntries, sortedBlocks, visualToHardwareFs } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { Knob } from "./knob";
@@ -274,8 +274,17 @@ export function StompUnit({
       <Footswitch
         key={index}
         index={index}
+        number={visualToHardwareFs(index, xl)}
         label={opts?.hideLabel ? "" : scribbleLabel(preset, fsMode, index, layout)}
-        sublabel={xl && index === 7 ? "Edit / Exit" : xl && index === 8 ? "Tuner" : undefined}
+        sublabel={
+          xl && index === 7
+            ? "Edit / Exit"
+            : xl && index === 8
+              ? "Tuner"
+              : layout === "podgo" && index === 8
+                ? "Tuner"
+                : undefined
+        }
         color={scribbleColor(preset, fsMode, index, activeSnapshot, layout)}
         lit={isLit(preset, fsMode, index, activeSnapshot, layout, view)}
         selected={assignFsIndex === index}
@@ -384,7 +393,11 @@ export function StompUnit({
             </div>
           </div>
         )}
-        {xl ? <p className="hx-silk mt-3 text-center">Vol on rear</p> : null}
+        {xl ? (
+          <p className="hx-silk mt-3 text-center">
+            Vol on rear · far row is 4–6 · closest is 1–3 · MODE / TAP on the right
+          </p>
+        ) : null}
       </div>
     </div>
   );
@@ -492,8 +505,8 @@ function EffectsBoard({
   renderFs: (index: number) => ReactNode;
   scribble: (index: number) => ReactNode;
 }) {
-  const top = [1, 2, 3, 4];
-  const bottom = [5, 6, 7, 8];
+  const top = [5, 6, 7, 8];
+  const bottom = [1, 2, 3, 4];
   return (
     <div className="hx-effects-board">
       <div className="hx-effects-top">
@@ -664,6 +677,7 @@ function HwBtn({ children, onClick }: { children: React.ReactNode; onClick: () =
 
 function Footswitch({
   index,
+  number,
   label,
   sublabel,
   color,
@@ -673,6 +687,7 @@ function Footswitch({
   onClick,
 }: {
   index: number;
+  number?: number;
   label: string;
   sublabel?: string;
   color: string;
@@ -681,11 +696,12 @@ function Footswitch({
   showNumber: boolean;
   onClick: () => void;
 }) {
+  const shown = number ?? index;
   return (
     <button
       type="button"
       onClick={onClick}
-      aria-label={label ? `Switch ${index || label} ${label}` : `Switch ${index}`}
+      aria-label={label ? `Switch ${shown || label} ${label}` : `Switch ${shown}`}
       aria-pressed={selected}
       className="group flex min-h-11 flex-col items-center gap-1"
     >
@@ -699,7 +715,7 @@ function Footswitch({
               : `0 0 0 2px #0a0b0d, 0 0 0 4px ${color}66`,
         }}
       >
-        {showNumber ? <span className="font-mono text-[10px] font-semibold text-zinc-300">{index}</span> : null}
+        {showNumber ? <span className="font-mono text-[10px] font-semibold text-zinc-300">{shown}</span> : null}
       </span>
       {label ? (
         <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">

@@ -33,7 +33,14 @@ function exportProfile(model: StompModelId) {
 }
 
 export function canExportHlx(model: StompModelId): boolean {
-  return exportProfile(model).exportFormat === "hlx";
+  const format = exportProfile(model).exportFormat;
+  return format === "hlx" || format === "pgp";
+}
+
+export function exportExtension(model: StompModelId): "hlx" | "pgp" | null {
+  const format = exportProfile(model).exportFormat;
+  if (format === "hlx" || format === "pgp") return format;
+  return null;
 }
 
 const SKIP_CATEGORIES = new Set<CategoryId>(["mic", "ir"]);
@@ -158,31 +165,6 @@ const KEEP_MIX = new Set<CategoryId>(["modulation", "delay", "reverb", "filter",
 
 const BOOLEAN_PARAMS = new Set(["Mode", "Bright"]);
 
-/**
- * Factory-known HX Edit param names per category. Anything else is dropped so
- * HX Edit never sees an unrecognized knob and rejects the whole preset.
- */
-const CATEGORY_HLX_PARAMS: Record<CategoryId, Set<string>> = {
-  distortion: new Set(["Drive", "Gain", "Tone", "Level", "Bass", "Mid", "Treble", "Output", "Distortion", "Filter", "Volume", "Sustain"]),
-  dynamics: new Set(["Threshold", "Gain", "Attack", "Release", "Mix", "Level", "Sensitivity", "Decay", "Open", "Hold", "Rise", "ThrLow", "ThrMid", "ThrHigh"]),
-  eq: new Set(["Bass", "Mid", "Treble", "Level", "LowCut", "HighCut", "Freq", "Q", "Gain", "Tilt", "LowFreq", "LowGain", "HighFreq", "HighGain", "Body", "Tone", "80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz", "31Hz", "62Hz", "125Hz", "250Hz", "500Hz", "1kHz", "2kHz", "4kHz", "8kHz", "16kHz"]),
-  modulation: new Set(["Rate", "Depth", "Mix", "Tone", "ChorusIntensity", "VibratoRate", "VibratoDepth", "Mode", "Headroom", "Speed", "Shape", "Spread", "Manual", "Feedback", "Level"]),
-  delay: new Set(["Time", "Feedback", "Mix", "Mod", "Scale", "Heads", "Wow", "Flutter", "Spread", "Offset", "Depth", "LowCut", "HighCut", "Pitch", "Delay", "DryThru"]),
-  reverb: new Set(["Decay", "Dwell", "Predelay", "PreDelay", "Mix", "LowCut", "HighCut", "Motion", "Pitch", "Level", "Drip"]),
-  pitch: new Set(["Shift", "Mix", "Key", "Delay", "Heel", "Toe", "Control", "Interval", "Voice", "Level"]),
-  filter: new Set(["Freq", "Q", "Mix", "Speed", "Range", "Level"]),
-  wah: new Set(["Position", "Pedal", "Mix", "DcBias", "Level"]),
-  volume: new Set(["Level", "VolumeMin", "VolumeMax", "Gain", "Pan"]),
-  looper: new Set(["Play", "Rec", "Overdub"]),
-  "amp-guitar": new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Master", "ChVol", "Sag", "Hum", "Ripple", "Bias", "BiasX", "Bright", "Cut", "Depth", "Resonance", "80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz"]),
-  "amp-bass": new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Master", "ChVol", "Hum", "Ripple", "Bias", "BiasX"]),
-  preamp: new Set(["Drive", "Bass", "Mid", "Treble", "Presence", "Level"]),
-  cab: new Set(["LowCut", "HighCut", "Distance", "EarlyReflections", "Level"]),
-  mic: new Set(),
-  ir: new Set(["LowCut", "HighCut", "Mix", "Level"]),
-  "send-return": new Set(["Send", "Return", "Mix"]),
-};
-
 type HlxJson = Record<string, unknown>;
 
 function clamp01(n: number) {
@@ -200,6 +182,8 @@ function exportableBlocks(preset: Preset): StompBlock[] {
     if (!device.hasAmpCab && ampCab.has(model.category)) return false;
     const hid = helixIdFor(b.modelId);
     if (!hid || !isHxStompModelId(hid)) return false;
+    if (!factoryParamsFor(hid)) return false;
+    if (preset.stompModel === "pod-go" && hid.startsWith("L6SPB_")) return false;
     return true;
   });
   const max = device.hasAmpCab ? Math.min(MAX_PATH_BLOCKS, device.maxBlocks) : device.maxBlocks;
@@ -282,14 +266,12 @@ function knownParamNames(modelId: string): Set<string> | null {
   return new Set(model.params);
 }
 
-function allowedHlxNames(modelId: string, category: CategoryId): Set<string> {
+function allowedHlxNames(modelId: string, _category: CategoryId): Set<string> {
   const hid = helixIdFor(modelId);
   const factory = hid ? factoryParamsFor(hid) : undefined;
   if (factory && factory.size) return new Set(factory);
-  if (THREE_KNOB_DIST.has(modelId)) {
-    return new Set(["Drive", "Gain", "Tone", "Level", "Distortion", "Filter", "Volume", "Sustain", "Output", "Treble"]);
-  }
-  return CATEGORY_HLX_PARAMS[category] ?? new Set();
+  // Never guess knobs. Unknown @model params make HX Edit say "unrecognized".
+  return new Set();
 }
 
 function finiteHlx(value: number | boolean | undefined): value is number | boolean {
@@ -406,9 +388,11 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
   };
 
   cabs.forEach((cab, i) => {
+    const hid = helixIdFor(cab.modelId);
+    if (!hid || !factoryParamsFor(hid)) return;
     const params = blockParams(cab);
     dsp[`cab${i}`] = {
-      "@model": helixIdFor(cab.modelId),
+      "@model": hid,
       "@enabled": cab.enabled,
       "@mic": micIndex(cab),
       LowCut: params.LowCut ?? 20,
@@ -421,9 +405,11 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
 
   others.forEach((block, i) => {
     const model = MODEL_MAP[block.modelId]!;
+    const hid = helixIdFor(block.modelId);
+    if (!hid || !factoryParamsFor(hid)) return;
     const isAmp = model.category === "amp-guitar" || model.category === "amp-bass";
     const hlx: HlxJson = {
-      "@model": helixIdFor(block.modelId),
+      "@model": hid,
       "@position": i,
       "@enabled": block.enabled,
       "@path": 0,
@@ -624,9 +610,10 @@ function sanitizeLabel(s: string, max: number) {
 
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
   const device = exportProfile(preset.stompModel);
-  if (device.exportFormat !== "hlx" || !device.hlxDeviceId) {
+  const ext = exportExtension(preset.stompModel);
+  if (!ext || !device.hlxDeviceId) {
     throw new Error(
-      `${device.name} does not use .hlx. POD Go uses .podgp — we will not write a fake Helix file.`,
+      `${device.name} does not use .hlx or .pgp. We will not write a fake Helix file.`,
     );
   }
   const blocks = exportableBlocks(preset);
@@ -694,13 +681,14 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
 }
 
 export function hlxFilename(preset: Preset): string {
+  const ext = exportExtension(preset.stompModel) ?? "hlx";
   const base =
     (preset.name || preset.song || "preset")
       .replace(/[^\w\s-]+/g, "")
       .trim()
       .replace(/\s+/g, "_")
       .slice(0, 24) || "preset";
-  return `${base}.hlx`;
+  return `${base}.${ext}`;
 }
 
 export function hlxJson(preset: Preset, opts?: { fsMode?: HlxFsMode }): string {
@@ -736,7 +724,7 @@ export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): bool
 
 export async function copyHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): Promise<void> {
   if (!canExportHlx(preset.stompModel)) {
-    throw new Error("This unit does not use .hlx.");
+    throw new Error("This unit does not export a preset file.");
   }
   const json = hlxJson(preset, opts);
   if (navigator.clipboard?.writeText) {

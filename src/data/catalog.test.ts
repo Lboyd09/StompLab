@@ -62,7 +62,8 @@ describe("research prompt", () => {
     assert.match(prompt, /NEVER stupor-od/);
     assert.match(prompt, /never dime Drive/i);
     assert.match(prompt, /solo is almost never the rhythm tone/i);
-    assert.match(prompt, /signature trick/i);
+    assert.match(prompt, /session tech/i);
+    assert.match(prompt, /guitar\/pickups/i);
   });
 
   it("tells HX Effects it has no amp or cab", () => {
