@@ -96,7 +96,7 @@ export const CATEGORIES: CategoryInfo[] = [
     label: "Looper",
     short: "Loop",
     description:
-      "1-switch looper on HX Stomp, 6-switch on HX Stomp XL. Record, overdub, and undo from the footswitches.",
+      "1-switch looper on HX Stomp, 6-switch looper on HX Stomp XL. Record, overdub, and undo from the footswitches.",
     color: "var(--cat-looper)",
     lcd: "#e8ecef",
   },
@@ -301,11 +301,14 @@ export const STOMP_DEVICES: StompDevice[] = [
     looper: "1-switch",
     presets: 256,
     hasAmpCab: true,
-    exportFormat: "none",
+    exportFormat: "pgp",
+    hlxDeviceId: 2162695,
+    inputModel: "HD2_AppDSPFlowInput",
+    outputModel: "HD2_AppDSPFlowOutput",
     notes: [
-      "POD Go uses .podgp, not .hlx. We show the chain so you can build it by hand.",
+      "POD Go Edit imports .pgp JSON (device 2162695). Not a Helix .hlx.",
       "Eight footswitches, built-in expression pedal, four snapshots. Amp and cab are on this unit.",
-      "File export is not available — a fake .hlx would fail in HX Edit and in POD Go Edit.",
+      "Poly pitch/whammy are skipped on export — POD Go firmware does not ship every L6SPB model.",
     ],
   },
 ];

@@ -1,3 +1,5 @@
+import { FACTORY_HLX_PARAMS } from "./helix-params";
+
 /** Maps Stomp Lab model ids to HX Edit HD2_* / L6SPB_* strings (firmware 3.80).
  *
  * IDs are taken from factory HX Stomp .hlx dumps, phelix block JSON @model
@@ -454,6 +456,7 @@ export function helixIdFor(modelId: string): string | undefined {
   if (UNEXPORTABLE_MODELS.has(modelId)) return undefined;
   const id = HELIX_IDS[modelId];
   if (!id || !isHxStompModelId(id)) return undefined;
+  // HX Edit rejects @model strings that are not on the connected unit.
+  if (!FACTORY_HLX_PARAMS[id]) return undefined;
   return id;
 }
-
