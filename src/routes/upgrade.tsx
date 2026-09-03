@@ -80,9 +80,18 @@ function UpgradePage() {
         setError(res.error);
         return;
       }
+      if (!res.url || !/^https?:\/\//.test(res.url)) {
+        setError("Checkout did not return a payment page. Check Polar products on the host.");
+        return;
+      }
       window.location.href = res.url;
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Checkout failed.");
+      const msg = err instanceof Error ? err.message : "Checkout failed.";
+      if (/unauthorized/i.test(msg)) {
+        await navigate({ to: "/login", search: { next: "/upgrade" } });
+        return;
+      }
+      setError(msg);
     } finally {
       setBusy(null);
     }
