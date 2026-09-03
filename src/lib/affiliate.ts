@@ -20,7 +20,10 @@ export function amazonSearchUrl(query: string, tag = amazonAssociateTag()): stri
   if (!q) return "https://www.amazon.com/";
   const url = new URL("https://www.amazon.com/s");
   url.searchParams.set("k", q);
-  if (tag) url.searchParams.set("tag", tag);
+  if (tag) {
+    url.searchParams.set("tag", tag);
+    url.searchParams.set("linkCode", "ll2");
+  }
   return url.toString();
 }
 

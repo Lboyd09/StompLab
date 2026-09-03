@@ -11,10 +11,10 @@ export const UNOFFICIAL_DISCLAIMER =
   "Presets are unofficial starting points. They are not copies of commercial patches, artist signatures, or master recordings. Song titles identify the recording we researched.";
 
 export const AFFILIATE_DISCLOSURE =
-  "Some links to Sweetwater and Amazon are affiliate links. If you buy through them, Stomp Lab may earn a commission at no extra cost to you. As an Amazon Associate we earn from qualifying purchases.";
+  "Some Amazon links are affiliate links. If you buy through them, Stomp Lab may earn a commission at no extra cost to you. As an Amazon Associate we earn from qualifying purchases.";
 
 export const AFFILIATE_SETUP =
-  "Amazon Associates: join affiliate-program.amazon.com, copy your Store ID (looks like stomplab-20). Sweetwater: apply via Impact (Sweetwater advertiser) and copy your Media Partner / campaign ID. Put those in VITE_AMAZON_ASSOCIATE_TAG and VITE_SWEETWATER_AFFILIATE_ID. Polar: create a $6.99/month product and a $75/year product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY. Commissions land in Amazon and Sweetwater dashboards — Stomp Lab only counts clicks.";
+  "Amazon Associates: join affiliate-program.amazon.com, copy your Store ID (looks like stomplab-20) into VITE_AMAZON_ASSOCIATE_TAG. Polar: create a $6.99/month product and a $75/year product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY. Commissions land in the Amazon Associates dashboard — Stomp Lab only counts clicks.";
 
 export const LEGAL_SHORT =
   "Not affiliated with Line 6. Unofficial research tool. Affiliate links may earn a commission.";

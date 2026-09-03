@@ -75,7 +75,7 @@ export type CategoryInfo = {
 };
 
 export type DeviceFamily = "stomp" | "helix" | "effects" | "pod";
-export type ExportFormat = "hlx" | "none";
+export type ExportFormat = "hlx" | "pgp" | "none";
 export type DeviceLayout = "stomp" | "xl" | "floor" | "lt" | "effects" | "podgo";
 
 export type StompDevice = {
