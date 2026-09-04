@@ -71,7 +71,9 @@ function SettingsPage() {
               </div>
               {plan.paid ? (
                 <span className="text-sm text-muted-foreground">
-                  {plan.monthUsed} / {plan.monthLimit} builds this month
+                  {plan.admin
+                    ? "Unlimited builds"
+                    : `${plan.monthUsed} / ${plan.monthLimit} builds this month`}
                 </span>
               ) : (
                 <span className="text-sm text-muted-foreground">

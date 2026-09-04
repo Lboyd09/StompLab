@@ -172,9 +172,9 @@ function Home() {
       {plan.signedIn && plan.paid ? (
         <div className="max-w-2xl rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
           <span className="font-medium text-foreground tabular-nums">
-            {plan.monthUsed} / {plan.monthLimit}
+            {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
           </span>{" "}
-          custom builds used this month
+          {plan.admin ? "custom builds — admin has no monthly cap" : "custom builds used this month"}
         </div>
       ) : null}
 

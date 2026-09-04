@@ -1,4 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppShell } from "@/components/layout/app-shell";
@@ -44,6 +45,7 @@ function Root() {
         <HeadContent />
       </head>
       <body>
+        <CanonicalHost />
         <PreviewHostBridge />
         <AuthProvider>
           <ShellSwitch />
@@ -53,6 +55,18 @@ function Root() {
       </body>
     </html>
   );
+}
+
+function CanonicalHost() {
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (window.location.hostname === "www.stomplab.app") {
+      const next = new URL(window.location.href);
+      next.hostname = "stomplab.app";
+      window.location.replace(next.toString());
+    }
+  }, []);
+  return null;
 }
 
 function ShellSwitch() {

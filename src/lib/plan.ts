@@ -1,4 +1,6 @@
 export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
+/** Public support inbox on the domain we own. Never invent a personal Gmail. */
+export const PUBLIC_SUPPORT_EMAIL = "hello@stomplab.app";
 export const PRICE_MONTHLY_USD = 6.99;
 export const PRICE_YEARLY_USD = 75;
 export const FREE_BUILDS = 3;
@@ -14,6 +16,18 @@ export function normalizeEmail(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase();
 }
 
+function extraOwnerEmails(): string[] {
+  if (typeof process === "undefined") return [];
+  return [process.env.BUSINESS_EMAIL, process.env.SUPPORT_EMAIL, process.env.CONTACT_EMAIL]
+    .map((v) => normalizeEmail(v))
+    .filter(Boolean);
+}
+
+/** Admin unlock + Polar-test / business inboxes that must never count as revenue. */
+export function ownerEmails(): string[] {
+  return [...new Set([ADMIN_EMAIL, PUBLIC_SUPPORT_EMAIL, ...extraOwnerEmails()])];
+}
+
 /** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
 export function isAdminEmail(email: string | null | undefined) {
   return normalizeEmail(email) === ADMIN_EMAIL;
@@ -21,7 +35,9 @@ export function isAdminEmail(email: string | null | undefined) {
 
 /** Owner row — Polar tests from this address are not customer revenue. */
 export function isOwnerAccount(email: string | null | undefined) {
-  return isAdminEmail(email);
+  const n = normalizeEmail(email);
+  if (!n) return false;
+  return ownerEmails().includes(n);
 }
 
 /** Stats/revenue must drop the owner even when the purchase email is blank. */
@@ -31,9 +47,11 @@ export function hideOwnerRow(
   ownerIds?: Iterable<string> | null,
 ) {
   if (isOwnerAccount(email)) return true;
-  if (userId && ownerIds) {
+  const uid = String(userId ?? "").trim();
+  if (!uid || uid === "unmatched" || uid === "revoked" || uid === "test") return true;
+  if (ownerIds) {
     for (const id of ownerIds) {
-      if (id && id === userId) return true;
+      if (id && id === uid) return true;
     }
   }
   return false;
@@ -112,6 +130,30 @@ export function assemblePlan(opts: {
   const freeUsed = opts.freeUsed;
   const freeRemaining = Math.max(0, FREE_BUILDS - freeUsed);
   const monthUsed = opts.monthUsed;
+  if (admin) {
+    return {
+      signedIn: true,
+      userId: opts.userId,
+      email,
+      paid: true,
+      admin: true,
+      freeUsed,
+      freeRemaining: FREE_BUILDS,
+      monthUsed,
+      monthLimit: 0,
+      month,
+      planInterval: opts.planInterval ?? null,
+      subscriptionStatus: opts.subscriptionStatus || "active",
+      canResearch: true,
+      canCreate: true,
+      canHistory: true,
+      canGear: true,
+      canXlRegen: true,
+      canLockerSync: true,
+      canSharedLibrary: false,
+      blockedReason: null,
+    };
+  }
   const canBuild = paid ? monthUsed < PAID_MONTHLY_BUILDS : freeRemaining > 0;
   return {
     signedIn: true,
@@ -139,4 +181,12 @@ export function assemblePlan(opts: {
 
 export function yearlySavingsUsd() {
   return Math.round((PRICE_MONTHLY_USD * 12 - PRICE_YEARLY_USD) * 100) / 100;
+}
+
+export function buildsUsedCopy(plan: Plan): string {
+  if (plan.admin) return "Admin — unlimited custom builds. The monthly cap is only for everyone else.";
+  if (plan.paid) {
+    return `${plan.monthUsed} of ${plan.monthLimit} custom builds used this month. Demos never count.`;
+  }
+  return `${plan.freeRemaining} of ${FREE_BUILDS} custom builds left.`;
 }

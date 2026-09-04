@@ -123,7 +123,7 @@ function AdminPage() {
         <Stat
           label="Subscription revenue"
           value={dash ? formatUsd((dash.revenueCents ?? 0) / 100) : "—"}
-          hint="Customer Polar orders only. Your tests and admin grant are excluded — $0 until someone else pays."
+          hint="Customer Polar orders only. Tests, unmatched Polar rows, and your inboxes never show. $0 until someone else pays."
         />
         <Stat
           label="Affiliate clicks"

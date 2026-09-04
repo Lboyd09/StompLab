@@ -489,8 +489,8 @@ html.light {
   grid-template-columns: repeat(3, minmax(56px, 1fr)) auto minmax(0, 1fr);
   grid-template-areas:
     "lcd lcd lcd well well"
-    "fs4 fs5 fs6 mode ."
-    "fs1 fs2 fs3 tap .";
+    "fs1 fs2 fs3 mode ."
+    "fs4 fs5 fs6 tap .";
   gap: 16px 10px;
   align-items: center;
   justify-items: center;
@@ -611,8 +611,8 @@ html.light {
     grid-template-areas:
       "lcd lcd lcd"
       "well well well"
-      "fs4 fs5 fs6"
       "fs1 fs2 fs3"
+      "fs4 fs5 fs6"
       "mode tap .";
     gap: 12px 8px;
   }

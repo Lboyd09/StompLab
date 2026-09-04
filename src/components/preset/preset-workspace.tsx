@@ -24,7 +24,6 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
-import { FeedbackCard } from "../layout/feedback-card";
 import { GearShopLinks, AffiliateNote } from "../layout/gear-shop-links";
 import { PresetFeedbackDialog, PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
@@ -227,9 +226,8 @@ export function PresetWorkspace({
 
   return (
     <>
-    <div className="grid min-w-0 gap-8 lg:grid-cols-[minmax(0,1fr)_340px]">
-      <div className="min-w-0 space-y-6">
-        <header className="space-y-2">
+    <div className="space-y-8">
+      <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
             <span>{preset.instrument}</span>
             <span>·</span>
@@ -301,71 +299,15 @@ export function PresetWorkspace({
           <RigDisclaimer />
         </header>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="flex rounded-full bg-secondary p-1">
-            {(
-              [
-                ["snapshot", "Snapshot"],
-                ["stomp", "Stomp"],
-                ["preset", "Preset"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => {
-                  setFsMode(id);
-                  if (id !== "stomp") setLcdView("play");
-                }}
-                className={`h-9 rounded-full px-3.5 text-xs font-medium ${
-                  fsMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          {fsMode === "snapshot"
-            ? canDownload
-              ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
-              : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Unlock to write this onto the unit."
-            : fsMode === "stomp"
-              ? canDownload
-                ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
-                : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Unlock to write this onto the unit."
-              : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
-        </p>
-
-        <div data-tour="replica">
-        <StompUnit
-          preset={displayed}
-          selectedBlockId={selectedBlockId}
-          onSelectBlock={selectBlock}
-          view={lcdView}
-          fsMode={fsMode}
-          paramPage={paramPage}
-          activeSnapshot={activeSnapshot}
-          assignFsIndex={assignFsIndex}
-          showDsp={showDsp}
-          onParamPage={setParamPage}
-          onView={setLcdView}
-          onFsMode={setFsMode}
-          onSnapshot={setActiveSnapshot}
-          onChangeParam={changeParam}
-          onToggleBlock={toggleBlock}
-          onAssignFsIndex={setAssignFsIndex}
-        />
-        </div>
-
-        <FsAssignPanel
-          preset={preset}
-          fsIndex={assignFsIndex}
-          fsMode={fsMode}
-          onAssign={assignFs}
-          onReset={original ? resetFeatured : undefined}
-        />
+        <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(280px,400px)_minmax(0,1fr)]">
+          <div className="order-2 space-y-5 xl:order-1">
+            <FsAssignPanel
+              preset={preset}
+              fsIndex={assignFsIndex}
+              fsMode={fsMode}
+              onAssign={assignFs}
+              onReset={original ? resetFeatured : undefined}
+            />
 
         <Card>
           <CardHeader>
@@ -409,9 +351,7 @@ export function PresetWorkspace({
             })}
           </CardContent>
         </Card>
-      </div>
 
-      <aside className="space-y-5">
         <Card>
           <CardHeader>
             <CardTitle>Original rig</CardTitle>
@@ -499,7 +439,7 @@ export function PresetWorkspace({
           <CardHeader>
             <CardTitle>Build it on the Stomp</CardTitle>
             <CardDescription>
-              The replica is looking down at the unit. You stand at the bottom. Closest switches are 1–3 (Stomp / XL) or 1–4 (POD Go / HX Effects) or 1–6 (Helix). Those numbers are the silkscreen and HX Edit numbers.
+              The replica is looking down at the unit. LCD at the top. Switch 1 is always top-left — that number is the silkscreen and HX Edit. Top row 1–3 (XL) / 1–4 (POD Go, HX Effects) / 1–6 (Helix).
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -522,7 +462,7 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">3.</span>
                 <span>
-                  Numbers match the silkscreen. Closest row to you is 1–3 on a Stomp XL (intro lives on 1), 1–4 on POD Go / HX Effects, 1–6 on Helix Floor/LT. Far row is 4–6 (XL) or 5–8 or 7–12. MODE and TAP sit where they do on the hardware. Volume is the right knob on a Stomp, on the rear of an XL.
+                  Numbers match the silkscreen. Switch 1 is top-left. XL: top 1–3 + MODE, bottom 4–6 + TAP. POD Go / HX Effects: top 1–4, bottom 5–8. Helix: top 1–6, bottom 7–12. Volume is the right knob on a Stomp, on the rear of an XL.
                 </span>
               </li>
               {preset.programming.map((step, i) => (
@@ -576,8 +516,6 @@ export function PresetWorkspace({
           </CardContent>
         </Card>
 
-        <FeedbackCard />
-
         {preset.tips.length ? (
           <Card>
             <CardHeader>
@@ -592,8 +530,68 @@ export function PresetWorkspace({
             </CardContent>
           </Card>
         ) : null}
-      </aside>
-    </div>
+          </div>
+
+          <div className="order-1 min-w-0 space-y-4 xl:order-2 xl:sticky xl:top-20 xl:self-start">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="flex rounded-full bg-secondary p-1">
+                {(
+                  [
+                    ["snapshot", "Snapshot"],
+                    ["stomp", "Stomp"],
+                    ["preset", "Preset"],
+                  ] as const
+                ).map(([id, label]) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => {
+                      setFsMode(id);
+                      if (id !== "stomp") setLcdView("play");
+                    }}
+                    className={`h-9 rounded-full px-3.5 text-xs font-medium ${
+                      fsMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              {fsMode === "snapshot"
+                ? canDownload
+                  ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
+                  : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Unlock to write this onto the unit."
+                : fsMode === "stomp"
+                  ? canDownload
+                    ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
+                    : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Unlock to write this onto the unit."
+                  : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
+            </p>
+            <div data-tour="replica">
+              <StompUnit
+                preset={displayed}
+                selectedBlockId={selectedBlockId}
+                onSelectBlock={selectBlock}
+                view={lcdView}
+                fsMode={fsMode}
+                paramPage={paramPage}
+                activeSnapshot={activeSnapshot}
+                assignFsIndex={assignFsIndex}
+                showDsp={showDsp}
+                onParamPage={setParamPage}
+                onView={setLcdView}
+                onFsMode={setFsMode}
+                onSnapshot={setActiveSnapshot}
+                onChangeParam={changeParam}
+                onToggleBlock={toggleBlock}
+                onAssignFsIndex={setAssignFsIndex}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
       <PresetFeedbackDialog
         song={preset.song || preset.name}
         open={askFeedback}

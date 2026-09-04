@@ -1,5 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import type { Plan } from "@/lib/plan";
+import { buildsUsedCopy } from "@/lib/plan";
 
 export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending) {
@@ -16,11 +17,7 @@ export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean })
     );
   }
   if (plan.paid) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Demos never count.
-      </p>
-    );
+    return <p className="text-xs text-muted-foreground">{buildsUsedCopy(plan)}</p>;
   }
   if (plan.freeRemaining <= 0) {
     return (

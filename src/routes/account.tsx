@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
-import { FREE_BUILDS, PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, formatUsd } from "@/lib/plan";
+import { openCustomerPortal } from "@/lib/billing";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
@@ -18,6 +19,7 @@ function AccountPage() {
   const [next, setNext] = useState("");
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [portalBusy, setPortalBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -57,6 +59,24 @@ function AccountPage() {
     }
   }
 
+  async function onManageSubscription() {
+    setError("");
+    setMessage("");
+    setPortalBusy(true);
+    try {
+      const res = await openCustomerPortal();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open Polar.");
+    } finally {
+      setPortalBusy(false);
+    }
+  }
+
   return (
     <div className="mx-auto max-w-lg space-y-8">
       <header className="space-y-2">
@@ -70,12 +90,11 @@ function AccountPage() {
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Plan</h2>
         {plan.admin ? (
-          <p className="text-sm text-muted-foreground">Admin — full Lab. Exact match: {user.primaryEmail}.</p>
-        ) : plan.paid ? (
           <p className="text-sm text-muted-foreground">
-            Subscribed{plan.planInterval ? ` · ${plan.planInterval === "year" ? "yearly" : "monthly"}` : ""}.{" "}
-            {plan.monthUsed} of {PAID_MONTHLY_BUILDS} custom builds used this month. Demos never count.
+            Admin — full Lab, no monthly build cap. Exact match: {user.primaryEmail}.
           </p>
+        ) : plan.paid ? (
+          <p className="text-sm text-muted-foreground">{buildsUsedCopy(plan)}</p>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
@@ -87,11 +106,19 @@ function AccountPage() {
             </Button>
           </>
         )}
+        {plan.paid && !plan.admin ? (
+          <Button type="button" variant="secondary" disabled={portalBusy} onClick={() => void onManageSubscription()}>
+            {portalBusy ? "Opening Polar…" : "Manage subscription"}
+          </Button>
+        ) : null}
         {plan.admin ? (
           <Button asChild variant="secondary">
             <Link to="/admin">Admin dashboard</Link>
           </Button>
         ) : null}
+        <p className="text-xs text-muted-foreground">
+          Billing, card, and cancel live on Polar’s customer portal. Stomp Lab never sees your card.
+        </p>
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
@@ -132,7 +159,7 @@ function AccountPage() {
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Session</h2>
         <p className="text-sm text-muted-foreground">
-          Look and feel lives in{" "}
+          Always use stomplab.app — www and the Vercel URL are a different login. Look and feel lives in{" "}
           <Link to="/settings" className="text-primary underline underline-offset-2">
             Settings
           </Link>

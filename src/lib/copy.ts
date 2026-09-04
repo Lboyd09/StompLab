@@ -1,8 +1,10 @@
+import { PUBLIC_SUPPORT_EMAIL } from "./plan";
+
 export const RIG_DISCLAIMER =
   "These rigs are research and starting points — not a 100% copy of the record. Use them as a reference, then tweak on your unit.";
 
 export const FORGOT_PASSWORD_COPY =
-  "Stomp Lab does not email reset links — there is no mailbox on this site. Change your password from Account while signed in. If you're locked out, try the password you picked or email liamjamesb09@gmail.com.";
+  `Stomp Lab does not email reset links — there is no mailbox that can send from this site. Change your password from Account while signed in. Locked out? Email ${PUBLIC_SUPPORT_EMAIL}.`;
 
 export const LINE6_DISCLAIMER =
   "Stomp Lab is an independent research tool. It is not affiliated with, endorsed by, or sponsored by Line 6, Yamaha Guitar Group, Inc., or any manufacturer named in the catalog. Helix®, HX Stomp®, HX Stomp XL®, HX Effects®, POD®, and POD Go® are trademarks of Yamaha Guitar Group, Inc. Other product names are trademarks of their respective owners and are used only to identify the gear our models and research refer to.";
@@ -18,3 +20,8 @@ export const AFFILIATE_SETUP =
 
 export const LEGAL_SHORT =
   "Not affiliated with Line 6. Unofficial research tool. Affiliate links may earn a commission.";
+
+export const PRIVACY_SHORT =
+  "We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab can unlock. We do not sell that. Polar is the merchant of record for subscriptions. Research calls go to Google Gemini. Amazon clicks use our affiliate tag.";
+
+export const HELP_COPY = `Questions, billing, locked out, or a broken preset — email ${PUBLIC_SUPPORT_EMAIL}. We read it.`;

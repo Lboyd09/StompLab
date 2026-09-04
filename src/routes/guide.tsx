@@ -116,6 +116,33 @@ function GuidePage() {
         </p>
       </Section>
 
+      <section id="help" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        <h2 className="font-display text-lg font-semibold text-foreground">Help</h2>
+        <p>
+          Stuck on a preset, billing, or sign-in? Email{" "}
+          <a href="mailto:hello@stomplab.app" className="text-primary underline underline-offset-2">
+            hello@stomplab.app
+          </a>
+          . That is the Stomp Lab inbox. Polar handles cards and invoices — use Account → Manage
+          subscription to change or cancel. Always sign in at{" "}
+          <a href="https://stomplab.app" className="text-primary underline underline-offset-2">
+            stomplab.app
+          </a>{" "}
+          (not www, not the Vercel URL).
+        </p>
+      </section>
+
+      <section id="privacy" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        <h2 className="font-display text-lg font-semibold text-foreground">Privacy</h2>
+        <p>
+          We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab
+          can unlock on the next visit. We do not sell that list. Polar is the merchant of record for
+          subscriptions and stores card details — Stomp Lab never sees your card. Song research is sent
+          to Google Gemini. Amazon shop links use our affiliate tag. You can ask us to delete your
+          account by emailing hello@stomplab.app.
+        </p>
+      </section>
+
       <section id="legal" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
         <h2 className="font-display text-lg font-semibold text-foreground">Legal</h2>
         <p>

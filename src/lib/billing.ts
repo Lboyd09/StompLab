@@ -3,19 +3,25 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { getSql } from "@/lib/db";
 import {
+  createCustomerPortalSession,
   createPolarCheckout,
   extractOrder,
   fetchPolarCheckout,
   isRealPolarOrderId,
   isRealPolarSubscriptionId,
+  lookupPolarCustomer,
+  polarCheckoutIsReady,
+  polarCheckoutNeedsPoll,
+  polarCheckoutStatus,
   polarConfigured,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarStatusIsPaid,
   purchaseLooksPaid,
   subscriptionStatusIsActive,
+  waitForPolarCheckout,
 } from "./polar";
-import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, yearMonth, type Plan, type PlanInterval, ADMIN_EMAIL } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, yearMonth, type Plan, type PlanInterval, ADMIN_EMAIL, ownerEmails } from "./plan";
 import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -86,7 +92,7 @@ async function entitlementForIds(ids: string[], email: string | null): Promise<E
   const em = normalizeEmail(email);
   try {
     const rows = await sql.query<EntRow>(
-      `select paid, paid_source, polar_order_id, polar_subscription_id, plan_interval, subscription_status, email
+      `select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
        from entitlements
        where user_id = any($1::text[]) ${em ? "or lower(email) = $2" : ""}
        order by paid desc, updated_at desc
@@ -109,7 +115,14 @@ async function entitlementForIds(ids: string[], email: string | null): Promise<E
 }
 
 async function checkoutSuccessOrigin(): Promise<string> {
-  return publicOrigin();
+  const origin = await publicOrigin();
+  try {
+    const u = new URL(origin);
+    if (u.hostname === "www.stomplab.app") u.hostname = "stomplab.app";
+    return u.origin;
+  } catch {
+    return origin;
+  }
 }
 
 type EntRow = {
@@ -117,6 +130,7 @@ type EntRow = {
   paid_source?: string | null;
   polar_order_id?: string | null;
   polar_subscription_id?: string | null;
+  polar_customer_id?: string | null;
   plan_interval?: string | null;
   subscription_status?: string | null;
   email?: string | null;
@@ -280,7 +294,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
   } catch {
     try {
       const rows = await sql<EntRow>`
-        select paid, paid_source, polar_order_id, polar_subscription_id, plan_interval, subscription_status, email
+        select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
         from entitlements where user_id = ${userId} limit 1
       `;
       ent = rows[0];
@@ -522,6 +536,9 @@ export const startCheckout = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Your account needs an email before checkout." };
     }
     const plan = await loadPlan(context.userId, email);
+    if (plan.admin) {
+      return { ok: false as const, error: "Admin already has the full Lab — no Polar checkout." };
+    }
     if (plan.paid) {
       return { ok: false as const, error: "This account is already subscribed." };
     }
@@ -531,6 +548,7 @@ export const startCheckout = createServerFn({ method: "POST" })
       userId: context.userId,
       interval: data.interval,
       successUrl: `${origin}/upgrade?checkout_id={CHECKOUT_ID}`,
+      returnUrl: `${origin}/upgrade`,
     });
   });
 
@@ -538,36 +556,101 @@ export const confirmCheckout = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ checkoutId: z.string().min(4).max(120) }).parse(input))
   .handler(async ({ context, data }) => {
-    const checkout = await fetchPolarCheckout(data.checkoutId);
+    let checkout = await fetchPolarCheckout(data.checkoutId);
     if (!checkout) return { ok: false as const, error: "Could not confirm that payment yet. Wait a few seconds." };
-    if (!polarStatusIsPaid(checkout)) {
-      return { ok: false as const, error: "Payment is still processing. Finish checkout — going back does not unlock." };
+    const firstStatus = polarCheckoutStatus(checkout);
+    if (firstStatus === "failed" || firstStatus === "expired") {
+      return { ok: false as const, error: "That checkout expired or failed. Subscribe again — you were not charged." };
+    }
+    if (!polarCheckoutIsReady(checkout) && polarCheckoutNeedsPoll(checkout)) {
+      checkout = (await waitForPolarCheckout(data.checkoutId)) ?? checkout;
+    }
+    if (!polarCheckoutIsReady(checkout)) {
+      const status = polarCheckoutStatus(checkout);
+      if (status === "failed" || status === "expired") {
+        return { ok: false as const, error: "That checkout expired or failed. Subscribe again — you were not charged." };
+      }
+      return {
+        ok: false as const,
+        error:
+          "Polar confirmed the card and is still finishing the order. Wait a few seconds and refresh — you will not be charged twice.",
+      };
     }
     const order = extractOrder(checkout);
-    if (!isRealPolarOrderId(order.orderId)) {
+    if (!isRealPolarOrderId(order.orderId) && !isRealPolarSubscriptionId(order.subscriptionId)) {
       return { ok: false as const, error: "Polar has not issued an order yet. Finish payment first." };
     }
     const email = (await emailFor(context.userId)) ?? "";
     const metaUser = String(order.userId ?? "").trim();
-    if (metaUser && metaUser !== context.userId) {
+    const ids = await siblingUserIds(context.userId, email);
+    if (metaUser && metaUser !== context.userId && !ids.includes(metaUser)) {
       return { ok: false as const, error: "That checkout belongs to a different account." };
     }
-    if (order.email && email && order.email !== email.toLowerCase()) {
-      return { ok: false as const, error: "That checkout belongs to a different email." };
+    if (order.email && email && order.email !== email.toLowerCase() && !isOwnerAccount(order.email)) {
+      // Polar sometimes stores a billing email that differs from the Lab login.
+      // Still grant if metadata.user_id matches this session.
+      if (!metaUser || (metaUser !== context.userId && !ids.includes(metaUser))) {
+        return { ok: false as const, error: "That checkout belongs to a different email." };
+      }
     }
     await grantPaid({
       userId: context.userId,
-      email: order.email || email,
+      email: email || order.email,
       orderId: order.orderId,
       checkoutId: data.checkoutId,
       amountCents: order.amount,
       customerId: order.customerId,
-      raw: { type: "checkout.updated", ...checkout, status: checkout.status ?? "succeeded" },
+      raw: { type: "checkout.updated", ...checkout, status: "succeeded" },
       subscriptionId: order.subscriptionId,
       interval: order.interval,
       subscriptionStatus: "active",
     });
     return { ok: true as const, plan: await loadPlan(context.userId, email) };
+  });
+
+export const openCustomerPortal = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    const email = await emailFor(context.userId);
+    if (!email) return { ok: false as const, error: "Your account needs an email." };
+    if (isAdminEmail(email)) {
+      return { ok: false as const, error: "Admin is not a Polar subscription." };
+    }
+    const ids = await siblingUserIds(context.userId, email);
+    const sql = await getSql();
+    let customerId = "";
+    try {
+      const rows = await sql.query<{ polar_customer_id: string | null }>(
+        `select polar_customer_id from entitlements
+         where (user_id = any($1::text[]) or lower(email) = $2)
+           and coalesce(polar_customer_id, '') <> ''
+         order by updated_at desc limit 1`,
+        [ids, email],
+      );
+      customerId = String(rows[0]?.polar_customer_id ?? "").trim();
+    } catch {
+      try {
+        const rows = await sql<{ polar_customer_id: string | null }>`
+          select polar_customer_id from entitlements
+          where user_id = ${context.userId} and coalesce(polar_customer_id, '') <> ''
+          limit 1
+        `;
+        customerId = String(rows[0]?.polar_customer_id ?? "").trim();
+      } catch {
+        customerId = "";
+      }
+    }
+    if (!customerId) {
+      customerId = await lookupPolarCustomer({ email, externalId: context.userId });
+    }
+    const origin = await checkoutSuccessOrigin();
+    const session = await createCustomerPortalSession({
+      customerId: customerId || undefined,
+      externalCustomerId: context.userId,
+      returnUrl: `${origin}/account`,
+    });
+    if (!session.ok) return session;
+    return { ok: true as const, url: session.url };
   });
 
 export async function recordBuild(userId: string, kind: string, song: string) {
@@ -978,14 +1061,31 @@ async function loadAdminDashboard(empty: {
       affiliateClicks = [];
     }
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
-    purchases = purchases.filter((p) => !hideOwnerRow(p.email, p.user_id, ownerIds));
+    const customerIds = new Set(accounts.filter((a) => !isOwnerAccount(a.email)).map((a) => a.id));
+    const hiddenMail = new Set(ownerEmails());
+    purchases = purchases.filter((p) => {
+      if (hideOwnerRow(p.email, p.user_id, ownerIds)) return false;
+      if (hiddenMail.has(normalizeEmail(p.email))) return false;
+      if (!customerIds.has(p.user_id)) return false;
+      return true;
+    });
     usage = usage.filter((u) => !hideOwnerRow(u.email, u.user_id, ownerIds));
-    entitlements = entitlements.filter((e) => !hideOwnerRow(e.email, e.user_id, ownerIds));
+    entitlements = entitlements.filter((e) => {
+      if (hideOwnerRow(e.email, e.user_id, ownerIds)) return false;
+      if (String(e.paid_source ?? "").toLowerCase() === "admin") return false;
+      return true;
+    });
     userCount = accounts.filter((a) => !isOwnerAccount(a.email)).length;
     subscribedCount = entitlements.filter(
-      (e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin",
+      (e) => e.paid && String(e.paid_source ?? "").toLowerCase() === "polar" && customerIds.has(e.user_id),
     ).length;
-    revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
+    // Polar tests must not appear as revenue. Until a real customer is subscribed, show $0.
+    if (subscribedCount === 0) {
+      purchases = [];
+      revenueCents = 0;
+    } else {
+      revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
+    }
     return {
       purchases,
       usage,

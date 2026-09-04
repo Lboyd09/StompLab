@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import {
   extractOrder,
   isRealPolarOrderId,
+  polarCheckoutIsReady,
+  polarCheckoutNeedsPoll,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarEventIsSubscriptionRevoke,
@@ -24,13 +26,22 @@ describe("polarEventIsPaid", () => {
       false,
     );
   });
-  it("never treats confirmed/complete as paid", () => {
+  it("never treats confirmed/complete as paid until an order exists", () => {
     assert.equal(polarStatusIsPaid({ status: "confirmed" }), false);
     assert.equal(polarStatusIsPaid({ status: "complete" }), false);
     assert.equal(polarStatusIsPaid({ status: "open" }), false);
     assert.equal(
       polarEventIsPaid({ type: "checkout.updated", data: { id: "checkout_abc12345", status: "confirmed" } }),
       false,
+    );
+    assert.equal(polarCheckoutNeedsPoll({ status: "confirmed" }), true);
+    assert.equal(polarCheckoutIsReady({ status: "confirmed" }), false);
+    assert.equal(
+      polarCheckoutIsReady({
+        status: "confirmed",
+        order_id: "order_abc12345",
+      }),
+      true,
     );
   });
   it("grants on order.paid", () => {

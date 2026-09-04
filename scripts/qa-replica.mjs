@@ -18,6 +18,7 @@ function overlap(a, b) {
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v6", "1");
   localStorage.setItem("stomplab.tutorial.v5", "1");
   localStorage.setItem("stomplab.onboarded.v3", "1");
 });
@@ -50,13 +51,13 @@ const fs4Box = await page.locator(".hx-xl-fs4").boundingBox();
 const modeBox = await page.locator(".hx-xl-mode").boundingBox();
 const tapBox = await page.locator(".hx-xl-tap").boundingBox();
 if (fs1Box && fs4Box) {
-  check("closest row (FS1) is below far row (FS4)", fs1Box.y > fs4Box.y - 4, `fs1.y=${fs1Box.y} fs4.y=${fs4Box.y}`);
+  check("FS1 is above FS4 (top-left is 1)", fs1Box.y < fs4Box.y + 4, `fs1.y=${fs1Box.y} fs4.y=${fs4Box.y}`);
 }
-if (modeBox && fs4Box) {
-  check("MODE sits on the far row", Math.abs(modeBox.y - fs4Box.y) < 48, `mode.y=${modeBox.y} fs4.y=${fs4Box.y}`);
+if (modeBox && fs1Box) {
+  check("MODE sits on the top row with FS1", Math.abs(modeBox.y - fs1Box.y) < 48, `mode.y=${modeBox.y} fs1.y=${fs1Box.y}`);
 }
-if (tapBox && fs1Box) {
-  check("TAP sits on the closest row", Math.abs(tapBox.y - fs1Box.y) < 48, `tap.y=${tapBox.y} fs1.y=${fs1Box.y}`);
+if (tapBox && fs4Box) {
+  check("TAP sits on the bottom row with FS4", Math.abs(tapBox.y - fs4Box.y) < 48, `tap.y=${tapBox.y} fs4.y=${fs4Box.y}`);
 }
 
 const lcdBox = await page.locator(".hx-lcd").boundingBox();
@@ -85,7 +86,7 @@ await page.waitForTimeout(700);
 check("XL chassis after toggle back", (await page.locator(".hx-chassis-xl").count()) === 1);
 check("URL became hx-stomp-xl", page.url().includes("featured-sandman-hx-stomp-xl"));
 
-// Assign: tap switch 1 (closest-left, Intro) then tap a different section
+// Assign: tap switch 1 (top-left, Intro) then tap a different section
 const switch1 = page.getByRole("button", { name: /Switch 1/i }).first();
 await switch1.click();
 await page.waitForTimeout(200);
@@ -121,6 +122,7 @@ check("Equivalents opens find tab", page.url().includes("tab=find") || (await pa
 // Mobile overflow on XL sandman
 const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
 await mobile.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v6", "1");
   localStorage.setItem("stomplab.tutorial.v5", "1");
   localStorage.setItem("stomplab.onboarded.v3", "1");
 });

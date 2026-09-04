@@ -165,7 +165,7 @@ describe("visual FS map", () => {
     assert.equal(visualToHardwareFs(7, true), 7);
     assert.equal(visualToHardwareFs(8, true), 8);
     assert.deepEqual(lcdScribbleIndices("stomp"), [1, 2, 3]);
-    assert.deepEqual(lcdScribbleIndices("xl"), [4, 5, 6, 1, 2, 3]);
+    assert.deepEqual(lcdScribbleIndices("xl"), [1, 2, 3, 4, 5, 6]);
   });
 
   it("never 404s an XL featured slug", () => {
@@ -180,7 +180,7 @@ describe("visual FS map", () => {
     assert.equal(stomp?.id, "featured-sandman-hx-stomp");
   });
 
-  it("keeps featured snapshots on FS 1–3 (closest row). File uses the same numbers.", () => {
+  it("keeps featured snapshots on FS 1–3 (top row). File uses the same numbers.", () => {
     const xl = withStompModel(featured("featured-sandman"), "hx-stomp-xl");
     const snaps = xl.footswitches.filter((f) => f.action === "snapshot");
     assert.deepEqual(
@@ -194,7 +194,7 @@ describe("visual FS map", () => {
     );
   });
 
-  it("puts Teen Spirit intro first and XL Pre on FS4 (far left)", () => {
+  it("puts Teen Spirit intro first and XL Pre on FS4 (bottom left)", () => {
     const src = featured("featured-teen-spirit");
     assert.equal(src.snapshots[0]?.name, "Intro");
     assert.equal(src.footswitches[0]?.action, "snapshot");
@@ -232,7 +232,7 @@ describe("visual FS map", () => {
     }
   });
 
-  it("writes XL snapshot 1 to hardware FS1 (closest left)", () => {
+  it("writes XL snapshot 1 to hardware FS1 (top left)", () => {
     const xl = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
     const hlx = buildHlx(xl);
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd } from "./plan.ts";
+import { ADMIN_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("matches only the exact admin gmail", () => {
@@ -12,9 +12,12 @@ describe("isAdminEmail", () => {
     assert.equal(isAdminEmail(null), false);
     assert.equal(normalizeEmail("  LiamJamesB09@Gmail.com "), ADMIN_EMAIL);
     assert.equal(isOwnerAccount(ADMIN_EMAIL), true);
+    assert.equal(isOwnerAccount(PUBLIC_SUPPORT_EMAIL), true);
     assert.equal(isOwnerAccount("player@example.com"), false);
     assert.equal(hideOwnerRow(ADMIN_EMAIL), true);
+    assert.equal(hideOwnerRow(PUBLIC_SUPPORT_EMAIL), true);
     assert.equal(hideOwnerRow("", "admin-id", ["admin-id"]), true);
+    assert.equal(hideOwnerRow("", "unmatched", []), true);
     assert.equal(hideOwnerRow("buyer@example.com", "u2", ["admin-id"]), false);
     assert.equal(hideOwnerRow("", "u2", ["admin-id"]), false);
   });
@@ -49,17 +52,22 @@ describe("assemblePlan", () => {
     assert.equal(plan.paid, false);
     assert.equal(plan.canGear, false);
   });
-  it("unlocks only the exact admin email without a Polar row", () => {
+  it("unlocks only the exact admin email without a Polar row and with no monthly cap", () => {
     const plan = assemblePlan({
       userId: "admin-user",
       email: ADMIN_EMAIL,
       paid: false,
       freeUsed: 0,
-      monthUsed: 0,
+      monthUsed: 999,
     });
     assert.equal(plan.admin, true);
     assert.equal(plan.paid, true);
     assert.equal(plan.canGear, true);
+    assert.equal(plan.canResearch, true);
+    assert.equal(plan.canCreate, true);
+    assert.equal(plan.monthLimit, 0);
+    assert.equal(plan.blockedReason, null);
+    assert.match(buildsUsedCopy(plan), /unlimited/i);
     assert.equal(plan.canSharedLibrary, false);
   });
   it("hides history until sign-in", () => {

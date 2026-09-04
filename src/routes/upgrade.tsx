@@ -13,6 +13,7 @@ import {
   PRICE_YEARLY_USD,
   yearlySavingsUsd,
   formatUsd,
+  buildsUsedCopy,
   type PlanInterval,
 } from "@/lib/plan";
 import { parseCheckoutId } from "@/lib/next-path";
@@ -55,15 +56,31 @@ function UpgradePage() {
       return;
     }
     setConfirming(true);
-    void confirmCheckout({ data: { checkoutId: id } })
-      .then(async (res) => {
-        if (res.ok) {
-          await refresh();
-          await navigate({ to: "/" });
-          return;
+    void (async () => {
+      let last = "";
+      for (let i = 0; i < 6; i++) {
+        try {
+          const res = await confirmCheckout({ data: { checkoutId: id } });
+          if (res.ok) {
+            await refresh();
+            await navigate({ to: "/" });
+            return;
+          }
+          last = res.error;
+          if (!/still finishing|Wait a few|not issued|Could not confirm/i.test(res.error)) {
+            setError(res.error);
+            return;
+          }
+        } catch (err) {
+          last = err instanceof Error ? err.message : "Could not confirm payment.";
         }
-        setError(res.error);
-      })
+        await new Promise((r) => window.setTimeout(r, 700 + i * 250));
+      }
+      setError(
+        last ||
+          "Polar is still finishing this payment. Refresh in a few seconds — you will not be charged twice.",
+      );
+    })()
       .catch((err) => {
         setError(err instanceof Error ? err.message : "Could not confirm payment.");
       })
@@ -124,8 +141,7 @@ function UpgradePage() {
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
           <h1 className="font-display text-3xl font-semibold">{plan.admin ? "Admin — full Lab" : "You're subscribed"}</h1>
           <p className="text-sm text-muted-foreground">
-            {plan.monthUsed} of {plan.monthLimit} custom builds used this month. Featured demos never
-            count.
+            {buildsUsedCopy(plan)}
             {plan.planInterval ? ` ${plan.planInterval === "year" ? "Yearly" : "Monthly"} plan.` : ""}
           </p>
           <Button asChild>
@@ -189,8 +205,9 @@ function UpgradePage() {
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <p className="text-xs text-muted-foreground">
           Checkout is Polar (merchant of record). Going back before you pay does not unlock anything.
-          The subscription sticks to {user?.primaryEmail || "your email"} after Polar says it is active.
-          Cancel any time; you keep the Lab until the period ends.
+          Polar marks the payment confirmed, then succeeded — we wait for succeeded. The subscription
+          sticks to {user?.primaryEmail || "your email"} after Polar says it is active. Cancel any time
+          from Account → Manage subscription; you keep the Lab until the period ends.
         </p>
 
         <p className="text-sm text-muted-foreground">

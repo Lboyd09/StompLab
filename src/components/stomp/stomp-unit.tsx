@@ -398,15 +398,15 @@ export function StompUnit({
         )}
         {xl ? (
           <p className="hx-silk mt-3 text-center">
-            You stand here · closest row is 1–3 · far row is 4–6 · MODE / TAP on the right
+            Looking down · LCD at top · FS1 top-left · top 1–3 + MODE · bottom 4–6 + TAP
           </p>
         ) : layout === "podgo" ? (
-          <p className="hx-silk mt-3 text-center">Closest row 1–4 · far row 5–8 · FS8 is TAP / Tuner · EXP on the left</p>
+          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · FS8 is TAP / Tuner · EXP on the left</p>
         ) : layout === "effects" ? (
-          <p className="hx-silk mt-3 text-center">Closest row 1–4 · far row 5–8 · scribble strips match HX Effects</p>
+          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · scribble strips match HX Effects</p>
         ) : layout === "floor" || layout === "lt" ? (
           <p className="hx-silk mt-3 text-center">
-            You stand here · closest row 1–6 · far row 7–12 · MODE / TAP on the left
+            Looking down · FS1 top-left · top 1–6 · bottom 7–12 · MODE / TAP on the left
           </p>
         ) : (
           <p className="hx-silk mt-3 text-center">Switches 1–3 left to right · Volume on the right · you stand here</p>
@@ -443,8 +443,8 @@ function HelixBoard({
   renderFs: (index: number) => ReactNode;
   scribble: (index: number) => ReactNode;
 }) {
-  const top = [7, 8, 9, 10, 11, 12];
-  const bottom = [1, 2, 3, 4, 5, 6];
+  const top = [1, 2, 3, 4, 5, 6];
+  const bottom = [7, 8, 9, 10, 11, 12];
   return (
     <div className={cn("hx-helix-board", layout === "lt" && "hx-helix-board-lt")}>
       <div className="hx-helix-top">
@@ -518,8 +518,8 @@ function EffectsBoard({
   renderFs: (index: number) => ReactNode;
   scribble: (index: number) => ReactNode;
 }) {
-  const top = [5, 6, 7, 8];
-  const bottom = [1, 2, 3, 4];
+  const top = [1, 2, 3, 4];
+  const bottom = [5, 6, 7, 8];
   return (
     <div className="hx-effects-board">
       <div className="hx-effects-top">
@@ -574,8 +574,8 @@ function PodGoBoard({
           {well}
         </div>
         <div className="hx-podgo-fs">
-          {[5, 6, 7, 8].map((index) => renderFs(index))}
           {[1, 2, 3, 4].map((index) => renderFs(index))}
+          {[5, 6, 7, 8].map((index) => renderFs(index))}
         </div>
       </div>
     </div>

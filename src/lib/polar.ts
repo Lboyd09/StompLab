@@ -65,10 +65,34 @@ export function polarEventType(payload: Record<string, unknown>): string {
 export function polarStatusIsPaid(payload: Record<string, unknown> | null | undefined): boolean {
   if (!payload) return false;
   const data = payloadData(payload);
-  const status = String(data.status ?? data.payment_status ?? "")
+  const status = polarCheckoutStatus(data);
+  return status === "succeeded" || status === "paid";
+}
+
+export function polarCheckoutStatus(payload: Record<string, unknown> | null | undefined): string {
+  if (!payload) return "";
+  const data = payloadData(payload);
+  return String(data.status ?? data.payment_status ?? "")
     .trim()
     .toLowerCase();
-  return status === "succeeded" || status === "paid";
+}
+
+/** Polar: payment hits "confirmed" first, then checkout.updated → "succeeded". */
+export function polarCheckoutNeedsPoll(payload: Record<string, unknown> | null | undefined): boolean {
+  const status = polarCheckoutStatus(payload);
+  return status === "confirmed" || status === "processing" || status === "open" || status === "pending";
+}
+
+/**
+ * Ready to grant after a return-from-Polar: succeeded/paid, or confirmed
+ * with a real order/subscription id (Polar sometimes lags the status field).
+ */
+export function polarCheckoutIsReady(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  if (polarStatusIsPaid(payload)) return true;
+  if (polarCheckoutStatus(payload) !== "confirmed") return false;
+  const order = extractOrder(payload);
+  return isRealPolarOrderId(order.orderId) || isRealPolarSubscriptionId(order.subscriptionId);
 }
 
 /**
@@ -146,6 +170,7 @@ export async function createPolarCheckout(opts: {
   userId: string;
   successUrl: string;
   interval: PlanInterval;
+  returnUrl?: string;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const token = polarToken();
   const productId = polarProductId(opts.interval);
@@ -157,39 +182,74 @@ export async function createPolarCheckout(opts: {
       error: `Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and ${needed} on Vercel, then try Subscribe again.`,
     };
   }
-  const body: Record<string, unknown> = {
-    products: [productId],
-    success_url: opts.successUrl,
-    customer_email: opts.email,
-    metadata: { user_id: opts.userId, email: opts.email, interval: opts.interval },
-  };
+  const metadata = { user_id: opts.userId, email: opts.email, interval: opts.interval };
+  const bodies: Record<string, unknown>[] = [
+    {
+      products: [productId],
+      success_url: opts.successUrl,
+      return_url: opts.returnUrl || opts.successUrl.replace(/\?.*$/, ""),
+      customer_email: opts.email,
+      external_customer_id: opts.userId,
+      metadata,
+      customer_metadata: metadata,
+    },
+    {
+      products: [productId],
+      success_url: opts.successUrl,
+      customer_email: opts.email,
+      external_customer_id: opts.userId,
+      metadata,
+    },
+    {
+      products: [productId],
+      success_url: opts.successUrl,
+      customer_email: opts.email,
+      metadata,
+    },
+    {
+      product_id: productId,
+      success_url: opts.successUrl,
+      customer_email: opts.email,
+      metadata,
+    },
+  ];
   const discount = (process.env.POLAR_DISCOUNT_ID ?? "").trim();
-  if (discount) body.discount_id = discount;
+  if (discount) {
+    for (const body of bodies) body.discount_id = discount;
+  }
 
   const urls = [`${polarBase()}/v1/checkouts/`, `${polarBase()}/v1/checkouts/custom/`];
   let last = "Polar checkout failed";
-  for (const url of urls) {
-    try {
-      const res = await fetch(url, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(body),
-      });
-      const raw = await res.text();
-      let json: { url?: string; id?: string; detail?: string; error?: string } = {};
+  for (const body of bodies) {
+    for (const url of urls) {
       try {
-        json = JSON.parse(raw) as typeof json;
-      } catch {
-        json = {};
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+        const raw = await res.text();
+        let json: {
+          url?: string;
+          id?: string;
+          detail?: unknown;
+          error?: string;
+        } = {};
+        try {
+          json = JSON.parse(raw) as typeof json;
+        } catch {
+          json = {};
+        }
+        if (res.ok && json.url) return { ok: true, url: json.url };
+        last = polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
+        if (res.status === 401 || res.status === 403) return { ok: false, error: last };
+      } catch (err) {
+        last = err instanceof Error ? err.message : "Polar network error";
       }
-      if (res.ok && json.url) return { ok: true, url: json.url };
-      last = polarFriendlyError(res.status, json.detail || json.error || "");
-      if (res.status !== 404) break;
-    } catch (err) {
-      last = err instanceof Error ? err.message : "Polar network error";
     }
   }
   return { ok: false, error: last };
@@ -199,10 +259,128 @@ export async function fetchPolarCheckout(id: string): Promise<Record<string, unk
   const token = polarToken();
   if (!token || !id) return null;
   const res = await fetch(`${polarBase()}/v1/checkouts/${encodeURIComponent(id)}`, {
-    headers: { Authorization: `Bearer ${token}` },
+    headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
   });
   if (!res.ok) return null;
   return (await res.json()) as Record<string, unknown>;
+}
+
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** Poll Polar until succeeded/failed, or the confirmed checkout already has an order. */
+export async function waitForPolarCheckout(
+  id: string,
+  tries = 10,
+): Promise<Record<string, unknown> | null> {
+  let last: Record<string, unknown> | null = null;
+  for (let i = 0; i < tries; i++) {
+    const checkout = await fetchPolarCheckout(id);
+    if (checkout) last = checkout;
+    if (polarStatusIsPaid(checkout) || polarCheckoutIsReady(checkout)) return checkout;
+    const status = polarCheckoutStatus(checkout);
+    if (status === "failed" || status === "expired") return checkout;
+    if (status && !polarCheckoutNeedsPoll(checkout)) return checkout;
+    await sleep(400 + i * 180);
+  }
+  return last;
+}
+
+export async function lookupPolarCustomer(opts: {
+  email?: string | null;
+  externalId?: string | null;
+}): Promise<string> {
+  const token = polarToken();
+  if (!token) return "";
+  const queries: string[] = [];
+  const em = (opts.email ?? "").trim().toLowerCase();
+  const ext = (opts.externalId ?? "").trim();
+  if (em) queries.push(`${polarBase()}/v1/customers/?email=${encodeURIComponent(em)}&limit=1`);
+  if (ext) queries.push(`${polarBase()}/v1/customers/?external_id=${encodeURIComponent(ext)}&limit=1`);
+  for (const url of queries) {
+    try {
+      const res = await fetch(url, {
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+      });
+      if (!res.ok) continue;
+      const json = (await res.json()) as Record<string, unknown>;
+      const items = Array.isArray(json.items)
+        ? json.items
+        : Array.isArray((json.result as { items?: unknown[] } | undefined)?.items)
+          ? ((json.result as { items: unknown[] }).items)
+          : [];
+      const first = items[0];
+      if (first && typeof first === "object") {
+        const id = String((first as { id?: string }).id ?? "").trim();
+        if (id) return id;
+      }
+    } catch {
+      /* try next */
+    }
+  }
+  return "";
+}
+
+export async function createCustomerPortalSession(opts: {
+  customerId?: string;
+  externalCustomerId?: string;
+  returnUrl?: string;
+}): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const token = polarToken();
+  if (!token) {
+    return { ok: false, error: "Polar is not connected on this host." };
+  }
+  const bodies: Record<string, unknown>[] = [];
+  if (opts.customerId) {
+    bodies.push({
+      customer_id: opts.customerId,
+      ...(opts.returnUrl ? { return_url: opts.returnUrl } : {}),
+    });
+    bodies.push({ customer_id: opts.customerId });
+  }
+  if (opts.externalCustomerId) {
+    bodies.push({
+      customer_external_id: opts.externalCustomerId,
+      ...(opts.returnUrl ? { return_url: opts.returnUrl } : {}),
+    });
+    bodies.push({ customer_external_id: opts.externalCustomerId });
+  }
+  if (!bodies.length) {
+    return { ok: false, error: "No Polar customer on this account yet. Subscribe once, then manage it here." };
+  }
+  const urls = [`${polarBase()}/v1/customer-sessions/`, `${polarBase()}/v1/customer-sessions`];
+  let last = "Could not open Polar's customer portal.";
+  for (const body of bodies) {
+    for (const url of urls) {
+      try {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(body),
+        });
+        const raw = await res.text();
+        let json: Record<string, unknown> = {};
+        try {
+          json = JSON.parse(raw) as Record<string, unknown>;
+        } catch {
+          json = {};
+        }
+        const portal =
+          String(json.customer_portal_url ?? json.customerPortalUrl ?? json.url ?? "").trim();
+        if (res.ok && portal.startsWith("http")) return { ok: true, url: portal };
+        last = polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
+        if (res.status === 401 || res.status === 403) return { ok: false, error: last };
+      } catch (err) {
+        last = err instanceof Error ? err.message : "Polar network error";
+      }
+    }
+  }
+  return { ok: false, error: last };
 }
 
 export function extractInterval(payload: Record<string, unknown>): PlanInterval | "" {

@@ -37,8 +37,10 @@ export function deviceFor(preset: Preset) {
 
 /**
  * Replica index IS the silkscreen / HX Edit number.
- * HX Stomp XL: closest row 1–3, far row (toward the LCD) 4–6, MODE=7, TAP=8.
- * Helix: closest 1–6, far 7–12. POD Go / HX Effects: closest 1–4, far 5–8.
+ * Looking down with the LCD at the top: FS1 is always TOP LEFT.
+ * HX Stomp XL: top 1–3 + MODE, bottom 4–6 + TAP.
+ * Helix: top 1–6, bottom 7–12. POD Go / HX Effects: top 1–4, bottom 5–8.
+ * Stomp: single row 1–3 left to right.
  */
 export function visualToHardwareFs(index: number, _xl = false): number {
   return index;
@@ -50,11 +52,11 @@ export function hxEditFsNumber(index: number, xl = false): number {
 }
 
 /**
- * LCD scribble order looking down at the unit (far row first, then closest).
- * XL LCD sits above FS4–6, so the upper scribble row is 4–6, lower is 1–3.
+ * LCD scribble order looking down at the unit (top row first, then bottom).
+ * XL LCD sits above FS1–3, so the upper scribble row is 1–3, lower is 4–6.
  */
 export function lcdScribbleIndices(layout: "stomp" | "xl"): number[] {
-  if (layout === "xl") return [4, 5, 6, 1, 2, 3];
+  if (layout === "xl") return [1, 2, 3, 4, 5, 6];
   return [1, 2, 3];
 }
 

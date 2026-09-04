@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,7 +36,6 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
 }
 
 function LoginPage() {
-  const navigate = useNavigate();
   const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
   const [mode, setMode] = useState<"in" | "up">("in");
@@ -58,10 +57,10 @@ function LoginPage() {
   }, []);
 
   async function waitForSession() {
-    for (let i = 0; i < 6; i++) {
+    for (let i = 0; i < 12; i++) {
       const session = await authClient.getSession().catch(() => null);
       if (session?.data?.user) return session;
-      await new Promise((r) => window.setTimeout(r, 120 * (i + 1)));
+      await new Promise((r) => window.setTimeout(r, 140 * (i + 1)));
     }
     return null;
   }
@@ -75,11 +74,10 @@ function LoginPage() {
   }
 
   async function goAfterAuth() {
-    if (checkoutId) {
-      await navigate({ to: "/upgrade", search: { checkout_id: checkoutId }, replace: true });
-      return;
-    }
-    await navigate({ to: next, replace: true });
+    const dest = checkoutId
+      ? `/upgrade?checkout_id=${encodeURIComponent(checkoutId)}`
+      : next || "/";
+    window.location.assign(dest);
   }
 
   if (!isPending && user) {
@@ -181,9 +179,9 @@ function LoginPage() {
             {mode === "in" ? "Sign in" : "Create account"}
           </h1>
           <p className="text-sm text-muted-foreground">
-            Email and a password. That's it — no Google, no X. Unlock and admin
-            stick to this exact email after you sign in, even if you used a
-            different device. Always sign in (don't create a second account).
+            Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact
+            email. Always sign in with the same address — creating a second account starts over.
+            Use https://stomplab.app (not www, not the Vercel URL).
           </p>
         </div>
 
