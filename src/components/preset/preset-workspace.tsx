@@ -79,7 +79,7 @@ export function PresetWorkspace({
     }
     setActiveSnapshot(0);
     setLcdView("play");
-    setAssignFsIndex(device.layout === "xl" ? 4 : 1);
+    setAssignFsIndex(1);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
@@ -499,7 +499,7 @@ export function PresetWorkspace({
           <CardHeader>
             <CardTitle>Build it on the Stomp</CardTitle>
             <CardDescription>
-              The replica is the map. 1 is top-left, 6 is bottom-right — same as the numbers on the switches.
+              The replica is looking down at the unit. You stand at the bottom. Closest switches are 1–3 (Stomp / XL) or 1–4 (POD Go / HX Effects) or 1–6 (Helix). Those numbers are the silkscreen and HX Edit numbers.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -522,7 +522,7 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">3.</span>
                 <span>
-                  Numbers on this replica: 1 top-left through 6 bottom-right. On an XL the factory silkscreen is inverted — our file puts replica 1 on the TOP-LEFT of the unit (hardware FS4), so intro is not on the closest row. MODE and TAP sit next to the bottom row. Volume is on the right of a Stomp, on the rear of an XL.
+                  Numbers match the silkscreen. Closest row to you is 1–3 on a Stomp XL (intro lives on 1), 1–4 on POD Go / HX Effects, 1–6 on Helix Floor/LT. Far row is 4–6 (XL) or 5–8 or 7–12. MODE and TAP sit where they do on the hardware. Volume is the right knob on a Stomp, on the rear of an XL.
                 </span>
               </li>
               {preset.programming.map((step, i) => (

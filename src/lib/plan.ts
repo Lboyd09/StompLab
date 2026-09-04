@@ -24,6 +24,21 @@ export function isOwnerAccount(email: string | null | undefined) {
   return isAdminEmail(email);
 }
 
+/** Stats/revenue must drop the owner even when the purchase email is blank. */
+export function hideOwnerRow(
+  email?: string | null,
+  userId?: string | null,
+  ownerIds?: Iterable<string> | null,
+) {
+  if (isOwnerAccount(email)) return true;
+  if (userId && ownerIds) {
+    for (const id of ownerIds) {
+      if (id && id === userId) return true;
+    }
+  }
+  return false;
+}
+
 export function yearMonth(d = new Date()) {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
 }

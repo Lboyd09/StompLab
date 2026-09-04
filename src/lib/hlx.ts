@@ -299,6 +299,35 @@ function finiteHlx(value: number | boolean | undefined): value is number | boole
   return typeof value === "number" && Number.isFinite(value);
 }
 
+function factoryDefault(name: string): number | boolean {
+  if (BOOLEAN_PARAMS.has(name)) return false;
+  if (name === "Hum" || name === "Ripple") return 0.05;
+  if (name === "Bias" || name === "BiasX") return 0.5;
+  if (name === "LowCut") return 20;
+  if (name === "HighCut") return 20100;
+  if (name === "Distance") return 1;
+  if (name === "EarlyReflections" || name === "Level") return 0;
+  if (name === "Mix" || name === "Blend") return 0.5;
+  if (/Hz$/i.test(name) || name.endsWith("Hz")) return 0;
+  if (/SW$|Switch$/.test(name)) return false;
+  return 0.5;
+}
+
+function fillFactoryParams(
+  modelId: string,
+  mapped: Record<string, number | boolean>,
+): Record<string, number | boolean> {
+  const hid = helixIdFor(modelId);
+  const factory = hid ? factoryParamsFor(hid) : undefined;
+  if (!factory?.size) return mapped;
+  const out = { ...mapped };
+  for (const name of factory) {
+    if (out[name] !== undefined) continue;
+    out[name] = factoryDefault(name);
+  }
+  return out;
+}
+
 function blockParams(block: StompBlock): Record<string, number | boolean> {
   const model = MODEL_MAP[block.modelId];
   const category = model?.category ?? "distortion";
@@ -344,7 +373,7 @@ function blockParams(block: StompBlock): Record<string, number | boolean> {
     if (allowedHlx.has("Mode")) out.Mode = false;
     if (allowedHlx.has("Headroom")) out.Headroom = 0;
   }
-  return out;
+  return fillFactoryParams(block.modelId, out);
 }
 
 function micIndex(block: StompBlock): number {

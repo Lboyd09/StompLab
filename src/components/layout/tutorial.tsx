@@ -2,7 +2,7 @@ import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useLayoutEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v4";
+export const TUTORIAL_KEY = "stomplab.tutorial.v5";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type Step = {
@@ -18,53 +18,53 @@ type Step = {
 const STEPS: Step[] = [
   {
     id: "hello",
-    title: "Song in. File out.",
-    body: "Stomp Lab researches a recording and builds a starting preset for the Line 6 box you actually own. You leave with a .hlx or .pgp you import in HX Edit or POD Go Edit — not a playlist of other people's tones.",
+    title: "What you leave with",
+    body: "Type a song. We research the tracking rig and build a starting preset for the Line 6 box you own. You download a .hlx (HX Edit) or .pgp (POD Go Edit) — not a playlist of other people's tones.",
   },
   {
     id: "unit",
-    title: "Pick your box first",
-    body: "Guitar or bass, then the unit in the header: Stomp, XL, Helix, HX Effects, or POD Go. The replica, the footswitch numbers, and the download all follow this. Wrong unit = wrong file.",
+    title: "Pick the unit you actually own",
+    body: "Guitar or bass, then Stomp / XL / Helix / HX Effects / POD Go in the header. The replica, the switch numbers, and the file all follow this. Wrong unit = HX Edit will not load it.",
     target: "[data-tour='unit']",
     href: "/",
   },
   {
     id: "song",
-    title: "One tap on the artwork",
-    body: "Type two letters of the title. Tap the album art once — that is the exact recording we research. Then hit Build this preset. Demos below skip this and always work.",
+    title: "Tap the artwork once",
+    body: "Type two letters of the title. Tap the album cover once — that locks the exact recording. Then hit Build this preset. You should not need a second tap.",
     target: "[data-tour='song']",
     href: "/",
     waitClick: true,
   },
   {
     id: "demo",
-    title: "Or open a free demo",
-    body: "Enter Sandman, Teen Spirit, and Numb are always free — no account. Tap the card. You land looking down at the unit with the chain loaded.",
+    title: "Or skip with a free demo",
+    body: "Enter Sandman, Teen Spirit, and Numb always work with no account. Tap a card. Three custom songs after that are free once you sign in.",
     target: "[data-tour='demo-sandman']",
     href: "/",
     waitClick: true,
   },
   {
     id: "replica",
-    title: "This is the box, looking down",
-    body: "The numbers on the caps are the silkscreen / HX Edit numbers. Closest row to you is 1–3 (Stomp XL) or 1–4 (POD Go / HX Effects). Far row is 4–6 or 5–8. MODE and TAP sit where they do on the hardware.",
+    title: "You are standing at the bottom",
+    body: "This is looking down at the hardware. Closest row to your toes is 1–3 (Stomp XL) or 1–4 (POD Go / HX Effects) or 1–6 (Helix). Far row is toward the LCD. Those numbers are the silkscreen and what HX Edit shows.",
     target: "[data-tour='replica']",
     href: "/preset/$id",
     presetId: "featured-sandman",
   },
   {
     id: "switch",
-    title: "Tap switch 1 — that's the intro",
-    body: "Snapshot 1 is the recorded opening. Verse / chorus / solo live on the next numbered switches. Assign a section or bypass an effect from here, then download.",
-    target: "[data-tour='replica'] .hx-fs-cap",
+    title: "Switch 1 is the intro",
+    body: "Snapshot 1 is the recorded opening — usually cleaner than the chorus. Verse / chorus / solo sit on the next numbered switches. Tap FS1 once, then download.",
+    target: "[data-tour='replica'] [data-fs='1']",
     href: "/preset/$id",
     presetId: "featured-sandman",
     waitClick: true,
   },
   {
     id: "download",
-    title: "Get it onto the hardware",
-    body: "Tap Download. USB to a computer. HX Edit or POD Go Edit → File → Import. Do not drag the file onto a setlist. PAGE until SNAP or STOMP matches. Three custom songs are free after you sign in; demos never count.",
+    title: "Import — don't drag",
+    body: "Tap Download. USB to a computer. HX Edit or POD Go Edit → File → Import. Do not drag the file onto a setlist. On the unit, PAGE until it says SNAP or STOMP. Firmware 3.80 or newer.",
     target: "[data-tour='download']",
     href: "/preset/$id",
     presetId: "featured-sandman",

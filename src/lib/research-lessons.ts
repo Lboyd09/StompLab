@@ -11,7 +11,7 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - BOSS SD-1 → stupor-od. Ibanez TS808/TS-9 tightener (Drive 1–2.5, Level 7–8) → scream-808. ProCo RAT → vermin-dist. EHX Small Clone → 70s-chorus.
 - One amp. Snapshot Drive / Ch Vol instead of a second amp. Distortion Mix is not a factory knob — omit it.
 - Never dime Drive. Pedals ~noon. Amp Drive: clean intro 1.5–3, crunch 3–5, high-gain rhythm 5–6.5, metal 5–7.
-- Snapshot 1 is the recorded OPENING (often cleaner than the chorus). A solo / signature trick is its own snapshot with a different tone — boost, delay Mix up, not a copy of the rhythm snap.
+- Snapshot 1 is the recorded OPENING (often cleaner than the chorus). A solo / signature trick is its own snapshot with a different tone — boost, delay Mix up, not a copy of the rhythm snap. Put Drive / Ch Vol / Mix changes in paramOverrides so they actually export.
 - Footswitches 1, 2, 3 (closest row on XL / POD Go / Helix) carry Intro / Verse / Chorus in that order. Far-row 4–6 are later sections. Do not spend FS1–3 on TAP/MODE.
 - Only catalog modelId values that exist in the list. Factory HX names only. No invented models, no dual-path splits, no IRs unless the catalog has that id.
 - Prefer the tracking/studio rig over a later tour rig when sources disagree.

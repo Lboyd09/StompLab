@@ -242,7 +242,10 @@ function Home() {
               type="button"
               aria-label={`Open ${p.song}`}
               data-tour={p.id === "featured-sandman" ? "demo-sandman" : undefined}
-              onClick={() => openFeatured(p.id)}
+              onPointerDown={(e) => {
+                e.preventDefault();
+                openFeatured(p.id);
+              }}
               className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
             >
               <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
@@ -272,7 +275,10 @@ function Home() {
                 <button
                   key={p.id}
                   type="button"
-                  onClick={() => openFeatured(p.id)}
+                  onPointerDown={(e) => {
+                    e.preventDefault();
+                    openFeatured(p.id);
+                  }}
                   className="group rounded-xl border border-border bg-card p-5 text-left hover:border-primary/50"
                 >
                   <div className="flex items-start justify-between gap-2">

@@ -325,7 +325,10 @@ export function StompUnit({
               {lcd}
               {knobs}
             </div>
-            <div className="hx-xl-well">{well}</div>
+            <div className="hx-xl-well">
+              {well}
+              <span className="hx-silk mt-2 block text-center">Vol · rear</span>
+            </div>
             <div className="hx-xl-fs4">{renderSwitch(4)}</div>
             <div className="hx-xl-fs5">{renderSwitch(5)}</div>
             <div className="hx-xl-fs6">{renderSwitch(6)}</div>
@@ -713,6 +716,7 @@ function Footswitch({
       onClick={onClick}
       aria-label={label ? `Switch ${shown || label} ${label}` : `Switch ${shown}`}
       aria-pressed={selected}
+      data-fs={shown || index}
       className="group flex min-h-11 flex-col items-center gap-1"
     >
       <span

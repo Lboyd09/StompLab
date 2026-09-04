@@ -403,10 +403,7 @@ function SearchResults({
             className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
             onPointerDown={(e) => {
               e.preventDefault();
-              onSong(p);
-            }}
-            onClick={(e) => {
-              e.preventDefault();
+              e.stopPropagation();
               onSong(p);
             }}
           >
@@ -427,10 +424,7 @@ function SearchResults({
           className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
           onPointerDown={(e) => {
             e.preventDefault();
-            onModel(m);
-          }}
-          onClick={(e) => {
-            e.preventDefault();
+            e.stopPropagation();
             onModel(m);
           }}
         >
@@ -448,10 +442,7 @@ function SearchResults({
         className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
         onPointerDown={(e) => {
           e.preventDefault();
-          onResearch();
-        }}
-        onClick={(e) => {
-          e.preventDefault();
+          e.stopPropagation();
           onResearch();
         }}
       >

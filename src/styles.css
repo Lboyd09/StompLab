@@ -335,7 +335,9 @@ html.light {
 }
 
 .hx-helix-controls .hx-knob-row {
-  gap: 8px;
+  display: grid;
+  grid-template-columns: repeat(3, auto);
+  gap: 10px 14px;
 }
 
 .hx-joystick {
@@ -365,13 +367,14 @@ html.light {
   }
 
   .hx-helix-modetap {
-    flex-direction: row;
-    justify-content: center;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: none;
+    justify-items: center;
     gap: 24px;
   }
 
   .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(44px, 1fr));
+    grid-template-columns: repeat(6, minmax(40px, 1fr));
   }
 
   .hx-podgo-board {
@@ -389,10 +392,14 @@ html.light {
 }
 
 @media (max-width: 560px) {
-  .hx-helix-row,
   .hx-effects-grid .hx-helix-row,
   .hx-podgo-fs {
     grid-template-columns: repeat(4, minmax(48px, 1fr));
+  }
+
+  .hx-helix-row {
+    grid-template-columns: repeat(6, minmax(32px, 1fr));
+    gap: 4px;
   }
 
   .hx-lcd-wide {

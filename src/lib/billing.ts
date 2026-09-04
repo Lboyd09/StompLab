@@ -15,7 +15,7 @@ import {
   purchaseLooksPaid,
   subscriptionStatusIsActive,
 } from "./polar";
-import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, normalizeEmail, yearMonth, type Plan, type PlanInterval, ADMIN_EMAIL } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, yearMonth, type Plan, type PlanInterval, ADMIN_EMAIL } from "./plan";
 import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -611,6 +611,7 @@ export const adminDashboard = createServerFn({ method: "GET" })
       purchases: [] as {
         created_at: string;
         email: string;
+        user_id: string;
         polar_order_id: string;
         polar_checkout_id: string;
         amount_cents: number;
@@ -672,6 +673,7 @@ async function loadAdminDashboard(empty: {
   purchases: {
     created_at: string;
     email: string;
+    user_id: string;
     polar_order_id: string;
     polar_checkout_id: string;
     amount_cents: number;
@@ -728,11 +730,12 @@ async function loadAdminDashboard(empty: {
       purchases = await sql<{
         created_at: string;
         email: string;
+        user_id: string;
         polar_order_id: string;
         polar_checkout_id: string;
         amount_cents: number;
       }>`
-        select created_at::text, email, polar_order_id, polar_checkout_id, amount_cents
+        select created_at::text, email, coalesce(user_id, '') as user_id, polar_order_id, polar_checkout_id, amount_cents
         from purchases
         order by created_at desc
         limit 100
@@ -974,8 +977,15 @@ async function loadAdminDashboard(empty: {
     } catch {
       affiliateClicks = [];
     }
-    purchases = purchases.filter((p) => !isOwnerAccount(p.email));
-    usage = usage.filter((u) => !isOwnerAccount(u.email));
+    const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
+    purchases = purchases.filter((p) => !hideOwnerRow(p.email, p.user_id, ownerIds));
+    usage = usage.filter((u) => !hideOwnerRow(u.email, u.user_id, ownerIds));
+    entitlements = entitlements.filter((e) => !hideOwnerRow(e.email, e.user_id, ownerIds));
+    userCount = accounts.filter((a) => !isOwnerAccount(a.email)).length;
+    subscribedCount = entitlements.filter(
+      (e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin",
+    ).length;
+    revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
     return {
       purchases,
       usage,

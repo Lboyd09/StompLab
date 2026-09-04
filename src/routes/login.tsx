@@ -1,5 +1,5 @@
 import { createFileRoute, Navigate, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -48,6 +48,32 @@ function LoginPage() {
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
 
+  useEffect(() => {
+    try {
+      const saved = window.localStorage.getItem("stomplab.email");
+      if (saved) setEmail(saved);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  async function waitForSession() {
+    for (let i = 0; i < 6; i++) {
+      const session = await authClient.getSession().catch(() => null);
+      if (session?.data?.user) return session;
+      await new Promise((r) => window.setTimeout(r, 120 * (i + 1)));
+    }
+    return null;
+  }
+
+  function rememberEmail(value: string) {
+    try {
+      window.localStorage.setItem("stomplab.email", value);
+    } catch {
+      /* ignore */
+    }
+  }
+
   async function goAfterAuth() {
     if (checkoutId) {
       await navigate({ to: "/upgrade", search: { checkout_id: checkoutId }, replace: true });
@@ -93,8 +119,9 @@ function LoginPage() {
               rememberMe: true,
             });
             if (!signErr) {
-              const session = await authClient.getSession().catch(() => null);
+              const session = await waitForSession();
               if (session?.data?.user) {
+                rememberEmail(trimmed);
                 await goAfterAuth();
                 return;
               }
@@ -116,8 +143,9 @@ function LoginPage() {
         // Sign-up already created the account — treat a follow-up sign-in
         // failure as a cookie/session problem, not a bad password.
         if (mode === "up") {
-          const session = await authClient.getSession().catch(() => null);
+          const session = await waitForSession();
           if (session?.data?.user) {
+            rememberEmail(trimmed);
             await goAfterAuth();
             return;
           }
@@ -125,11 +153,12 @@ function LoginPage() {
         setError(friendlyAuthError(err.message || "", mode === "up" ? "in" : "in"));
         return;
       }
-      const session = await authClient.getSession().catch(() => null);
+      const session = await waitForSession();
       if (!session?.data?.user) {
-        setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again.");
+        setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again. Always use stomplab.app — www and the Vercel URL are a different login.");
         return;
       }
+      rememberEmail(trimmed);
       await goAfterAuth();
     } catch (err) {
       setError(friendlyAuthError(err instanceof Error ? err.message : "", mode));

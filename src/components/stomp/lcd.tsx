@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { Preset, StompBlock } from "@/data/types";
-import { blockModel, deviceFor, dspLoad, formatParam, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { blockModel, deviceFor, dspLoad, formatParam, lcdScribbleIndices, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -54,7 +54,7 @@ function BlockChip({
 
 function scribblesFor(preset: Preset, fsMode: FsMode, xl: boolean): Scribble[] {
   const dim = "#5a5e62";
-  const indices = xl ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
+  const indices = lcdScribbleIndices(xl ? "xl" : "stomp");
   return indices.map((index) => {
     const assign = preset.footswitches.find((f) => f.index === index);
     if (fsMode === "preset") {

@@ -1,12 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { ALL_MODELS } from "../data/catalog.ts";
-import { FEATURED } from "../data/featured.ts";
+import { DEMO_IDS, FEATURED } from "../data/featured.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
 import { factoryParamsFor, FACTORY_HLX_PARAMS } from "../data/helix-params.ts";
 import type { Preset } from "../data/types.ts";
 import { buildHlx, canExportHlx, hlxFilename } from "./hlx.ts";
-import { canDownloadPreset, featuredBaseId, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
+import { canDownloadPreset, featuredBaseId, lcdScribbleIndices, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
   const p = FEATURED.find((x) => x.id === id);
@@ -164,6 +164,8 @@ describe("visual FS map", () => {
     assert.equal(visualToHardwareFs(6, true), 6);
     assert.equal(visualToHardwareFs(7, true), 7);
     assert.equal(visualToHardwareFs(8, true), 8);
+    assert.deepEqual(lcdScribbleIndices("stomp"), [1, 2, 3]);
+    assert.deepEqual(lcdScribbleIndices("xl"), [4, 5, 6, 1, 2, 3]);
   });
 
   it("never 404s an XL featured slug", () => {
@@ -272,6 +274,35 @@ describe("visual FS map", () => {
       assert.equal(model.startsWith("L6SPB_"), false, `${k} ${model}`);
       assert.ok(FACTORY_HLX_PARAMS[model], `${k} ${model}`);
     }
+  });
+
+  it("writes every factory knob on each exportable block", () => {
+    const src = featured("featured-teen-spirit");
+    for (const model of ["hx-stomp", "hx-stomp-xl", "pod-go", "helix-floor"] as const) {
+      const preset = withStompModel(src, model);
+      const hlx = buildHlx(preset);
+      const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+      for (const [k, b] of Object.entries(dsp)) {
+        if (!k.startsWith("block") && k !== "cab0") continue;
+        const hid = String(b["@model"] ?? "");
+        const factory = FACTORY_HLX_PARAMS[hid];
+        if (!factory) continue;
+        for (const pname of factory) {
+          assert.notEqual(b[pname], undefined, `${model} ${k} ${hid} missing ${pname}`);
+        }
+      }
+    }
+  });
+
+  it("does not add Everlong / Like a Stone / Show Me How to Live as featured", () => {
+    const ids = FEATURED.map((p) => p.id);
+    assert.equal(ids.includes("featured-everlong"), false);
+    assert.equal(ids.includes("featured-like-a-stone"), false);
+    assert.equal(ids.includes("featured-show-me-how-to-live"), false);
+    assert.deepEqual(
+      [...DEMO_IDS].sort(),
+      ["featured-numb", "featured-sandman", "featured-teen-spirit"].sort(),
+    );
   });
 });
 

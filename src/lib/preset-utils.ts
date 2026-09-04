@@ -49,6 +49,15 @@ export function hxEditFsNumber(index: number, xl = false): number {
   return visualToHardwareFs(index, xl);
 }
 
+/**
+ * LCD scribble order looking down at the unit (far row first, then closest).
+ * XL LCD sits above FS4–6, so the upper scribble row is 4–6, lower is 1–3.
+ */
+export function lcdScribbleIndices(layout: "stomp" | "xl"): number[] {
+  if (layout === "xl") return [4, 5, 6, 1, 2, 3];
+  return [1, 2, 3];
+}
+
 export function featuredBaseId(id: string): string {
   const sorted = [...STOMP_MODEL_IDS].sort((a, b) => b.length - a.length);
   for (const model of sorted) {

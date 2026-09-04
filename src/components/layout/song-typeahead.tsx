@@ -28,6 +28,7 @@ export function SongTypeahead({
   const ignoreBlur = useRef(false);
   const picked = useRef("");
   const lastPick = useRef(0);
+  const gen = useRef(0);
 
   function pick(hit: SongHit) {
     const now = Date.now();
@@ -35,6 +36,7 @@ export function SongTypeahead({
     lastPick.current = now;
     ignoreBlur.current = true;
     picked.current = hitKey(hit);
+    gen.current += 1;
     setHits([]);
     setOpen(false);
     onPick(hit);
@@ -50,21 +52,22 @@ export function SongTypeahead({
       setOpen(false);
       return;
     }
-    if (picked.current && picked.current === hitKey({ song, artist })) {
+    if (picked.current) {
       setOpen(false);
       return;
     }
+    const my = ++gen.current;
     const handle = window.setTimeout(() => {
       void suggestSongsFn({ data: { q, instrument } })
         .then((rows) => {
-          if (picked.current && picked.current === hitKey({ song, artist })) {
-            setOpen(false);
-            return;
-          }
+          if (my !== gen.current || picked.current) return;
           setHits(rows);
           setOpen(true);
         })
-        .catch(() => setHits([]));
+        .catch(() => {
+          if (my !== gen.current) return;
+          setHits([]);
+        });
     }, 180);
     return () => window.clearTimeout(handle);
   }, [song, artist, instrument]);
