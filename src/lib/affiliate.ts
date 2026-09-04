@@ -1,18 +1,10 @@
-function envString(name: string): string {
-  try {
-    const meta = import.meta as { env?: Record<string, string | undefined> };
-    return String(meta.env?.[name] ?? "").trim();
-  } catch {
-    return "";
-  }
-}
-
+/** Vite only inlines VITE_* when accessed as static import.meta.env.KEY. */
 export function amazonAssociateTag(): string {
-  return envString("VITE_AMAZON_ASSOCIATE_TAG");
+  return String(import.meta.env.VITE_AMAZON_ASSOCIATE_TAG ?? "").trim();
 }
 
 export function sweetwaterAffiliateId(): string {
-  return envString("VITE_SWEETWATER_AFFILIATE_ID");
+  return String(import.meta.env.VITE_SWEETWATER_AFFILIATE_ID ?? "").trim();
 }
 
 export function amazonSearchUrl(query: string, tag = amazonAssociateTag()): string {
