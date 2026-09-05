@@ -29,8 +29,10 @@ export function postgresPoolConfig(
   return {
     connectionString: postgresConnectionString(connectionString),
     ssl: postgresSsl(connectionString),
-    // Serverless: one client per isolate. Session pooler caps ~15; greedier pools hang admin.
-    max: extra?.max ?? 1,
+    // Transaction pooler (Supabase :6543) tolerates a few concurrent clients.
+    // Default 4 so admin dashboard can parallelize queries; auth still passes { max: 1 }.
+    // Avoid higher values — session pooler max-clients was the earlier hang.
+    max: extra?.max ?? 4,
     idleTimeoutMillis: extra?.idleTimeoutMillis ?? 2000,
     connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 4000,
     allowExitOnIdle: true as const,

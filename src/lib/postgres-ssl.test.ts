@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { friendlyDbError, postgresConnectionString, postgresSsl } from "./postgres-ssl.ts";
+import { friendlyDbError, postgresConnectionString, postgresPoolConfig, postgresSsl } from "./postgres-ssl.ts";
 
 describe("postgresConnectionString", () => {
   it("leaves loopback URLs alone", () => {
@@ -37,3 +37,15 @@ describe("postgresConnectionString", () => {
     assert.match(friendlyDbError(new Error("(EMAXCONNSESSION) max clients reached")), /busy|pooler/i);
   });
 });
+
+describe("postgresPoolConfig", () => {
+  it("defaults max to 4 for the transaction pooler; auth can still pass max: 1", () => {
+    const cfg = postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres");
+    assert.equal(cfg.max, 4);
+    assert.equal(cfg.idleTimeoutMillis, 2000);
+    assert.equal(cfg.connectionTimeoutMillis, 4000);
+    assert.equal(cfg.options, "-c statement_timeout=8000");
+    assert.equal(postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres", { max: 1 }).max, 1);
+  });
+});
+
