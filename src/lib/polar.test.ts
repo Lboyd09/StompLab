@@ -9,6 +9,7 @@ import {
   polarEventIsSubscriptionGrant,
   polarEventIsSubscriptionRevoke,
   polarFriendlyError,
+  polarPortalUrlFromPayload,
   polarStatusIsPaid,
   purchaseLooksPaid,
 } from "./polar.ts";
@@ -34,7 +35,14 @@ describe("polarEventIsPaid", () => {
       polarEventIsPaid({ type: "checkout.updated", data: { id: "checkout_abc12345", status: "confirmed" } }),
       false,
     );
-    assert.equal(polarCheckoutNeedsPoll({ status: "confirmed" }), true);
+    assert.equal(polarCheckoutNeedsPoll({ status: "complete" }), true);
+    assert.equal(
+      polarCheckoutIsReady({
+        status: "complete",
+        order_id: "order_abc12345",
+      }),
+      true,
+    );
     assert.equal(polarCheckoutIsReady({ status: "confirmed" }), false);
     assert.equal(
       polarCheckoutIsReady({
@@ -152,6 +160,24 @@ describe("purchaseLooksPaid", () => {
       polarEventIsSubscriptionRevoke({ type: "subscription.revoked", data: { id: "sub_abc12345", status: "revoked" } }),
       true,
     );
+  });
+});
+
+describe("polarPortalUrlFromPayload", () => {
+  it("reads customer_portal_url and polar_cst tokens", () => {
+    assert.equal(
+      polarPortalUrlFromPayload({ customer_portal_url: "https://polar.sh/portal/abc" }),
+      "https://polar.sh/portal/abc",
+    );
+    assert.equal(
+      polarPortalUrlFromPayload({ data: { customer_portal_url: "https://sandbox.polar.sh/portal/x" } }),
+      "https://sandbox.polar.sh/portal/x",
+    );
+    assert.match(
+      polarPortalUrlFromPayload({ token: "polar_cst_abc123" }),
+      /customer-portal\?customer_session_token=polar_cst_abc123/,
+    );
+    assert.equal(polarPortalUrlFromPayload({ url: "/relative" }), "");
   });
 });
 

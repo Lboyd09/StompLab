@@ -1,6 +1,6 @@
 import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
-import { helixIdFor, isHxStompModelId } from "@/data/helix-ids";
+import { helixIdFor, isHxStompModelId, UNEXPORTABLE_MODELS } from "@/data/helix-ids";
 import { factoryParamsFor } from "@/data/helix-params";
 import type { CategoryId, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
@@ -44,7 +44,14 @@ export function exportExtension(model: StompModelId): "hlx" | "pgp" | null {
 }
 
 const SKIP_CATEGORIES = new Set<CategoryId>(["mic", "ir"]);
-const SKIP_MODELS = new Set(["split-y", "split-a-b", "crossover-split", "merge", "impulse-response"]);
+const SKIP_MODELS = new Set([
+  "split-y",
+  "split-a-b",
+  "crossover-split",
+  "merge",
+  "impulse-response",
+  ...UNEXPORTABLE_MODELS,
+]);
 const MAX_PATH_BLOCKS = 8;
 
 /** HX Edit @type integers from factory .hlx. Strings like "amp" are rejected. */

@@ -16,10 +16,10 @@ function GuidePage() {
 
       <Section title="The 30-second path">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Pick Guitar or Bass, and Stomp or XL, in the header.</li>
+          <li>Pick Guitar or Bass, and your unit (Stomp, XL, Floor, LT, HX Effects, or POD Go), in the header.</li>
           <li>Open a featured song, or type a title and build a preset.</li>
           <li>Tap Snapshot or Stomp above the replica. Play the switches.</li>
-          <li>Download the .hlx. In HX Edit: File → Import.</li>
+          <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp.</li>
         </ol>
       </Section>
 
@@ -120,8 +120,8 @@ function GuidePage() {
         <h2 className="font-display text-lg font-semibold text-foreground">Help</h2>
         <p>
           Stuck on a preset, billing, or sign-in? Email{" "}
-          <a href="mailto:hello@stomplab.app" className="text-primary underline underline-offset-2">
-            hello@stomplab.app
+          <a href="mailto:stomplab1@gmail.com" className="text-primary underline underline-offset-2">
+            stomplab1@gmail.com
           </a>
           . That is the Stomp Lab inbox. Polar handles cards and invoices — use Account → Manage
           subscription to change or cancel. Always sign in at{" "}
@@ -139,7 +139,7 @@ function GuidePage() {
           can unlock on the next visit. We do not sell that list. Polar is the merchant of record for
           subscriptions and stores card details — Stomp Lab never sees your card. Song research is sent
           to Google Gemini. Amazon shop links use our affiliate tag. You can ask us to delete your
-          account by emailing hello@stomplab.app.
+          account by emailing stomplab1@gmail.com.
         </p>
       </section>
 

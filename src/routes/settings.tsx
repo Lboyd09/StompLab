@@ -4,6 +4,7 @@ import { replayTutorial } from "@/components/layout/tutorial";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
@@ -45,7 +46,7 @@ function SettingsPage() {
     hydrate();
   }, [hydrate]);
 
-  const unitLabel = stompModel === "hx-stomp-xl" ? "HX Stomp XL" : "HX Stomp";
+  const unitLabel = DEVICE_MAP[stompModel]?.name ?? "HX Stomp";
   const accountPending = !mounted || authPending || planPending;
 
   return (
@@ -153,22 +154,20 @@ function SettingsPage() {
         </fieldset>
         <fieldset className="space-y-2">
           <Label>Default unit</Label>
+          <p className="text-xs text-muted-foreground">
+            HX Stomp, XL, Helix Floor, Helix LT, HX Effects, and POD Go. Export matches the unit.
+          </p>
           <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["hx-stomp", "HX Stomp"],
-                ["hx-stomp-xl", "HX Stomp XL"],
-              ] as const
-            ).map(([id, label]) => (
+            {STOMP_DEVICES.map((d) => (
               <button
-                key={id}
+                key={d.id}
                 type="button"
-                onClick={() => setStompModel(id)}
+                onClick={() => setStompModel(d.id)}
                 className={`h-10 rounded-full px-4 text-sm ${
-                  stompModel === id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
+                  stompModel === d.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
                 }`}
               >
-                {label}
+                {d.name}
               </button>
             ))}
           </div>

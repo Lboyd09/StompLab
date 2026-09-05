@@ -21,6 +21,7 @@ import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
+import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiPolarWebhookRouteImport } from './routes/api/polar.webhook'
@@ -85,6 +86,11 @@ const UpgradeRoute = UpgradeRouteImport.update({
   path: '/upgrade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiKeepaliveRoute = ApiKeepaliveRouteImport.update({
+  id: '/api/keepalive',
+  path: '/api/keepalive',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PresetIdRoute = PresetIdRouteImport.update({
   id: '/preset/$id',
   path: '/preset/$id',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
+  '/api/keepalive': typeof ApiKeepaliveRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -131,6 +138,7 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
+  '/api/keepalive': typeof ApiKeepaliveRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -149,6 +157,7 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
+  '/api/keepalive': typeof ApiKeepaliveRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/upgrade'
+    | '/api/keepalive'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -185,6 +195,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/upgrade'
+    | '/api/keepalive'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -202,6 +213,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/settings'
     | '/upgrade'
+    | '/api/keepalive'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -220,6 +232,7 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   SettingsRoute: typeof SettingsRoute
   UpgradeRoute: typeof UpgradeRoute
+  ApiKeepaliveRoute: typeof ApiKeepaliveRoute
   PresetIdRoute: typeof PresetIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiPolarWebhookRoute: typeof ApiPolarWebhookRoute
@@ -311,6 +324,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UpgradeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/keepalive': {
+      id: '/api/keepalive'
+      path: '/api/keepalive'
+      fullPath: '/api/keepalive'
+      preLoaderRoute: typeof ApiKeepaliveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/preset/$id': {
       id: '/preset/$id'
       path: '/preset/$id'
@@ -348,6 +368,7 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   SettingsRoute: SettingsRoute,
   UpgradeRoute: UpgradeRoute,
+  ApiKeepaliveRoute: ApiKeepaliveRoute,
   PresetIdRoute: PresetIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiPolarWebhookRoute: ApiPolarWebhookRoute,

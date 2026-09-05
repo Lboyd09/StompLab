@@ -1,6 +1,9 @@
 export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
-/** Public support inbox on the domain we own. Never invent a personal Gmail. */
-export const PUBLIC_SUPPORT_EMAIL = "hello@stomplab.app";
+/** Business inbox Liam created for Stomp Lab. Also unlocks /admin. */
+export const BUSINESS_EMAIL = "stomplab1@gmail.com";
+/** Public support inbox. Prefer the Gmail we actually read. */
+export const PUBLIC_SUPPORT_EMAIL = "stomplab1@gmail.com";
+export const LEGACY_SUPPORT_EMAIL = "hello@stomplab.app";
 export const PRICE_MONTHLY_USD = 6.99;
 export const PRICE_YEARLY_USD = 75;
 export const FREE_BUILDS = 3;
@@ -23,14 +26,20 @@ function extraOwnerEmails(): string[] {
     .filter(Boolean);
 }
 
+export function adminEmails(): string[] {
+  return [...new Set([ADMIN_EMAIL, BUSINESS_EMAIL, ...extraOwnerEmails()])];
+}
+
 /** Admin unlock + Polar-test / business inboxes that must never count as revenue. */
 export function ownerEmails(): string[] {
-  return [...new Set([ADMIN_EMAIL, PUBLIC_SUPPORT_EMAIL, ...extraOwnerEmails()])];
+  return [...new Set([ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, LEGACY_SUPPORT_EMAIL, ...extraOwnerEmails()])];
 }
 
 /** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
 export function isAdminEmail(email: string | null | undefined) {
-  return normalizeEmail(email) === ADMIN_EMAIL;
+  const n = normalizeEmail(email);
+  if (!n) return false;
+  return adminEmails().includes(n);
 }
 
 /** Owner row — Polar tests from this address are not customer revenue. */

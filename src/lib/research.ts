@@ -62,6 +62,13 @@ function gearLine(gear: UserGear[]): string {
 }
 
 async function standingFeedbackLessons(): Promise<string> {
+  const g = globalThis as typeof globalThis & {
+    __stompLessonsAt__?: number;
+    __stompLessons__?: string;
+  };
+  if (g.__stompLessons__ && Date.now() - (g.__stompLessonsAt__ ?? 0) < 10 * 60_000) {
+    return g.__stompLessons__;
+  }
   try {
     const sql = await getSql();
     const rows = await sql<{ closer_tweaks: string; want_preset: string; message: string; rating: number | null }>`
@@ -69,7 +76,7 @@ async function standingFeedbackLessons(): Promise<string> {
       from feedback
       where kind in ('preset', 'revise', 'site')
       order by created_at desc
-      limit 40
+      limit 24
     `;
     const bits: string[] = [];
     for (const r of rows) {
@@ -81,10 +88,27 @@ async function standingFeedbackLessons(): Promise<string> {
       else if (want.length >= 8) bits.push(want);
       else if (msg.length >= 12) bits.push(msg);
     }
-    return standingRulesBlock(bits);
+    const block = standingRulesBlock(bits);
+    g.__stompLessons__ = block;
+    g.__stompLessonsAt__ = Date.now();
+    return block;
   } catch {
     return standingRulesBlock([]);
   }
+}
+
+const researchHits = new Map<string, number[]>();
+function tooManyResearches(userId: string) {
+  const now = Date.now();
+  const windowMs = 60_000;
+  const prev = (researchHits.get(userId) ?? []).filter((t) => now - t < windowMs);
+  if (prev.length >= 8) {
+    researchHits.set(userId, prev);
+    return true;
+  }
+  prev.push(now);
+  researchHits.set(userId, prev);
+  return false;
 }
 
 export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini" };
@@ -190,6 +214,9 @@ export const researchSongFn = createServerFn({ method: "POST" })
     );
 
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (tooManyResearches(context.userId)) {
+      return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
+    }
 
     try {
       const cached = await lookupCacheRaw(key);
@@ -265,6 +292,9 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
     const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget);
 
     if (!plan.canCreate) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (tooManyResearches(context.userId)) {
+      return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
+    }
 
     try {
       const cached = await lookupCacheRaw(key);

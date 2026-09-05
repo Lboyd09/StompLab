@@ -58,7 +58,7 @@ function UpgradePage() {
     setConfirming(true);
     void (async () => {
       let last = "";
-      for (let i = 0; i < 6; i++) {
+      for (let i = 0; i < 10; i++) {
         try {
           const res = await confirmCheckout({ data: { checkoutId: id } });
           if (res.ok) {
@@ -164,9 +164,11 @@ function UpgradePage() {
             </span>
             Back to Lab
           </Link>
-          <h1 className="font-display text-4xl font-semibold tracking-tight">
-            Type any song.
-            <span className="block text-muted-foreground">Subscribe when the three free builds are gone.</span>
+          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.92] tracking-tight">
+            Subscribe
+            <span className="mt-2 block text-2xl font-medium normal-case tracking-normal text-muted-foreground">
+              Type any song after the three free builds are gone.
+            </span>
           </h1>
           <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
             {FREE_BUILDS} custom songs after sign-in. Featured demos stay free. Monthly or yearly —

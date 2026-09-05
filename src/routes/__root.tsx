@@ -16,9 +16,9 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Research any song. Build a Line 6 HX Stomp preset you can copy onto the unit.",
+        content: "Research any song. Get a Line 6 preset that sounds like the record.",
       },
-      { name: "theme-color", content: "#0B0C0E" },
+      { name: "theme-color", content: "#F3EFE6" },
       { name: "apple-mobile-web-app-title", content: "StompLab" },
       { name: "application-name", content: "StompLab" },
     ],
@@ -31,7 +31,7 @@ export const Route = createRootRoute({
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
       },
     ],
   }),
@@ -40,7 +40,7 @@ export const Route = createRootRoute({
 
 function Root() {
   return (
-    <html lang="en" className="dark antialiased" suppressHydrationWarning>
+    <html lang="en" className="light antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

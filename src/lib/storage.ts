@@ -26,7 +26,7 @@ export type Settings = {
 const DEFAULT_SETTINGS: Settings = {
   instrument: "guitar",
   stompModel: "hx-stomp",
-  theme: "dark",
+  theme: "light",
   defaultFsMode: "auto",
   showDsp: true,
   confirmDownload: false,

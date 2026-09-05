@@ -1,17 +1,20 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy } from "./plan.ts";
 
 describe("isAdminEmail", () => {
-  it("matches only the exact admin gmail", () => {
+  it("matches only the exact admin gmails", () => {
     assert.equal(isAdminEmail(ADMIN_EMAIL), true);
     assert.equal(isAdminEmail("  LiamJamesB09@gmail.com  "), true);
+    assert.equal(isAdminEmail(BUSINESS_EMAIL), true);
+    assert.equal(isAdminEmail("stomplab1@gmail.com"), true);
     assert.equal(isAdminEmail("liamjamesb09@icloud.com"), false);
     assert.equal(isAdminEmail("someone@gmail.com"), false);
     assert.equal(isAdminEmail(""), false);
     assert.equal(isAdminEmail(null), false);
     assert.equal(normalizeEmail("  LiamJamesB09@Gmail.com "), ADMIN_EMAIL);
     assert.equal(isOwnerAccount(ADMIN_EMAIL), true);
+    assert.equal(isOwnerAccount(BUSINESS_EMAIL), true);
     assert.equal(isOwnerAccount(PUBLIC_SUPPORT_EMAIL), true);
     assert.equal(isOwnerAccount("player@example.com"), false);
     assert.equal(hideOwnerRow(ADMIN_EMAIL), true);
@@ -51,6 +54,17 @@ describe("assemblePlan", () => {
     assert.equal(plan.admin, false);
     assert.equal(plan.paid, false);
     assert.equal(plan.canGear, false);
+  });
+  it("unlocks the business gmail as admin", () => {
+    const plan = assemblePlan({
+      userId: "biz",
+      email: "stomplab1@gmail.com",
+      paid: false,
+      freeUsed: 0,
+      monthUsed: 0,
+    });
+    assert.equal(plan.admin, true);
+    assert.equal(plan.paid, true);
   });
   it("unlocks only the exact admin email without a Polar row and with no monthly cap", () => {
     const plan = assemblePlan({

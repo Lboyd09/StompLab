@@ -175,7 +175,7 @@ function LoginPage() {
             </span>
             Back to Lab
           </a>
-          <h1 className="font-display text-3xl font-semibold tracking-tight">
+          <h1 className="font-display text-4xl font-semibold uppercase tracking-tight">
             {mode === "in" ? "Sign in" : "Create account"}
           </h1>
           <p className="text-sm text-muted-foreground">

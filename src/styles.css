@@ -2,59 +2,62 @@
 
 @theme {
   --font-sans: "Archivo", "Segoe UI", system-ui, sans-serif;
-  --font-display: "Archivo", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Oswald", "Archivo", "Segoe UI", system-ui, sans-serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
 
-  --color-background: #0b0c0e;
-  --color-foreground: #e8e6df;
-  --color-card: #15171b;
-  --color-card-foreground: #e8e6df;
-  --color-primary: #9bbf72;
-  --color-primary-foreground: #0b0c0e;
-  --color-secondary: #1c1f24;
-  --color-secondary-foreground: #e8e6df;
-  --color-muted: #1c1f24;
-  --color-muted-foreground: #8a8c86;
-  --color-accent: #9bbf72;
-  --color-accent-foreground: #0b0c0e;
-  --color-border: color-mix(in oklab, #e8e6df 12%, transparent);
-  --color-ring: #9bbf72;
-  --color-danger: #c4453c;
+  --color-background: #f3efe6;
+  --color-foreground: #141414;
+  --color-card: #faf7f0;
+  --color-card-foreground: #141414;
+  --color-primary: #141414;
+  --color-primary-foreground: #f3efe6;
+  --color-secondary: #e7e1d4;
+  --color-secondary-foreground: #141414;
+  --color-muted: #e7e1d4;
+  --color-muted-foreground: #5c5850;
+  --color-accent: #141414;
+  --color-accent-foreground: #f3efe6;
+  --color-border: color-mix(in oklab, #141414 12%, transparent);
+  --color-ring: #141414;
+  --color-danger: #b42318;
+  --color-destructive: #b42318;
   --color-lcd: #7dff9a;
   --color-aluminum: #c5c9c2;
-  --color-mark: #000000;
-  --color-mark-foreground: #e8e6df;
+  --color-mark: #141414;
+  --color-mark-foreground: #f3efe6;
 
   --radius-sm: 6px;
   --radius-md: 10px;
   --radius-lg: 16px;
   --radius-xl: 24px;
 
-  --shadow-border: 0 0 0 1px color-mix(in oklab, #e8e6df 8%, transparent);
+  --shadow-border: 0 0 0 1px color-mix(in oklab, #141414 8%, transparent);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-quick: 150ms;
   --motion-fast: 250ms;
 }
 
-html.light {
-  --color-background: #efece4;
-  --color-foreground: #16181c;
-  --color-card: #f7f5ef;
-  --color-card-foreground: #16181c;
-  --color-primary: #4f6d32;
-  --color-primary-foreground: #f7f5ef;
-  --color-secondary: #e2ddd2;
-  --color-secondary-foreground: #16181c;
-  --color-muted: #e2ddd2;
-  --color-muted-foreground: #5c5e58;
-  --color-accent: #4f6d32;
-  --color-accent-foreground: #f7f5ef;
-  --color-border: color-mix(in oklab, #16181c 12%, transparent);
-  --color-ring: #4f6d32;
-  --shadow-border:
-    0 0 0 1px color-mix(in oklab, #16181c 8%, transparent),
-    0 1px 2px color-mix(in oklab, #16181c 6%, transparent);
+html.dark {
+  --color-background: #0b0c0e;
+  --color-foreground: #e8e6df;
+  --color-card: #15171b;
+  --color-card-foreground: #e8e6df;
+  --color-primary: #e8e6df;
+  --color-primary-foreground: #0b0c0e;
+  --color-secondary: #1c1f24;
+  --color-secondary-foreground: #e8e6df;
+  --color-muted: #1c1f24;
+  --color-muted-foreground: #8a8c86;
+  --color-accent: #e8e6df;
+  --color-accent-foreground: #0b0c0e;
+  --color-border: color-mix(in oklab, #e8e6df 12%, transparent);
+  --color-ring: #e8e6df;
+  --color-danger: #c4453c;
+  --color-destructive: #c4453c;
+  --color-mark: #e8e6df;
+  --color-mark-foreground: #0b0c0e;
+  --shadow-border: 0 0 0 1px color-mix(in oklab, #e8e6df 8%, transparent);
 }
 
 @layer base {

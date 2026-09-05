@@ -80,7 +80,7 @@ export function polarCheckoutStatus(payload: Record<string, unknown> | null | un
 /** Polar: payment hits "confirmed" first, then checkout.updated → "succeeded". */
 export function polarCheckoutNeedsPoll(payload: Record<string, unknown> | null | undefined): boolean {
   const status = polarCheckoutStatus(payload);
-  return status === "confirmed" || status === "processing" || status === "open" || status === "pending";
+  return status === "confirmed" || status === "complete" || status === "processing" || status === "open" || status === "pending";
 }
 
 /**
@@ -90,7 +90,8 @@ export function polarCheckoutNeedsPoll(payload: Record<string, unknown> | null |
 export function polarCheckoutIsReady(payload: Record<string, unknown> | null | undefined): boolean {
   if (!payload) return false;
   if (polarStatusIsPaid(payload)) return true;
-  if (polarCheckoutStatus(payload) !== "confirmed") return false;
+  const status = polarCheckoutStatus(payload);
+  if (status !== "confirmed" && status !== "complete") return false;
   const order = extractOrder(payload);
   return isRealPolarOrderId(order.orderId) || isRealPolarSubscriptionId(order.subscriptionId);
 }
@@ -297,7 +298,10 @@ export async function lookupPolarCustomer(opts: {
   const em = (opts.email ?? "").trim().toLowerCase();
   const ext = (opts.externalId ?? "").trim();
   if (em) queries.push(`${polarBase()}/v1/customers/?email=${encodeURIComponent(em)}&limit=1`);
-  if (ext) queries.push(`${polarBase()}/v1/customers/?external_id=${encodeURIComponent(ext)}&limit=1`);
+  if (ext) {
+    queries.push(`${polarBase()}/v1/customers/?external_id=${encodeURIComponent(ext)}&limit=1`);
+    queries.push(`${polarBase()}/v1/customers/?externalId=${encodeURIComponent(ext)}&limit=1`);
+  }
   for (const url of queries) {
     try {
       const res = await fetch(url, {
@@ -322,31 +326,123 @@ export async function lookupPolarCustomer(opts: {
   return "";
 }
 
+export async function ensurePolarCustomer(opts: {
+  email: string;
+  externalId: string;
+}): Promise<string> {
+  const existing = await lookupPolarCustomer(opts);
+  if (existing) return existing;
+  const token = polarToken();
+  if (!token || !opts.email) return "";
+  try {
+    const res = await fetch(`${polarBase()}/v1/customers/`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({
+        email: opts.email,
+        external_id: opts.externalId,
+        metadata: { user_id: opts.externalId },
+      }),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    const id = String(json.id ?? asRecord(json.data).id ?? "").trim();
+    if (res.ok && id) return id;
+  } catch {
+    /* fall through */
+  }
+  return lookupPolarCustomer(opts);
+}
+
+export async function polarPublicPortalUrl(): Promise<string> {
+  const explicit = (process.env.POLAR_PORTAL_URL ?? process.env.POLAR_CUSTOMER_PORTAL_URL ?? "").trim();
+  if (explicit.startsWith("http")) return explicit;
+  const slug = (process.env.POLAR_ORG_SLUG ?? process.env.POLAR_ORGANIZATION_SLUG ?? "").trim();
+  const host = polarBase().includes("sandbox") ? "https://sandbox.polar.sh" : "https://polar.sh";
+  if (slug) return `${host}/${slug}/portal`;
+  const token = polarToken();
+  if (!token) return "";
+  try {
+    const res = await fetch(`${polarBase()}/v1/organizations/?limit=1`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
+    });
+    if (!res.ok) return "";
+    const json = (await res.json()) as Record<string, unknown>;
+    const items = Array.isArray(json.items) ? json.items : [];
+    const first = items[0];
+    if (first && typeof first === "object") {
+      const rec = first as { slug?: string; name?: string };
+      const s = String(rec.slug ?? "").trim();
+      if (s) return `${host}/${s}/portal`;
+    }
+  } catch {
+    /* ignore */
+  }
+  return "";
+}
+
+export function polarPortalUrlFromPayload(json: Record<string, unknown>): string {
+  const data = asRecord(json.data);
+  const candidates = [
+    json.customer_portal_url,
+    json.customerPortalUrl,
+    json.portal_url,
+    json.portalUrl,
+    json.url,
+    data.customer_portal_url,
+    data.customerPortalUrl,
+    data.portal_url,
+    data.url,
+  ];
+  for (const c of candidates) {
+    const v = String(c ?? "").trim();
+    if (v.startsWith("http")) return v;
+  }
+  const token = String(json.token ?? data.token ?? "").trim();
+  if (token && /^polar_cst_/i.test(token)) {
+    const host = polarBase().includes("sandbox") ? "https://sandbox.polar.sh" : "https://polar.sh";
+    return `${host}/customer-portal?customer_session_token=${encodeURIComponent(token)}`;
+  }
+  return "";
+}
+
 export async function createCustomerPortalSession(opts: {
   customerId?: string;
   externalCustomerId?: string;
+  email?: string;
   returnUrl?: string;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const token = polarToken();
   if (!token) {
     return { ok: false, error: "Polar is not connected on this host." };
   }
-  const bodies: Record<string, unknown>[] = [];
-  if (opts.customerId) {
-    bodies.push({
-      customer_id: opts.customerId,
-      ...(opts.returnUrl ? { return_url: opts.returnUrl } : {}),
+  let customerId = (opts.customerId ?? "").trim();
+  if (!customerId && (opts.email || opts.externalCustomerId)) {
+    customerId = await ensurePolarCustomer({
+      email: opts.email ?? "",
+      externalId: opts.externalCustomerId ?? "",
     });
-    bodies.push({ customer_id: opts.customerId });
+  }
+  const bodies: Record<string, unknown>[] = [];
+  const returnUrl = opts.returnUrl;
+  if (customerId) {
+    bodies.push({ customer_id: customerId, ...(returnUrl ? { return_url: returnUrl } : {}) });
+    bodies.push({ customer_id: customerId });
   }
   if (opts.externalCustomerId) {
     bodies.push({
       customer_external_id: opts.externalCustomerId,
-      ...(opts.returnUrl ? { return_url: opts.returnUrl } : {}),
+      ...(returnUrl ? { return_url: returnUrl } : {}),
     });
+    bodies.push({ external_customer_id: opts.externalCustomerId });
     bodies.push({ customer_external_id: opts.externalCustomerId });
   }
   if (!bodies.length) {
+    const fallback = await polarPublicPortalUrl();
+    if (fallback) return { ok: true, url: fallback };
     return { ok: false, error: "No Polar customer on this account yet. Subscribe once, then manage it here." };
   }
   const urls = [`${polarBase()}/v1/customer-sessions/`, `${polarBase()}/v1/customer-sessions`];
@@ -370,8 +466,7 @@ export async function createCustomerPortalSession(opts: {
         } catch {
           json = {};
         }
-        const portal =
-          String(json.customer_portal_url ?? json.customerPortalUrl ?? json.url ?? "").trim();
+        const portal = polarPortalUrlFromPayload(json);
         if (res.ok && portal.startsWith("http")) return { ok: true, url: portal };
         last = polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
         if (res.status === 401 || res.status === 403) return { ok: false, error: last };
@@ -380,6 +475,8 @@ export async function createCustomerPortalSession(opts: {
       }
     }
   }
+  const fallback = await polarPublicPortalUrl();
+  if (fallback) return { ok: true, url: fallback };
   return { ok: false, error: last };
 }
 

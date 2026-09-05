@@ -12,9 +12,10 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - One amp. Snapshot Drive / Ch Vol instead of a second amp. Distortion Mix is not a factory knob — omit it.
 - Never dime Drive. Pedals ~noon. Amp Drive: clean intro 1.5–3, crunch 3–5, high-gain rhythm 5–6.5, metal 5–7.
 - Snapshot 1 is the recorded OPENING (often cleaner than the chorus). A solo / signature trick is its own snapshot with a different tone — boost, delay Mix up, not a copy of the rhythm snap. Put Drive / Ch Vol / Mix changes in paramOverrides so they actually export.
-- Footswitches 1, 2, 3 (closest row on XL / POD Go / Helix) carry Intro / Verse / Chorus in that order. Far-row 4–6 are later sections. Do not spend FS1–3 on TAP/MODE.
-- Only catalog modelId values that exist in the list. Factory HX names only. No invented models, no dual-path splits, no IRs unless the catalog has that id.
-- Prefer the tracking/studio rig over a later tour rig when sources disagree.
+- Footswitches 1, 2, 3 (closest row on XL / POD Go / Helix) carry Intro / Verse / Chorus in that order. Far-row 4–6 are later sections. Do not spend FS1–FS3 on TAP/MODE.
+- ONLY catalog modelId values that appear in the catalog list. Factory HX names only. Never invent models. Never emit german-mottled, knuckle-dragon, poly-sustain, glitch-delay, 12-string, shimmer, dynamic-hall, stereo-imager, split-y, split-a-b, crossover-split, merge, impulse-response, or any IR/CabMicIr/Agoura/VIC/HX2 id. HX Edit rejects those.
+- Cab = a factory HD2 cab (4x12-cali-v30, 4x12-whoWatt, 1x12-us-deluxe, …). Never an IR block.
+- Prefer the tracking/studio rig over a later tour rig when sources disagree. If the record is a Twin, do not pick a Rectifier. If it is a Plexi, do not pick a Deluxe.
 - Do not "fix" a previous song by name. If a note says a part was wrong, turn it into a general rule (gain staging, missing solo snap, wrong dirt pedal) and apply it next time.`;
 
 export function generalizeLesson(raw: string): string | null {

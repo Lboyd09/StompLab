@@ -156,17 +156,30 @@ function Home() {
     <div className="space-y-10">
       <UpgradeBanner plan={plan} pending={planPending} />
 
-      <section className="max-w-2xl space-y-4">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">HX Stomp laboratory</p>
-        <h1 className="font-display text-4xl font-semibold tracking-tight md:text-5xl">
-          Type a song.
-          <span className="block text-muted-foreground">Get a preset that sounds like the record.</span>
-        </h1>
-        <p className="text-base leading-relaxed text-muted-foreground">
-          Research the tracking rig. See it on the unit. Download a .hlx HX Edit can import, or a .pgp
-          for POD Go Edit. Three demos always work — no account required.
-        </p>
-        <RigDisclaimer />
+      <section className="grid items-end gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
+        <div className="max-w-2xl space-y-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">Line 6 laboratory</p>
+          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.9] tracking-tight md:text-7xl">
+            Stomp Lab
+          </h1>
+          <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
+            Type a song. Get a preset that sounds like the record — path, knobs, snapshots, and a file
+            HX Edit or POD Go Edit will import.
+          </p>
+          <p className="text-sm text-muted-foreground">
+            Three demos always work. No account. Your unit: {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}.
+          </p>
+          <RigDisclaimer />
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-border bg-card">
+          <img
+            src="/promo-board.jpg"
+            alt="HX Stomp on a cream desk — Stomp Lab"
+            className="aspect-[4/3] w-full object-cover object-center"
+            width={1200}
+            height={900}
+          />
+        </div>
       </section>
 
       {plan.signedIn && plan.paid ? (
@@ -246,7 +259,7 @@ function Home() {
                 e.preventDefault();
                 openFeatured(p.id);
               }}
-              className="group rounded-xl border border-border border-l-2 border-l-primary bg-card p-5 text-left shadow-[var(--shadow-border)] hover:border-primary/50"
+              className="group rounded-2xl border border-border bg-card p-5 text-left hover:border-foreground/30"
             >
               <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
               <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>

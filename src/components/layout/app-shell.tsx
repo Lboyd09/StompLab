@@ -45,7 +45,7 @@ const DESKTOP_NAV = [
 
 function Mark() {
   return (
-    <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold tracking-[-0.08em] text-mark-foreground">
+    <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold uppercase tracking-[-0.06em] text-mark-foreground">
       SL
     </span>
   );
@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (!user || !syncReady || ownerId !== user.id) return;
     const timer = window.setTimeout(() => {
       void pushMyPresets({ data: { presets } }).catch(() => undefined);
-    }, 1400);
+    }, 8000);
     return () => window.clearTimeout(timer);
   }, [presets, user, syncReady, ownerId]);
 
@@ -188,7 +188,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="flex items-center gap-2">
             <Link to="/" className="flex shrink-0 items-center gap-2">
               <Mark />
-              <span className="hidden font-display text-sm font-semibold tracking-[0.18em] uppercase sm:inline">
+              <span className="hidden font-display text-sm font-semibold uppercase tracking-[0.22em] sm:inline">
                 Stomp Lab
               </span>
             </Link>

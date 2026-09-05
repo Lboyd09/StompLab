@@ -130,6 +130,31 @@ function AdminPage() {
           value={String((dash?.affiliateClicks ?? []).reduce((n, r) => n + r.n, 0))}
           hint="Amazon — commissions live on the Associates dashboard"
         />
+        <Stat
+          label="Sign-ups (7d)"
+          value={String(dash?.stats?.signups7d ?? "—")}
+          hint={`${dash?.stats?.signups30d ?? 0} in the last 30 days`}
+        />
+        <Stat
+          label="Builds this month"
+          value={String(dash?.stats?.buildsMonth ?? "—")}
+          hint={`${dash?.stats?.buildsToday ?? 0} today`}
+        />
+        <Stat
+          label="Conversion"
+          value={dash ? `${dash.stats?.conversionPct ?? 0}%` : "—"}
+          hint={`${dash?.stats?.freeUsers ?? 0} free · ${dash?.stats?.revoked ?? 0} revoked`}
+        />
+        <Stat
+          label="Est. MRR"
+          value={dash ? formatUsd((dash.stats?.mrrCents ?? 0) / 100) : "—"}
+          hint={`${formatUsd((dash?.stats?.arrCents ?? 0) / 100)} ARR · avg ${dash?.stats?.avgBuildsPaid ?? 0} builds / paid`}
+        />
+        <Stat
+          label="Cache"
+          value={String(dash?.stats?.cacheRows ?? "—")}
+          hint={`${dash?.stats?.cacheHits ?? 0} hits · ${dash?.stats?.failures7d ?? 0} research failures (7d)`}
+        />
       </section>
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
@@ -147,6 +172,30 @@ function AdminPage() {
           <p className="text-sm text-muted-foreground">No affiliate clicks yet.</p>
         )}
         <p className="text-xs leading-relaxed text-muted-foreground">{AFFILIATE_SETUP}</p>
+      </section>
+
+      <section className="grid gap-6 lg:grid-cols-3">
+        <div className="space-y-3">
+          <h2 className="font-display text-lg font-semibold">Top cached songs</h2>
+          <Table
+            cols={["Song", "Hits"]}
+            rows={(dash?.stats?.topSongs ?? []).map((r) => [r.song, String(r.n)])}
+          />
+        </div>
+        <div className="space-y-3">
+          <h2 className="font-display text-lg font-semibold">Units</h2>
+          <Table
+            cols={["Unit", "Rigs"]}
+            rows={(dash?.stats?.deviceMix ?? []).map((r) => [r.stomp_model, String(r.n)])}
+          />
+        </div>
+        <div className="space-y-3">
+          <h2 className="font-display text-lg font-semibold">Sign-ups by day</h2>
+          <Table
+            cols={["Day", "N"]}
+            rows={(dash?.stats?.signupsByDay ?? []).map((r) => [r.day, String(r.n)])}
+          />
+        </div>
       </section>
 
       <section className="space-y-3">
