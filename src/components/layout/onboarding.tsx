@@ -47,11 +47,15 @@ export function persistInstrumentUnit(instrument: "guitar" | "bass", stompModel:
   persistDraft({ ...loadDraft(), instrument, stompModel });
 }
 
-/** First-run lives in Tutorial v6. This only backfills the onboard flag. */
+/** First-run lives in Tutorial v7. This only backfills the onboard flag. */
 export function Onboarding({ onFinished }: { onFinished?: () => void }) {
   useLayoutEffect(() => {
     try {
-      if (window.localStorage.getItem("stomplab.tutorial.v6") && !window.localStorage.getItem(ONBOARD_KEY)) {
+      if (
+        (window.localStorage.getItem("stomplab.tutorial.v7") ||
+          window.localStorage.getItem("stomplab.tutorial.v6")) &&
+        !window.localStorage.getItem(ONBOARD_KEY)
+      ) {
         window.localStorage.setItem(ONBOARD_KEY, "1");
       }
     } catch {

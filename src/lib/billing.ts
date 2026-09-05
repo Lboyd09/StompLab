@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { getSql } from "@/lib/db";
+import { getSql, pingDatabase } from "@/lib/db";
 import {
   createCustomerPortalSession,
   createPolarCheckout,
@@ -26,7 +26,7 @@ import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
 import { publicOrigin } from "./site-origin";
-import { friendlyDbError } from "./postgres-ssl";
+import { friendlyDbError, sqlNotInLower } from "./postgres-ssl";
 
 export async function emailFor(userId: string, sessionEmail?: string | null): Promise<string | null> {
   try {
@@ -738,6 +738,14 @@ async function assertAdmin(userId: string, sessionEmail?: string | null) {
   return email;
 }
 
+async function settleQuery<T>(label: string, run: () => Promise<T>, fallback: T): Promise<{ value: T; error?: string }> {
+  try {
+    return { value: await run() };
+  } catch (err) {
+    return { value: fallback, error: `${label}: ${friendlyDbError(err)}` };
+  }
+}
+
 function emptyAdminStats() {
   return {
     signups7d: 0,
@@ -822,6 +830,7 @@ async function loadExtraAdminStats(input: {
   try {
     const sql = await getSql();
     const owners = ownerEmails();
+    const notOwner = sqlNotInLower("email", owners);
     const today = new Date().toISOString().slice(0, 10);
     const monthKey = yearMonth();
     const [
@@ -838,94 +847,147 @@ async function loadExtraAdminStats(input: {
       days,
       rev,
     ] = await Promise.all([
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from build_events where created_at::date = $1::date`,
-        [today],
+      settleQuery(
+        "buildsToday",
+        () =>
+          sql.query<{ n: number }>(`select count(*)::int as n from build_events where created_at::date = $1::date`, [
+            today,
+          ]),
+        [] as { n: number }[],
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from build_events where year_month = $1`,
-        [monthKey],
+      settleQuery(
+        "buildsMonth",
+        () => sql.query<{ n: number }>(`select count(*)::int as n from build_events where year_month = $1`, [monthKey]),
+        [] as { n: number }[],
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from "user"
-         where "createdAt" >= now() - interval '7 days'
-           and lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
+      settleQuery(
+        "signups7d",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from "user"
+             where "createdAt" >= now() - interval '7 days' and ${notOwner.clause}`,
+            notOwner.params,
+          ),
+        [] as { n: number }[],
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from "user"
-         where "createdAt" >= now() - interval '30 days'
-           and lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
+      settleQuery(
+        "signups30d",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from "user"
+             where "createdAt" >= now() - interval '30 days' and ${notOwner.clause}`,
+            notOwner.params,
+          ),
+        [] as { n: number }[],
       ),
-      sql.query<{ rows: number; hits: number }>(
-        `select count(*)::int as rows, coalesce(sum(hit_count), 0)::int as hits
-         from rig_cache where kind = 'song'`,
+      settleQuery(
+        "cache",
+        () =>
+          sql.query<{ rows: number; hits: number }>(
+            `select count(*)::int as rows, coalesce(sum(hit_count), 0)::int as hits
+             from rig_cache where kind = 'song'`,
+          ),
+        [] as { rows: number; hits: number }[],
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from research_failures where created_at >= now() - interval '7 days'`,
+      settleQuery(
+        "failures7d",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from research_failures where created_at >= now() - interval '7 days'`,
+          ),
+        [] as { n: number }[],
       ),
-      sql.query<{ plan_interval: string; n: number }>(
-        `select coalesce(plan_interval, '') as plan_interval, count(*)::int as n
-         from entitlements
-         where paid = true
-           and coalesce(paid_source, '') <> 'admin'
-           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
-           and lower(coalesce(email, '')) <> all($1::text[])
-         group by coalesce(plan_interval, '')`,
-        [owners],
+      settleQuery(
+        "mrr",
+        () =>
+          sql.query<{ plan_interval: string; n: number }>(
+            `select coalesce(plan_interval, '') as plan_interval, count(*)::int as n
+             from entitlements
+             where paid = true
+               and coalesce(paid_source, '') <> 'admin'
+               and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
+               and ${notOwner.clause}
+             group by coalesce(plan_interval, '')`,
+            notOwner.params,
+          ),
+        [] as { plan_interval: string; n: number }[],
       ),
-      sql.query<{ song: string; n: number }>(
-        `select song, coalesce(sum(hit_count), 0)::int as n
-         from rig_cache where kind = 'song' and coalesce(song, '') <> ''
-         group by song order by n desc limit 12`,
+      settleQuery(
+        "topSongs",
+        () =>
+          sql.query<{ song: string; n: number }>(
+            `select song, coalesce(sum(hit_count), 0)::int as n
+             from rig_cache where kind = 'song' and coalesce(song, '') <> ''
+             group by song order by n desc limit 12`,
+          ),
+        [] as { song: string; n: number }[],
       ),
-      sql.query<{ stomp_model: string; n: number }>(
-        `select stomp_model, count(*)::int as n
-         from rig_cache where kind = 'song' and coalesce(stomp_model, '') <> ''
-         group by stomp_model order by n desc`,
+      settleQuery(
+        "devices",
+        () =>
+          sql.query<{ stomp_model: string; n: number }>(
+            `select stomp_model, count(*)::int as n
+             from rig_cache where kind = 'song' and coalesce(stomp_model, '') <> ''
+             group by stomp_model order by n desc`,
+          ),
+        [] as { stomp_model: string; n: number }[],
       ),
-      sql.query<{ instrument: string; n: number }>(
-        `select instrument, count(*)::int as n
-         from rig_cache where kind = 'song' and coalesce(instrument, '') <> ''
-         group by instrument order by n desc`,
+      settleQuery(
+        "instruments",
+        () =>
+          sql.query<{ instrument: string; n: number }>(
+            `select instrument, count(*)::int as n
+             from rig_cache where kind = 'song' and coalesce(instrument, '') <> ''
+             group by instrument order by n desc`,
+          ),
+        [] as { instrument: string; n: number }[],
       ),
-      sql.query<{ day: string; n: number }>(
-        `select "createdAt"::date::text as day, count(*)::int as n
-         from "user"
-         where lower(coalesce(email, '')) <> all($1::text[])
-         group by "createdAt"::date
-         order by day desc
-         limit 30`,
-        [owners],
+      settleQuery(
+        "signupsByDay",
+        () =>
+          sql.query<{ day: string; n: number }>(
+            `select "createdAt"::date::text as day, count(*)::int as n
+             from "user"
+             where ${notOwner.clause}
+             group by "createdAt"::date
+             order by day desc
+             limit 30`,
+            notOwner.params,
+          ),
+        [] as { day: string; n: number }[],
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from entitlements
-         where coalesce(subscription_status, '') in ('revoked', 'expired', 'incomplete_expired')
-           and lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
+      settleQuery(
+        "revoked",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from entitlements
+             where coalesce(subscription_status, '') in ('revoked', 'expired', 'incomplete_expired')
+               and ${notOwner.clause}`,
+            notOwner.params,
+          ),
+        [] as { n: number }[],
       ),
     ]);
-    stats.buildsToday = Number(b[0]?.n ?? 0);
-    stats.buildsMonth = Number(bm[0]?.n ?? stats.buildsMonth);
-    stats.signups7d = Number(s7[0]?.n ?? stats.signups7d);
-    stats.signups30d = Number(s30[0]?.n ?? stats.signups30d);
-    if (cacheCount[0]) {
-      stats.cacheRows = Number(cacheCount[0].rows ?? stats.cacheRows);
-      stats.cacheHits = Number(cacheCount[0].hits ?? stats.cacheHits);
+    stats.buildsToday = Number(b.value[0]?.n ?? stats.buildsToday);
+    stats.buildsMonth = Number(bm.value[0]?.n ?? stats.buildsMonth);
+    stats.signups7d = Number(s7.value[0]?.n ?? stats.signups7d);
+    stats.signups30d = Number(s30.value[0]?.n ?? stats.signups30d);
+    if (cacheCount.value[0]) {
+      stats.cacheRows = Number(cacheCount.value[0].rows ?? stats.cacheRows);
+      stats.cacheHits = Number(cacheCount.value[0].hits ?? stats.cacheHits);
     }
-    stats.failures7d = Number(fail[0]?.n ?? stats.failures7d);
-    if (mix.length) {
-      const monthlyN = mix.filter((r) => r.plan_interval === "month").reduce((n, r) => n + r.n, 0);
-      const yearlyN = mix.filter((r) => r.plan_interval === "year").reduce((n, r) => n + r.n, 0);
+    stats.failures7d = Number(fail.value[0]?.n ?? stats.failures7d);
+    if (mix.value.length) {
+      const monthlyN = mix.value.filter((r) => r.plan_interval === "month").reduce((n, r) => n + r.n, 0);
+      const yearlyN = mix.value.filter((r) => r.plan_interval === "year").reduce((n, r) => n + r.n, 0);
       stats.mrrCents = monthlyN * 699 + Math.round((yearlyN * 7500) / 12);
       stats.arrCents = stats.mrrCents * 12;
     }
-    if (songs.length) stats.topSongs = songs;
-    if (devices.length) stats.deviceMix = devices;
-    if (inst.length) stats.instrumentMix = inst;
-    if (days.length) stats.signupsByDay = days;
-    stats.revoked = Number(rev[0]?.n ?? stats.revoked);
+    if (songs.value.length) stats.topSongs = songs.value;
+    if (devices.value.length) stats.deviceMix = devices.value;
+    if (inst.value.length) stats.instrumentMix = inst.value;
+    if (days.value.length) stats.signupsByDay = days.value;
+    stats.revoked = Number(rev.value[0]?.n ?? stats.revoked);
   } catch {
     /* keep JS fallbacks computed from the page of rows */
   }
@@ -999,17 +1061,26 @@ export const adminDashboard = createServerFn({ method: "GET" })
       amazonReady: Boolean(amazonAssociateTag()),
       stats: emptyAdminStats(),
       dbError: "",
+      queryErrors: [] as string[],
+      db: {
+        ok: false,
+        source: "none" as const,
+        pingMs: 0,
+        error: "",
+        host: "",
+        mode: "",
+        rewritten: false,
+      },
     };
-    const ADMIN_DASH_MS = 12_000;
     try {
+      const ADMIN_DASH_MS = 12_000;
       return await Promise.race([
         loadAdminDashboard(empty),
         new Promise<typeof empty>((resolve) => {
           setTimeout(() => {
             resolve({
               ...empty,
-              dbError:
-                "Admin stats timed out talking to the database. Refresh once — if it keeps hanging, check DATABASE_URL / the Supabase pooler.",
+              dbError: "Admin stats timed out after 12s. Refresh — the database may be waking up.",
             });
           }, ADMIN_DASH_MS);
         }),
@@ -1075,200 +1146,243 @@ async function loadAdminDashboard(empty: {
   amazonReady: boolean;
   stats: AdminStats;
   dbError: string;
+  queryErrors: string[];
+  db: {
+    ok: boolean;
+    source: "postgres" | "pglite" | "none";
+    pingMs: number;
+    error: string;
+    host: string;
+    mode: string;
+    rewritten: boolean;
+  };
 }) {
+    const ping = await pingDatabase();
+    const db = {
+      ok: ping.ok,
+      source: ping.source,
+      pingMs: ping.pingMs,
+      error: ping.error,
+      host: ping.host,
+      mode: ping.mode,
+      rewritten: ping.rewritten,
+    };
+    if (!ping.ok) {
+      return { ...empty, dbError: ping.error, db, queryErrors: ping.error ? [ping.error] : [] };
+    }
     const sql = await getSql();
-    const owners = ownerEmails();
-    type FeedbackRow = (typeof empty)["feedback"][number];
-    type EntitlementRow = (typeof empty)["entitlements"][number];
-
-    const settled = await Promise.allSettled([
-      (async () => {
-        const ping = await sql<{ ok: number }>`select 1::int as ok`;
-        if (Number(ping[0]?.ok) !== 1) throw new Error("Database ping was empty.");
-        return true as const;
-      })(),
-      sql<{
-        created_at: string;
-        email: string;
-        user_id: string;
-        polar_order_id: string;
-        polar_checkout_id: string;
-        amount_cents: number;
-      }>`
-        select created_at::text, email, coalesce(user_id, '') as user_id, polar_order_id, polar_checkout_id, amount_cents
-        from purchases
-        order by created_at desc
-        limit 100
-      `,
-      sql<{
-        user_id: string;
-        email: string;
-        year_month: string;
-        n: number;
-      }>`
-        select
-          b.user_id,
-          coalesce(e.email, u.email, '') as email,
-          b.year_month,
-          count(*)::int as n
-        from build_events b
-        left join entitlements e on e.user_id = b.user_id
-        left join "user" u on u.id = b.user_id
-        group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
-        order by b.year_month desc, n desc
-        limit 200
-      `,
-      sql<{
-        created_at: string;
-        song: string;
-        artist: string;
-        error: string;
-      }>`
-        select created_at::text, song, artist, error
-        from research_failures
-        order by created_at desc
-        limit 80
-      `,
-      sql<{
-        cache_key: string;
-        song: string;
-        artist: string;
-        instrument: string;
-        stomp_model: string;
-        hit_count: number;
-        summary: string;
-      }>`
-        select
-          cache_key, song, artist, instrument, stomp_model, hit_count,
-          coalesce(preset->>'summary', '') as summary
-        from rig_cache
-        where kind = 'song'
-        order by updated_at desc
-        limit 80
-      `,
-      (async (): Promise<FeedbackRow[]> => {
-        try {
-          return await sql<FeedbackRow>`
-            select
-              created_at::text, email, kind, song, message,
-              rating, closer_tweaks, want_preset, want_app
-            from feedback
+    const queryErrors: string[] = [];
+    const take = <T,>(result: { value: T; error?: string }): T => {
+      if (result.error) queryErrors.push(result.error);
+      return result.value;
+    };
+    const [
+      purchasesRes,
+      usageRes,
+      failuresRes,
+      cacheRes,
+      notesRes,
+      accountsRes,
+      entitlementsRes,
+    ] = await Promise.all([
+      settleQuery(
+        "purchases",
+        () =>
+          sql<{
+            created_at: string;
+            email: string;
+            user_id: string;
+            polar_order_id: string;
+            polar_checkout_id: string;
+            amount_cents: number;
+          }>`
+            select created_at::text, email, coalesce(user_id, '') as user_id, polar_order_id, polar_checkout_id, amount_cents
+            from purchases
             order by created_at desc
-            limit 120
-          `;
-        } catch {
-          return (
-            await sql<{
+            limit 100
+          `,
+        empty.purchases,
+      ),
+      settleQuery(
+        "usage",
+        () =>
+          sql<{
+            user_id: string;
+            email: string;
+            year_month: string;
+            n: number;
+          }>`
+            select
+              b.user_id,
+              coalesce(e.email, u.email, '') as email,
+              b.year_month,
+              count(*)::int as n
+            from build_events b
+            left join entitlements e on e.user_id = b.user_id
+            left join "user" u on u.id = b.user_id
+            group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
+            order by b.year_month desc, n desc
+            limit 200
+          `,
+        empty.usage,
+      ),
+      settleQuery(
+        "failures",
+        () =>
+          sql<{
+            created_at: string;
+            song: string;
+            artist: string;
+            error: string;
+          }>`
+            select created_at::text, song, artist, error
+            from research_failures
+            order by created_at desc
+            limit 80
+          `,
+        empty.failures,
+      ),
+      settleQuery(
+        "cache",
+        () =>
+          sql<{
+            cache_key: string;
+            song: string;
+            artist: string;
+            instrument: string;
+            stomp_model: string;
+            hit_count: number;
+            summary: string;
+          }>`
+            select
+              cache_key, song, artist, instrument, stomp_model, hit_count,
+              coalesce(preset->>'summary', '') as summary
+            from rig_cache
+            where kind = 'song'
+            order by updated_at desc
+            limit 80
+          `,
+        empty.cache,
+      ),
+      settleQuery(
+        "feedback",
+        async () => {
+          try {
+            return await sql<{
               created_at: string;
               email: string;
               kind: string;
               song: string;
               message: string;
+              rating: number | null;
+              closer_tweaks: string;
+              want_preset: string;
+              want_app: string;
             }>`
-              select created_at::text, email, kind, song, message
+              select
+                created_at::text, email, kind, song, message,
+                rating, closer_tweaks, want_preset, want_app
               from feedback
               order by created_at desc
               limit 120
-            `
-          ).map((n) => ({ ...n, rating: null, closer_tweaks: "", want_preset: "", want_app: "" }));
-        }
-      })(),
-      sql<{
-        id: string;
-        email: string;
-        name: string;
-        created_at: string;
-        paid: boolean;
-        subscription_status: string;
-        plan_interval: string;
-        builds: number;
-      }>`
-        select
-          u.id,
-          coalesce(u.email, '') as email,
-          coalesce(u.name, '') as name,
-          u."createdAt"::text as created_at,
-          coalesce(e.paid, false) as paid,
-          coalesce(e.subscription_status, '') as subscription_status,
-          coalesce(e.plan_interval, '') as plan_interval,
-          coalesce(bc.builds, 0) as builds
-        from "user" u
-        left join entitlements e on e.user_id = u.id
-        left join (
-          select user_id, count(*)::int as builds from build_events group by user_id
-        ) bc on bc.user_id = u.id
-        order by u."createdAt" desc
-        limit 200
-      `,
-      (async (): Promise<EntitlementRow[]> => {
-        try {
-          return await sql<EntitlementRow>`
-            select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
-            from entitlements
-            where paid = true
-            order by updated_at desc
-            limit 100
-          `;
-        } catch {
-          return await sql<EntitlementRow>`
-            select user_id, email, paid, '' as paid_source, polar_order_id
-            from entitlements
-            where paid = true
-            order by updated_at desc
-            limit 100
-          `;
-        }
-      })(),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from "user" where lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
+            `;
+          } catch {
+            return (
+              await sql<{
+                created_at: string;
+                email: string;
+                kind: string;
+                song: string;
+                message: string;
+              }>`
+                select created_at::text, email, kind, song, message
+                from feedback
+                order by created_at desc
+                limit 120
+              `
+            ).map((n) => ({ ...n, rating: null, closer_tweaks: "", want_preset: "", want_app: "" }));
+          }
+        },
+        empty.feedback,
       ),
-      sql.query<{ n: number }>(
-        `select count(*)::int as n from entitlements
-         where paid = true
-           and coalesce(paid_source, '') <> 'admin'
-           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
-           and lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
+      settleQuery(
+        "accounts",
+        () =>
+          sql<{
+            id: string;
+            email: string;
+            name: string;
+            created_at: string;
+            paid: boolean;
+            subscription_status: string;
+            plan_interval: string;
+            builds: number;
+          }>`
+            select
+              u.id,
+              coalesce(u.email, '') as email,
+              coalesce(u.name, '') as name,
+              u."createdAt"::text as created_at,
+              coalesce(e.paid, false) as paid,
+              coalesce(e.subscription_status, '') as subscription_status,
+              coalesce(e.plan_interval, '') as plan_interval,
+              coalesce(bc.builds, 0) as builds
+            from "user" u
+            left join entitlements e on e.user_id = u.id
+            left join (
+              select user_id, count(*)::int as builds from build_events group by user_id
+            ) bc on bc.user_id = u.id
+            order by u."createdAt" desc
+            limit 200
+          `,
+        empty.accounts,
       ),
-      sql.query<{ n: number }>(
-        `select coalesce(sum(amount_cents), 0)::int as n
-         from purchases
-         where amount_cents > 0
-           and user_id not in ('unmatched', 'revoked', 'test')
-           and lower(coalesce(email, '')) <> all($1::text[])
-           and not exists (
-             select 1 from "user" u
-             where u.id = purchases.user_id and lower(u.email) = any($1::text[])
-           )`,
-        [owners],
+      settleQuery(
+        "entitlements",
+        async () => {
+          try {
+            return await sql<{
+              user_id: string;
+              email: string;
+              paid: boolean;
+              paid_source: string;
+              polar_order_id: string;
+            }>`
+              select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
+              from entitlements
+              where paid = true
+              order by updated_at desc
+              limit 100
+            `;
+          } catch {
+            return await sql<{
+              user_id: string;
+              email: string;
+              paid: boolean;
+              paid_source: string;
+              polar_order_id: string;
+            }>`
+              select user_id, email, paid, '' as paid_source, polar_order_id
+              from entitlements
+              where paid = true
+              order by updated_at desc
+              limit 100
+            `;
+          }
+        },
+        empty.entitlements,
       ),
-      sql<{ vendor: string; n: number }>`
-        select vendor, count(*)::int as n from affiliate_clicks group by vendor order by n desc
-      `,
     ]);
-
-    const value = <T>(i: number, fallback: T): T => {
-      const r = settled[i];
-      return r.status === "fulfilled" ? (r.value as T) : fallback;
-    };
-
-    let dbError = "";
-    const ping = settled[0];
-    if (ping.status === "rejected") dbError = friendlyDbError(ping.reason);
-
-    let purchases = value(1, [] as typeof empty.purchases);
-    let usage = value(2, [] as typeof empty.usage);
-    const failures = value(3, [] as typeof empty.failures);
-    const cache = value(4, [] as typeof empty.cache);
-    const notes = value(5, [] as typeof empty.feedback);
-    const accounts = value(6, [] as typeof empty.accounts);
-    let entitlements = value(7, [] as typeof empty.entitlements);
-    const userCountRows = value(8, null as { n: number }[] | null);
-    const subscribedRows = value(9, null as { n: number }[] | null);
-    const revenueRows = value(10, null as { n: number }[] | null);
-    const affiliateClicks = value(11, [] as { vendor: string; n: number }[]);
-
+    let purchases = take(purchasesRes);
+    let usage = take(usageRes);
+    const failures = take(failuresRes);
+    const cache = take(cacheRes);
+    const notes = take(notesRes);
+    const accounts = take(accountsRes);
+    let entitlements = take(entitlementsRes);
+    const owners = ownerEmails();
+    const notOwner = sqlNotInLower("email", owners);
+    const notOwnerUser = sqlNotInLower("u.email", owners, notOwner.params.length + 1);
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
     const hiddenMail = new Set(owners);
     purchases = purchases.filter((p) => {
@@ -1282,22 +1396,68 @@ async function loadAdminDashboard(empty: {
       if (String(e.paid_source ?? "").toLowerCase() === "admin") return false;
       return true;
     });
-
-    const userCount =
-      userCountRows != null
-        ? Number(userCountRows[0]?.n ?? 0)
-        : accounts.filter((a) => !isOwnerAccount(a.email)).length;
-    const subscribedCount =
-      subscribedRows != null
-        ? Number(subscribedRows[0]?.n ?? 0)
-        : entitlements.filter(
-            (e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin",
-          ).length;
-    const revenueCents =
-      revenueRows != null
-        ? Number(revenueRows[0]?.n ?? 0)
-        : purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
-
+    const [userCountRes, subscribedRes, revenueRes, affiliateRes] = await Promise.all([
+      settleQuery(
+        "userCount",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from "user" where ${notOwner.clause}`,
+            notOwner.params,
+          ),
+        [] as { n: number }[],
+      ),
+      settleQuery(
+        "subscribedCount",
+        () =>
+          sql.query<{ n: number }>(
+            `select count(*)::int as n from entitlements
+             where paid = true
+               and coalesce(paid_source, '') <> 'admin'
+               and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
+               and ${notOwner.clause}`,
+            notOwner.params,
+          ),
+        [] as { n: number }[],
+      ),
+      settleQuery(
+        "revenue",
+        () =>
+          sql.query<{ n: number }>(
+            `select coalesce(sum(amount_cents), 0)::int as n
+             from purchases
+             where amount_cents > 0
+               and user_id not in ('unmatched', 'revoked', 'test')
+               and ${notOwner.clause}
+               and not exists (
+                 select 1 from "user" u
+                 where u.id = purchases.user_id and ${notOwnerUser.clause}
+               )`,
+            [...notOwner.params, ...notOwnerUser.params],
+          ),
+        [] as { n: number }[],
+      ),
+      settleQuery(
+        "affiliate",
+        () =>
+          sql<{ vendor: string; n: number }>`
+            select vendor, count(*)::int as n from affiliate_clicks group by vendor order by n desc
+          `,
+        [] as { vendor: string; n: number }[],
+      ),
+    ]);
+    const userCount = userCountRes.error
+      ? accounts.filter((a) => !isOwnerAccount(a.email)).length
+      : Number(userCountRes.value[0]?.n ?? 0);
+    if (userCountRes.error) queryErrors.push(userCountRes.error);
+    const subscribedCount = subscribedRes.error
+      ? entitlements.filter((e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin").length
+      : Number(subscribedRes.value[0]?.n ?? 0);
+    if (subscribedRes.error) queryErrors.push(subscribedRes.error);
+    const revenueCents = revenueRes.error
+      ? purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0)
+      : Number(revenueRes.value[0]?.n ?? 0);
+    if (revenueRes.error) queryErrors.push(revenueRes.error);
+    const affiliateClicks = take(affiliateRes);
     const stats = await loadExtraAdminStats({
       accounts,
       entitlements,
@@ -1307,6 +1467,9 @@ async function loadAdminDashboard(empty: {
       subscribedCount,
       userCount,
     });
+    const dbError = queryErrors.length
+      ? `${queryErrors.length} admin quer${queryErrors.length === 1 ? "y" : "ies"} failed. Counts below use what did return.`
+      : "";
     return {
       purchases,
       usage,
@@ -1323,6 +1486,8 @@ async function loadAdminDashboard(empty: {
       amazonReady: Boolean(amazonAssociateTag()),
       stats,
       dbError,
+      queryErrors,
+      db,
     };
 }
 

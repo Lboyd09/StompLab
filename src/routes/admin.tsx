@@ -30,10 +30,9 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !user) return;
     let cancelled = false;
-    const clientTimeout = window.setTimeout(() => {
-      if (cancelled) return;
-      setError((prev) => prev || "Admin stats are taking too long. Refresh once.");
-    }, 12_000);
+    const timeout = window.setTimeout(() => {
+      if (!cancelled) setError((e) => e || "Stats are taking too long. Refresh — the database may be waking up.");
+    }, 12000);
     void requireAdmin()
       .then(() => {
         if (!cancelled) setGate("ok");
@@ -44,18 +43,18 @@ function AdminPage() {
     void adminDashboard()
       .then((d) => {
         if (cancelled) return;
-        window.clearTimeout(clientTimeout);
+        window.clearTimeout(timeout);
         setDash(d);
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
         if (cancelled) return;
-        window.clearTimeout(clientTimeout);
+        window.clearTimeout(timeout);
         setError(err instanceof Error ? err.message : "Could not load admin.");
       });
     return () => {
       cancelled = true;
-      window.clearTimeout(clientTimeout);
+      window.clearTimeout(timeout);
     };
   }, [user, isPending]);
 
@@ -118,10 +117,50 @@ function AdminPage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Admin</h1>
         <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          className="mt-3"
+          onClick={() => {
+            setError("");
+            setDash(null);
+            void adminDashboard()
+              .then((d) => {
+                setDash(d);
+                if (d.dbError) setError(d.dbError);
+              })
+              .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
+          }}
+        >
+          Refresh stats
+        </Button>
       </header>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {!dash && !error ? <p className="text-sm text-muted-foreground">Loading stats…</p> : null}
+
+      {dash?.db ? (
+        <section className="rounded-xl border border-border bg-card p-5">
+          <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Database</p>
+          <p className="mt-2 font-display text-3xl font-semibold">{dash.db.ok ? "Connected" : "Down"}</p>
+          <p className="mt-1 text-xs text-muted-foreground">
+            {dash.db.source}
+            {dash.db.mode ? ` · ${dash.db.mode}` : ""}
+            {dash.db.host ? ` · ${dash.db.host}` : ""}
+            {` · ${dash.db.pingMs} ms`}
+            {dash.db.rewritten ? " · session pooler" : ""}
+          </p>
+          {dash.db.error ? <p className="mt-2 text-sm text-destructive">{dash.db.error}</p> : null}
+          {(dash.queryErrors ?? []).length ? (
+            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
+              {dash.queryErrors.slice(0, 8).map((q) => (
+                <li key={q}>{q}</li>
+              ))}
+            </ul>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />

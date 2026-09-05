@@ -1,5 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
-import { postgresPoolConfig } from "./postgres-ssl";
+import { friendlyDbError, postgresDescribe, postgresPoolConfig } from "./postgres-ssl";
 
 /** Which database backend is active. */
 export type DbSource = "postgres" | "pglite";
@@ -26,6 +26,8 @@ const databaseUrl = previewSkipProd
  * the last free-tier burn happened.
  */
 export const dbSource: DbSource = databaseUrl ? "postgres" : "pglite";
+
+export const dbTarget = postgresDescribe(databaseUrl);
 
 /**
  * Minimal shared SQL surface, satisfied by both Postgres and PGLite. Both the
@@ -100,8 +102,7 @@ function createPostgresSql(): Promise<Sql> {
     types.setTypeParser(OID_INT8, Number);
     types.setTypeParser(OID_DATE, identity);
     types.setTypeParser(OID_INTERVAL, identity);
-    // Serverless: tiny pool. Supabase transaction pooler (6543) multiplexes.
-    // Session pooler (5432) is safer for Better Auth prepared statements.
+    // Session pooler (5432) — transaction :6543 is rewritten in postgres-ssl.
     const pool = new Pool(postgresPoolConfig(databaseUrl!));
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
@@ -177,6 +178,13 @@ async function createSql(): Promise<Sql> {
     );
   }
   if (dbSource === "postgres") return createPostgresSql();
+  // Preview deploys must not share production Postgres.
+  if (process.env.VERCEL_ENV === "preview") {
+    console.warn("[db] preview deploy skipping production Postgres");
+    return toSql(async () => []);
+  }
+  // Local `vite preview` of the Vercel output has no DATABASE_URL. A throw here
+  // kills the server before Admin can say so. Empty client; pingDatabase flags it.
   if (process.env.NODE_ENV === "production" || process.env.VERCEL) {
     console.error("[db] no DATABASE_URL in this environment — shared cache disabled");
     return toSql(async () => []);
@@ -187,15 +195,81 @@ async function createSql(): Promise<Sql> {
 /**
  * Get the shared, **server-only** SQL client. Hosted Postgres when
  * `DATABASE_URL` is set, otherwise the local PGLite fallback. Memoized — safe
- * to call per request.
+ * to call per request. Failed inits throw (they used to return an empty dummy
+ * client, which made Admin look like it had zero users).
  */
 export function getSql(): Promise<Sql> {
   sqlPromise ??= createSql().catch((err) => {
     sqlPromise = null;
     console.error("[db] getSql failed", err instanceof Error ? err.message : err);
-    return toSql(async () => []);
+    throw err;
   });
   return sqlPromise;
+}
+
+export type DbPing = {
+  ok: boolean;
+  source: DbSource | "none";
+  pingMs: number;
+  error: string;
+  host: string;
+  mode: string;
+  rewritten: boolean;
+};
+
+/** One cheap `select 1` plus connection metadata for Admin and keepalive. */
+export async function pingDatabase(): Promise<DbPing> {
+  const started = Date.now();
+  const desc = postgresDescribe(databaseUrl);
+  if (previewSkipProd) {
+    return {
+      ok: false,
+      source: "none",
+      pingMs: Date.now() - started,
+      error: "Preview deploy does not share production Postgres.",
+      host: desc.host,
+      mode: "preview-skip",
+      rewritten: false,
+    };
+  }
+  try {
+    const sql = await getSql();
+    const rows = await sql<{ ok: number }>`select 1::int as ok`;
+    const pingMs = Date.now() - started;
+    if (Number(rows[0]?.ok) !== 1) {
+      const missingUrl = !databaseUrl;
+      return {
+        ok: false,
+        source: dbSource,
+        pingMs,
+        error: missingUrl
+          ? "DATABASE_URL is missing — the Lab cannot reach Postgres."
+          : "Database ping was empty.",
+        host: desc.host,
+        mode: missingUrl ? "none" : desc.mode,
+        rewritten: desc.rewritten,
+      };
+    }
+    return {
+      ok: true,
+      source: dbSource,
+      pingMs,
+      error: "",
+      host: desc.host,
+      mode: desc.mode,
+      rewritten: desc.rewritten,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      source: dbSource,
+      pingMs: Date.now() - started,
+      error: friendlyDbError(err),
+      host: desc.host,
+      mode: desc.mode,
+      rewritten: desc.rewritten,
+    };
+  }
 }
 
 /**

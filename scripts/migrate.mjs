@@ -45,14 +45,18 @@ async function main() {
   const ssl = /localhost|127\.0\.0\.1/i.test(databaseUrl)
     ? false
     : { rejectUnauthorized: false };
-  const connectionString = /[?&]sslmode=/i.test(databaseUrl)
-    ? databaseUrl.replace(
+  const sessionUrl = databaseUrl.replace(
+    /(@[^@/?]*pooler\.supabase\.com):6543(?=\/|\?|$)/i,
+    "$1:5432",
+  );
+  const connectionString = /[?&]sslmode=/i.test(sessionUrl)
+    ? sessionUrl.replace(
         /([?&]sslmode=)(require|verify-full|verify-ca|prefer|allow|disable)/i,
         "$1no-verify",
       )
-    : /localhost|127\.0\.0\.1/i.test(databaseUrl)
-      ? databaseUrl
-      : `${databaseUrl}${databaseUrl.includes("?") ? "&" : "?"}sslmode=no-verify`;
+    : /localhost|127\.0\.0\.1/i.test(sessionUrl)
+      ? sessionUrl
+      : `${sessionUrl}${sessionUrl.includes("?") ? "&" : "?"}sslmode=no-verify`;
   const pool = new pg.Pool({
     connectionString,
     ssl,
