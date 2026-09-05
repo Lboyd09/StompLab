@@ -985,8 +985,20 @@ export const adminDashboard = createServerFn({ method: "GET" })
       stats: emptyAdminStats(),
       dbError: "",
     };
+    const ADMIN_DASH_MS = 8_000;
     try {
-      return await loadAdminDashboard(empty);
+      return await Promise.race([
+        loadAdminDashboard(empty),
+        new Promise<typeof empty>((resolve) => {
+          setTimeout(() => {
+            resolve({
+              ...empty,
+              dbError:
+                "Admin stats timed out talking to the database. Refresh once — if it keeps hanging, check DATABASE_URL / the Supabase pooler.",
+            });
+          }, ADMIN_DASH_MS);
+        }),
+      ]);
     } catch (err) {
       return { ...empty, dbError: friendlyDbError(err) };
     }

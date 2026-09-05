@@ -29,10 +29,13 @@ export function postgresPoolConfig(
   return {
     connectionString: postgresConnectionString(connectionString),
     ssl: postgresSsl(connectionString),
-    max: extra?.max ?? 3,
-    idleTimeoutMillis: extra?.idleTimeoutMillis ?? 4000,
-    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 6000,
+    // Serverless: one client per isolate. Session pooler caps ~15; greedier pools hang admin.
+    max: extra?.max ?? 1,
+    idleTimeoutMillis: extra?.idleTimeoutMillis ?? 2000,
+    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 4000,
     allowExitOnIdle: true as const,
+    // Cap any single query so adminDashboard cannot sit pending forever.
+    options: "-c statement_timeout=8000",
   };
 }
 
@@ -40,6 +43,9 @@ export function friendlyDbError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err ?? "");
   if (/self-signed|certificate|unable_to_verify|cert_/i.test(msg)) {
     return "The database connection was rejected (certificate). Refresh once — Stomp Lab now accepts the pooler's certificate.";
+  }
+  if (/timeout|EMAXCONN|max clients|statement_timeout|canceling statement/i.test(msg)) {
+    return "The database is busy or timed out. Refresh once — if it keeps happening, check the Supabase pooler.";
   }
   return msg.slice(0, 220) || "Database error";
 }
