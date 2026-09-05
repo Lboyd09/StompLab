@@ -75,7 +75,9 @@ export function SongTypeahead({
   return (
     <div className="grid gap-3 sm:grid-cols-[1fr_180px]" data-tour="song">
       <div className="relative space-y-1.5" ref={box}>
-        <Label htmlFor="song">Song</Label>
+        <Label htmlFor="song" className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          Song
+        </Label>
         <Input
           id="song"
           value={song}
@@ -144,7 +146,9 @@ export function SongTypeahead({
         ) : null}
       </div>
       <div className="space-y-1.5">
-        <Label htmlFor="artist">Artist</Label>
+        <Label htmlFor="artist" className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+          Artist
+        </Label>
         <Input
           id="artist"
           value={artist}

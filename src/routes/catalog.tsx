@@ -91,7 +91,7 @@ function CatalogPage() {
     <div className="space-y-6">
       <UpgradeBanner plan={plan} pending={planPending} />
       <header className="space-y-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">HX catalog</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Every amp, cab, mic, and effect on the HX Stomp — plus a finder that maps a real pedal to
           the Line 6 name.

@@ -10,39 +10,39 @@ Stomp Lab maps recorded/live guitar and bass rigs onto HX Stomp / XL / Helix / H
 2. Sign in with email. Three custom songs are free. Then subscribe: **$6.99/month** or **$75/year** via Polar (50 custom builds a month).
 3. Download `.hlx` → HX Edit → File → Import, or `.pgp` → POD Go Edit. Put the unit in **Snapshot mode** so the numbered switches recall intro / verse / chorus.
 
-Cache hits still count as a build. Users never see a shared library. Featured demos never count. Other known rigs are replica-only until subscribe. Admin is `liamjamesb09@gmail.com` or `stomplab1@gmail.com` at `/admin` (not in the nav). Support: `stomplab1@gmail.com`.
+Cache hits still count as a build. Users never see a shared library. Featured demos never count. Other known rigs are replica-only until subscribe. Admin is `stomplab1@gmail.com` at `/admin` (not in the nav). Support: `stomplab1@gmail.com`.
 
 ## Stack
 
 - TanStack Start + React 19 + Tailwind v4
 - Auth: Better Auth email/password
 - Shared cache + entitlements: Postgres (Supabase in production, PGLite in local preview)
-- Gemini 2.5 Flash only, via Vercel AI Gateway (`google/gemini-2.5-flash`)
+- Gemini 2.5 Flash
 - Polar checkout (merchant of record)
 - Amazon Associates for original-gear shop links (`VITE_AMAZON_ASSOCIATE_TAG`)
 
-## Deploy (GitHub → Vercel)
+## Deploy
 
-1. Push this repo to GitHub.
-2. Import the project in Vercel. Attach the **custom domain** as the production domain.
+1. Push this repo to GitHub and attach it to the production host.
+2. Attach the **custom domain** as the production domain (`stomplab.app`).
 3. Postgres is attached as `DATABASE_URL` (Supabase session pooler on port 5432 is the safest for Better Auth; transaction pooler 6543 also works).
-4. Set on Vercel:
+4. Set on the host:
    - `APP_ORIGIN=https://YOUR-DOMAIN` (the domain you bought — no trailing slash)
-   - `BETTER_AUTH_URL=https://YOUR-DOMAIN` (same value; keep stomplab.vercel.app working too)
+   - `BETTER_AUTH_URL=https://YOUR-DOMAIN` (same value)
    - `BETTER_AUTH_SECRET` (long random string — keep it stable or sessions reset)
-   - `AI_GATEWAY_API_KEY` from Vercel AI Gateway
+   - `AI_GATEWAY_API_KEY` for Gemini
    - `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID_MONTHLY`, `POLAR_PRODUCT_ID_YEARLY`, `POLAR_WEBHOOK_SECRET`
    - `VITE_AMAZON_ASSOCIATE_TAG` (do not invent this — paste the real Store ID)
-   - optional `CRON_SECRET` (Vercel daily keep-alive at `/api/keepalive` so free Supabase does not pause)
+   - optional `CRON_SECRET` (daily keep-alive at `/api/keepalive` so free Supabase does not pause)
    - optional `POLAR_ORG_SLUG` or `POLAR_PORTAL_URL` if the Polar customer portal needs a fallback
-   - optional `EXTRA_AUTH_HOSTS=www.YOUR-DOMAIN,stomplab.vercel.app`
+   - optional `EXTRA_AUTH_HOSTS=www.YOUR-DOMAIN`
    - optional `POLAR_SERVER=sandbox` while testing
-5. Polar webhook URL: `https://YOUR-DOMAIN/api/polar/webhook` (and the vercel.app URL still works if both point at this project).
-6. In Polar checkout settings, allow return URLs on **both** the custom domain and `stomplab.vercel.app`.
+5. Polar webhook URL: `https://YOUR-DOMAIN/api/polar/webhook`.
+6. In Polar checkout settings, allow return URLs on the custom domain.
 
-Sign-in cookies are host-only. Paying on the custom domain returns you to that same domain. Do not leave `BETTER_AUTH_URL` stuck on vercel.app after the domain is live.
+Sign-in cookies are host-only. Paying on the custom domain returns you to that same domain.
 
-Admin: `liamjamesb09@gmail.com` and `stomplab1@gmail.com` at `/admin`. Polar tests from those inboxes are hidden from revenue and subscriber counts. The free admin grant is not counted as a subscriber.
+Admin: `stomplab1@gmail.com` at `/admin`. Polar tests from owner inboxes (`stomplab1@gmail.com` and the personal Gmail) are hidden from revenue and subscriber counts. The free admin grant is not counted as a subscriber.
 
 ## Local
 

@@ -12,7 +12,9 @@ export function PlaybackSelect({
   const current = PLAYBACK_TARGETS.find((t) => t.id === value) ?? PLAYBACK_TARGETS[0];
   return (
     <div className="space-y-1.5">
-      <Label htmlFor="playback">Playing through</Label>
+      <Label htmlFor="playback" className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+        Playing through
+      </Label>
       <select
         id="playback"
         value={value}

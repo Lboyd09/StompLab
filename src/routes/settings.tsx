@@ -52,7 +52,7 @@ function SettingsPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header className="space-y-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Settings</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
           Your {unitLabel} · {instrument}. Theme, unit, and how the replica behaves. Research runs on
           the server — nothing to paste.

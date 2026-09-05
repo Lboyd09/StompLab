@@ -107,7 +107,7 @@ function AdminPage() {
     <div className="space-y-10">
       <header className="space-y-1">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Admin</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Admin</h1>
         <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
       </header>
 
@@ -201,7 +201,7 @@ function AdminPage() {
       <section className="space-y-3">
         <h2 className="font-display text-lg font-semibold">Research backend</h2>
         <p className="text-sm text-muted-foreground">
-          Checks Google AI Studio and the Vercel gateway. Never prints the key.
+          Checks Google AI Studio and the research gateway. Never prints the key.
         </p>
         <Button type="button" variant="secondary" disabled={probing} onClick={() => void onProbe()}>
           {probing ? "Checking…" : "Ping research"}

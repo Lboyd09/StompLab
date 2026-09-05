@@ -3,6 +3,7 @@ import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LegalFooter } from "@/components/layout/legal-footer";
+import { Mark } from "@/components/layout/mark";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
@@ -139,7 +140,7 @@ function UpgradePage() {
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
-          <h1 className="font-display text-3xl font-semibold">{plan.admin ? "Admin — full Lab" : "You're subscribed"}</h1>
+          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">{plan.admin ? "Admin — full Lab" : "You're subscribed"}</h1>
           <p className="text-sm text-muted-foreground">
             {buildsUsedCopy(plan)}
             {plan.planInterval ? ` ${plan.planInterval === "year" ? "Yearly" : "Monthly"} plan.` : ""}
@@ -158,21 +159,16 @@ function UpgradePage() {
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-3xl space-y-8">
         <div className="space-y-3">
-          <Link to="/" className="inline-flex items-center gap-2 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold tracking-[-0.08em] normal-case text-mark-foreground">
-              SL
-            </span>
+          <Link to="/" className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+            <Mark />
             Back to Lab
           </Link>
-          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.92] tracking-tight">
+          <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
             Subscribe
-            <span className="mt-2 block text-2xl font-medium normal-case tracking-normal text-muted-foreground">
-              Type any song after the three free builds are gone.
-            </span>
           </h1>
-          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
-            {FREE_BUILDS} custom songs after sign-in. Featured demos stay free. Monthly or yearly —
-            same {PAID_MONTHLY_BUILDS} builds a month either way.
+          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
+            Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
+            Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.
           </p>
           <RigDisclaimer />
         </div>
@@ -253,8 +249,8 @@ function PlanCard({
 }) {
   return (
     <div
-      className={`rounded-xl border bg-card p-6 ${
-        highlight ? "border-primary" : "border-border"
+      className={`rounded-2xl border bg-card p-7 ${
+        highlight ? "border-foreground" : "border-border"
       }`}
     >
       <div className="flex items-center justify-between gap-2">

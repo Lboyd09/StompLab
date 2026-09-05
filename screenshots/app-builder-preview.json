@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8080/",
+  "url": "http://127.0.0.1:8080",
   "viewports": {
     "desktop": {
       "width": 1280,
@@ -7,9 +7,9 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4043,
-      "bodyTextHash": "82eeeaec8bf61d14f9a64542194306272172c952ad085b922a060ce3603e2561",
-      "bodyTextPrefix": "SL STOMP LAB Sign in Guitar Bass Stomp Stomp XL Lab Catalog Crea",
+      "bodyTextLen": 4312,
+      "bodyTextHash": "ae66b2708ff5f7704399614d2aa9fe4f91e6f07e8a9ccf56c078aff6013747a6",
+      "bodyTextPrefix": "SL STOMP LAB Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go ",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -21,9 +21,9 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4015,
-      "bodyTextHash": "5979f64e93f821be2a46158279f01ae67a1c618359a1ec90b9e09341012b3aea",
-      "bodyTextPrefix": "SL Sign in Guitar Bass Stomp Stomp XL WELCOME · 1 / 5 What do yo",
+      "bodyTextLen": 4284,
+      "bodyTextHash": "7f2b2ee742d18f94d7d2ffd63c9f78738b03188d0c3376788a66b22d3b85854b",
+      "bodyTextPrefix": "SL Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go LINE 6 LAB",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],

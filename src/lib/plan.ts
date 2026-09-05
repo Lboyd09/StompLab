@@ -1,5 +1,5 @@
 export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
-/** Business inbox Liam created for Stomp Lab. Also unlocks /admin. */
+/** Business inbox Liam created for Stomp Lab. The only address that unlocks /admin. */
 export const BUSINESS_EMAIL = "stomplab1@gmail.com";
 /** Public support inbox. Prefer the Gmail we actually read. */
 export const PUBLIC_SUPPORT_EMAIL = "stomplab1@gmail.com";
@@ -19,6 +19,20 @@ export function normalizeEmail(email: string | null | undefined) {
   return (email ?? "").trim().toLowerCase();
 }
 
+/**
+ * Prefer the email on the user row. If that SQL miss (preview DB skip, dummy
+ * pool, schema drift), use the session email Better Auth already verified.
+ */
+export function resolveAccountEmail(
+  dbEmail: string | null | undefined,
+  sessionEmail?: string | null,
+): string | null {
+  const db = normalizeEmail(dbEmail);
+  if (db) return db;
+  const session = normalizeEmail(sessionEmail);
+  return session || null;
+}
+
 function extraOwnerEmails(): string[] {
   if (typeof process === "undefined") return [];
   return [process.env.BUSINESS_EMAIL, process.env.SUPPORT_EMAIL, process.env.CONTACT_EMAIL]
@@ -26,11 +40,12 @@ function extraOwnerEmails(): string[] {
     .filter(Boolean);
 }
 
+/** /admin unlocks for the Stomp Lab inbox only — never personal Gmail. */
 export function adminEmails(): string[] {
-  return [...new Set([ADMIN_EMAIL, BUSINESS_EMAIL, ...extraOwnerEmails()])];
+  return [BUSINESS_EMAIL];
 }
 
-/** Admin unlock + Polar-test / business inboxes that must never count as revenue. */
+/** Polar-test / business inboxes that must never count as revenue. */
 export function ownerEmails(): string[] {
   return [...new Set([ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, LEGACY_SUPPORT_EMAIL, ...extraOwnerEmails()])];
 }

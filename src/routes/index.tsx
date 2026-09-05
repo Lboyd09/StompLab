@@ -10,7 +10,6 @@ import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { PlaybackTarget } from "@/data/types";
@@ -153,13 +152,15 @@ function Home() {
   const used = plan.signedIn && !plan.paid ? Math.min(FREE_BUILDS, plan.freeUsed) : 0;
 
   return (
-    <div className="space-y-10">
+    <div className="space-y-16 md:space-y-24">
       <UpgradeBanner plan={plan} pending={planPending} />
 
-      <section className="grid items-end gap-8 lg:grid-cols-[minmax(0,1.1fr)_minmax(0,0.9fr)]">
-        <div className="max-w-2xl space-y-5">
-          <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">Line 6 laboratory</p>
-          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.9] tracking-tight md:text-7xl">
+      <section className="mx-auto max-w-3xl space-y-8">
+        <div className="space-y-5">
+          <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
+            Line 6 laboratory
+          </p>
+          <h1 className="font-display text-[clamp(3.25rem,14vw,7.5rem)] font-semibold uppercase leading-[0.82] tracking-tight">
             Stomp Lab
           </h1>
           <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
@@ -171,82 +172,74 @@ function Home() {
           </p>
           <RigDisclaimer />
         </div>
-        <div className="overflow-hidden rounded-2xl border border-border bg-card">
-          <img
-            src="/promo-board.jpg"
-            alt="HX Stomp on a cream desk — Stomp Lab"
-            className="aspect-[4/3] w-full object-cover object-center"
-            width={1200}
-            height={900}
-          />
-        </div>
-      </section>
 
-      {plan.signedIn && plan.paid ? (
-        <div className="max-w-2xl rounded-lg border border-border bg-card px-4 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground tabular-nums">
-            {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
-          </span>{" "}
-          {plan.admin ? "custom builds — admin has no monthly cap" : "custom builds used this month"}
-        </div>
-      ) : null}
-
-      {plan.signedIn && !plan.paid ? (
-        <div className="flex max-w-2xl items-center gap-3 rounded-lg border border-border bg-card px-4 py-3">
-          <div className="flex gap-1.5" aria-hidden>
-            {Array.from({ length: FREE_BUILDS }).map((_, i) => (
-              <span
-                key={i}
-                className={
-                  i < used
-                    ? "size-2.5 rounded-full bg-muted-foreground/40"
-                    : "size-2.5 rounded-full bg-primary"
-                }
-              />
-            ))}
-          </div>
+        {plan.signedIn && plan.paid ? (
           <p className="text-sm text-muted-foreground">
-            {plan.freeRemaining} free custom build{plan.freeRemaining === 1 ? "" : "s"} left
+            <span className="font-medium text-foreground tabular-nums">
+              {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
+            </span>{" "}
+            {plan.admin ? "custom builds — admin has no monthly cap" : "custom builds used this month"}
           </p>
-        </div>
-      ) : null}
+        ) : null}
 
-      <form onSubmit={(e) => void onResearch(e)} className="max-w-2xl space-y-4">
-        <SongTypeahead
-          song={song}
-          artist={artist}
-          instrument={instrument}
-          onSong={setSong}
-          onArtist={setArtist}
-          onPick={(hit) => {
-            setSong(hit.song);
-            setArtist(hit.artist);
-            if (hit.featuredId) openFeatured(hit.featuredId);
-          }}
-        />
-        <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-        <div className="flex items-end">
-          <Button type="submit" disabled={busy || planPending} className="w-full sm:w-auto">
+        {plan.signedIn && !plan.paid ? (
+          <div className="flex items-center gap-3">
+            <div className="flex gap-1.5" aria-hidden>
+              {Array.from({ length: FREE_BUILDS }).map((_, i) => (
+                <span
+                  key={i}
+                  className={
+                    i < used
+                      ? "size-2.5 rounded-full bg-muted-foreground/40"
+                      : "size-2.5 rounded-full bg-primary"
+                  }
+                />
+              ))}
+            </div>
+            <p className="text-sm text-muted-foreground">
+              {plan.freeRemaining} free custom build{plan.freeRemaining === 1 ? "" : "s"} left
+            </p>
+          </div>
+        ) : null}
+
+        <form onSubmit={(e) => void onResearch(e)} className="space-y-4">
+          <SongTypeahead
+            song={song}
+            artist={artist}
+            instrument={instrument}
+            onSong={setSong}
+            onArtist={setArtist}
+            onPick={(hit) => {
+              setSong(hit.song);
+              setArtist(hit.artist);
+              if (hit.featuredId) openFeatured(hit.featuredId);
+            }}
+          />
+          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+          <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
             {busy ? <Loader2 className="size-4 animate-spin" /> : null}
             {busy ? "Researching" : "Build this preset"}
           </Button>
-        </div>
-        {busy ? <ResearchProgress pct={progress} /> : null}
-        <p className="text-xs text-muted-foreground">
-          Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
-          Type two letters to pick the exact recording. “Playing through” is the speaker you will
-          actually use — FRFR keeps the cab on, guitar amp skips it.
-        </p>
-        <GeminiHint plan={plan} pending={planPending} />
-        {status && busy === false && !plan.canResearch ? (
-          <p className="text-sm text-destructive">{status}</p>
-        ) : null}
-      </form>
+          {busy ? <ResearchProgress pct={progress} /> : null}
+          <p className="text-xs text-muted-foreground">
+            Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
+            Type two letters to pick the exact recording. “Playing through” is the speaker you will
+            actually use — FRFR keeps the cab on, guitar amp skips it.
+          </p>
+          <GeminiHint plan={plan} pending={planPending} />
+          {status && busy === false && !plan.canResearch ? (
+            <p className="text-sm text-destructive">{status}</p>
+          ) : null}
+        </form>
+      </section>
 
-      <section className="space-y-4">
-        <div className="flex items-end justify-between">
-          <h2 className="font-display text-lg font-semibold">Demo — one tap, always works</h2>
-          <span className="text-xs text-muted-foreground">Free download</span>
+      <section className="space-y-6">
+        <div className="flex items-end justify-between gap-4">
+          <div className="space-y-1">
+            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Always free</p>
+            <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">Demos</h2>
+          </div>
+          <span className="text-xs text-muted-foreground">One tap. Download included.</span>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {demos.map((p) => (
@@ -259,12 +252,12 @@ function Home() {
                 e.preventDefault();
                 openFeatured(p.id);
               }}
-              className="group rounded-2xl border border-border bg-card p-5 text-left hover:border-foreground/30"
+              className="group rounded-2xl border border-border bg-card p-6 text-left transition-[border-color,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30"
             >
-              <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
-              <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
-              <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
-              <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
+              <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">{p.song}</div>
+              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+              <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
                 Open on Stomp
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
@@ -274,9 +267,12 @@ function Home() {
       </section>
 
       {rest.length ? (
-        <section className="space-y-4">
-          <div className="flex items-end justify-between">
-            <h2 className="font-display text-lg font-semibold">More known rigs</h2>
+        <section className="space-y-6">
+          <div className="flex items-end justify-between gap-4">
+            <div className="space-y-1">
+              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Known rigs</p>
+              <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">More songs</h2>
+            </div>
             <span className="text-xs text-muted-foreground">
               {plan.paid ? `${instrument} · replica` : "Unlock to open"}
             </span>
@@ -292,15 +288,15 @@ function Home() {
                     e.preventDefault();
                     openFeatured(p.id);
                   }}
-                  className="group rounded-xl border border-border bg-card p-5 text-left hover:border-primary/50"
+                  className="group rounded-2xl border border-border bg-card p-6 text-left hover:border-foreground/30"
                 >
                   <div className="flex items-start justify-between gap-2">
-                    <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
+                    <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
                     {locked ? <Lock className="size-3.5 text-muted-foreground" /> : null}
                   </div>
-                  <div className="mt-1 font-display text-lg font-semibold">{p.song}</div>
-                  <p className="mt-2 line-clamp-3 text-sm text-muted-foreground">{p.summary}</p>
-                  <div className="mt-4 flex items-center gap-1 text-xs text-foreground">
+                  <div className="mt-2 font-display text-xl font-semibold uppercase leading-none tracking-tight">{p.song}</div>
+                  <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+                  <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
                     {locked ? "Unlock this rig" : "View replica"}
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </div>
@@ -311,31 +307,32 @@ function Home() {
         </section>
       ) : null}
 
-      <Card>
-        <CardHeader>
-          <CardTitle>How it works</CardTitle>
-          <CardDescription>
-            The screen is the unit.{" "}
-            <Link to="/guide" className="text-primary underline underline-offset-2">
-              Full tutorial
-            </Link>
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-4 text-sm text-muted-foreground sm:grid-cols-3">
-          <p>
-            <span className="block font-medium text-foreground">1. Demo or research</span>
+      <section className="grid gap-8 border-t border-border pt-12 sm:grid-cols-3">
+        <div className="space-y-2">
+          <p className="font-display text-4xl font-semibold uppercase leading-none">01</p>
+          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Demo or research</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
             Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
           </p>
-          <p>
-            <span className="block font-medium text-foreground">2. Play the replica</span>
+        </div>
+        <div className="space-y-2">
+          <p className="font-display text-4xl font-semibold uppercase leading-none">02</p>
+          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Play the replica</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
             Snapshot is verse/chorus. Stomp is effects on/off. Tap a switch, then tap what it should do.
           </p>
-          <p>
-            <span className="block font-medium text-foreground">3. Import the file</span>
-            Download the .hlx. HX Edit: File → Import. PAGE until SNAP or STOMP matches.
+        </div>
+        <div className="space-y-2">
+          <p className="font-display text-4xl font-semibold uppercase leading-none">03</p>
+          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Import the file</h2>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Download the .hlx. HX Edit: File → Import. PAGE until SNAP or STOMP matches.{" "}
+            <Link to="/guide" className="text-foreground underline underline-offset-2">
+              Full tutorial
+            </Link>
           </p>
-        </CardContent>
-      </Card>
+        </div>
+      </section>
 
       <div className="max-w-2xl">
         <FeedbackCard />

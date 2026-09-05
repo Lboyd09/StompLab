@@ -23,7 +23,7 @@ function HistoryPage() {
   if (!plan.signedIn) {
     return (
       <div className="mx-auto max-w-lg space-y-4 py-4">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">History</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Sign in to keep the songs you research. Free accounts keep their 3 custom builds here. Demos
           never need an account.
@@ -40,7 +40,7 @@ function HistoryPage() {
   return (
     <div className="space-y-8">
       <header className="space-y-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">History</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">History</h1>
         <p className="text-sm text-muted-foreground">
           Songs you researched and sounds you built with your free or paid builds.
         </p>

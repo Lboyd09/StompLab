@@ -1,13 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy } from "./plan.ts";
 
 describe("isAdminEmail", () => {
-  it("matches only the exact admin gmails", () => {
-    assert.equal(isAdminEmail(ADMIN_EMAIL), true);
-    assert.equal(isAdminEmail("  LiamJamesB09@gmail.com  "), true);
+  it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
     assert.equal(isAdminEmail(BUSINESS_EMAIL), true);
+    assert.equal(isAdminEmail("  StompLab1@gmail.com  "), true);
     assert.equal(isAdminEmail("stomplab1@gmail.com"), true);
+    assert.equal(isAdminEmail(ADMIN_EMAIL), false);
+    assert.equal(isAdminEmail("  LiamJamesB09@gmail.com  "), false);
     assert.equal(isAdminEmail("liamjamesb09@icloud.com"), false);
     assert.equal(isAdminEmail("someone@gmail.com"), false);
     assert.equal(isAdminEmail(""), false);
@@ -23,6 +24,13 @@ describe("isAdminEmail", () => {
     assert.equal(hideOwnerRow("", "unmatched", []), true);
     assert.equal(hideOwnerRow("buyer@example.com", "u2", ["admin-id"]), false);
     assert.equal(hideOwnerRow("", "u2", ["admin-id"]), false);
+  });
+  it("falls back to the session email when the user row is missing", () => {
+    assert.equal(resolveAccountEmail(null, "stomplab1@gmail.com"), "stomplab1@gmail.com");
+    assert.equal(resolveAccountEmail("", "  Liam@X.COM "), "liam@x.com");
+    assert.equal(resolveAccountEmail("  a@b.com ", "other@x.com"), "a@b.com");
+    assert.equal(resolveAccountEmail(undefined, undefined), null);
+    assert.equal(resolveAccountEmail("", ""), null);
   });
 });
 
@@ -55,6 +63,18 @@ describe("assemblePlan", () => {
     assert.equal(plan.paid, false);
     assert.equal(plan.canGear, false);
   });
+  it("does not unlock personal Gmail as admin", () => {
+    const plan = assemblePlan({
+      userId: "personal",
+      email: ADMIN_EMAIL,
+      paid: false,
+      freeUsed: 0,
+      monthUsed: 0,
+    });
+    assert.equal(plan.admin, false);
+    assert.equal(plan.paid, false);
+    assert.equal(isOwnerAccount(ADMIN_EMAIL), true);
+  });
   it("unlocks the business gmail as admin", () => {
     const plan = assemblePlan({
       userId: "biz",
@@ -66,10 +86,10 @@ describe("assemblePlan", () => {
     assert.equal(plan.admin, true);
     assert.equal(plan.paid, true);
   });
-  it("unlocks only the exact admin email without a Polar row and with no monthly cap", () => {
+  it("unlocks only the Stomp Lab email without a Polar row and with no monthly cap", () => {
     const plan = assemblePlan({
       userId: "admin-user",
-      email: ADMIN_EMAIL,
+      email: BUSINESS_EMAIL,
       paid: false,
       freeUsed: 0,
       monthUsed: 999,

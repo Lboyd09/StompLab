@@ -81,7 +81,7 @@ function AccountPage() {
     <div className="mx-auto max-w-lg space-y-8">
       <header className="space-y-2">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Account</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">
           {user.displayName || "Your Lab"}
         </h1>
         <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
@@ -159,7 +159,7 @@ function AccountPage() {
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Session</h2>
         <p className="text-sm text-muted-foreground">
-          Always use stomplab.app — www and the Vercel URL are a different login. Look and feel lives in{" "}
+          Always use stomplab.app — not www. Look and feel lives in{" "}
           <Link to="/settings" className="text-primary underline underline-offset-2">
             Settings
           </Link>

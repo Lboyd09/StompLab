@@ -36,7 +36,10 @@ export function polarFriendlyError(status: number, detail: unknown): string {
     return "Polar rejected the checkout key. On the host, set POLAR_ACCESS_TOKEN from the same Polar org as the products (live vs sandbox must match).";
   }
   if (/success_url|return url|invalid url/.test(lower)) {
-    return "Polar rejected the return URL. In Polar, allow this site's real domain (the one you just bought) plus stomplab.vercel.app. Set APP_ORIGIN to that https URL on the host.";
+    return "Polar rejected the return URL. In Polar, allow this site's real domain. Set APP_ORIGIN to that https URL on the host.";
+  }
+  if (/\bemail\b/.test(lower) && /required|missing|must|add an email/.test(lower)) {
+    return "Polar needs the email on this account. Sign out, sign back in with the same address, then try again.";
   }
   if (status === 404 || status === 422 || /product|not found|unprocessable|unknown product/.test(lower)) {
     return "Polar does not recognize this product. Create a $6.99/month and a $75/year product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY.";
@@ -180,7 +183,7 @@ export async function createPolarCheckout(opts: {
       opts.interval === "year" ? "POLAR_PRODUCT_ID_YEARLY" : "POLAR_PRODUCT_ID_MONTHLY";
     return {
       ok: false,
-      error: `Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and ${needed} on Vercel, then try Subscribe again.`,
+      error: `Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and ${needed} on the host, then try Subscribe again.`,
     };
   }
   const metadata = { user_id: opts.userId, email: opts.email, interval: opts.interval };
@@ -331,7 +334,10 @@ export async function ensurePolarCustomer(opts: {
   externalId: string;
 }): Promise<string> {
   const existing = await lookupPolarCustomer(opts);
-  if (existing) return existing;
+  if (existing) {
+    await patchPolarCustomerEmail(existing, opts.email);
+    return existing;
+  }
   const token = polarToken();
   if (!token || !opts.email) return "";
   try {
@@ -355,6 +361,25 @@ export async function ensurePolarCustomer(opts: {
     /* fall through */
   }
   return lookupPolarCustomer(opts);
+}
+
+async function patchPolarCustomerEmail(id: string, email: string) {
+  const token = polarToken();
+  const em = email.trim().toLowerCase();
+  if (!token || !id || !em) return;
+  try {
+    await fetch(`${polarBase()}/v1/customers/${encodeURIComponent(id)}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ email: em }),
+    });
+  } catch {
+    /* Polar already has an email, or this org cannot patch — checkout still sends customer_email. */
+  }
 }
 
 export async function polarPublicPortalUrl(): Promise<string> {

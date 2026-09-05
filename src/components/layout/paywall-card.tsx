@@ -7,7 +7,7 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
     <div className="mx-auto max-w-lg space-y-6 py-4">
       <div className="space-y-2">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Subscribe</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">{title}</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">{title}</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">{body}</p>
       </div>
       <div className="space-y-4 rounded-xl border border-border bg-card p-6">

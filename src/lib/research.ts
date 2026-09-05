@@ -194,7 +194,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
     }
 
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
 
     if (featuredSrc && plan.paid) {
@@ -287,7 +287,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => CreateIn.parse(input))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget);
 
@@ -357,7 +357,7 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => EqIn.parse(input))
   .handler(async ({ context, data }): Promise<{ ok: true; matches: EqMatch[]; source: "gemini" } | ResearchErr> => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     const key = eqCacheKey(data.query);
 
@@ -418,7 +418,7 @@ export const revisePresetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ReviseIn.parse(input))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
     try {

@@ -16,7 +16,7 @@ export const AFFILIATE_DISCLOSURE =
   "Some links to Amazon are affiliate links. If you buy through them, Stomp Lab may earn a commission at no extra cost to you. As an Amazon Associate we earn from qualifying purchases.";
 
 export const AFFILIATE_SETUP =
-  "Amazon Associates: 1) Join affiliate-program.amazon.com. 2) Copy your Store ID (looks like yourname-20 — that is the tag). 3) In Vercel → Project → Settings → Environment Variables, set VITE_AMAZON_ASSOCIATE_TAG to that Store ID for Production. 4) Redeploy — Vite bakes VITE_ vars at build time, so saving the env without a redeploy does nothing. 5) /admin should then say “Amazon tag: set”. Shop links must include tag=YOURID&linkCode=ll2. Commissions land in the Amazon Associates dashboard, not Stomp Lab revenue. Polar: $6.99/month and $75/year products as POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY. Never invent a tag or product id in code.";
+  "Amazon Associates: 1) Join affiliate-program.amazon.com. 2) Copy your Store ID (looks like yourname-20 — that is the tag). 3) On the host, set VITE_AMAZON_ASSOCIATE_TAG to that Store ID for production. 4) Redeploy — Vite bakes VITE_ vars at build time, so saving the env without a redeploy does nothing. 5) /admin should then say “Amazon tag: set”. Shop links must include tag=YOURID&linkCode=ll2. Commissions land in the Amazon Associates dashboard, not Stomp Lab revenue. Polar: $6.99/month and $75/year products as POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY. Never invent a tag or product id in code.";
 
 export const LEGAL_SHORT =
   "Not affiliated with Line 6. Unofficial research tool. Affiliate links may earn a commission.";

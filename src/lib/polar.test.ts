@@ -193,5 +193,6 @@ describe("polarFriendlyError", () => {
   });
   it("maps a rejected Polar return URL to domain copy", () => {
     assert.match(polarFriendlyError(422, "Invalid success_url"), /real domain/);
+    assert.match(polarFriendlyError(422, "customer email is required"), /needs the email/);
   });
 });

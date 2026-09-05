@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
 import { LegalFooter } from "./legal-footer";
+import { Mark } from "./mark";
 import { Onboarding } from "./onboarding";
 import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
@@ -42,14 +43,6 @@ const DESKTOP_NAV = [
   { to: "/equivalents", label: "Equivalents", icon: ArrowRightLeft },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
-
-function Mark() {
-  return (
-    <span className="grid size-10 place-items-center rounded-md bg-mark font-display text-lg font-bold uppercase tracking-[-0.06em] text-mark-foreground">
-      SL
-    </span>
-  );
-}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
@@ -183,12 +176,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/90 backdrop-blur-md">
+      <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center gap-2">
-            <Link to="/" className="flex shrink-0 items-center gap-2">
+          <div className="flex items-center gap-3">
+            <Link to="/" className="flex shrink-0 items-center gap-3">
               <Mark />
-              <span className="hidden font-display text-sm font-semibold uppercase tracking-[0.22em] sm:inline">
+              <span className="hidden font-display text-base font-semibold uppercase tracking-[0.2em] sm:inline">
                 Stomp Lab
               </span>
             </Link>
@@ -343,7 +336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-6 md:pb-12">
+      <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 md:pb-16 md:pt-12">
         {children}
         <LegalFooter className="mt-16 pb-4" />
       </main>

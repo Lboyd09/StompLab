@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8081/",
+  "url": "http://127.0.0.1:8081",
   "viewports": {
     "desktop": {
       "width": 1280,
@@ -7,9 +7,9 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 3702,
-      "bodyTextHash": "957db8072711629590139cd7b2c465ae3057dedcf4b1b582ed97ce03032af1bf",
-      "bodyTextPrefix": "SL STOMP LAB Guitar Bass Stomp Stomp XL Lab Catalog Create Gear ",
+      "bodyTextLen": 4312,
+      "bodyTextHash": "ae66b2708ff5f7704399614d2aa9fe4f91e6f07e8a9ccf56c078aff6013747a6",
+      "bodyTextPrefix": "SL STOMP LAB Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go ",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -21,9 +21,9 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 3674,
-      "bodyTextHash": "393019947d4c6e30d2277e798f6cc592505bc838dbea3494257bd6119c7ff788",
-      "bodyTextPrefix": "SL Guitar Bass Stomp Stomp XL HX STOMP LABORATORY Type a song. C",
+      "bodyTextLen": 4284,
+      "bodyTextHash": "7f2b2ee742d18f94d7d2ffd63c9f78738b03188d0c3376788a66b22d3b85854b",
+      "bodyTextPrefix": "SL Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go LINE 6 LAB",
       "horizontalOverflow": false,
       "consoleErrors": [],
       "pageErrors": [],
@@ -33,9 +33,6 @@
   "brandWarnings": [],
   "authWarnings": [],
   "verdictFile": "/workspace/screenshots/app-builder-built.json",
-  "divergesFromBaseline": true,
-  "baselineReasons": [
-    "desktop: body text replaced (similar length, page start changed)",
-    "mobile: body text replaced (similar length, page start changed)"
-  ]
+  "divergesFromBaseline": false,
+  "baselineReasons": []
 }

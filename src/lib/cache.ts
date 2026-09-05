@@ -98,7 +98,7 @@ export const lookupCache = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => LookupIn.parse(input))
   .handler(async ({ context, data }) => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     // Guessing cache keys must still consume a research slot for free users.
     if (!plan.paid && !plan.canResearch) return miss;

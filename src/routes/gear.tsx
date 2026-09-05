@@ -76,7 +76,7 @@ function GearPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <header className="space-y-2">
-        <h1 className="font-display text-3xl font-semibold tracking-tight">Your locker</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Your locker</h1>
         <p className="text-sm text-muted-foreground">
           Add the guitars, basses, amps, and pedals you actually own. Song research will tell you
           which piece to grab — and when to skip the Stomp amp and run four-cable method into a real

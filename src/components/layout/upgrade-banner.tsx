@@ -10,14 +10,16 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
   return (
     <Link
       to="/upgrade"
-      className="flex items-center justify-between gap-3 rounded-lg border border-border bg-card px-4 py-2.5 text-sm hover:border-primary/50"
+      className="flex items-center justify-between gap-3 rounded-full border border-border bg-card px-4 py-2 text-sm hover:border-foreground/30"
     >
       <span className="text-muted-foreground">
         {lead}
         <span className="font-medium text-foreground">{formatUsd(PRICE_MONTHLY_USD)}/mo</span>
         <span className="text-muted-foreground"> or {formatUsd(PRICE_YEARLY_USD)}/yr</span>
       </span>
-      <span className="shrink-0 text-xs font-medium text-primary">Plans</span>
+      <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">
+        Plans
+      </span>
     </Link>
   );
 }

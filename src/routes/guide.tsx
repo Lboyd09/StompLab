@@ -7,7 +7,7 @@ function GuidePage() {
     <div className="mx-auto max-w-2xl space-y-10">
       <header className="space-y-3">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Tutorial</p>
-        <h1 className="font-display text-3xl font-semibold tracking-tight">How to use Stomp Lab</h1>
+        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">How to use Stomp Lab</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           One idea: look up a song, see it on a Stomp, copy the file onto the real unit. You do not need
           to learn HX Edit first.
@@ -128,7 +128,7 @@ function GuidePage() {
           <a href="https://stomplab.app" className="text-primary underline underline-offset-2">
             stomplab.app
           </a>{" "}
-          (not www, not the Vercel URL).
+          (not www).
         </p>
       </section>
 

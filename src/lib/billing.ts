@@ -21,20 +21,20 @@ import {
   subscriptionStatusIsActive,
   waitForPolarCheckout,
 } from "./polar";
-import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
 import { publicOrigin } from "./site-origin";
 
-export async function emailFor(userId: string): Promise<string | null> {
+export async function emailFor(userId: string, sessionEmail?: string | null): Promise<string | null> {
   try {
     const sql = await getSql();
     const rows = await sql<{ email: string | null }>`select email from "user" where id = ${userId} limit 1`;
     const raw = rows[0]?.email ?? null;
-    return raw ? normalizeEmail(raw) : null;
+    return resolveAccountEmail(raw, sessionEmail);
   } catch {
-    return null;
+    return resolveAccountEmail(null, sessionEmail);
   }
 }
 
@@ -361,7 +361,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Plan> => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     return loadPlan(context.userId, email);
   });
 
@@ -560,7 +560,7 @@ export const startCheckout = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ interval: z.enum(["month", "year"]) }).parse(input))
   .handler(async ({ context, data }) => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     if (!email) {
       return { ok: false as const, error: "Your account needs an email before checkout." };
     }
@@ -609,7 +609,7 @@ export const confirmCheckout = createServerFn({ method: "POST" })
     if (!isRealPolarOrderId(order.orderId) && !isRealPolarSubscriptionId(order.subscriptionId)) {
       return { ok: false as const, error: "Polar has not issued an order yet. Finish payment first." };
     }
-    const email = (await emailFor(context.userId)) ?? "";
+    const email = (await emailFor(context.userId, context.email)) ?? "";
     const metaUser = String(order.userId ?? "").trim();
     const ids = await siblingUserIds(context.userId, email);
     if (metaUser && metaUser !== context.userId && !ids.includes(metaUser)) {
@@ -641,7 +641,7 @@ export const confirmCheckout = createServerFn({ method: "POST" })
 export const openCustomerPortal = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     if (!email) return { ok: false as const, error: "Your account needs an email." };
     if (isAdminEmail(email)) {
       return { ok: false as const, error: "Admin is not a Polar subscription." };
@@ -719,8 +719,8 @@ export async function recordFailure(userId: string, song: string, artist: string
   }
 }
 
-async function assertAdmin(userId: string) {
-  const email = await emailFor(userId);
+async function assertAdmin(userId: string, sessionEmail?: string | null) {
+  const email = await emailFor(userId, sessionEmail);
   if (!isAdminEmail(email)) throw new Error("Unauthorized");
   return email;
 }
@@ -907,14 +907,14 @@ async function loadExtraAdminStats(input: {
 export const requireAdmin = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const email = await assertAdmin(context.userId);
+    const email = await assertAdmin(context.userId, context.email);
     return { ok: true as const, email };
   });
 
 export const adminDashboard = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.email);
     const empty = {
       purchases: [] as {
         created_at: string;
@@ -1314,7 +1314,7 @@ export const adminDeleteCache = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ key: z.string().min(4).max(240) }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.email);
     const sql = await getSql();
     await sql`delete from rig_cache where cache_key = ${data.key}`;
     return { ok: true as const };
@@ -1324,7 +1324,7 @@ export const adminInspectCache = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ key: z.string().min(4).max(240) }).parse(input))
   .handler(async ({ context, data }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.email);
     const sql = await getSql();
     const rows = await sql<{
       cache_key: string;
@@ -1352,7 +1352,7 @@ export const pullMyPresets = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     try {
       const sql = await getSql();
-      const email = await emailFor(context.userId);
+      const email = await emailFor(context.userId, context.email);
       const ids = await siblingUserIds(context.userId, email);
       let rows: { presets: Preset[] }[] = [];
       try {
@@ -1426,7 +1426,7 @@ export const recordAffiliateClick = createServerFn({ method: "POST" })
 export const pullMyGear = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     if (!plan.canLockerSync) return { gear: [] as UserGear[], sync: false };
     try {
@@ -1455,7 +1455,7 @@ export const pushMyGear = createServerFn({ method: "POST" })
       .parse(input),
   )
   .handler(async ({ context, data }) => {
-    const email = await emailFor(context.userId);
+    const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
     if (!plan.canLockerSync) return { ok: false as const };
     const sql = await getSql();
@@ -1603,7 +1603,7 @@ export const submitAuthedFeedbackFn = createServerFn({ method: "POST" })
     if (!feedbackHasBody(data)) {
       throw new Error("Write a little more so we can use it.");
     }
-    const email = (await emailFor(context.userId)) ?? "";
+    const email = (await emailFor(context.userId, context.email)) ?? "";
     const sql = await getSql();
     const message =
       data.message.trim() ||
@@ -1628,7 +1628,7 @@ export const submitAuthedFeedbackFn = createServerFn({ method: "POST" })
 export const probeResearchFn = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
-    await assertAdmin(context.userId);
+    await assertAdmin(context.userId, context.email);
     const { probeResearch } = await import("./gemini");
     return probeResearch();
   });
