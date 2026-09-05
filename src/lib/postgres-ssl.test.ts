@@ -32,4 +32,8 @@ describe("postgresConnectionString", () => {
   it("maps the self-signed chain error to a short line", () => {
     assert.match(friendlyDbError(new Error("self-signed certificate in certificate chain")), /certificate/i);
   });
+  it("maps pool busy / statement timeout to a short line", () => {
+    assert.match(friendlyDbError(new Error("canceling statement due to statement_timeout")), /timed out|busy/i);
+    assert.match(friendlyDbError(new Error("(EMAXCONNSESSION) max clients reached")), /busy|pooler/i);
+  });
 });

@@ -30,6 +30,10 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !user) return;
     let cancelled = false;
+    const clientTimeout = window.setTimeout(() => {
+      if (cancelled) return;
+      setError((prev) => prev || "Admin stats are taking too long. Refresh once.");
+    }, 12_000);
     void requireAdmin()
       .then(() => {
         if (!cancelled) setGate("ok");
@@ -40,14 +44,18 @@ function AdminPage() {
     void adminDashboard()
       .then((d) => {
         if (cancelled) return;
+        window.clearTimeout(clientTimeout);
         setDash(d);
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
-        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load admin.");
+        if (cancelled) return;
+        window.clearTimeout(clientTimeout);
+        setError(err instanceof Error ? err.message : "Could not load admin.");
       });
     return () => {
       cancelled = true;
+      window.clearTimeout(clientTimeout);
     };
   }, [user, isPending]);
 
