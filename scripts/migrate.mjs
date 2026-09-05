@@ -42,7 +42,23 @@ async function main() {
     return;
   }
 
-  const pool = new pg.Pool({ connectionString: databaseUrl, max: 1 });
+  const ssl = /localhost|127\.0\.0\.1/i.test(databaseUrl)
+    ? false
+    : { rejectUnauthorized: false };
+  const connectionString = /[?&]sslmode=/i.test(databaseUrl)
+    ? databaseUrl.replace(
+        /([?&]sslmode=)(require|verify-full|verify-ca|prefer|allow|disable)/i,
+        "$1no-verify",
+      )
+    : /localhost|127\.0\.0\.1/i.test(databaseUrl)
+      ? databaseUrl
+      : `${databaseUrl}${databaseUrl.includes("?") ? "&" : "?"}sslmode=no-verify`;
+  const pool = new pg.Pool({
+    connectionString,
+    ssl,
+    max: 1,
+    connectionTimeoutMillis: 8000,
+  });
   const client = await pool.connect();
   try {
     await client.query(

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { classifyKey, collectResearchKeys } from "./gemini.ts";
+import { classifyKey, collectResearchKeys, friendlyResearchError } from "./gemini.ts";
 
 describe("classifyKey", () => {
   it("treats Google AI Studio keys as google", () => {
@@ -48,6 +48,15 @@ describe("collectResearchKeys", () => {
     assert.equal(
       collectResearchKeys({ GOOGLE_GENERATIVE_AI_API_KEY: "AIzaSyGen" } as NodeJS.ProcessEnv).google,
       "AIzaSyGen",
+    );
+  });
+});
+
+describe("friendlyResearchError", () => {
+  it("hides the raw TLS chain error", () => {
+    assert.match(
+      friendlyResearchError(new Error("self-signed certificate in certificate chain")),
+      /secure connection failed/i,
     );
   });
 });

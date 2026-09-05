@@ -17,7 +17,7 @@ type Probe = Awaited<ReturnType<typeof probeResearchFn>>;
 
 function AdminPage() {
   const { user, isPending } = useCurrentUserState();
-  const { plan, isPending: planPending } = usePlan();
+  const { plan } = usePlan();
   const navigate = useNavigate();
   const savePreset = useAppStore((s) => s.savePreset);
   const setStompModel = useAppStore((s) => s.setStompModel);
@@ -30,29 +30,30 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !user) return;
     let cancelled = false;
-    void Promise.all([
-      requireAdmin()
-        .then(() => true)
-        .catch(() => false),
-      adminDashboard()
-        .then((d) => {
-          if (!cancelled) setDash(d);
-          return true;
-        })
-        .catch((err) => {
-          if (!cancelled) setError(err instanceof Error ? err.message : "Could not load admin.");
-          return false;
-        }),
-    ]).then(([ok]) => {
-      if (cancelled) return;
-      setGate(ok ? "ok" : "no");
-    });
+    void requireAdmin()
+      .then(() => {
+        if (!cancelled) setGate("ok");
+      })
+      .catch(() => {
+        if (!cancelled) setGate("no");
+      });
+    void adminDashboard()
+      .then((d) => {
+        if (cancelled) return;
+        setDash(d);
+        if (d.dbError) setError(d.dbError);
+      })
+      .catch((err) => {
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not load admin.");
+      });
     return () => {
       cancelled = true;
     };
   }, [user, isPending]);
 
-  if (isPending || planPending || gate === "wait") return <p className="text-sm text-muted-foreground">Loading…</p>;
+  if (isPending || (gate === "wait" && !plan.admin)) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
   if (gate === "no" && !plan.admin) {
     return (
@@ -111,7 +112,8 @@ function AdminPage() {
         <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
       </header>
 
-      {error && !dash ? <p className="text-sm text-destructive">{error}</p> : null}
+      {error ? <p className="text-sm text-destructive">{error}</p> : null}
+      {!dash && !error ? <p className="text-sm text-muted-foreground">Loading stats…</p> : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />

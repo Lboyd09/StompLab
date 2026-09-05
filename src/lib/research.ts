@@ -10,7 +10,7 @@ import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
 import { standingRulesBlock } from "./research-lessons";
-import { geminiJson } from "./gemini";
+import { friendlyResearchError, geminiJson } from "./gemini";
 import {
   GearSchema,
   jsonSchemaHint,
@@ -222,7 +222,11 @@ export const researchSongFn = createServerFn({ method: "POST" })
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
         const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-        await recordBuild(context.userId, "song", data.song.trim());
+        try {
+          await recordBuild(context.userId, "song", data.song.trim());
+        } catch {
+          /* ignore */
+        }
         return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
       }
     } catch {
@@ -262,19 +266,31 @@ ${jsonSchemaHint()}`;
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      await recordBuild(context.userId, "song", data.song.trim());
-      await persistSongCache({
-        key,
-        song: data.song.trim(),
-        artist: (data.artist ?? "").trim(),
-        instrument: data.instrument,
-        stompModel: data.stompModel,
-        preset: publicPreset(preset),
-      });
+      try {
+        await recordBuild(context.userId, "song", data.song.trim());
+      } catch {
+        /* count is not worth losing the preset */
+      }
+      try {
+        await persistSongCache({
+          key,
+          song: data.song.trim(),
+          artist: (data.artist ?? "").trim(),
+          instrument: data.instrument,
+          stompModel: data.stompModel,
+          preset: publicPreset(preset),
+        });
+      } catch {
+        /* cache miss next time is fine */
+      }
       return { ok: true, preset, source: "gemini" };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Research failed";
-      await recordFailure(context.userId, data.song, data.artist ?? "", message);
+      const message = friendlyResearchError(err);
+      try {
+        await recordFailure(context.userId, data.song, data.artist ?? "", message);
+      } catch {
+        /* ignore */
+      }
       return {
         ok: false,
         error: message,
@@ -300,7 +316,11 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
         const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
-        await recordBuild(context.userId, "create", data.description.slice(0, 80));
+        try {
+          await recordBuild(context.userId, "create", data.description.slice(0, 80));
+        } catch {
+          /* ignore */
+        }
         return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
       }
     } catch {
@@ -330,19 +350,31 @@ ${jsonSchemaHint()}`;
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      await recordBuild(context.userId, "create", preset.name);
-      await persistSongCache({
-        key,
-        song: preset.name,
-        artist: "custom",
-        instrument: data.instrument,
-        stompModel: data.stompModel,
-        preset: publicPreset(preset),
-      });
+      try {
+        await recordBuild(context.userId, "create", preset.name);
+      } catch {
+        /* ignore */
+      }
+      try {
+        await persistSongCache({
+          key,
+          song: preset.name,
+          artist: "custom",
+          instrument: data.instrument,
+          stompModel: data.stompModel,
+          preset: publicPreset(preset),
+        });
+      } catch {
+        /* ignore */
+      }
       return { ok: true, preset, source: "gemini" };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not build that sound";
-      await recordFailure(context.userId, data.description.slice(0, 80), "custom", message);
+      const message = friendlyResearchError(err);
+      try {
+        await recordFailure(context.userId, data.description.slice(0, 80), "custom", message);
+      } catch {
+        /* ignore */
+      }
       return {
         ok: false,
         error: message,
@@ -394,7 +426,7 @@ ${catalog}`,
       void saveEqCache({ data: { key, query: data.query, matches } }).catch(() => undefined);
       return { ok: true, matches, source: "gemini" };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Lookup failed";
+      const message = friendlyResearchError(err);
       return {
         ok: false,
         error: message,
@@ -449,11 +481,19 @@ ${jsonSchemaHint()}`;
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      await recordBuild(context.userId, "revise", data.song.trim());
+      try {
+        await recordBuild(context.userId, "revise", data.song.trim());
+      } catch {
+        /* ignore */
+      }
       return { ok: true, preset, source: "gemini" };
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Could not revise that sound";
-      await recordFailure(context.userId, data.song, data.artist ?? "", message);
+      const message = friendlyResearchError(err);
+      try {
+        await recordFailure(context.userId, data.song, data.artist ?? "", message);
+      } catch {
+        /* ignore */
+      }
       return {
         ok: false,
         error: message,

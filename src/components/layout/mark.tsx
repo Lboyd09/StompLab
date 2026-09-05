@@ -16,3 +16,15 @@ export function Mark({ className, size = "md" }: { className?: string; size?: "s
     </span>
   );
 }
+
+/** Header lockup — white SL tile plus STOMP LAB. Same mark used as the app icon. */
+export function BrandLockup({ className }: { className?: string }) {
+  return (
+    <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
+      <Mark />
+      <span className="truncate font-display text-sm font-semibold uppercase tracking-[0.16em] sm:text-base sm:tracking-[0.2em]">
+        Stomp Lab
+      </span>
+    </span>
+  );
+}

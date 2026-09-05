@@ -3,7 +3,7 @@ import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LegalFooter } from "@/components/layout/legal-footer";
-import { Mark } from "@/components/layout/mark";
+import { BrandLockup } from "@/components/layout/mark";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
@@ -159,9 +159,8 @@ function UpgradePage() {
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-3xl space-y-8">
         <div className="space-y-3">
-          <Link to="/" className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            <Mark />
-            Back to Lab
+          <Link to="/" className="inline-flex items-center text-muted-foreground">
+            <BrandLockup />
           </Link>
           <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
             Subscribe

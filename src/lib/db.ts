@@ -1,4 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
+import { postgresPoolConfig } from "./postgres-ssl";
 
 /** Which database backend is active. */
 export type DbSource = "postgres" | "pglite";
@@ -14,14 +15,8 @@ const previewSkipProd =
 const databaseUrl = previewSkipProd
   ? undefined
   : rawDatabaseUrl && rawDatabaseUrl.trim()
-    ? withSsl(rawDatabaseUrl.trim())
+    ? rawDatabaseUrl.trim()
     : undefined;
-
-function withSsl(url: string) {
-  if (/localhost|127\.0\.0\.1/i.test(url)) return url;
-  if (/[?&]sslmode=/i.test(url)) return url;
-  return `${url}${url.includes("?") ? "&" : "?"}sslmode=require`;
-}
 
 /**
  * Active backend: real **Postgres** (Supabase / any pooled host) when
@@ -107,13 +102,7 @@ function createPostgresSql(): Promise<Sql> {
     types.setTypeParser(OID_INTERVAL, identity);
     // Serverless: tiny pool. Supabase transaction pooler (6543) multiplexes.
     // Session pooler (5432) is safer for Better Auth prepared statements.
-    const pool = new Pool({
-      connectionString: databaseUrl,
-      max: 3,
-      idleTimeoutMillis: 4000,
-      connectionTimeoutMillis: 8000,
-      allowExitOnIdle: true,
-    });
+    const pool = new Pool(postgresPoolConfig(databaseUrl!));
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];

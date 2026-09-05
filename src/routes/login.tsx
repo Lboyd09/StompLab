@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mark } from "@/components/layout/mark";
+import { BrandLockup } from "@/components/layout/mark";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
@@ -170,9 +170,8 @@ function LoginPage() {
     <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-2">
-          <a href="/" className="inline-flex items-center gap-3 text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
-            <Mark />
-            Back to Lab
+          <a href="/" className="inline-flex items-center text-muted-foreground">
+            <BrandLockup />
           </a>
           <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
             {mode === "in" ? "Sign in" : "Create account"}

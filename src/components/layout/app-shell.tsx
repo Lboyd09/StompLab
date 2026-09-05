@@ -23,7 +23,7 @@ import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
 import { AuthSlot } from "./auth-slot";
 import { LegalFooter } from "./legal-footer";
-import { Mark } from "./mark";
+import { BrandLockup } from "./mark";
 import { Onboarding } from "./onboarding";
 import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
@@ -179,11 +179,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
-            <Link to="/" className="flex shrink-0 items-center gap-3">
-              <Mark />
-              <span className="hidden font-display text-base font-semibold uppercase tracking-[0.2em] sm:inline">
-                Stomp Lab
-              </span>
+            <Link to="/" className="flex min-w-0 shrink-0 items-center" aria-label="Stomp Lab">
+              <BrandLockup />
             </Link>
 
             <div className="relative hidden min-w-0 flex-1 md:block" data-tour="search">

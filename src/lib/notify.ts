@@ -13,7 +13,11 @@ export function notifyResearchError(
     toast.error(err.error, { action: { label: "Unlock", onClick: go.upgrade }, duration: 8000 });
     return;
   }
-  toast.error(err.error);
+  const raw = err.error || "Research failed";
+  const error = /self-signed|certificate|unable_to_verify/i.test(raw)
+    ? "Could not reach research. Try a demo, then try again in a minute."
+    : raw;
+  toast.error(error);
 }
 
 export function notifyResearchSource(source: "library" | "cache" | "gemini" | "local") {

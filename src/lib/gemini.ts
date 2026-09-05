@@ -22,6 +22,15 @@ const BUSY = "Research is busy. Try again in a minute.";
 const SYSTEM =
   "You are a session tech programming Line 6 HX Stomp presets. Reply with a single JSON object. No markdown.";
 
+export function friendlyResearchError(err: unknown): string {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  const lower = msg.toLowerCase();
+  if (/self-signed|certificate|unable_to_verify|cert_|ssl alert|tls/i.test(lower)) {
+    return "Could not reach research (secure connection failed). Try a demo, then try again in a minute.";
+  }
+  return msg || "Research failed";
+}
+
 type Json = string | number | boolean | null | Json[] | { [key: string]: Json };
 
 export type ResearchBackend = "google" | "gateway";
@@ -122,7 +131,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
         await new Promise((r) => setTimeout(r, 700));
         continue;
       }
-      throw err;
+      throw new Error(friendlyResearchError(err));
     }
     if (res.ok) break;
     if (res.status === 429 && attempt === 0) {
@@ -248,7 +257,7 @@ export async function geminiJson(prompt: string): Promise<unknown> {
   if (first) return first;
   const second = google ? await tryGateway() : await tryGoogle();
   if (second) return second;
-  throw new Error(errors[0] || BUSY);
+  throw new Error(friendlyResearchError(errors[0] || BUSY));
 }
 
 /** Admin-only connectivity check. Never returns the key. */

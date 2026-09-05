@@ -26,6 +26,7 @@ import { amazonAssociateTag } from "./affiliate";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
 import { publicOrigin } from "./site-origin";
+import { friendlyDbError } from "./postgres-ssl";
 
 export async function emailFor(userId: string, sessionEmail?: string | null): Promise<string | null> {
   try {
@@ -310,52 +311,64 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     return plan;
   }
 
-  const sql = await getSql();
-  const ids = await siblingUserIds(userId, em || email);
-  let ent: EntRow | undefined;
   try {
-    ent = await entitlementForIds(ids, em || email);
-  } catch {
+    const sql = await getSql();
+    const ids = await siblingUserIds(userId, em || email);
+    let ent: EntRow | undefined;
     try {
-      const rows = await sql<EntRow>`
-        select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
-        from entitlements where user_id = ${userId} limit 1
-      `;
-      ent = rows[0];
+      ent = await entitlementForIds(ids, em || email);
     } catch {
       try {
         const rows = await sql<EntRow>`
-          select paid, paid_source, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+          select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
+          from entitlements where user_id = ${userId} limit 1
         `;
         ent = rows[0];
       } catch {
         try {
           const rows = await sql<EntRow>`
-            select paid, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+            select paid, paid_source, polar_order_id, email from entitlements where user_id = ${userId} limit 1
           `;
           ent = rows[0];
         } catch {
-          ent = undefined;
+          try {
+            const rows = await sql<EntRow>`
+              select paid, polar_order_id, email from entitlements where user_id = ${userId} limit 1
+            `;
+            ent = rows[0];
+          } catch {
+            ent = undefined;
+          }
         }
       }
     }
+    const paid = await paidVerifiedFor(userId, em || email, ent);
+    const lifetimeN = await countBuildsFor(ids);
+    const monthlyN = await countBuildsFor(ids, yearMonth());
+    const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
+    const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
+    const plan = assemblePlan({
+      userId,
+      email: em || email,
+      paid,
+      freeUsed: lifetimeN,
+      monthUsed: monthlyN,
+      planInterval,
+      subscriptionStatus: String(ent?.subscription_status ?? ""),
+    });
+    planCache.set(userId, { at: Date.now(), plan });
+    return plan;
+  } catch (err) {
+    console.error("[plan] loadPlan failed", friendlyDbError(err));
+    const plan = assemblePlan({
+      userId,
+      email: em || email,
+      paid: false,
+      freeUsed: 0,
+      monthUsed: 0,
+    });
+    return plan;
   }
-  const paid = await paidVerifiedFor(userId, em || email, ent);
-  const lifetimeN = await countBuildsFor(ids);
-  const monthlyN = await countBuildsFor(ids, yearMonth());
-  const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
-  const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
-  const plan = assemblePlan({
-    userId,
-    email: em || email,
-    paid,
-    freeUsed: lifetimeN,
-    monthUsed: monthlyN,
-    planInterval,
-    subscriptionStatus: String(ent?.subscription_status ?? ""),
-  });
-  planCache.set(userId, { at: Date.now(), plan });
-  return plan;
 }
 
 export const getMyPlan = createServerFn({ method: "GET" })
@@ -970,11 +983,12 @@ export const adminDashboard = createServerFn({ method: "GET" })
       polarReady: polarConfigured(),
       amazonReady: Boolean(amazonAssociateTag()),
       stats: emptyAdminStats(),
+      dbError: "",
     };
     try {
       return await loadAdminDashboard(empty);
-    } catch {
-      return empty;
+    } catch (err) {
+      return { ...empty, dbError: friendlyDbError(err) };
     }
   });
 
@@ -1033,8 +1047,16 @@ async function loadAdminDashboard(empty: {
   polarReady: boolean;
   amazonReady: boolean;
   stats: AdminStats;
+  dbError: string;
 }) {
     const sql = await getSql();
+    let dbError = "";
+    try {
+      const ping = await sql<{ ok: number }>`select 1::int as ok`;
+      if (Number(ping[0]?.ok) !== 1) dbError = "Database ping was empty.";
+    } catch (err) {
+      dbError = friendlyDbError(err);
+    }
     let purchases = empty.purchases;
     try {
       purchases = await sql<{
@@ -1307,6 +1329,7 @@ async function loadAdminDashboard(empty: {
       polarReady: polarConfigured(),
       amazonReady: Boolean(amazonAssociateTag()),
       stats,
+      dbError,
     };
 }
 
