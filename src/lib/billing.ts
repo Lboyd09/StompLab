@@ -823,93 +823,108 @@ async function loadExtraAdminStats(input: {
     const sql = await getSql();
     const owners = ownerEmails();
     const today = new Date().toISOString().slice(0, 10);
-    const month = yearMonth();
-    const b = await sql.query<{ n: number }>(
-      `select count(*)::int as n from build_events where created_at::date = $1::date`,
-      [today],
-    );
+    const monthKey = yearMonth();
+    const [
+      b,
+      bm,
+      s7,
+      s30,
+      cacheCount,
+      fail,
+      mix,
+      songs,
+      devices,
+      inst,
+      days,
+      rev,
+    ] = await Promise.all([
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from build_events where created_at::date = $1::date`,
+        [today],
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from build_events where year_month = $1`,
+        [monthKey],
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from "user"
+         where "createdAt" >= now() - interval '7 days'
+           and lower(coalesce(email, '')) <> all($1::text[])`,
+        [owners],
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from "user"
+         where "createdAt" >= now() - interval '30 days'
+           and lower(coalesce(email, '')) <> all($1::text[])`,
+        [owners],
+      ),
+      sql.query<{ rows: number; hits: number }>(
+        `select count(*)::int as rows, coalesce(sum(hit_count), 0)::int as hits
+         from rig_cache where kind = 'song'`,
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from research_failures where created_at >= now() - interval '7 days'`,
+      ),
+      sql.query<{ plan_interval: string; n: number }>(
+        `select coalesce(plan_interval, '') as plan_interval, count(*)::int as n
+         from entitlements
+         where paid = true
+           and coalesce(paid_source, '') <> 'admin'
+           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
+           and lower(coalesce(email, '')) <> all($1::text[])
+         group by coalesce(plan_interval, '')`,
+        [owners],
+      ),
+      sql.query<{ song: string; n: number }>(
+        `select song, coalesce(sum(hit_count), 0)::int as n
+         from rig_cache where kind = 'song' and coalesce(song, '') <> ''
+         group by song order by n desc limit 12`,
+      ),
+      sql.query<{ stomp_model: string; n: number }>(
+        `select stomp_model, count(*)::int as n
+         from rig_cache where kind = 'song' and coalesce(stomp_model, '') <> ''
+         group by stomp_model order by n desc`,
+      ),
+      sql.query<{ instrument: string; n: number }>(
+        `select instrument, count(*)::int as n
+         from rig_cache where kind = 'song' and coalesce(instrument, '') <> ''
+         group by instrument order by n desc`,
+      ),
+      sql.query<{ day: string; n: number }>(
+        `select "createdAt"::date::text as day, count(*)::int as n
+         from "user"
+         where lower(coalesce(email, '')) <> all($1::text[])
+         group by "createdAt"::date
+         order by day desc
+         limit 30`,
+        [owners],
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from entitlements
+         where coalesce(subscription_status, '') in ('revoked', 'expired', 'incomplete_expired')
+           and lower(coalesce(email, '')) <> all($1::text[])`,
+        [owners],
+      ),
+    ]);
     stats.buildsToday = Number(b[0]?.n ?? 0);
-    const bm = await sql.query<{ n: number }>(
-      `select count(*)::int as n from build_events where year_month = $1`,
-      [month],
-    );
     stats.buildsMonth = Number(bm[0]?.n ?? stats.buildsMonth);
-    const s7 = await sql.query<{ n: number }>(
-      `select count(*)::int as n from "user"
-       where "createdAt" >= now() - interval '7 days'
-         and lower(coalesce(email, '')) <> all($1::text[])`,
-      [owners],
-    );
     stats.signups7d = Number(s7[0]?.n ?? stats.signups7d);
-    const s30 = await sql.query<{ n: number }>(
-      `select count(*)::int as n from "user"
-       where "createdAt" >= now() - interval '30 days'
-         and lower(coalesce(email, '')) <> all($1::text[])`,
-      [owners],
-    );
     stats.signups30d = Number(s30[0]?.n ?? stats.signups30d);
-    const cacheCount = await sql.query<{ rows: number; hits: number }>(
-      `select count(*)::int as rows, coalesce(sum(hit_count), 0)::int as hits
-       from rig_cache where kind = 'song'`,
-    );
     if (cacheCount[0]) {
       stats.cacheRows = Number(cacheCount[0].rows ?? stats.cacheRows);
       stats.cacheHits = Number(cacheCount[0].hits ?? stats.cacheHits);
     }
-    const fail = await sql.query<{ n: number }>(
-      `select count(*)::int as n from research_failures where created_at >= now() - interval '7 days'`,
-    );
     stats.failures7d = Number(fail[0]?.n ?? stats.failures7d);
-    const mix = await sql.query<{ plan_interval: string; n: number }>(
-      `select coalesce(plan_interval, '') as plan_interval, count(*)::int as n
-       from entitlements
-       where paid = true
-         and coalesce(paid_source, '') <> 'admin'
-         and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
-         and lower(coalesce(email, '')) <> all($1::text[])
-       group by coalesce(plan_interval, '')`,
-      [owners],
-    );
     if (mix.length) {
       const monthlyN = mix.filter((r) => r.plan_interval === "month").reduce((n, r) => n + r.n, 0);
       const yearlyN = mix.filter((r) => r.plan_interval === "year").reduce((n, r) => n + r.n, 0);
       stats.mrrCents = monthlyN * 699 + Math.round((yearlyN * 7500) / 12);
       stats.arrCents = stats.mrrCents * 12;
     }
-    const songs = await sql.query<{ song: string; n: number }>(
-      `select song, coalesce(sum(hit_count), 0)::int as n
-       from rig_cache where kind = 'song' and coalesce(song, '') <> ''
-       group by song order by n desc limit 12`,
-    );
     if (songs.length) stats.topSongs = songs;
-    const devices = await sql.query<{ stomp_model: string; n: number }>(
-      `select stomp_model, count(*)::int as n
-       from rig_cache where kind = 'song' and coalesce(stomp_model, '') <> ''
-       group by stomp_model order by n desc`,
-    );
     if (devices.length) stats.deviceMix = devices;
-    const inst = await sql.query<{ instrument: string; n: number }>(
-      `select instrument, count(*)::int as n
-       from rig_cache where kind = 'song' and coalesce(instrument, '') <> ''
-       group by instrument order by n desc`,
-    );
     if (inst.length) stats.instrumentMix = inst;
-    const days = await sql.query<{ day: string; n: number }>(
-      `select "createdAt"::date::text as day, count(*)::int as n
-       from "user"
-       where lower(coalesce(email, '')) <> all($1::text[])
-       group by "createdAt"::date
-       order by day desc
-       limit 30`,
-      [owners],
-    );
     if (days.length) stats.signupsByDay = days;
-    const rev = await sql.query<{ n: number }>(
-      `select count(*)::int as n from entitlements
-       where coalesce(subscription_status, '') in ('revoked', 'expired', 'incomplete_expired')
-         and lower(coalesce(email, '')) <> all($1::text[])`,
-      [owners],
-    );
     stats.revoked = Number(rev[0]?.n ?? stats.revoked);
   } catch {
     /* keep JS fallbacks computed from the page of rows */
@@ -985,7 +1000,7 @@ export const adminDashboard = createServerFn({ method: "GET" })
       stats: emptyAdminStats(),
       dbError: "",
     };
-    const ADMIN_DASH_MS = 8_000;
+    const ADMIN_DASH_MS = 12_000;
     try {
       return await Promise.race([
         loadAdminDashboard(empty),
@@ -1062,16 +1077,17 @@ async function loadAdminDashboard(empty: {
   dbError: string;
 }) {
     const sql = await getSql();
-    let dbError = "";
-    try {
-      const ping = await sql<{ ok: number }>`select 1::int as ok`;
-      if (Number(ping[0]?.ok) !== 1) dbError = "Database ping was empty.";
-    } catch (err) {
-      dbError = friendlyDbError(err);
-    }
-    let purchases = empty.purchases;
-    try {
-      purchases = await sql<{
+    const owners = ownerEmails();
+    type FeedbackRow = (typeof empty)["feedback"][number];
+    type EntitlementRow = (typeof empty)["entitlements"][number];
+
+    const settled = await Promise.allSettled([
+      (async () => {
+        const ping = await sql<{ ok: number }>`select 1::int as ok`;
+        if (Number(ping[0]?.ok) !== 1) throw new Error("Database ping was empty.");
+        return true as const;
+      })(),
+      sql<{
         created_at: string;
         email: string;
         user_id: string;
@@ -1083,13 +1099,8 @@ async function loadAdminDashboard(empty: {
         from purchases
         order by created_at desc
         limit 100
-      `;
-    } catch {
-      purchases = [];
-    }
-    let usage = empty.usage;
-    try {
-      usage = await sql<{
+      `,
+      sql<{
         user_id: string;
         email: string;
         year_month: string;
@@ -1106,13 +1117,8 @@ async function loadAdminDashboard(empty: {
         group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
         order by b.year_month desc, n desc
         limit 200
-      `;
-    } catch {
-      usage = [];
-    }
-    let failures = empty.failures;
-    try {
-      failures = await sql<{
+      `,
+      sql<{
         created_at: string;
         song: string;
         artist: string;
@@ -1122,13 +1128,8 @@ async function loadAdminDashboard(empty: {
         from research_failures
         order by created_at desc
         limit 80
-      `;
-    } catch {
-      failures = [];
-    }
-    let cache = empty.cache;
-    try {
-      cache = await sql<{
+      `,
+      sql<{
         cache_key: string;
         song: string;
         artist: string;
@@ -1144,53 +1145,35 @@ async function loadAdminDashboard(empty: {
         where kind = 'song'
         order by updated_at desc
         limit 80
-      `;
-    } catch {
-      cache = [];
-    }
-    let notes = empty.feedback;
-    try {
-      notes = await sql<{
-        created_at: string;
-        email: string;
-        kind: string;
-        song: string;
-        message: string;
-        rating: number | null;
-        closer_tweaks: string;
-        want_preset: string;
-        want_app: string;
-      }>`
-        select
-          created_at::text, email, kind, song, message,
-          rating, closer_tweaks, want_preset, want_app
-        from feedback
-        order by created_at desc
-        limit 120
-      `;
-    } catch {
-      try {
-        notes = (
-          await sql<{
-            created_at: string;
-            email: string;
-            kind: string;
-            song: string;
-            message: string;
-          }>`
-            select created_at::text, email, kind, song, message
+      `,
+      (async (): Promise<FeedbackRow[]> => {
+        try {
+          return await sql<FeedbackRow>`
+            select
+              created_at::text, email, kind, song, message,
+              rating, closer_tweaks, want_preset, want_app
             from feedback
             order by created_at desc
             limit 120
-          `
-        ).map((n) => ({ ...n, rating: null, closer_tweaks: "", want_preset: "", want_app: "" }));
-      } catch {
-        notes = [];
-      }
-    }
-    let accounts = empty.accounts;
-    try {
-      accounts = await sql<{
+          `;
+        } catch {
+          return (
+            await sql<{
+              created_at: string;
+              email: string;
+              kind: string;
+              song: string;
+              message: string;
+            }>`
+              select created_at::text, email, kind, song, message
+              from feedback
+              order by created_at desc
+              limit 120
+            `
+          ).map((n) => ({ ...n, rating: null, closer_tweaks: "", want_preset: "", want_app: "" }));
+        }
+      })(),
+      sql<{
         id: string;
         email: string;
         name: string;
@@ -1208,54 +1191,84 @@ async function loadAdminDashboard(empty: {
           coalesce(e.paid, false) as paid,
           coalesce(e.subscription_status, '') as subscription_status,
           coalesce(e.plan_interval, '') as plan_interval,
-          coalesce((select count(*)::int from build_events b where b.user_id = u.id), 0) as builds
+          coalesce(bc.builds, 0) as builds
         from "user" u
         left join entitlements e on e.user_id = u.id
+        left join (
+          select user_id, count(*)::int as builds from build_events group by user_id
+        ) bc on bc.user_id = u.id
         order by u."createdAt" desc
         limit 200
-      `;
-    } catch {
-      accounts = [];
-    }
-    let entitlements = empty.entitlements;
-    try {
-      entitlements = await sql<{
-        user_id: string;
-        email: string;
-        paid: boolean;
-        paid_source: string;
-        polar_order_id: string;
-      }>`
-        select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
-        from entitlements
-        where paid = true
-        order by updated_at desc
-        limit 100
-      `;
-    } catch {
-      try {
-        entitlements = await sql<{
-          user_id: string;
-          email: string;
-          paid: boolean;
-          paid_source: string;
-          polar_order_id: string;
-        }>`
-          select user_id, email, paid, '' as paid_source, polar_order_id
-          from entitlements
-          where paid = true
-          order by updated_at desc
-          limit 100
-        `;
-      } catch {
-        entitlements = [];
-      }
-    }
-    let userCount = 0;
-    let subscribedCount = 0;
-    let revenueCents = 0;
-    let affiliateClicks: { vendor: string; n: number }[] = [];
-    const owners = ownerEmails();
+      `,
+      (async (): Promise<EntitlementRow[]> => {
+        try {
+          return await sql<EntitlementRow>`
+            select user_id, email, paid, coalesce(paid_source, '') as paid_source, polar_order_id
+            from entitlements
+            where paid = true
+            order by updated_at desc
+            limit 100
+          `;
+        } catch {
+          return await sql<EntitlementRow>`
+            select user_id, email, paid, '' as paid_source, polar_order_id
+            from entitlements
+            where paid = true
+            order by updated_at desc
+            limit 100
+          `;
+        }
+      })(),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from "user" where lower(coalesce(email, '')) <> all($1::text[])`,
+        [owners],
+      ),
+      sql.query<{ n: number }>(
+        `select count(*)::int as n from entitlements
+         where paid = true
+           and coalesce(paid_source, '') <> 'admin'
+           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
+           and lower(coalesce(email, '')) <> all($1::text[])`,
+        [owners],
+      ),
+      sql.query<{ n: number }>(
+        `select coalesce(sum(amount_cents), 0)::int as n
+         from purchases
+         where amount_cents > 0
+           and user_id not in ('unmatched', 'revoked', 'test')
+           and lower(coalesce(email, '')) <> all($1::text[])
+           and not exists (
+             select 1 from "user" u
+             where u.id = purchases.user_id and lower(u.email) = any($1::text[])
+           )`,
+        [owners],
+      ),
+      sql<{ vendor: string; n: number }>`
+        select vendor, count(*)::int as n from affiliate_clicks group by vendor order by n desc
+      `,
+    ]);
+
+    const value = <T>(i: number, fallback: T): T => {
+      const r = settled[i];
+      return r.status === "fulfilled" ? (r.value as T) : fallback;
+    };
+
+    let dbError = "";
+    const ping = settled[0];
+    if (ping.status === "rejected") dbError = friendlyDbError(ping.reason);
+
+    let purchases = value(1, [] as typeof empty.purchases);
+    let usage = value(2, [] as typeof empty.usage);
+    const failures = value(3, [] as typeof empty.failures);
+    const cache = value(4, [] as typeof empty.cache);
+    const notes = value(5, [] as typeof empty.feedback);
+    const accounts = value(6, [] as typeof empty.accounts);
+    let entitlements = value(7, [] as typeof empty.entitlements);
+    const userCountRows = value(8, null as { n: number }[] | null);
+    const subscribedRows = value(9, null as { n: number }[] | null);
+    const revenueRows = value(10, null as { n: number }[] | null);
+    const affiliateClicks = value(11, [] as { vendor: string; n: number }[]);
+
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
     const hiddenMail = new Set(owners);
     purchases = purchases.filter((p) => {
@@ -1269,54 +1282,22 @@ async function loadAdminDashboard(empty: {
       if (String(e.paid_source ?? "").toLowerCase() === "admin") return false;
       return true;
     });
-    try {
-      const u = await sql.query<{ n: number }>(
-        `select count(*)::int as n from "user" where lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
-      );
-      userCount = Number(u[0]?.n ?? 0);
-    } catch {
-      userCount = accounts.filter((a) => !isOwnerAccount(a.email)).length;
-    }
-    try {
-      const s = await sql.query<{ n: number }>(
-        `select count(*)::int as n from entitlements
-         where paid = true
-           and coalesce(paid_source, '') <> 'admin'
-           and coalesce(subscription_status, 'active') not in ('revoked', 'expired', 'incomplete_expired')
-           and lower(coalesce(email, '')) <> all($1::text[])`,
-        [owners],
-      );
-      subscribedCount = Number(s[0]?.n ?? 0);
-    } catch {
-      subscribedCount = entitlements.filter(
-        (e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin",
-      ).length;
-    }
-    try {
-      const r = await sql.query<{ n: number }>(
-        `select coalesce(sum(amount_cents), 0)::int as n
-         from purchases
-         where amount_cents > 0
-           and user_id not in ('unmatched', 'revoked', 'test')
-           and lower(coalesce(email, '')) <> all($1::text[])
-           and not exists (
-             select 1 from "user" u
-             where u.id = purchases.user_id and lower(u.email) = any($1::text[])
-           )`,
-        [owners],
-      );
-      revenueCents = Number(r[0]?.n ?? 0);
-    } catch {
-      revenueCents = purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
-    }
-    try {
-      affiliateClicks = await sql<{ vendor: string; n: number }>`
-        select vendor, count(*)::int as n from affiliate_clicks group by vendor order by n desc
-      `;
-    } catch {
-      affiliateClicks = [];
-    }
+
+    const userCount =
+      userCountRows != null
+        ? Number(userCountRows[0]?.n ?? 0)
+        : accounts.filter((a) => !isOwnerAccount(a.email)).length;
+    const subscribedCount =
+      subscribedRows != null
+        ? Number(subscribedRows[0]?.n ?? 0)
+        : entitlements.filter(
+            (e) => e.paid && String(e.paid_source ?? "").toLowerCase() !== "admin",
+          ).length;
+    const revenueCents =
+      revenueRows != null
+        ? Number(revenueRows[0]?.n ?? 0)
+        : purchases.reduce((n, p) => n + (Number(p.amount_cents) || 0), 0);
+
     const stats = await loadExtraAdminStats({
       accounts,
       entitlements,
