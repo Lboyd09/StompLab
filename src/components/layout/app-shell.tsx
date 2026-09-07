@@ -29,6 +29,7 @@ import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pushMyPresets } from "@/lib/billing";
+import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -67,11 +68,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const { plan } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
+  const userId = user?.id ?? null;
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [showTutorial, setShowTutorial] = useState(false);
   const [syncReady, setSyncReady] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
+  const lastSynced = useRef("");
 
   useEffect(() => {
     hydrate();
@@ -80,8 +83,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authPending) return;
     setSyncReady(false);
-    const local = hydrateOwner(user?.id ?? null);
-    if (!user) {
+    const local = hydrateOwner(userId);
+    if (!userId) {
+      lastSynced.current = "";
       setSyncReady(true);
       return;
     }
@@ -89,9 +93,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     void pullMyPresets()
       .then((res) => {
         if (cancelled) return;
-        if (res.presets.length) replacePresets(res.presets);
-        else if (local.presets.length) {
+        if (res.presets.length) {
+          replacePresets(res.presets);
+          lastSynced.current = jsonFingerprint(res.presets);
+        } else if (local.presets.length) {
+          lastSynced.current = jsonFingerprint(local.presets);
           void pushMyPresets({ data: { presets: local.presets } }).catch(() => undefined);
+        } else {
+          lastSynced.current = jsonFingerprint(local.presets);
         }
       })
       .catch(() => undefined)
@@ -101,15 +110,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, authPending]);
+  }, [userId, authPending, hydrateOwner, replacePresets]);
 
   useEffect(() => {
-    if (!user || !syncReady || ownerId !== user.id) return;
+    if (!userId || !syncReady || ownerId !== userId) return;
+    if (!shouldPushSync(lastSynced.current, presets)) return;
+    const nextFp = jsonFingerprint(presets);
     const timer = window.setTimeout(() => {
+      lastSynced.current = nextFp;
       void pushMyPresets({ data: { presets } }).catch(() => undefined);
     }, 8000);
     return () => window.clearTimeout(timer);
-  }, [presets, user?.id, syncReady, ownerId]);
+  }, [presets, userId, syncReady, ownerId]);
 
   useEffect(() => {
     const root = document.documentElement;

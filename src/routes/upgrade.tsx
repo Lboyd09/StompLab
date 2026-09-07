@@ -56,14 +56,18 @@ function UpgradePage() {
       setConfirming(false);
       return;
     }
+    let cancelled = false;
     setConfirming(true);
     void (async () => {
       let last = "";
       for (let i = 0; i < 10; i++) {
+        if (cancelled) return;
         try {
           const res = await confirmCheckout({ data: { checkoutId: id } });
+          if (cancelled) return;
           if (res.ok) {
             await refresh();
+            if (cancelled) return;
             await navigate({ to: "/" });
             return;
           }
@@ -77,16 +81,22 @@ function UpgradePage() {
         }
         await new Promise((r) => window.setTimeout(r, 700 + i * 250));
       }
+      if (cancelled) return;
       setError(
         last ||
           "Polar is still finishing this payment. Refresh in a few seconds — you will not be charged twice.",
       );
     })()
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Could not confirm payment.");
+        if (!cancelled) setError(err instanceof Error ? err.message : "Could not confirm payment.");
       })
-      .finally(() => setConfirming(false));
-  }, [checkoutId, user, isPending, refresh, navigate]);
+      .finally(() => {
+        if (!cancelled) setConfirming(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutId, user?.id, isPending, refresh, navigate, user]);
 
   async function onSubscribe(interval: PlanInterval) {
     setError("");

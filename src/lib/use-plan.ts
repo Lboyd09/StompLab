@@ -1,7 +1,7 @@
 import { createContext, createElement, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { getMyPlan } from "@/lib/billing";
-import { assemblePlan, emptyPlan, type Plan } from "@/lib/plan";
+import { assemblePlan, emptyPlan, planFingerprint, type Plan } from "@/lib/plan";
 
 type PlanState = {
   plan: Plan;
@@ -32,20 +32,23 @@ function usePlanState(): PlanState {
   userIdRef.current = userId;
   emailRef.current = email;
 
+  const applyPlan = useCallback((next: Plan) => {
+    setPlan((prev) => (planFingerprint(prev) === planFingerprint(next) ? prev : next));
+    setReady(true);
+  }, []);
+
   const refresh = useCallback(async () => {
     const id = userIdRef.current;
     const em = emailRef.current;
     const gen = ++genRef.current;
     if (!id) {
-      setPlan(emptyPlan());
-      setReady(true);
+      applyPlan(emptyPlan());
       return emptyPlan();
     }
     try {
       const next = await getMyPlan();
       if (gen !== genRef.current || userIdRef.current !== id) return next;
-      setPlan(next);
-      setReady(true);
+      applyPlan(next);
       return next;
     } catch {
       if (gen !== genRef.current || userIdRef.current !== id) return emptyPlan();
@@ -58,11 +61,10 @@ function usePlanState(): PlanState {
         freeUsed: 0,
         monthUsed: 0,
       });
-      setPlan(fallback);
-      setReady(true);
+      applyPlan(fallback);
       return fallback;
     }
-  }, []);
+  }, [applyPlan]);
 
   useEffect(() => {
     setReady(false);

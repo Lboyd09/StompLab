@@ -4,5 +4,48 @@
       "path": "/api/keepalive",
       "schedule": "0 15 * * *"
     }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [{ "type": "host", "value": "www.stomplab.app" }],
+      "destination": "https://stomplab.app/:path*",
+      "permanent": true
+    }
+  ],
+  "rewrites": [
+    { "source": "/wp-admin/:path*", "destination": "/gone.txt" },
+    { "source": "/wp-login.php", "destination": "/gone.txt" },
+    { "source": "/xmlrpc.php", "destination": "/gone.txt" },
+    { "source": "/.env", "destination": "/gone.txt" },
+    { "source": "/.git/:path*", "destination": "/gone.txt" },
+    { "source": "/phpmyadmin/:path*", "destination": "/gone.txt" },
+    { "source": "/phpmyadmin", "destination": "/gone.txt" }
+  ],
+  "headers": [
+    {
+      "source": "/assets/:path*",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }]
+    },
+    {
+      "source": "/gone.txt",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400, s-maxage=86400" }]
+    },
+    {
+      "source": "/icon-:size.png",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    },
+    {
+      "source": "/favicon.svg",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    },
+    {
+      "source": "/tutorial/:path*",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    },
+    {
+      "source": "/og.jpg",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=86400" }]
+    }
   ]
 }

@@ -112,6 +112,19 @@ export type Plan = {
   blockedReason: "signin" | "paywall" | "quota" | null;
 };
 
+export function planFingerprint(plan: Plan): string {
+  return [
+    plan.userId ?? "",
+    plan.paid ? "1" : "0",
+    plan.admin ? "1" : "0",
+    String(plan.freeUsed),
+    String(plan.monthUsed),
+    plan.planInterval ?? "",
+    plan.subscriptionStatus,
+    plan.blockedReason ?? "",
+  ].join("|");
+}
+
 export function emptyPlan(): Plan {
   const month = yearMonth();
   return {

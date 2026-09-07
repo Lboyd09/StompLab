@@ -270,7 +270,7 @@ export const auth = betterAuth({
   session: {
     expiresIn: 60 * 60 * 24 * 30,
     updateAge: 60 * 60 * 24,
-    cookieCache: { enabled: false },
+    cookieCache: { enabled: true, maxAge: 5 * 60 },
   },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).

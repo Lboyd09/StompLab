@@ -136,7 +136,7 @@ type EntRow = {
   email?: string | null;
 };
 
-const PLAN_TTL_MS = 25_000;
+const PLAN_TTL_MS = 45_000;
 const planCache = new Map<string, { at: number; plan: Plan }>();
 /** Coalesce concurrent getMyPlan calls for the same user (client loops). */
 const planInflight = new Map<string, Promise<Plan>>();
@@ -375,10 +375,14 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
 export const getMyPlan = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<Plan> => {
+    const cached = planCache.get(context.userId);
+    if (cached && Date.now() - cached.at < PLAN_TTL_MS) return cached.plan;
     const existing = planInflight.get(context.userId);
     if (existing) return existing;
     const pending = (async () => {
-      const email = await emailFor(context.userId, context.email);
+      const email = context.email
+        ? resolveAccountEmail(null, context.email)
+        : await emailFor(context.userId, context.email);
       return loadPlan(context.userId, email);
     })().finally(() => {
       planInflight.delete(context.userId);
