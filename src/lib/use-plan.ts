@@ -15,34 +15,45 @@ const PlanContext = createContext<PlanState | null>(null);
  * One plan for the whole tree. Separate usePlan() calls were each starting at
  * emptyPlan() and racing getMyPlan — that's the "unlocked for a second, then
  * the ad" flicker.
+ *
+ * Depend only on userId / email strings — Better Auth often returns a new `user`
+ * object reference on session store ticks, and an effect keyed on that object
+ * will hammer getMyPlan forever (Observability event storm).
  */
 function usePlanState(): PlanState {
   const { user, isPending: authPending } = useCurrentUserState();
   const [plan, setPlan] = useState<Plan>(emptyPlan());
   const [ready, setReady] = useState(false);
   const userId = user?.id ?? null;
+  const email = user?.primaryEmail ?? null;
   const userIdRef = useRef(userId);
+  const emailRef = useRef(email);
+  const genRef = useRef(0);
   userIdRef.current = userId;
+  emailRef.current = email;
 
   const refresh = useCallback(async () => {
-    if (!user) {
+    const id = userIdRef.current;
+    const em = emailRef.current;
+    const gen = ++genRef.current;
+    if (!id) {
       setPlan(emptyPlan());
       setReady(true);
       return emptyPlan();
     }
     try {
       const next = await getMyPlan();
-      if (userIdRef.current !== user.id) return next;
+      if (gen !== genRef.current || userIdRef.current !== id) return next;
       setPlan(next);
       setReady(true);
       return next;
     } catch {
-      if (userIdRef.current !== user.id) return emptyPlan();
+      if (gen !== genRef.current || userIdRef.current !== id) return emptyPlan();
       // Keep them signed in. Admin email still unlocks via assemblePlan.
       // Never invent paid:true for a normal account.
       const fallback = assemblePlan({
-        userId: user.id,
-        email: user.primaryEmail,
+        userId: id,
+        email: em,
         paid: false,
         freeUsed: 0,
         monthUsed: 0,
@@ -51,7 +62,7 @@ function usePlanState(): PlanState {
       setReady(true);
       return fallback;
     }
-  }, [user]);
+  }, []);
 
   useEffect(() => {
     setReady(false);
@@ -61,7 +72,7 @@ function usePlanState(): PlanState {
   useEffect(() => {
     if (authPending) return;
     void refresh();
-  }, [authPending, refresh]);
+  }, [authPending, userId, refresh]);
 
   return { plan, isPending: authPending || !ready, refresh };
 }

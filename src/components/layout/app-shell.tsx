@@ -101,7 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, authPending, hydrateOwner, replacePresets]);
+  }, [user?.id, authPending]);
 
   useEffect(() => {
     if (!user || !syncReady || ownerId !== user.id) return;
@@ -109,7 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       void pushMyPresets({ data: { presets } }).catch(() => undefined);
     }, 8000);
     return () => window.clearTimeout(timer);
-  }, [presets, user, syncReady, ownerId]);
+  }, [presets, user?.id, syncReady, ownerId]);
 
   useEffect(() => {
     const root = document.documentElement;

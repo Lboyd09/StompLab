@@ -55,7 +55,7 @@ function AdminPage() {
       cancelled = true;
       window.clearTimeout(timeout);
     };
-  }, [user, isPending]);
+  }, [user?.id, isPending]);
 
   if (isPending || (gate === "wait" && !plan.admin)) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
