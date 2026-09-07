@@ -162,6 +162,16 @@ function AdminPage() {
       ) : null}
 
       <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+        <Stat
+          label="Visitors today"
+          value={String(dash?.visits?.today ?? "—")}
+          hint="Unique browsers. Scanners are not counted."
+        />
+        <Stat
+          label="Visitors (7d)"
+          value={String(dash?.visits?.d7 ?? "—")}
+          hint={`${dash?.visits?.d30 ?? 0} in the last 30 days · ${dash?.visits?.unique_all ?? 0} all-time`}
+        />
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
         <Stat
           label="Subscribed"

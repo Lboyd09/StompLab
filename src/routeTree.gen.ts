@@ -22,6 +22,7 @@ import { Route as LoginRouteImport } from './routes/login'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
+import { Route as ApiVisitRouteImport } from './routes/api/visit'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiPolarWebhookRouteImport } from './routes/api/polar.webhook'
@@ -91,6 +92,11 @@ const ApiKeepaliveRoute = ApiKeepaliveRouteImport.update({
   path: '/api/keepalive',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiVisitRoute = ApiVisitRouteImport.update({
+  id: '/api/visit',
+  path: '/api/visit',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PresetIdRoute = PresetIdRouteImport.update({
   id: '/preset/$id',
   path: '/preset/$id',
@@ -121,6 +127,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
+  '/api/visit': typeof ApiVisitRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -139,6 +146,7 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
+  '/api/visit': typeof ApiVisitRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -158,6 +166,7 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
+  '/api/visit': typeof ApiVisitRoute
   '/preset/$id': typeof PresetIdRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -178,6 +187,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upgrade'
     | '/api/keepalive'
+    | '/api/visit'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -196,6 +206,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upgrade'
     | '/api/keepalive'
+    | '/api/visit'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -214,6 +225,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/upgrade'
     | '/api/keepalive'
+    | '/api/visit'
     | '/preset/$id'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -233,6 +245,7 @@ export interface RootRouteChildren {
   SettingsRoute: typeof SettingsRoute
   UpgradeRoute: typeof UpgradeRoute
   ApiKeepaliveRoute: typeof ApiKeepaliveRoute
+  ApiVisitRoute: typeof ApiVisitRoute
   PresetIdRoute: typeof PresetIdRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiPolarWebhookRoute: typeof ApiPolarWebhookRoute
@@ -331,6 +344,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiKeepaliveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/visit': {
+      id: '/api/visit'
+      path: '/api/visit'
+      fullPath: '/api/visit'
+      preLoaderRoute: typeof ApiVisitRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/preset/$id': {
       id: '/preset/$id'
       path: '/preset/$id'
@@ -369,6 +389,7 @@ const rootRouteChildren: RootRouteChildren = {
   SettingsRoute: SettingsRoute,
   UpgradeRoute: UpgradeRoute,
   ApiKeepaliveRoute: ApiKeepaliveRoute,
+  ApiVisitRoute: ApiVisitRoute,
   PresetIdRoute: PresetIdRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiPolarWebhookRoute: ApiPolarWebhookRoute,

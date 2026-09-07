@@ -1,7 +1,22 @@
 /**
- * Cheap request-budget helpers: drop scanner probes before SSR, cache public
- * HTML at the edge, and fingerprint payloads so sync effects do not loop.
+ * Cheap request-budget helpers: drop scanner / unknown paths before SSR so
+ * they never render the Lab, and fingerprint payloads so sync effects do not loop.
  */
+
+const APP_DOCUMENTS = new Set([
+  "/",
+  "/catalog",
+  "/create",
+  "/gear",
+  "/history",
+  "/equivalents",
+  "/guide",
+  "/login",
+  "/upgrade",
+  "/account",
+  "/admin",
+  "/settings",
+]);
 
 const SCANNER_PREFIXES = [
   "/wp-",
@@ -32,10 +47,26 @@ const SCANNER_PREFIXES = [
 
 const SCANNER_EXT = /\.(php|asp|aspx|cgi|jsp|env|sql|bak|old|py|rb)$/i;
 
-/** Public HTML — bots and guests hit CDN instead of the render function. */
-export const PUBLIC_HTML_CACHE = "public, s-maxage=120, stale-while-revalidate=600";
-/** Scanner 404s can live on the CDN all day. */
+const ABUSE_UA =
+  /(?:curl|wget|python-requests|python-urllib|go-http-client|libwww|scrapy|httpx|nuclei|sqlmap|nikto|masscan|zgrab|censys|shodan|bytespider|petalbot|semrush|ahrefs|dotbot|gptbot|ccbot|claudebot|amazonbot|aiohttp|okhttp|java\/|php\/|scanner|fuzz|exploit|masscan)/i;
+
+const FRIENDLY_UA =
+  /Googlebot|bingbot|DuckDuckBot|Applebot|Slurp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|WhatsApp|Telegram/i;
+
+/** Scanner 404s can live on the CDN all day. No SWR — that doubled origin hits. */
 export const SCANNER_CACHE = "public, max-age=86400, s-maxage=86400";
+
+export function normalizePath(pathname: string): string {
+  const raw = String(pathname ?? "").split("?")[0] || "/";
+  let path = raw;
+  try {
+    path = decodeURIComponent(raw);
+  } catch {
+    path = raw;
+  }
+  if (path.length > 1 && path.endsWith("/")) path = path.slice(0, -1);
+  return path || "/";
+}
 
 export function isScannerPath(pathname: string): boolean {
   const raw = String(pathname ?? "");
@@ -48,6 +79,32 @@ export function isScannerPath(pathname: string): boolean {
     if (path === prefix || path.startsWith(`${prefix}/`) || path.startsWith(prefix)) return true;
   }
   return false;
+}
+
+export function isAppDocumentPath(pathname: string): boolean {
+  const path = normalizePath(pathname);
+  if (APP_DOCUMENTS.has(path)) return true;
+  if (path.startsWith("/preset/")) return true;
+  return false;
+}
+
+/** True = return a cached 404 and never run React SSR. */
+export function isCheap404Path(pathname: string): boolean {
+  if (isScannerPath(pathname)) return true;
+  const path = normalizePath(pathname);
+  if (path.startsWith("/api/")) return false;
+  if (path.startsWith("/__grok/")) return false;
+  if (path.startsWith("/auth/")) return false;
+  if (/\.[a-zA-Z0-9]{1,8}$/.test(path)) return false;
+  if (isAppDocumentPath(path)) return false;
+  return true;
+}
+
+export function isAbuseUserAgent(ua: string | null | undefined): boolean {
+  const s = String(ua ?? "");
+  if (!s) return false;
+  if (FRIENDLY_UA.test(s)) return false;
+  return ABUSE_UA.test(s);
 }
 
 export function jsonFingerprint(value: unknown): string {

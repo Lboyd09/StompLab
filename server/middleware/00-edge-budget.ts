@@ -1,14 +1,25 @@
 /**
- * Runs before SSR. Scanner probes get a cached 404 instead of a full Lab
- * render. Anonymous HTML is cacheable at the edge so repeat hits skip the
- * function. Does not change signed-in client data (session/plan still fetch).
+ * Runs before SSR. Unknown and scanner paths get a cached 404 — never a Lab
+ * render. Do not wrap successful HTML (that SWR cache-control doubled origin
+ * hits). Real pages still SSR exactly once per navigation.
  */
 import { isDocumentPath } from "../../scripts/grok-pwa-shared.mjs";
-import { isScannerPath, PUBLIC_HTML_CACHE, SCANNER_CACHE } from "../../src/lib/edge-budget";
+import { isAbuseUserAgent, isCheap404Path, SCANNER_CACHE } from "../../src/lib/edge-budget";
 
 interface EdgeEvent {
   url: URL;
   req: { method: string; headers: Headers };
+}
+
+function notFound(): Response {
+  return new Response("Not found", {
+    status: 404,
+    headers: {
+      "content-type": "text/plain; charset=utf-8",
+      "cache-control": SCANNER_CACHE,
+      "x-robots-tag": "noindex, nofollow",
+    },
+  });
 }
 
 export default async function edgeBudgetMiddleware(
@@ -16,34 +27,13 @@ export default async function edgeBudgetMiddleware(
   next: () => unknown | Promise<unknown>,
 ): Promise<unknown> {
   const method = (event.req.method ?? "GET").toUpperCase();
+  if (method !== "GET" && method !== "HEAD") return next();
+
   const path = event.url.pathname;
+  if (isCheap404Path(path)) return notFound();
 
-  if (method === "GET" && isScannerPath(path)) {
-    return new Response("Not found", {
-      status: 404,
-      headers: {
-        "content-type": "text/plain; charset=utf-8",
-        "cache-control": SCANNER_CACHE,
-      },
-    });
-  }
+  const ua = event.req.headers.get("user-agent");
+  if (isDocumentPath(path) && isAbuseUserAgent(ua)) return notFound();
 
-  const result = await next();
-  if (method !== "GET" || !(result instanceof Response)) return result;
-  if (result.status !== 200) return result;
-  if (result.headers.get("set-cookie")) return result;
-  if (path.startsWith("/api/")) return result;
-
-  const type = String(result.headers.get("content-type") ?? "");
-  const isHtml = type.includes("text/html") && isDocumentPath(path);
-  const isManifest = path === "/__grok/manifest.webmanifest" || path === "/__grok/manifest.json";
-  if (!isHtml && !isManifest) return result;
-
-  const headers = new Headers(result.headers);
-  headers.set("cache-control", isManifest ? "public, max-age=3600" : PUBLIC_HTML_CACHE);
-  return new Response(result.body, {
-    status: result.status,
-    statusText: result.statusText,
-    headers,
-  });
+  return next();
 }

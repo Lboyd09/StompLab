@@ -24,6 +24,8 @@ export const Route = createRootRoute({
     ],
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/icon-192.png" },
@@ -45,7 +47,7 @@ function Root() {
         <HeadContent />
       </head>
       <body>
-        <CanonicalHost />
+        <VisitBeacon />
         <PreviewHostBridge />
         <AuthProvider>
           <ShellSwitch />
@@ -57,14 +59,28 @@ function Root() {
   );
 }
 
-function CanonicalHost() {
+/** One ping per browser per day. Bots that do not run JS are not counted. */
+function VisitBeacon() {
   useEffect(() => {
-    if (typeof window === "undefined") return;
-    if (window.location.hostname === "www.stomplab.app") {
-      const next = new URL(window.location.href);
-      next.hostname = "stomplab.app";
-      window.location.replace(next.toString());
+    try {
+      const day = new Date().toISOString().slice(0, 10);
+      const key = "stomplab.visit.day";
+      if (window.localStorage.getItem(key) === day) return;
+      window.localStorage.setItem(key, day);
+    } catch {
+      return;
     }
+    try {
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon("/api/visit", new Blob([], { type: "text/plain" }));
+        return;
+      }
+    } catch {
+      /* fall through */
+    }
+    void fetch("/api/visit", { method: "POST", keepalive: true, credentials: "same-origin" }).catch(
+      () => undefined,
+    );
   }, []);
   return null;
 }

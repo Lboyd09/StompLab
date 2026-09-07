@@ -23,7 +23,7 @@
   --color-destructive: #b42318;
   --color-lcd: #7dff9a;
   --color-aluminum: #c5c9c2;
-  --color-mark: #ffffff;
+  --color-mark: #f3efe6;
   --color-mark-foreground: #141414;
 
   --radius-sm: 6px;
@@ -55,7 +55,7 @@ html.dark {
   --color-ring: #e8e6df;
   --color-danger: #c4453c;
   --color-destructive: #c4453c;
-  --color-mark: #ffffff;
+  --color-mark: #f3efe6;
   --color-mark-foreground: #141414;
   --shadow-border: 0 0 0 1px color-mix(in oklab, #e8e6df 8%, transparent);
 }

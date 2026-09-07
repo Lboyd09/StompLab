@@ -916,6 +916,7 @@ export const adminDashboard = createServerFn({ method: "GET" })
       polarReady: polarConfigured(),
       amazonReady: false,
       stats: emptyAdminStats(),
+      visits: { today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 },
       dbError: "",
       queryErrors: [] as string[],
       db: {
@@ -1009,6 +1010,7 @@ async function loadAdminDashboard(empty: {
   polarReady: boolean;
   amazonReady: boolean;
   stats: AdminStats;
+  visits: { today: number; d7: number; d30: number; unique_all: number; hits: number };
   dbError: string;
   queryErrors: string[];
   db: {
@@ -1059,6 +1061,7 @@ async function loadAdminDashboard(empty: {
       accountsRes,
       entitlementsRes,
       countsRes,
+      visitsRes,
     ] = await Promise.all([
       settleQuery(
         "purchases",
@@ -1267,6 +1270,20 @@ async function loadAdminDashboard(empty: {
           ),
         [] as { users: number; subscribed: number; revenue: number }[],
       ),
+      settleQuery(
+        "visits",
+        () =>
+          sql.query<{ today: number; d7: number; d30: number; unique_all: number; hits: number }>(
+            `select
+               count(*) filter (where day = current_date)::int as today,
+               count(distinct visitor_key) filter (where day >= current_date - 6)::int as d7,
+               count(distinct visitor_key) filter (where day >= current_date - 29)::int as d30,
+               count(distinct visitor_key)::int as unique_all,
+               coalesce(sum(hits), 0)::int as hits
+             from site_visits`,
+          ),
+        [{ today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 }],
+      ),
     ]);
     let purchases = take(purchasesRes);
     let usage = take(usageRes);
@@ -1276,6 +1293,14 @@ async function loadAdminDashboard(empty: {
     const accounts = take(accountsRes);
     let entitlements = take(entitlementsRes);
     const counts = take(countsRes)[0];
+    const visitsRow = take(visitsRes)[0];
+    const visits = {
+      today: Number(visitsRow?.today ?? 0),
+      d7: Number(visitsRow?.d7 ?? 0),
+      d30: Number(visitsRow?.d30 ?? 0),
+      unique_all: Number(visitsRow?.unique_all ?? 0),
+      hits: Number(visitsRow?.hits ?? 0),
+    };
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
     const hiddenMail = new Set(owners);
     purchases = purchases.filter((p) => {
@@ -1325,6 +1350,7 @@ async function loadAdminDashboard(empty: {
       polarReady: polarConfigured(),
       amazonReady: false,
       stats,
+      visits,
       dbError,
       queryErrors,
       db,

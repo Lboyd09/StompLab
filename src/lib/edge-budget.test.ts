@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { isScannerPath, jsonFingerprint, shouldPushSync } from "./edge-budget.ts";
+import {
+  isAbuseUserAgent,
+  isCheap404Path,
+  isScannerPath,
+  jsonFingerprint,
+  shouldPushSync,
+} from "./edge-budget.ts";
 
 describe("isScannerPath", () => {
   it("lets real Lab routes through", () => {
@@ -21,12 +27,14 @@ describe("isScannerPath", () => {
       "/api/auth/get-session",
       "/api/keepalive",
       "/api/polar/webhook",
+      "/api/visit",
       "/__grok/manifest.webmanifest",
       "/.well-known/security.txt",
       "/favicon.svg",
       "/tutorial/lab.png",
     ]) {
       assert.equal(isScannerPath(path), false, path);
+      assert.equal(isCheap404Path(path), false, path);
     }
   });
 
@@ -51,7 +59,26 @@ describe("isScannerPath", () => {
       "/config.php",
     ]) {
       assert.equal(isScannerPath(path), true, path);
+      assert.equal(isCheap404Path(path), true, path);
     }
+  });
+
+  it("404s unknown document paths so they never SSR the Lab", () => {
+    for (const path of ["/backup", "/test", "/random-bot-path", "/admin.php.bak", "/foo/bar"]) {
+      assert.equal(isCheap404Path(path), true, path);
+    }
+  });
+});
+
+describe("isAbuseUserAgent", () => {
+  it("lets browsers and Google through", () => {
+    assert.equal(isAbuseUserAgent("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36"), false);
+    assert.equal(isAbuseUserAgent("Mozilla/5.0 (compatible; Googlebot/2.1; +http://www.google.com/bot.html)"), false);
+  });
+  it("drops scanners", () => {
+    assert.equal(isAbuseUserAgent("curl/8.0.0"), true);
+    assert.equal(isAbuseUserAgent("python-requests/2.32"), true);
+    assert.equal(isAbuseUserAgent("Go-http-client/1.1"), true);
   });
 });
 
