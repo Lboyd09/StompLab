@@ -108,5 +108,19 @@ main().catch((err) => {
   for (const key of ["code", "detail", "hint", "position", "where"]) {
     if (err?.[key] != null) console.error(`[migrate]   ${key}: ${err[key]}`);
   }
+  const msg = String(err?.message || err || "");
+  const code = String(err?.code || "");
+  // Session pooler is often full while a client loop hammers production. Do not
+  // fail the whole Vercel build — ship the app; migrate on a quieter deploy.
+  if (
+    /EMAXCONN|max clients|timeout|ECONNREFUSED|ENOTFOUND|password authentication/i.test(
+      `${msg} ${code}`,
+    )
+  ) {
+    console.error(
+      "[migrate] connection busy/unavailable — continuing build without applying migrations.",
+    );
+    process.exit(0);
+  }
   process.exit(1);
 });
