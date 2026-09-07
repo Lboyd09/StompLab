@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8080",
+  "url": "http://127.0.0.1:8080/",
   "viewports": {
     "desktop": {
       "width": 1280,
@@ -7,8 +7,8 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4312,
-      "bodyTextHash": "ae66b2708ff5f7704399614d2aa9fe4f91e6f07e8a9ccf56c078aff6013747a6",
+      "bodyTextLen": 4273,
+      "bodyTextHash": "e46aa09463bfcbab8ab62f4a7f771e2e97a0f07ec9299c4dab1a8ce40241ec84",
       "bodyTextPrefix": "SL STOMP LAB Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go ",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -21,8 +21,8 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4294,
-      "bodyTextHash": "99950d7d5d7d71b6a9362d976e0967a48e6d39af94772c3c7b261f609a815698",
+      "bodyTextLen": 4255,
+      "bodyTextHash": "edcac2828947a60ace28dcb1254dd0f093fcf87a3f67f98b819334ea75ea281f",
       "bodyTextPrefix": "SL STOMP LAB Guitar Bass Unit Stomp Stomp XL Floor LT FX POD Go ",
       "horizontalOverflow": false,
       "consoleErrors": [],

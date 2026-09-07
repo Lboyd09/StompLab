@@ -109,7 +109,7 @@ function CreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-2xl space-y-6" data-tutorial="create">
       <UpgradeBanner plan={plan} pending={isPending} />
       <header className="space-y-2">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Custom rig</p>

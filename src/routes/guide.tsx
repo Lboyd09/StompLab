@@ -103,8 +103,7 @@ function GuidePage() {
       <Section title="Catalog">
         <p>
           Every HX model, filtered by guitar or bass from the header. Find equivalent maps a real
-          pedal (TS808, Klon, SVT) to the Line 6 name. Shop links go to Amazon for the
-          original gear.
+          pedal (TS808, Klon, SVT) to the Line 6 name.
         </p>
       </Section>
 
@@ -138,7 +137,7 @@ function GuidePage() {
           We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab
           can unlock on the next visit. We do not sell that list. Polar is the merchant of record for
           subscriptions and stores card details — Stomp Lab never sees your card. Song research is sent
-          to Google Gemini. Amazon shop links use our affiliate tag. You can ask us to delete your
+          to Google Gemini. You can ask us to delete your
           account by emailing stomplab1@gmail.com.
         </p>
       </section>
@@ -154,11 +153,6 @@ function GuidePage() {
         <p>
           Presets are unofficial starting points — not copies of commercial patches or master
           recordings. Song titles identify the recording we researched.
-        </p>
-        <p>
-          Some links to Amazon are affiliate links. If you buy through them, Stomp Lab
-          may earn a commission at no extra cost to you. As an Amazon Associate we earn from
-          qualifying purchases.
         </p>
       </section>
 

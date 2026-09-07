@@ -24,7 +24,6 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
-import { GearShopLinks, AffiliateNote } from "../layout/gear-shop-links";
 import { PresetFeedbackDialog, PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
@@ -338,7 +337,6 @@ export function PresetWorkspace({
                       {!b.enabled ? <Badge variant="outline">off</Badge> : null}
                     </span>
                     <span className="mt-0.5 block text-xs text-muted-foreground">Based on {model.basedOn}</span>
-                    <GearShopLinks name={model.name} basedOn={model.basedOn} compact />
                     <span className="mt-1 block font-mono text-[10px] text-muted-foreground">
                       {Object.entries(b.params)
                         .slice(0, 6)
@@ -363,10 +361,8 @@ export function PresetWorkspace({
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
                 <div className="text-sm font-medium">{g.name}</div>
                 <p className="text-xs text-muted-foreground">{g.notes}</p>
-                <GearShopLinks name={g.name} source="user" compact />
               </div>
             ))}
-            {preset.originalGear.length ? <AffiliateNote className="pt-1 text-[10px] leading-relaxed text-muted-foreground" /> : null}
           </CardContent>
         </Card>
 
@@ -381,7 +377,6 @@ export function PresetWorkspace({
                 <div key={g.item}>
                   <div className="text-sm font-medium">{g.item}</div>
                   <p className="text-xs text-muted-foreground">{g.why}</p>
-                  <GearShopLinks name={g.item} source="user" compact />
                 </div>
               ))}
             </CardContent>
@@ -569,7 +564,7 @@ export function PresetWorkspace({
                     : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Unlock to write this onto the unit."
                   : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
             </p>
-            <div data-tour="replica">
+            <div data-tour="replica" data-tutorial="replica">
               <StompUnit
                 preset={displayed}
                 selectedBlockId={selectedBlockId}

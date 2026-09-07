@@ -3,7 +3,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn, requireAdmin } from "@/lib/billing";
-import { AFFILIATE_SETUP } from "@/lib/copy";
 import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
@@ -175,11 +174,6 @@ function AdminPage() {
           hint="Customer Polar orders only. Tests, unmatched Polar rows, and your inboxes never show. $0 until someone else pays."
         />
         <Stat
-          label="Affiliate clicks"
-          value={String((dash?.affiliateClicks ?? []).reduce((n, r) => n + r.n, 0))}
-          hint="Amazon — commissions live on the Associates dashboard"
-        />
-        <Stat
           label="Sign-ups (7d)"
           value={String(dash?.stats?.signups7d ?? "—")}
           hint={`${dash?.stats?.signups30d ?? 0} in the last 30 days`}
@@ -210,17 +204,7 @@ function AdminPage() {
         <h2 className="font-display text-lg font-semibold">Money setup</h2>
         <ul className="space-y-1 text-sm">
           <li>Polar products: {dash?.polarReady ? "ready" : "missing POLAR_PRODUCT_ID_MONTHLY / YEARLY"}</li>
-          <li>Amazon tag: {dash?.amazonReady ? "set" : "missing VITE_AMAZON_ASSOCIATE_TAG"}</li>
         </ul>
-        {(dash?.affiliateClicks ?? []).length ? (
-          <Table
-            cols={["Vendor", "Clicks"]}
-            rows={(dash?.affiliateClicks ?? []).map((r) => [r.vendor, String(r.n)])}
-          />
-        ) : (
-          <p className="text-sm text-muted-foreground">No affiliate clicks yet.</p>
-        )}
-        <p className="text-xs leading-relaxed text-muted-foreground">{AFFILIATE_SETUP}</p>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">

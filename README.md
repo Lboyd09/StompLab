@@ -19,20 +19,18 @@ Cache hits still count as a build. Users never see a shared library. Featured de
 - Shared cache + entitlements: Postgres (Supabase in production, PGLite in local preview)
 - Gemini 2.5 Flash
 - Polar checkout (merchant of record)
-- Amazon Associates for original-gear shop links (`VITE_AMAZON_ASSOCIATE_TAG`)
 
 ## Deploy
 
 1. Push this repo to GitHub and attach it to the production host.
 2. Attach the **custom domain** as the production domain (`stomplab.app`).
-3. Postgres is attached as `DATABASE_URL` (Supabase session pooler on port 5432 is the safest for Better Auth; transaction pooler 6543 also works).
+3. Postgres is attached as `DATABASE_URL` (Supabase transaction pooler on port 6543 — the app rewrites a session-pooler :5432 URL to :6543 so serverless clients do not exhaust the session slot cap).
 4. Set on the host:
    - `APP_ORIGIN=https://YOUR-DOMAIN` (the domain you bought — no trailing slash)
    - `BETTER_AUTH_URL=https://YOUR-DOMAIN` (same value)
    - `BETTER_AUTH_SECRET` (long random string — keep it stable or sessions reset)
    - `AI_GATEWAY_API_KEY` for Gemini
    - `POLAR_ACCESS_TOKEN`, `POLAR_PRODUCT_ID_MONTHLY`, `POLAR_PRODUCT_ID_YEARLY`, `POLAR_WEBHOOK_SECRET`
-   - `VITE_AMAZON_ASSOCIATE_TAG` (do not invent this — paste the real Store ID)
    - optional `CRON_SECRET` (daily keep-alive at `/api/keepalive` so free Supabase does not pause)
    - optional `POLAR_ORG_SLUG` or `POLAR_PORTAL_URL` if the Polar customer portal needs a fallback
    - optional `EXTRA_AUTH_HOSTS=www.YOUR-DOMAIN`

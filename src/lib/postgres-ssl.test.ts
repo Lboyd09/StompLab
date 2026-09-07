@@ -2,12 +2,14 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   friendlyDbError,
+  interpolateSql,
   postgresConnectionString,
   postgresDescribe,
   postgresPoolConfig,
   postgresPoolMode,
-  postgresPreferSessionPooler,
+  postgresPreferTransactionPooler,
   postgresSsl,
+  sqlLiteral,
   sqlNotInLower,
 } from "./postgres-ssl.ts";
 
@@ -49,48 +51,54 @@ describe("postgresConnectionString", () => {
   it("maps pool busy to a short line", () => {
     assert.match(friendlyDbError(new Error("(EMAXCONNSESSION) max clients reached")), /busy|pooler/i);
   });
-  it("maps prepared-statement failures to the session-pooler line", () => {
-    assert.match(friendlyDbError(new Error("unnamed prepared statement does not exist")), /session pooler/i);
+  it("maps prepared-statement failures to the simple-SQL line", () => {
+    assert.match(friendlyDbError(new Error("unnamed prepared statement does not exist")), /simple SQL/i);
   });
 });
 
-describe("postgresPreferSessionPooler", () => {
-  it("rewrites Supabase transaction :6543 to session :5432", () => {
+describe("postgresPreferTransactionPooler", () => {
+  it("rewrites Supabase session :5432 to transaction :6543", () => {
     const raw =
-      "postgres://postgres.abc:secret@aws-0-us-west-1.pooler.supabase.com:6543/postgres";
-    const next = postgresPreferSessionPooler(raw);
-    assert.match(next, /pooler\.supabase\.com:5432/);
-    assert.doesNotMatch(next, /:6543/);
+      "postgres://postgres.abc:secret@aws-0-us-west-1.pooler.supabase.com:5432/postgres";
+    const next = postgresPreferTransactionPooler(raw);
+    assert.match(next, /pooler\.supabase\.com:6543/);
+    assert.doesNotMatch(next, /:5432/);
     assert.match(postgresConnectionString(raw), /sslmode=no-verify/);
-    assert.match(postgresConnectionString(raw), /:5432/);
-    assert.equal(postgresPoolMode(raw), "supabase-transaction");
-    assert.equal(postgresPoolMode(next), "supabase-session");
+    assert.match(postgresConnectionString(raw), /:6543/);
+    assert.equal(postgresPoolMode(raw), "supabase-session");
+    assert.equal(postgresPoolMode(next), "supabase-transaction");
   });
-  it("leaves a session-pooler URL on 5432 alone", () => {
-    const raw = "postgres://postgres.abc:secret@aws-0-us-west-1.pooler.supabase.com:5432/postgres";
-    assert.equal(postgresPreferSessionPooler(raw), raw);
+  it("leaves a transaction-pooler URL on 6543 alone", () => {
+    const raw = "postgres://postgres.abc:secret@aws-0-us-west-1.pooler.supabase.com:6543/postgres";
+    assert.equal(postgresPreferTransactionPooler(raw), raw);
+    assert.equal(postgresPoolMode(postgresConnectionString(raw).replace(/\?.*$/, "")), "supabase-transaction");
   });
-  it("does not rewrite a non-Supabase :6543 host", () => {
-    const raw = "postgres://u:p@db.example.com:6543/postgres";
-    assert.equal(postgresPreferSessionPooler(raw), raw);
+  it("does not rewrite a non-Supabase :5432 host", () => {
+    const raw = "postgres://u:p@db.example.com:5432/postgres";
+    assert.equal(postgresPreferTransactionPooler(raw), raw);
+  });
+  it("does not rewrite a direct db.xxx.supabase.co host", () => {
+    const raw = "postgres://postgres:secret@db.abc.supabase.co:5432/postgres";
+    assert.equal(postgresPreferTransactionPooler(raw), raw);
   });
   it("describes the rewritten host without the password", () => {
     const raw =
-      "postgres://postgres.abc:super-secret@aws-0-us-west-1.pooler.supabase.com:6543/postgres";
+      "postgres://postgres.abc:super-secret@aws-0-us-west-1.pooler.supabase.com:5432/postgres";
     const d = postgresDescribe(raw);
     assert.equal(d.rewritten, true);
-    assert.equal(d.mode, "supabase-session");
-    assert.equal(d.host, "aws-0-us-west-1.pooler.supabase.com:5432");
+    assert.equal(d.mode, "supabase-transaction");
+    assert.equal(d.host, "aws-0-us-west-1.pooler.supabase.com:6543");
     assert.doesNotMatch(d.host, /secret/);
   });
-  it("puts query and statement timeouts on the pool", () => {
+  it("puts query timeout on the pool and does not send startup options", () => {
     const cfg = postgresPoolConfig("postgres://u:p@db.example.com:5432/postgres");
-    assert.equal(cfg.query_timeout, 5000);
-    assert.equal(cfg.statement_timeout, 8000);
-    assert.equal(cfg.connectionTimeoutMillis, 4000);
+    assert.equal(cfg.query_timeout, 8_000);
+    assert.equal(cfg.connectionTimeoutMillis, 8_000);
     assert.equal(cfg.application_name, "stomplab");
-    assert.equal(cfg.options, "-c statement_timeout=8000");
-    assert.equal(cfg.max, 4);
+    assert.equal("options" in cfg, false);
+    assert.equal(cfg.max, 1);
+    assert.equal(cfg.idleTimeoutMillis, 10_000);
+    assert.equal(cfg.maxUses, 1_000);
   });
 });
 
@@ -113,12 +121,40 @@ describe("sqlNotInLower", () => {
 });
 
 describe("postgresPoolConfig", () => {
-  it("defaults max to 4; auth can still pass max: 1", () => {
+  it("defaults max to 1 with no pgbouncer-hostile startup options", () => {
     const cfg = postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres");
-    assert.equal(cfg.max, 4);
-    assert.equal(cfg.idleTimeoutMillis, 2000);
-    assert.equal(cfg.connectionTimeoutMillis, 4000);
-    assert.equal(cfg.options, "-c statement_timeout=8000");
-    assert.equal(postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres", { max: 1 }).max, 1);
+    assert.equal(cfg.max, 1);
+    assert.equal(cfg.idleTimeoutMillis, 10_000);
+    assert.equal(cfg.connectionTimeoutMillis, 8_000);
+    assert.equal("options" in cfg, false);
+    assert.equal(postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres", { max: 2 }).max, 2);
+  });
+});
+
+describe("interpolateSql", () => {
+  it("quotes strings and doubles apostrophes", () => {
+    assert.equal(sqlLiteral("o'reilly"), "'o''reilly'");
+    assert.equal(interpolateSql("select * from t where email = $1", ["a@b.com"]), "select * from t where email = 'a@b.com'");
+  });
+  it("handles null, bool, number, and empty array", () => {
+    assert.equal(sqlLiteral(null), "NULL");
+    assert.equal(sqlLiteral(true), "TRUE");
+    assert.equal(sqlLiteral(12), "12");
+    assert.equal(sqlLiteral([]), "'{}'");
+  });
+  it("interpolates text arrays so any($1::text[]) survives pgbouncer", () => {
+    const sql = interpolateSql("select id from t where id = any($1::text[])", [["a", "b"]]);
+    assert.equal(sql, "select id from t where id = any(ARRAY['a', 'b']::text[])");
+  });
+  it("does not confuse $1 with $10", () => {
+    const sql = interpolateSql("select $1, $10, $2", ["a", "b", "c", "d", "e", "f", "g", "h", "i", "j"]);
+    assert.equal(sql, "select 'a', 'j', 'b'");
+  });
+  it("JSON-stringifies objects for jsonb columns", () => {
+    assert.equal(interpolateSql("insert into t (p) values ($1::jsonb)", [{ a: 1 }]), `insert into t (p) values ('{"a":1}'::jsonb)`);
+  });
+  it("is a no-op without params", () => {
+    assert.equal(interpolateSql("select 1"), "select 1");
+    assert.equal(interpolateSql("select 1", []), "select 1");
   });
 });

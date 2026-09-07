@@ -383,6 +383,20 @@ function blockParams(block: StompBlock): Record<string, number | boolean> {
   return fillFactoryParams(block.modelId, out);
 }
 
+/** Drop anything HX Edit would flag as an unrecognized knob. Keep @-keys. */
+function keepFactoryBlock(hid: string, obj: HlxJson): HlxJson {
+  const factory = factoryParamsFor(hid);
+  const out: HlxJson = {};
+  for (const [k, v] of Object.entries(obj)) {
+    if (k.startsWith("@")) {
+      out[k] = v;
+      continue;
+    }
+    if (factory?.has(k)) out[k] = v;
+  }
+  return out;
+}
+
 function micIndex(block: StompBlock): number {
   const raw = block.params.Mic;
   if (typeof raw !== "number") return 0;
@@ -452,17 +466,12 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
   cabs.forEach((cab, i) => {
     const hid = helixIdFor(cab.modelId);
     if (!hid || !factoryParamsFor(hid)) return;
-    const params = blockParams(cab);
-    dsp[`cab${i}`] = {
+    dsp[`cab${i}`] = keepFactoryBlock(hid, {
       "@model": hid,
       "@enabled": cab.enabled,
       "@mic": micIndex(cab),
-      LowCut: params.LowCut ?? 20,
-      HighCut: params.HighCut ?? 20100,
-      Distance: params.Distance ?? 1,
-      EarlyReflections: params.EarlyReflections ?? 0,
-      Level: 0.0,
-    };
+      ...blockParams(cab),
+    });
   });
 
   others.forEach((block, i) => {
@@ -487,7 +496,7 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
       hlx["@bypassvolume"] = 1;
       if (hasCab) hlx["@cab"] = "cab0";
     }
-    dsp[`block${i}`] = hlx;
+    dsp[`block${i}`] = keepFactoryBlock(hid, hlx);
   });
 
   dsp.split = {
@@ -605,10 +614,10 @@ function buildControllerSection(preset: Preset, others: StompBlock[], maxSnapsho
     const idx = others.indexOf(wah);
     const key = `block${idx}`;
     const slot = (controller.dsp0[key] as HlxJson) ?? {};
-    if (!slot.Position) {
-      slot.Position = { "@min": 0, "@max": 1, "@controller": 1 };
-      controller.dsp0[key] = slot;
-    }
+    const existing = (slot.Pedal ?? slot.Position) as HlxJson | undefined;
+    slot.Pedal = existing ?? { "@min": 0, "@max": 1, "@controller": 1 };
+    delete slot.Position;
+    controller.dsp0[key] = slot;
   }
 
   return controller;
@@ -688,7 +697,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
     dsp0: dsp,
     dsp1: {},
     controller: buildControllerSection(preset, others, maxSnapshots),
-    footswitch: buildFootswitch(preset, others),
+    footswitch: mode === "stomp" ? buildFootswitch(preset, others) : { dsp0: {}, dsp1: {} },
     global: {
       "@model": "@global_params",
       "@topology0": "A",

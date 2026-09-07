@@ -155,7 +155,7 @@ function Home() {
     <div className="space-y-16 md:space-y-24">
       <UpgradeBanner plan={plan} pending={planPending} />
 
-      <section className="mx-auto max-w-3xl space-y-8">
+      <section className="mx-auto max-w-3xl space-y-8" data-tutorial="lab">
         <div className="space-y-5">
           <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
             Line 6 laboratory
@@ -202,7 +202,7 @@ function Home() {
           </div>
         ) : null}
 
-        <form onSubmit={(e) => void onResearch(e)} className="space-y-4">
+        <form onSubmit={(e) => void onResearch(e)} className="space-y-4" data-tutorial="lab-form">
           <SongTypeahead
             song={song}
             artist={artist}

@@ -1,5 +1,5 @@
 import { pendingMigrations } from "../../scripts/migration-plan.mjs";
-import { friendlyDbError, postgresDescribe, postgresPoolConfig } from "./postgres-ssl";
+import { friendlyDbError, postgresDescribe } from "./postgres-ssl";
 
 /** Which database backend is active. */
 export type DbSource = "postgres" | "pglite";
@@ -98,12 +98,8 @@ function toSql(run: Run): Sql {
 
 function createPostgresSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
-    const { Pool, types } = await import("pg");
-    types.setTypeParser(OID_INT8, Number);
-    types.setTypeParser(OID_DATE, identity);
-    types.setTypeParser(OID_INTERVAL, identity);
-    // Session pooler (5432) — transaction :6543 is rewritten in postgres-ssl.
-    const pool = new Pool(postgresPoolConfig(databaseUrl!));
+    const { getAppPool } = await import("./pg-pool");
+    const pool = getAppPool(databaseUrl!);
     return toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
@@ -218,7 +214,7 @@ export type DbPing = {
 };
 
 /** One cheap `select 1` plus connection metadata for Admin and keepalive. */
-export async function pingDatabase(): Promise<DbPing> {
+async function pingOnce(): Promise<DbPing> {
   const started = Date.now();
   const desc = postgresDescribe(databaseUrl);
   if (previewSkipProd) {
@@ -270,6 +266,25 @@ export async function pingDatabase(): Promise<DbPing> {
       rewritten: desc.rewritten,
     };
   }
+}
+
+function sleepMs(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
+/** One cheap `select 1`. Retries once when the free project is waking up. */
+export async function pingDatabase(): Promise<DbPing> {
+  const first = await pingOnce();
+  if (first.ok) return first;
+  if (
+    /timeout|timed out|waking|busy|EMAXCONN|Connection terminated|statement_timeout/i.test(
+      first.error,
+    )
+  ) {
+    await sleepMs(600);
+    return pingOnce();
+  }
+  return first;
 }
 
 /**

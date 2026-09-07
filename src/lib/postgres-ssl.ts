@@ -4,9 +4,14 @@
  * Keep TLS on; skip CA verification so research, admin, and auth can connect.
  *
  * node-pg uses the extended query protocol (unnamed prepared statements).
- * Supabase's transaction pooler (:6543) cannot run those — admin aggregates
- * hang or return empty, Better Auth flakes, keepalive looks dead. Rewrite
- * pooler.supabase.com:6543 → :5432 (session mode) before connecting.
+ * Supabase's transaction pooler (pgbouncer :6543) rejects those, so we
+ * interpolate parameters and send simple-query text instead.
+ *
+ * Session pooler (:5432 on pooler.supabase.com) supports PREPARE but has a
+ * tiny max-clients cap. Two Node pools (auth + app) plus concurrent lambdas
+ * hit EMAXCONNSESSION and Admin looks "down". Prefer transaction :6543 and
+ * share one Pool (max 1). The deploy migrator still uses session mode so a
+ * whole multi-statement .sql file can run on one backend.
  */
 
 export type PostgresPoolMode =
@@ -22,15 +27,20 @@ export function postgresSsl(connectionString: string | undefined): false | { rej
   return { rejectUnauthorized: false };
 }
 
-/** Prefer the session pooler so parameterized SQL actually runs. */
-export function postgresPreferSessionPooler(raw: string): string {
+/** Transaction pooler multiplexes many serverless clients. Direct db.*:5432 is left alone. */
+export function postgresPreferTransactionPooler(raw: string): string {
   const url = raw.trim();
   if (!url) return url;
-  return url.replace(/(@[^@/?]*pooler\.supabase\.com):6543(?=\/|\?|$)/i, "$1:5432");
+  return url.replace(/(@[^@/?]*pooler\.supabase\.com):5432(?=\/|\?|$)/i, "$1:6543");
+}
+
+/** @deprecated Prefer postgresPreferTransactionPooler — kept so old tests/imports do not explode. */
+export function postgresPreferSessionPooler(raw: string): string {
+  return postgresPreferTransactionPooler(raw);
 }
 
 export function postgresConnectionString(raw: string): string {
-  const url = postgresPreferSessionPooler(raw.trim());
+  const url = postgresPreferTransactionPooler(raw.trim());
   if (!url || /localhost|127\.0\.0\.1/i.test(url)) return url;
   if (/[?&]sslmode=/i.test(url)) {
     return url.replace(
@@ -68,7 +78,7 @@ export function postgresDescribe(connectionString: string | undefined): {
   return {
     mode: postgresPoolMode(next),
     host: postgresRedactedHost(next),
-    rewritten: postgresPreferSessionPooler(raw) !== raw,
+    rewritten: postgresPreferTransactionPooler(raw) !== raw,
   };
 }
 
@@ -79,28 +89,29 @@ export function postgresPoolConfig(
     idleTimeoutMillis?: number;
     connectionTimeoutMillis?: number;
     query_timeout?: number;
-    statement_timeout?: number;
+    maxUses?: number;
   },
 ) {
   const resolved = postgresConnectionString(connectionString);
   return {
     connectionString: resolved,
     ssl: postgresSsl(resolved),
-    // Default 4 so admin can parallelize; auth still passes { max: 1 }.
-    max: extra?.max ?? 4,
-    idleTimeoutMillis: extra?.idleTimeoutMillis ?? 2000,
-    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 4000,
-    query_timeout: extra?.query_timeout ?? 5000,
-    statement_timeout: extra?.statement_timeout ?? 8000,
+    // One client per isolate. Auth and the app share this pool (see pg-pool.ts).
+    max: extra?.max ?? 1,
+    idleTimeoutMillis: extra?.idleTimeoutMillis ?? 10_000,
+    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 8_000,
+    query_timeout: extra?.query_timeout ?? 8_000,
+    maxUses: extra?.maxUses ?? 1_000,
     allowExitOnIdle: true as const,
     application_name: "stomplab",
-    options: "-c statement_timeout=8000",
+    keepAlive: true as const,
   };
 }
 
 /**
  * `NOT IN ($1,$2,…)` instead of `<> all($1::text[])`.
- * node-pg array params are the query that dies on a transaction pooler.
+ * node-pg array params are the query that dies on a transaction pooler
+ * unless interpolateSql runs first.
  */
 export function sqlNotInLower(
   columnSql: string,
@@ -114,6 +125,110 @@ export function sqlNotInLower(
     clause: `lower(coalesce(${columnSql}, '')) not in (${placeholders})`,
     params,
   };
+}
+
+/** SQL literal for the simple-query protocol. Never pass untrusted identifiers through here. */
+export function sqlLiteral(value: unknown): string {
+  if (value === null || value === undefined) return "NULL";
+  if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) throw new Error("sqlLiteral: invalid number");
+    return String(value);
+  }
+  if (typeof value === "bigint") return String(value);
+  if (value instanceof Date) return `'${value.toISOString().replace(/'/g, "''")}'`;
+  if (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) {
+    return `'\\x${value.toString("hex")}'::bytea`;
+  }
+  if (value instanceof Uint8Array) {
+    const hex = [...value].map((b) => b.toString(16).padStart(2, "0")).join("");
+    return `'\\x${hex}'::bytea`;
+  }
+  if (Array.isArray(value)) {
+    if (!value.length) return "'{}'";
+    return `ARRAY[${value.map(sqlLiteral).join(", ")}]`;
+  }
+  if (typeof value === "object") {
+    return sqlLiteral(JSON.stringify(value));
+  }
+  return `'${String(value).replace(/\0/g, "").replace(/'/g, "''")}'`;
+}
+
+/** Replace $1, $2, … with literals so pgbouncer transaction mode can run the query. */
+export function interpolateSql(text: string, params?: unknown[]): string {
+  if (!params?.length) return text;
+  return text.replace(/\$(\d+)\b/g, (match, n: string) => {
+    const idx = Number(n) - 1;
+    if (!Number.isInteger(idx) || idx < 0 || idx >= params.length) return match;
+    return sqlLiteral(params[idx]);
+  });
+}
+
+type QueryFn = (...args: unknown[]) => unknown;
+
+function wrapQuery(orig: QueryFn): QueryFn {
+  return function patched(this: unknown, queryTextOrConfig: unknown, values?: unknown, callback?: unknown) {
+    if (
+      queryTextOrConfig &&
+      typeof queryTextOrConfig === "object" &&
+      typeof (queryTextOrConfig as { submit?: unknown }).submit === "function"
+    ) {
+      return orig.call(this, queryTextOrConfig, values, callback);
+    }
+    if (typeof queryTextOrConfig === "string") {
+      if (typeof values === "function") return orig.call(this, queryTextOrConfig, values);
+      if (Array.isArray(values)) {
+        const text = interpolateSql(queryTextOrConfig, values);
+        if (typeof callback === "function") return orig.call(this, text, callback);
+        return orig.call(this, text);
+      }
+      return orig.call(this, queryTextOrConfig, values, callback);
+    }
+    if (queryTextOrConfig && typeof queryTextOrConfig === "object") {
+      const cfg = queryTextOrConfig as { text?: string; values?: unknown[] };
+      const params = Array.isArray(values) ? values : cfg.values;
+      if (cfg.text && (Array.isArray(params) || cfg.values)) {
+        const next = { ...(cfg as object), text: interpolateSql(cfg.text, params ?? []) } as Record<string, unknown>;
+        delete next.values;
+        if (typeof values === "function") return orig.call(this, next, values);
+        if (typeof callback === "function") return orig.call(this, next, callback);
+        return orig.call(this, next);
+      }
+    }
+    return orig.call(this, queryTextOrConfig, values, callback);
+  };
+}
+
+function wrapClient(client: { query: QueryFn; __stomplabSimple?: boolean }) {
+  if (client.__stomplabSimple) return;
+  client.__stomplabSimple = true;
+  client.query = wrapQuery(client.query.bind(client));
+}
+
+/**
+ * Force simple-query text on Pool.query and on checked-out clients so Better
+ * Auth (kysely acquireConnection) and tagged-template SQL both survive pgbouncer.
+ */
+export function patchPoolSimpleQuery<T extends { query: QueryFn; connect: QueryFn }>(pool: T): T {
+  pool.query = wrapQuery(pool.query.bind(pool)) as T["query"];
+  const origConnect = pool.connect.bind(pool);
+  pool.connect = function patchedConnect(this: unknown, cb?: unknown) {
+    if (typeof cb === "function") {
+      return origConnect((err: unknown, client: { query: QueryFn } | undefined, release: unknown) => {
+        if (client) wrapClient(client);
+        (cb as (e: unknown, c: unknown, r: unknown) => void)(err, client, release);
+      });
+    }
+    const result = origConnect();
+    if (result && typeof (result as Promise<unknown>).then === "function") {
+      return (result as Promise<{ query: QueryFn }>).then((client) => {
+        wrapClient(client);
+        return client;
+      });
+    }
+    return result;
+  } as T["connect"];
+  return pool;
 }
 
 export function friendlyDbError(err: unknown): string {
@@ -132,7 +247,7 @@ export function friendlyDbError(err: unknown): string {
     return "Postgres did not answer in time. A free Supabase project may be waking up — wait 20 seconds and refresh Admin.";
   }
   if (/prepared statement|bind message|unnamed prepared|pgbouncer|in failed sql transaction/i.test(msg)) {
-    return "The pooler rejected a prepared query. Stomp Lab now uses the session pooler — refresh Admin.";
+    return "The pooler rejected a prepared query. Refresh Admin — Stomp Lab now sends simple SQL.";
   }
   if (/DATABASE_URL is missing/i.test(msg)) {
     return "DATABASE_URL is missing on the host, so Admin has no Postgres to read.";

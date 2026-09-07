@@ -115,6 +115,34 @@ describe("buildHlx Teen Spirit", () => {
     const fs = stompTone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
     assert.equal(Object.keys(fs.dsp0).length, 0);
   });
+
+  it("snapshot mode writes an empty footswitch even when bypass assigns exist", () => {
+    const src = featured("featured-teen-spirit");
+    const mixed = {
+      ...src,
+      footswitches: [
+        ...src.footswitches,
+        {
+          index: 4,
+          label: "OD",
+          color: "#e24a3a",
+          action: "bypass" as const,
+          targetBlockId: src.blocks[0]?.id,
+          notes: "",
+        },
+      ],
+    };
+    const snap = buildHlx(mixed, { fsMode: "snapshot" });
+    const snapTone = (snap.data as { tone: Record<string, unknown> }).tone;
+    const snapFs = snapTone.footswitch as { dsp0: Record<string, unknown> };
+    assert.deepEqual(snapFs.dsp0, {});
+    assert.equal((snapTone.global as { "@pedalstate": number })["@pedalstate"], 2);
+    const stomp = buildHlx(mixed, { fsMode: "stomp" });
+    const stompTone = (stomp.data as { tone: Record<string, unknown> }).tone;
+    const stompFs = stompTone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
+    assert.ok(Object.keys(stompFs.dsp0).length >= 1);
+    assert.equal((stompTone.global as { "@pedalstate": number })["@pedalstate"], 0);
+  });
 });
 
 describe("buildHlx Enter Sandman", () => {
@@ -513,6 +541,32 @@ describe("exhaustive HX Edit model export", () => {
     assert.equal(spring.Decay, undefined);
     assert.equal(spring.Predelay, undefined);
     assert.equal(spring.PreDelay, undefined);
+  });
+
+  it("assigns EXP 1 to wah Pedal, never Position", () => {
+    const hlx = buildHlx(miniPreset("uk-wah-846"));
+    const controller = (hlx.data as { tone: { controller: { dsp0: Record<string, Record<string, unknown>> } } }).tone
+      .controller.dsp0.block0;
+    assert.equal(controller.Position, undefined);
+    assert.equal(typeof (controller.Pedal as { "@controller": number })["@controller"], "number");
+    assert.equal((controller.Pedal as { "@controller": number })["@controller"], 1);
+  });
+
+  it("never writes a non-@ knob that is missing from FACTORY_HLX_PARAMS", () => {
+    for (const p of FEATURED) {
+      const dsp = dspBlocks(p);
+      for (const [k, b] of Object.entries(dsp)) {
+        if (!k.startsWith("block") && !k.startsWith("cab")) continue;
+        const hid = String(b["@model"] ?? "");
+        if (!hid || hid.startsWith("HD2_App") || hid.startsWith("HelixStomp_")) continue;
+        const factory = factoryParamsFor(hid);
+        assert.ok(factory, `${p.id} ${k} unverified ${hid}`);
+        for (const key of Object.keys(b)) {
+          if (key.startsWith("@")) continue;
+          assert.ok(factory.has(key), `${p.id} ${k} ${hid} extra ${key}`);
+        }
+      }
+    }
   });
 
   it("never emits a block for models HX Edit does not have", () => {

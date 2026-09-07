@@ -19,9 +19,9 @@ export const AFFILIATE_SETUP =
   "Amazon Associates: 1) Join affiliate-program.amazon.com. 2) Copy your Store ID (looks like yourname-20 — that is the tag). 3) On the host, set VITE_AMAZON_ASSOCIATE_TAG to that Store ID for production. 4) Redeploy — Vite bakes VITE_ vars at build time, so saving the env without a redeploy does nothing. 5) /admin should then say “Amazon tag: set”. Shop links must include tag=YOURID&linkCode=ll2. Commissions land in the Amazon Associates dashboard, not Stomp Lab revenue. Polar: $6.99/month and $75/year products as POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY. Never invent a tag or product id in code.";
 
 export const LEGAL_SHORT =
-  "Not affiliated with Line 6. Unofficial research tool. Affiliate links may earn a commission.";
+  "Not affiliated with Line 6. Unofficial research tool.";
 
 export const PRIVACY_SHORT =
-  "We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab can unlock. We do not sell that. Polar is the merchant of record for subscriptions. Research calls go to Google Gemini. Amazon clicks use our affiliate tag.";
+  "We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab can unlock. We do not sell that. Polar is the merchant of record for subscriptions. Research calls go to Google Gemini.";
 
 export const HELP_COPY = `Questions, billing, locked out, or a broken preset — email ${PUBLIC_SUPPORT_EMAIL}. We read it.`;

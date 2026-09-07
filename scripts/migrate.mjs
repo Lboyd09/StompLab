@@ -45,6 +45,8 @@ async function main() {
   const ssl = /localhost|127\.0\.0\.1/i.test(databaseUrl)
     ? false
     : { rejectUnauthorized: false };
+  // Multi-statement .sql files need session pooling (pgbouncer transaction mode
+  // rejects them). Runtime traffic uses :6543 — this is the one-shot migrator.
   const sessionUrl = databaseUrl.replace(
     /(@[^@/?]*pooler\.supabase\.com):6543(?=\/|\?|$)/i,
     "$1:5432",

@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { GearShopLinks } from "@/components/layout/gear-shop-links";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Badge } from "@/components/ui/badge";
@@ -88,7 +87,7 @@ function CatalogPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" data-tutorial="catalog">
       <UpgradeBanner plan={plan} pending={planPending} />
       <header className="space-y-2">
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">HX catalog</h1>
@@ -156,7 +155,6 @@ function CatalogPage() {
                       <span className="text-xs text-muted-foreground">{CATEGORY_MAP[m.category].label}</span>
                     </div>
                     <p className="mt-1 text-xs text-foreground/80">Based on {m.basedOn}</p>
-                    <GearShopLinks name={m.name} basedOn={m.basedOn} compact />
                     <p className="mt-2 text-sm text-muted-foreground">{h.how}</p>
                   </article>
                 );
@@ -177,7 +175,6 @@ function CatalogPage() {
                       <span className="font-mono text-[10px] text-muted-foreground">{h.score}</span>
                     </div>
                     <p className="mt-1 text-xs">Based on {m.basedOn}</p>
-                    <GearShopLinks name={m.name} basedOn={m.basedOn} compact />
                     <p className="mt-2 text-sm text-muted-foreground">{m.description}</p>
                     <p className="mt-2 text-xs text-muted-foreground">{h.reason}</p>
                   </article>
@@ -247,7 +244,6 @@ function CatalogPage() {
                   </div>
                   <h2 className="mt-2 font-display text-base font-semibold">{m.name}</h2>
                   <p className="mt-1 text-xs text-foreground/80">Based on {m.basedOn}</p>
-                  <GearShopLinks name={m.name} basedOn={m.basedOn} compact />
                   <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{m.description}</p>
                   <p className="mt-3 font-mono text-[10px] text-muted-foreground">
                     {m.params.slice(0, 6).join(" · ")}

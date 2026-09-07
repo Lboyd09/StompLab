@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import {
-  AFFILIATE_DISCLOSURE,
   HELP_COPY,
   LEGAL_SHORT,
   LINE6_DISCLAIMER,
@@ -33,7 +32,6 @@ export function LegalFooter({ className, full }: { className?: string; full?: bo
           <p id="privacy">{PRIVACY_SHORT}</p>
           <p>{LINE6_DISCLAIMER}</p>
           <p>{UNOFFICIAL_DISCLAIMER}</p>
-          <p>{AFFILIATE_DISCLOSURE}</p>
         </>
       ) : (
         <p>
