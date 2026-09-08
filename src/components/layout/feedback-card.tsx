@@ -33,7 +33,8 @@ export function FeedbackCard({ song = "" }: { song?: string }) {
     <form onSubmit={(e) => void onSubmit(e)} className="space-y-3 rounded-xl border border-border bg-card p-5">
       <h2 className="font-display text-lg font-semibold">Feedback</h2>
       <p className="text-sm text-muted-foreground">
-        Too dark, wrong amp, a bug, a song we should add — send it. This goes to the Lab, not a public thread.
+        Too dark, wrong amp, a bug, a song we should add — send it. Every note goes into the Lab and
+        improves the models and how close presets get to the record. Not a public thread.
       </p>
       <Textarea
         value={message}

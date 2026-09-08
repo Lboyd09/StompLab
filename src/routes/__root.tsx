@@ -7,6 +7,7 @@ import { Toaster } from "@/components/ui/sonner";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
+const ICON_V = "sl3";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -23,12 +24,16 @@ export const Route = createRootRoute({
       { name: "application-name", content: "StompLab" },
     ],
     links: [
-      { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
-      { rel: "icon", type: "image/png", sizes: "192x192", href: "/icon-192.png" },
-      { rel: "icon", type: "image/png", sizes: "512x512", href: "/icon-512.png" },
+      // PNG/ICO first. Chrome tab engines often skip SVG <text>, so the cream SL
+      // sticker is rasterized — same art as /favicon.svg.
+      { rel: "icon", type: "image/png", sizes: "32x32", href: `/favicon-32.png?v=${ICON_V}` },
+      { rel: "icon", type: "image/png", sizes: "16x16", href: `/favicon-16.png?v=${ICON_V}` },
+      { rel: "shortcut icon", href: `/favicon.ico?v=${ICON_V}` },
+      { rel: "apple-touch-icon", sizes: "180x180", href: `/apple-touch-icon.png?v=${ICON_V}` },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: `/icon-192.png?v=${ICON_V}` },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: `/icon-512.png?v=${ICON_V}` },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
       { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
       {

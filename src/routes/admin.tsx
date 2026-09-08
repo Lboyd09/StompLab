@@ -7,6 +7,7 @@ import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
 import { usePlan } from "@/lib/use-plan";
+import { isAdminEmail } from "@/lib/plan";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/admin")({ component: AdminPage });
@@ -36,8 +37,10 @@ function AdminPage() {
     if (isPending || !user) return;
     let cancelled = false;
     const statsTimeout = window.setTimeout(() => {
-      if (!cancelled) setError((e) => e || "Stats are taking too long. Refresh — the database may be waking up.");
-    }, 16000);
+      if (!cancelled) {
+        setError((e) => e || "Stats timed out. Money setup does not need the database — refresh stats.");
+      }
+    }, 8000);
     void adminMoneySetup()
       .then((p) => {
         if (!cancelled) {
@@ -72,11 +75,16 @@ function AdminPage() {
     };
   }, [user?.id, isPending]);
 
-  if (isPending || (gate === "wait" && !plan.admin)) {
+  const adminUser = isAdminEmail(user?.primaryEmail) || plan.admin;
+
+  if (isPending) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
-  if (gate === "no" && !plan.admin) {
+  if (!adminUser && gate === "wait") {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (gate === "no" && !adminUser) {
     return (
       <div className="space-y-2">
         <h1 className="font-display text-2xl font-semibold">Not found</h1>
@@ -194,9 +202,9 @@ function AdminPage() {
           hint={`${dash?.visits?.d30 ?? 0} in the last 30 days`}
         />
         <Stat
-          label="Visitors (90d)"
+          label="Visitors (30d)"
           value={String(dash?.visits?.unique_all ?? "—")}
-          hint="Unique browsers in the last 90 days. Scanners are not counted."
+          hint="Unique browsers in the last 30 days. Scanners are not counted."
         />
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
         <Stat

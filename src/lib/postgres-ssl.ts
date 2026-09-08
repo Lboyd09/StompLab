@@ -99,8 +99,8 @@ export function postgresPoolConfig(
     // One client per isolate. Auth and the app share this pool (see pg-pool.ts).
     max: extra?.max ?? 1,
     idleTimeoutMillis: extra?.idleTimeoutMillis ?? 10_000,
-    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 8_000,
-    query_timeout: extra?.query_timeout ?? 8_000,
+    connectionTimeoutMillis: extra?.connectionTimeoutMillis ?? 3_000,
+    query_timeout: extra?.query_timeout ?? 3_000,
     maxUses: extra?.maxUses ?? 1_000,
     allowExitOnIdle: true as const,
     application_name: "stomplab",

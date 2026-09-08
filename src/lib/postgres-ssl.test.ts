@@ -95,8 +95,8 @@ describe("postgresPreferTransactionPooler", () => {
   });
   it("puts query timeout on the pool and does not send startup options", () => {
     const cfg = postgresPoolConfig("postgres://u:p@db.example.com:5432/postgres");
-    assert.equal(cfg.query_timeout, 8_000);
-    assert.equal(cfg.connectionTimeoutMillis, 8_000);
+    assert.equal(cfg.query_timeout, 3_000);
+    assert.equal(cfg.connectionTimeoutMillis, 3_000);
     assert.equal(cfg.application_name, "stomplab");
     assert.equal("options" in cfg, false);
     assert.equal(cfg.max, 1);
@@ -128,7 +128,7 @@ describe("postgresPoolConfig", () => {
     const cfg = postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres");
     assert.equal(cfg.max, 1);
     assert.equal(cfg.idleTimeoutMillis, 10_000);
-    assert.equal(cfg.connectionTimeoutMillis, 8_000);
+    assert.equal(cfg.connectionTimeoutMillis, 3_000);
     assert.equal("options" in cfg, false);
     assert.equal(postgresPoolConfig("postgres://u:p@db.supabase.co:6543/postgres", { max: 2 }).max, 2);
   });

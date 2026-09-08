@@ -744,7 +744,13 @@ async function assertAdmin(userId: string, sessionEmail?: string | null) {
 
 async function settleQuery<T>(label: string, run: () => Promise<T>, fallback: T): Promise<{ value: T; error?: string }> {
   try {
-    return { value: await run() };
+    const value = await Promise.race([
+      run(),
+      new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error(`${label} timed out`)), 2_500);
+      }),
+    ]);
+    return { value };
   } catch (err) {
     return { value: fallback, error: `${label}: ${friendlyDbError(err)}` };
   }
@@ -834,7 +840,7 @@ function loadExtraAdminStats(input: {
   return stats;
 }
 
-const ADMIN_CACHE_MS = 30_000;
+const ADMIN_CACHE_MS = 120_000;
 let adminDashCache: { at: number; data: unknown } | null = null;
 
 function invalidateAdminDashCache() {
@@ -849,14 +855,14 @@ export const requireAdmin = createServerFn({ method: "GET" })
   });
 
 /** Env-only. Never touches Postgres — so money setup still paints when stats are down. */
-export const adminMoneySetup = createServerFn({ method: "GET" })
+export const adminMoneySetup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId, context.email);
     return polarSetup();
   });
 
-export const adminDashboard = createServerFn({ method: "GET" })
+export const adminDashboard = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId, context.email);
@@ -934,14 +940,14 @@ export const adminDashboard = createServerFn({ method: "GET" })
       if (cached && Date.now() - cached.at < ADMIN_CACHE_MS) {
         return cached.data as typeof empty;
       }
-      const ADMIN_DASH_MS = 8_000;
+      const ADMIN_DASH_MS = 5_000;
       const data = await Promise.race([
         loadAdminDashboard(empty),
         new Promise<typeof empty>((resolve) => {
           setTimeout(() => {
             resolve({
               ...empty,
-              dbError: "Admin stats timed out after 8s. Refresh — the database may be waking up.",
+              dbError: "Admin stats timed out after 5s. Polar setup above does not need the database.",
             });
           }, ADMIN_DASH_MS);
         }),
@@ -1024,7 +1030,22 @@ async function loadAdminDashboard(empty: {
     rewritten: boolean;
   };
 }) {
-    const ping = await pingDatabase({ retry: false });
+    const ping = await Promise.race([
+      pingDatabase({ retry: false }),
+      new Promise<Awaited<ReturnType<typeof pingDatabase>>>((resolve) => {
+        setTimeout(() => {
+          resolve({
+            ok: false,
+            source: "postgres",
+            pingMs: 2000,
+            error: "Database ping timed out after 2s.",
+            host: "",
+            mode: "",
+            rewritten: false,
+          });
+        }, 2000);
+      }),
+    ]);
     const db = {
       ok: ping.ok,
       source: ping.source,
@@ -1278,7 +1299,7 @@ async function loadAdminDashboard(empty: {
                count(distinct visitor_key)::int as unique_all,
                coalesce(sum(hits), 0)::int as hits
              from site_visits
-             where day >= current_date - 90`,
+             where day >= current_date - 30`,
           ),
         [{ today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 }],
       ),

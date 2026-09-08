@@ -23,7 +23,8 @@ export function PresetFeedbackDialog({
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">After you play it</p>
         <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">How close was the preset?</h2>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          This goes into the prompt, not a one-off song fix. What you changed on the unit is the gold.
+          What you changed on the unit is the gold. Feedback improves the models and how close the next
+          preset gets to the record — it is not a one-off song fix.
         </p>
         <PresetFeedbackForm song={song} onDone={onClose} />
         <button
@@ -73,7 +74,7 @@ export function PresetFeedbackForm({
       } else {
         await submitFeedbackFn({ data: payload });
       }
-      toast.success("Got it — that helps the next song.");
+      toast.success("Got it — that improves the models and the next song.");
       setCloserTweaks("");
       setWantPreset("");
       setWantApp("");
