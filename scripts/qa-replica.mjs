@@ -18,6 +18,7 @@ function overlap(a, b) {
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 await page.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v9", "1");
   localStorage.setItem("stomplab.tutorial.v8", "1");
   localStorage.setItem("stomplab.tutorial.v7", "1");
   localStorage.setItem("stomplab.tutorial.v6", "1");
@@ -125,6 +126,7 @@ check("Equivalents opens find tab", page.url().includes("tab=find") || (await pa
 // Mobile overflow on XL sandman
 const mobile = await browser.newPage({ viewport: { width: 390, height: 844 } });
 await mobile.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v9", "1");
   localStorage.setItem("stomplab.tutorial.v8", "1");
   localStorage.setItem("stomplab.tutorial.v7", "1");
   localStorage.setItem("stomplab.tutorial.v6", "1");

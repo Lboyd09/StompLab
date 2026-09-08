@@ -3,7 +3,7 @@ import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LegalFooter } from "@/components/layout/legal-footer";
-import { BrandLockup } from "@/components/layout/mark";
+import { Mark } from "@/components/layout/mark";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
@@ -168,18 +168,24 @@ function UpgradePage() {
   return (
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-3xl space-y-8">
-        <div className="space-y-3">
-          <Link to="/" className="inline-flex items-center text-muted-foreground">
-            <BrandLockup />
-          </Link>
-          <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
-            Subscribe
-          </h1>
-          <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-            Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
-            Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.
-          </p>
-          <RigDisclaimer />
+        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
+          <Mark size="xl" />
+          <div className="space-y-3">
+            <Link to="/" className="inline-flex font-display text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+              Stomp Lab
+            </Link>
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+              Research any song
+            </p>
+            <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
+              Subscribe
+            </h1>
+            <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
+              Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
+              Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.
+            </p>
+            <RigDisclaimer />
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-2">

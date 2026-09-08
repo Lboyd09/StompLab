@@ -32,6 +32,9 @@
   --radius-xl: 24px;
 
   --shadow-border: 0 0 0 1px color-mix(in oklab, #141414 8%, transparent);
+  --shadow-sticker:
+    0 1px 0 color-mix(in oklab, #141414 18%, transparent),
+    0 10px 24px -12px color-mix(in oklab, #141414 48%, transparent);
 
   --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
   --motion-quick: 150ms;
@@ -92,6 +95,17 @@ html.dark {
   a {
     color: inherit;
   }
+}
+
+/* Vinyl SL sticker — cream field, ink letters, reads on cream and on dark. */
+.sl-sticker {
+  background: var(--color-mark);
+  color: var(--color-mark-foreground);
+  border: 1.5px solid var(--color-mark-foreground);
+  border-radius: 22%;
+  box-shadow: var(--shadow-sticker);
+  letter-spacing: -0.08em;
+  line-height: 1;
 }
 
 .hx-chassis {

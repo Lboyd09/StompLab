@@ -1,5 +1,5 @@
 {
-  "url": "http://127.0.0.1:8081",
+  "url": "http://127.0.0.1:8081/",
   "viewports": {
     "desktop": {
       "width": 1280,
@@ -7,8 +7,8 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4613,
-      "bodyTextHash": "29c52c2f419640b9332d40ec615c7a6a88a29743537a443c826b4ee713665ff8",
+      "bodyTextLen": 4843,
+      "bodyTextHash": "063fac6d77a855fe3e0b3c41d7bc4782ec4f3bf3a217c83a33f7873e7dbe04aa",
       "bodyTextPrefix": "SL STOMP LAB Sign in Guitar Bass Unit Stomp Stomp XL Floor LT FX",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -21,8 +21,8 @@
       "status": 200,
       "title": "Stomp Lab",
       "hasCanvas": false,
-      "bodyTextLen": 4595,
-      "bodyTextHash": "67700254208cd56424de7f54d47c8d344354255c799cbb9f9a3efca3faec44c6",
+      "bodyTextLen": 4825,
+      "bodyTextHash": "e3cdc8ea73f75c957ec7b435eca512afc5c8c8d46a13625b269fdd8d0888005d",
       "bodyTextPrefix": "SL STOMP LAB Sign in Guitar Bass Unit Stomp Stomp XL Floor LT FX",
       "horizontalOverflow": false,
       "consoleErrors": [],
@@ -35,7 +35,7 @@
   "verdictFile": "/workspace/screenshots/app-builder-built.json",
   "divergesFromBaseline": true,
   "baselineReasons": [
-    "desktop: body text replaced (similar length, page start changed)",
-    "mobile: body text replaced (similar length, page start changed)"
+    "desktop: body text changed (4372 -> 4843 chars, hash mismatch)",
+    "mobile: body text changed (4354 -> 4825 chars, hash mismatch)"
   ]
 }

@@ -1,14 +1,27 @@
 import { cn } from "@/lib/utils";
 
-export function Mark({ className, size = "md" }: { className?: string; size?: "sm" | "md" | "lg" }) {
+const SIZE = {
+  sm: "size-8 text-sm",
+  md: "size-10 text-lg",
+  lg: "size-12 text-xl",
+  xl: "size-24 text-5xl sm:size-28 sm:text-6xl",
+  hero: "size-24 text-5xl sm:size-32 sm:text-6xl md:size-44 md:text-7xl",
+} as const;
+
+/** Cream SL sticker — the same mark as the physical sticker and the app icon. */
+export function Mark({
+  className,
+  size = "md",
+}: {
+  className?: string;
+  size?: keyof typeof SIZE;
+}) {
   return (
     <span
       aria-hidden
       className={cn(
-        "grid shrink-0 place-items-center rounded-md border border-border bg-mark font-display font-bold uppercase tracking-[-0.06em] text-mark-foreground",
-        size === "sm" && "size-8 text-sm",
-        size === "md" && "size-10 text-lg",
-        size === "lg" && "size-12 text-xl",
+        "sl-sticker grid shrink-0 place-items-center font-display font-bold uppercase text-mark-foreground",
+        SIZE[size],
         className,
       )}
     >

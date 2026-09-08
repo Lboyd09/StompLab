@@ -6,6 +6,7 @@ import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { Mark } from "@/components/layout/mark";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
@@ -19,7 +20,12 @@ import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
-import { FREE_BUILDS } from "@/lib/plan";
+import {
+  FREE_BUILDS,
+  PAID_MONTHLY_BUILDS,
+  PRICE_YEARLY_USD,
+  formatUsd,
+} from "@/lib/plan";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>): { q?: string } => ({
@@ -151,24 +157,48 @@ function Home() {
 
   const used = plan.signedIn && !plan.paid ? Math.min(FREE_BUILDS, plan.freeUsed) : 0;
 
+  function openFirstDemo() {
+    const first = demos[0];
+    if (first) openFeatured(first.id);
+  }
+
   return (
-    <div className="space-y-16 md:space-y-24">
+    <div className="space-y-12 md:space-y-20">
       <UpgradeBanner plan={plan} pending={planPending} />
 
-      <section className="mx-auto max-w-3xl space-y-8" data-tutorial="lab">
-        <div className="space-y-5">
+      <section className="mx-auto max-w-5xl space-y-8" data-tutorial="lab">
+        <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:gap-10">
+          <Mark size="hero" />
+          <div className="min-w-0 space-y-4">
+            <h1 className="font-display text-[clamp(2.6rem,9vw,5.5rem)] font-semibold uppercase leading-[0.82] tracking-tight">
+              Research any song
+            </h1>
+            <p className="max-w-md text-base leading-relaxed text-muted-foreground md:text-lg">
+              Get a Line 6 preset you can copy onto the unit — path, knobs, snapshots, and a file
+              HX Edit or POD Go Edit will import.
+            </p>
+            <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
+              <p className="font-display text-2xl font-semibold leading-none md:text-3xl">
+                {formatUsd(PRICE_YEARLY_USD)}{" "}
+                <span className="text-sm font-normal text-muted-foreground">/ year</span>
+              </p>
+              <p className="font-display text-2xl font-semibold leading-none md:text-3xl">
+                {PAID_MONTHLY_BUILDS}{" "}
+                <span className="text-sm font-normal text-muted-foreground">
+                  custom builds a month
+                </span>
+              </p>
+              <p className="pb-0.5 text-sm text-muted-foreground">HX Stomp · XL · Helix · POD Go</p>
+            </div>
+          </div>
+        </div>
+
+        <div className="space-y-3">
           <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
-            Line 6 laboratory
-          </p>
-          <h1 className="font-display text-[clamp(3.25rem,14vw,7.5rem)] font-semibold uppercase leading-[0.82] tracking-tight">
-            Stomp Lab
-          </h1>
-          <p className="max-w-md text-lg leading-relaxed text-muted-foreground">
-            Type a song. Get a preset that sounds like the record — path, knobs, snapshots, and a file
-            HX Edit or POD Go Edit will import.
+            Your unit: {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}
           </p>
           <p className="text-sm text-muted-foreground">
-            Three demos always work. No account. Your unit: {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}.
+            Three demos always work. No account. Type a song, then build the preset.
           </p>
           <RigDisclaimer />
         </div>
@@ -202,7 +232,12 @@ function Home() {
           </div>
         ) : null}
 
-        <form onSubmit={(e) => void onResearch(e)} className="space-y-4" data-tutorial="lab-form">
+        <form
+          id="lab-form"
+          onSubmit={(e) => void onResearch(e)}
+          className="space-y-4"
+          data-tutorial="lab-form"
+        >
           <SongTypeahead
             song={song}
             artist={artist}
@@ -216,10 +251,15 @@ function Home() {
             }}
           />
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-          <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
-            {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-            {busy ? "Researching" : "Build this preset"}
-          </Button>
+          <div className="flex flex-wrap gap-3">
+            <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
+              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
+              {busy ? "Researching" : "Build this preset"}
+            </Button>
+            <Button type="button" size="lg" variant="outline" onClick={openFirstDemo} className="w-full sm:w-auto">
+              See a demo
+            </Button>
+          </div>
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
             Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
@@ -233,7 +273,7 @@ function Home() {
         </form>
       </section>
 
-      <section className="space-y-6">
+      <section className="space-y-6" id="demos">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Always free</p>

@@ -170,7 +170,12 @@ function AdminPage() {
         <Stat
           label="Visitors (7d)"
           value={String(dash?.visits?.d7 ?? "—")}
-          hint={`${dash?.visits?.d30 ?? 0} in the last 30 days · ${dash?.visits?.unique_all ?? 0} all-time`}
+          hint={`${dash?.visits?.d30 ?? 0} in the last 30 days`}
+        />
+        <Stat
+          label="Visitors (all-time)"
+          value={String(dash?.visits?.unique_all ?? "—")}
+          hint={`${dash?.visits?.hits ?? 0} total pings · one per browser per day`}
         />
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
         <Stat

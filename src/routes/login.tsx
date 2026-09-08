@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { BrandLockup } from "@/components/layout/mark";
+import { Mark } from "@/components/layout/mark";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
@@ -169,18 +169,21 @@ function LoginPage() {
   return (
     <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
       <div className="w-full max-w-sm space-y-6">
-        <div className="space-y-2">
-          <a href="/" className="inline-flex items-center text-muted-foreground">
-            <BrandLockup />
+        <div className="space-y-4">
+          <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
+            <Mark size="xl" />
+            <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
           </a>
-          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
-            {mode === "in" ? "Sign in" : "Create account"}
-          </h1>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact
-            email. Always sign in with the same address — creating a second account starts over.
-            Use stomplab.app, not www.
-          </p>
+          <div className="space-y-2">
+            <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
+              {mode === "in" ? "Sign in" : "Create account"}
+            </h1>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact
+              email. Always sign in with the same address — creating a second account starts over.
+              Use stomplab.app, not www.
+            </p>
+          </div>
         </div>
 
         {!authEnabled ? (

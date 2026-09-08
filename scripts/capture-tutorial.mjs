@@ -7,6 +7,7 @@ mkdirSync("/workspace/public/tutorial", { recursive: true });
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 await page.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v9", "1");
   localStorage.setItem("stomplab.tutorial.v8", "1");
   localStorage.setItem("stomplab.tutorial.v7", "1");
   localStorage.setItem("stomplab.tutorial.v6", "1");
