@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 import { Mark } from "./mark";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v9";
+export const TUTORIAL_KEY = "stomplab.tutorial.v10";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type StepId = "welcome" | "rig" | "song" | "replica" | "import";

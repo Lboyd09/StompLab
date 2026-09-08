@@ -273,9 +273,11 @@ function sleepMs(ms: number) {
 }
 
 /** One cheap `select 1`. Retries once when the free project is waking up. */
-export async function pingDatabase(): Promise<DbPing> {
+export async function pingDatabase(opts?: { retry?: boolean }): Promise<DbPing> {
   const first = await pingOnce();
   if (first.ok) return first;
+  if (opts?.retry === false) return first;
+  if (/egress|bandwidth|quota/i.test(first.error)) return first;
   if (
     /timeout|timed out|waking|busy|EMAXCONN|Connection terminated|statement_timeout/i.test(
       first.error,

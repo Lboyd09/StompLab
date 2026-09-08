@@ -14,6 +14,7 @@ import {
   polarCheckoutNeedsPoll,
   polarCheckoutStatus,
   polarConfigured,
+  polarSetup,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarStatusIsPaid,
@@ -136,7 +137,7 @@ type EntRow = {
   email?: string | null;
 };
 
-const PLAN_TTL_MS = 45_000;
+const PLAN_TTL_MS = 120_000;
 const planCache = new Map<string, { at: number; plan: Plan }>();
 /** Coalesce concurrent getMyPlan calls for the same user (client loops). */
 const planInflight = new Map<string, Promise<Plan>>();
@@ -247,29 +248,20 @@ async function paidVerifiedFor(userId: string, email: string | null, row: EntRow
     return true;
   }
 
-  let purchases: { polar_order_id: string; raw: unknown }[] = [];
+  let purchases: { polar_order_id: string }[] = [];
   try {
-    purchases = await sql<{ polar_order_id: string; raw: unknown }>`
-      select polar_order_id, raw from purchases where user_id = ${userId}
+    purchases = await sql<{ polar_order_id: string }>`
+      select polar_order_id from purchases where user_id = ${userId} limit 5
     `;
   } catch {
     purchases = [];
   }
-  const good = purchases.find((p) => {
-    const oid = orderIdFromPurchase(p.raw, p.polar_order_id);
-    return purchaseLooksPaid(p.raw) && (isRealPolarOrderId(oid) || polarEventIsSubscriptionGrant(p.raw as Record<string, unknown>));
-  });
-  if (good) {
-    const extracted = good.raw && typeof good.raw === "object" ? extractOrder(good.raw as Record<string, unknown>) : null;
-    const oid = orderIdFromPurchase(good.raw, good.polar_order_id);
-    const subId = extracted?.subscriptionId ?? "";
-    const interval = extracted?.interval || "";
+  const goodId = purchases.map((p) => p.polar_order_id).find((id) => isRealPolarOrderId(id));
+  if (goodId) {
     try {
       await sql`
         update entitlements
-        set paid = true, paid_source = ${"polar"}, polar_order_id = ${oid},
-            polar_subscription_id = coalesce(nullif(${subId}, ''), entitlements.polar_subscription_id),
-            plan_interval = coalesce(nullif(${interval}, ''), entitlements.plan_interval),
+        set paid = true, paid_source = ${"polar"}, polar_order_id = ${goodId},
             subscription_status = ${"active"}, updated_at = now()
         where user_id = ${userId}
       `;
@@ -277,15 +269,11 @@ async function paidVerifiedFor(userId: string, email: string | null, row: EntRow
       try {
         await sql`
           update entitlements
-          set paid = true, paid_source = ${"polar"}, polar_order_id = ${oid}, updated_at = now()
+          set paid = true, polar_order_id = ${goodId}, updated_at = now()
           where user_id = ${userId}
         `;
       } catch {
-        await sql`
-          update entitlements
-          set paid = true, polar_order_id = ${oid}, updated_at = now()
-          where user_id = ${userId}
-        `;
+        /* keep going — the row may already be paid */
       }
     }
     return true;
@@ -344,8 +332,8 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
       }
     }
     const paid = await paidVerifiedFor(userId, em || email, ent);
-    const lifetimeN = await countBuildsFor(ids);
     const monthlyN = await countBuildsFor(ids, yearMonth());
+    const lifetimeN = paid ? monthlyN : await countBuildsFor(ids);
     const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
     const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
     const plan = assemblePlan({
@@ -361,6 +349,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     return plan;
   } catch (err) {
     console.error("[plan] loadPlan failed", friendlyDbError(err));
+    if (cached) return cached.plan;
     const plan = assemblePlan({
       userId,
       email: em || email,
@@ -746,6 +735,8 @@ export async function recordFailure(userId: string, song: string, artist: string
 }
 
 async function assertAdmin(userId: string, sessionEmail?: string | null) {
+  const session = resolveAccountEmail(null, sessionEmail);
+  if (isAdminEmail(session)) return session as string;
   const email = await emailFor(userId, sessionEmail);
   if (!isAdminEmail(email)) throw new Error("Unauthorized");
   return email;
@@ -857,6 +848,14 @@ export const requireAdmin = createServerFn({ method: "GET" })
     return { ok: true as const, email };
   });
 
+/** Env-only. Never touches Postgres — so money setup still paints when stats are down. */
+export const adminMoneySetup = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    await assertAdmin(context.userId, context.email);
+    return polarSetup();
+  });
+
 export const adminDashboard = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -913,7 +912,8 @@ export const adminDashboard = createServerFn({ method: "GET" })
       subscribedCount: 0,
       revenueCents: 0,
       affiliateClicks: [] as { vendor: string; n: number }[],
-      polarReady: polarConfigured(),
+      polar: polarSetup(),
+      polarReady: polarSetup().ready,
       amazonReady: false,
       stats: emptyAdminStats(),
       visits: { today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 },
@@ -934,14 +934,14 @@ export const adminDashboard = createServerFn({ method: "GET" })
       if (cached && Date.now() - cached.at < ADMIN_CACHE_MS) {
         return cached.data as typeof empty;
       }
-      const ADMIN_DASH_MS = 12_000;
+      const ADMIN_DASH_MS = 8_000;
       const data = await Promise.race([
         loadAdminDashboard(empty),
         new Promise<typeof empty>((resolve) => {
           setTimeout(() => {
             resolve({
               ...empty,
-              dbError: "Admin stats timed out after 12s. Refresh — the database may be waking up.",
+              dbError: "Admin stats timed out after 8s. Refresh — the database may be waking up.",
             });
           }, ADMIN_DASH_MS);
         }),
@@ -1007,6 +1007,7 @@ async function loadAdminDashboard(empty: {
   subscribedCount: number;
   revenueCents: number;
   affiliateClicks: { vendor: string; n: number }[];
+  polar: ReturnType<typeof polarSetup>;
   polarReady: boolean;
   amazonReady: boolean;
   stats: AdminStats;
@@ -1023,7 +1024,7 @@ async function loadAdminDashboard(empty: {
     rewritten: boolean;
   };
 }) {
-    const ping = await pingDatabase();
+    const ping = await pingDatabase({ retry: false });
     const db = {
       ok: ping.ok,
       source: ping.source,
@@ -1077,7 +1078,7 @@ async function loadAdminDashboard(empty: {
             select created_at::text, email, coalesce(user_id, '') as user_id, polar_order_id, polar_checkout_id, amount_cents
             from purchases
             order by created_at desc
-            limit 40
+            limit 20
           `,
         empty.purchases,
       ),
@@ -1092,15 +1093,14 @@ async function loadAdminDashboard(empty: {
           }>`
             select
               b.user_id,
-              coalesce(e.email, u.email, '') as email,
+              '' as email,
               b.year_month,
               count(*)::int as n
             from build_events b
-            left join entitlements e on e.user_id = b.user_id
-            left join "user" u on u.id = b.user_id
-            group by b.user_id, coalesce(e.email, u.email, ''), b.year_month
+            where b.year_month >= ${yearMonth(new Date(Date.now() - 1000 * 60 * 60 * 24 * 100))}
+            group by b.user_id, b.year_month
             order by b.year_month desc, n desc
-            limit 80
+            limit 40
           `,
         empty.usage,
       ),
@@ -1116,7 +1116,7 @@ async function loadAdminDashboard(empty: {
             select created_at::text, song, artist, error
             from research_failures
             order by created_at desc
-            limit 30
+            limit 12
           `,
         empty.failures,
       ),
@@ -1134,11 +1134,11 @@ async function loadAdminDashboard(empty: {
           }>`
             select
               cache_key, song, artist, instrument, stomp_model, hit_count,
-              coalesce(preset->>'summary', '') as summary
+              '' as summary
             from rig_cache
             where kind = 'song'
             order by updated_at desc
-            limit 40
+            limit 20
           `,
         empty.cache,
       ),
@@ -1162,7 +1162,7 @@ async function loadAdminDashboard(empty: {
                 rating, closer_tweaks, want_preset, want_app
               from feedback
               order by created_at desc
-              limit 40
+              limit 12
             `;
           } catch {
             return (
@@ -1176,7 +1176,7 @@ async function loadAdminDashboard(empty: {
                 select created_at::text, email, kind, song, message
                 from feedback
                 order by created_at desc
-                limit 120
+                limit 12
               `
             ).map((n) => ({ ...n, rating: null, closer_tweaks: "", want_preset: "", want_app: "" }));
           }
@@ -1204,14 +1204,11 @@ async function loadAdminDashboard(empty: {
               coalesce(e.paid, false) as paid,
               coalesce(e.subscription_status, '') as subscription_status,
               coalesce(e.plan_interval, '') as plan_interval,
-              coalesce(bc.builds, 0) as builds
+              0::int as builds
             from "user" u
             left join entitlements e on e.user_id = u.id
-            left join (
-              select user_id, count(*)::int as builds from build_events group by user_id
-            ) bc on bc.user_id = u.id
             order by u."createdAt" desc
-            limit 80
+            limit 40
           `,
         empty.accounts,
       ),
@@ -1280,7 +1277,8 @@ async function loadAdminDashboard(empty: {
                count(distinct visitor_key) filter (where day >= current_date - 29)::int as d30,
                count(distinct visitor_key)::int as unique_all,
                coalesce(sum(hits), 0)::int as hits
-             from site_visits`,
+             from site_visits
+             where day >= current_date - 90`,
           ),
         [{ today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 }],
       ),
@@ -1290,7 +1288,7 @@ async function loadAdminDashboard(empty: {
     const failures = take(failuresRes);
     const cache = take(cacheRes);
     const notes = take(notesRes);
-    const accounts = take(accountsRes);
+    let accounts = take(accountsRes);
     let entitlements = take(entitlementsRes);
     const counts = take(countsRes)[0];
     const visitsRow = take(visitsRes)[0];
@@ -1301,6 +1299,13 @@ async function loadAdminDashboard(empty: {
       unique_all: Number(visitsRow?.unique_all ?? 0),
       hits: Number(visitsRow?.hits ?? 0),
     };
+    const emailById = new Map(accounts.map((a) => [a.id, a.email]));
+    const buildsByUser = new Map<string, number>();
+      for (const u of usage) {
+        if (!u.email) u.email = emailById.get(u.user_id) ?? "";
+        buildsByUser.set(u.user_id, (buildsByUser.get(u.user_id) ?? 0) + (Number(u.n) || 0));
+      }
+    accounts = accounts.map((a) => ({ ...a, builds: buildsByUser.get(a.id) ?? a.builds }));
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
     const hiddenMail = new Set(owners);
     purchases = purchases.filter((p) => {
@@ -1347,7 +1352,8 @@ async function loadAdminDashboard(empty: {
       subscribedCount,
       revenueCents,
       affiliateClicks: [] as { vendor: string; n: number }[],
-      polarReady: polarConfigured(),
+      polar: polarSetup(),
+      polarReady: polarSetup().ready,
       amazonReady: false,
       stats,
       visits,

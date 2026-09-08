@@ -7,19 +7,36 @@ function polarBase() {
   return "https://api.polar.sh";
 }
 
+function envFirst(...keys: string[]): string {
+  for (const k of keys) {
+    const v = (process.env[k] ?? "").trim();
+    if (v) return v;
+  }
+  return "";
+}
+
 function polarToken() {
-  return (process.env.POLAR_ACCESS_TOKEN ?? process.env.POLAR_OAT ?? "").trim();
+  return envFirst("POLAR_ACCESS_TOKEN", "POLAR_OAT");
 }
 
 export function polarProductId(interval: PlanInterval): string {
   if (interval === "year") {
-    return (process.env.POLAR_PRODUCT_ID_YEARLY ?? "").trim();
+    return envFirst("POLAR_PRODUCT_ID_YEARLY", "POLAR_YEARLY_PRODUCT_ID", "POLAR_PRODUCT_YEARLY");
   }
-  return (process.env.POLAR_PRODUCT_ID_MONTHLY ?? process.env.POLAR_PRODUCT_ID ?? "").trim();
+  return envFirst("POLAR_PRODUCT_ID_MONTHLY", "POLAR_MONTHLY_PRODUCT_ID", "POLAR_PRODUCT_MONTHLY", "POLAR_PRODUCT_ID");
+}
+
+export function polarSetup() {
+  const token = Boolean(polarToken());
+  const monthly = Boolean(polarProductId("month"));
+  const yearly = Boolean(polarProductId("year"));
+  // Checkout needs the token and at least one product. Admin lists each so a
+  // missing monthly id does not look like "products are gone."
+  return { token, monthly, yearly, ready: token && (monthly || yearly) };
 }
 
 export function polarConfigured() {
-  return Boolean(polarToken() && (polarProductId("month") || polarProductId("year")));
+  return polarSetup().ready;
 }
 
 export function polarFriendlyError(status: number, detail: unknown): string {

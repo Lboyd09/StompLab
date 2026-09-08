@@ -171,7 +171,7 @@ function LoginPage() {
       <div className="w-full max-w-sm space-y-6">
         <div className="space-y-4">
           <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
-            <Mark size="xl" />
+            <Mark size="md" />
             <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
           </a>
           <div className="space-y-2">

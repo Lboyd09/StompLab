@@ -95,6 +95,8 @@ export function isCheap404Path(pathname: string): boolean {
   if (path.startsWith("/api/")) return false;
   if (path.startsWith("/__grok/")) return false;
   if (path.startsWith("/auth/")) return false;
+  // Nitro / TanStack internals — never 404 these or the Lab looks dead.
+  if (path.startsWith("/_") && !isScannerPath(path)) return false;
   if (/\.[a-zA-Z0-9]{1,8}$/.test(path)) return false;
   if (isAppDocumentPath(path)) return false;
   return true;

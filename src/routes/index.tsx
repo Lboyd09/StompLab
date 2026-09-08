@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -6,7 +6,6 @@ import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
-import { Mark } from "@/components/layout/mark";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
@@ -20,12 +19,7 @@ import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
-import {
-  FREE_BUILDS,
-  PAID_MONTHLY_BUILDS,
-  PRICE_YEARLY_USD,
-  formatUsd,
-} from "@/lib/plan";
+import { FREE_BUILDS } from "@/lib/plan";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>): { q?: string } => ({
@@ -52,6 +46,8 @@ function Home() {
   const featured = FEATURED.filter((p) => p.instrument === instrument);
   const demos = featured.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
   const rest = featured.filter((p) => !(DEMO_IDS as readonly string[]).includes(p.id));
+  const subscribed = plan.paid || plan.admin;
+  const unit = DEVICE_MAP[stompModel]?.name ?? "HX Stomp";
 
   useEffect(() => {
     if (search.q) setSong(search.q);
@@ -100,6 +96,10 @@ function Home() {
       return;
     }
     if (!plan.canResearch) {
+      if (plan.paid) {
+        toast.error("You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.");
+        return;
+      }
       await navigate({ to: "/upgrade" });
       return;
     }
@@ -121,7 +121,11 @@ function Home() {
         },
       });
       if (!result.ok) {
-        if (result.reason === "paywall" || result.reason === "quota") {
+        if (result.reason === "quota") {
+          toast.error(result.error);
+          return;
+        }
+        if (result.reason === "paywall") {
           await navigate({ to: "/upgrade" });
           return;
         }
@@ -163,54 +167,30 @@ function Home() {
   }
 
   return (
-    <div className="space-y-12 md:space-y-20">
-      <UpgradeBanner plan={plan} pending={planPending} />
+    <div className="space-y-10 md:space-y-14">
+      {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
 
-      <section className="mx-auto max-w-5xl space-y-8" data-tutorial="lab">
-        <div className="flex flex-col items-start gap-6 md:flex-row md:items-center md:gap-10">
-          <Mark size="hero" />
-          <div className="min-w-0 space-y-4">
-            <h1 className="font-display text-[clamp(2.6rem,9vw,5.5rem)] font-semibold uppercase leading-[0.82] tracking-tight">
-              Research any song
-            </h1>
-            <p className="max-w-md text-base leading-relaxed text-muted-foreground md:text-lg">
-              Get a Line 6 preset you can copy onto the unit — path, knobs, snapshots, and a file
-              HX Edit or POD Go Edit will import.
-            </p>
-            <div className="flex flex-wrap items-end gap-x-6 gap-y-2">
-              <p className="font-display text-2xl font-semibold leading-none md:text-3xl">
-                {formatUsd(PRICE_YEARLY_USD)}{" "}
-                <span className="text-sm font-normal text-muted-foreground">/ year</span>
-              </p>
-              <p className="font-display text-2xl font-semibold leading-none md:text-3xl">
-                {PAID_MONTHLY_BUILDS}{" "}
-                <span className="text-sm font-normal text-muted-foreground">
-                  custom builds a month
-                </span>
-              </p>
-              <p className="pb-0.5 text-sm text-muted-foreground">HX Stomp · XL · Helix · POD Go</p>
-            </div>
-          </div>
-        </div>
-
+      <section className="mx-auto max-w-2xl space-y-6" data-tutorial="lab">
         <div className="space-y-3">
-          <p className="text-[11px] font-medium uppercase tracking-[0.32em] text-muted-foreground">
-            Your unit: {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}
+          <h1 className="font-display text-[clamp(2.4rem,8vw,4.5rem)] font-semibold uppercase leading-[0.86] tracking-tight">
+            Research any song
+          </h1>
+          <p className="max-w-md text-base leading-relaxed text-muted-foreground">
+            Type a title. Get a preset for your {unit} — path, knobs, snapshots, and a file HX Edit or
+            POD Go Edit will import.
           </p>
-          <p className="text-sm text-muted-foreground">
-            Three demos always work. No account. Type a song, then build the preset.
-          </p>
+          {subscribed ? (
+            <p className="text-sm text-muted-foreground">
+              <span className="font-medium text-foreground tabular-nums">
+                {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
+              </span>{" "}
+              {plan.admin ? "custom builds" : "custom builds used this month"}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">Three demos always work. No account needed.</p>
+          )}
           <RigDisclaimer />
         </div>
-
-        {plan.signedIn && plan.paid ? (
-          <p className="text-sm text-muted-foreground">
-            <span className="font-medium text-foreground tabular-nums">
-              {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
-            </span>{" "}
-            {plan.admin ? "custom builds — admin has no monthly cap" : "custom builds used this month"}
-          </p>
-        ) : null}
 
         {plan.signedIn && !plan.paid ? (
           <div className="flex items-center gap-3">
@@ -232,12 +212,7 @@ function Home() {
           </div>
         ) : null}
 
-        <form
-          id="lab-form"
-          onSubmit={(e) => void onResearch(e)}
-          className="space-y-4"
-          data-tutorial="lab-form"
-        >
+        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="space-y-4" data-tutorial="lab-form">
           <SongTypeahead
             song={song}
             artist={artist}
@@ -262,9 +237,7 @@ function Home() {
           </div>
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
-            Using {instrument} · {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. Change both in the header.
-            Type two letters to pick the exact recording. “Playing through” is the speaker you will
-            actually use — FRFR keeps the cab on, guitar amp skips it.
+            {instrument} · {unit}. Change both in the header. Type two letters to pick the recording.
           </p>
           <GeminiHint plan={plan} pending={planPending} />
           {status && busy === false && !plan.canResearch ? (
@@ -295,8 +268,10 @@ function Home() {
               className="group rounded-2xl border border-border bg-card p-6 text-left transition-[border-color,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30"
             >
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
-              <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">{p.song}</div>
-              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+              <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">
+                {p.song}
+              </div>
+              <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
               <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
                 Open on Stomp
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
@@ -314,12 +289,12 @@ function Home() {
               <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">More songs</h2>
             </div>
             <span className="text-xs text-muted-foreground">
-              {plan.paid ? `${instrument} · replica` : "Unlock to open"}
+              {subscribed ? `${instrument} · replica` : "Subscribe to open"}
             </span>
           </div>
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((p) => {
-              const locked = !plan.paid;
+              const locked = !subscribed;
               return (
                 <button
                   key={p.id}
@@ -334,10 +309,12 @@ function Home() {
                     <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
                     {locked ? <Lock className="size-3.5 text-muted-foreground" /> : null}
                   </div>
-                  <div className="mt-2 font-display text-xl font-semibold uppercase leading-none tracking-tight">{p.song}</div>
-                  <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+                  <div className="mt-2 font-display text-xl font-semibold uppercase leading-none tracking-tight">
+                    {p.song}
+                  </div>
+                  <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
                   <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
-                    {locked ? "Unlock this rig" : "View replica"}
+                    {locked ? "Subscribe to open" : "View replica"}
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </div>
                 </button>
@@ -346,33 +323,6 @@ function Home() {
           </div>
         </section>
       ) : null}
-
-      <section className="grid gap-8 border-t border-border pt-12 sm:grid-cols-3">
-        <div className="space-y-2">
-          <p className="font-display text-4xl font-semibold uppercase leading-none">01</p>
-          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Demo or research</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Name a track. See it on the unit. Download a .hlx HX Edit can import. Three demos always work.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="font-display text-4xl font-semibold uppercase leading-none">02</p>
-          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Play the replica</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Snapshot is verse/chorus. Stomp is effects on/off. Tap a switch, then tap what it should do.
-          </p>
-        </div>
-        <div className="space-y-2">
-          <p className="font-display text-4xl font-semibold uppercase leading-none">03</p>
-          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Import the file</h2>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            Download the .hlx. HX Edit: File → Import. PAGE until SNAP or STOMP matches.{" "}
-            <Link to="/guide" className="text-foreground underline underline-offset-2">
-              Full tutorial
-            </Link>
-          </p>
-        </div>
-      </section>
 
       <div className="max-w-2xl">
         <FeedbackCard />

@@ -169,7 +169,7 @@ function UpgradePage() {
     <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
       <div className="mx-auto w-full max-w-3xl space-y-8">
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
-          <Mark size="xl" />
+          <Mark size="lg" />
           <div className="space-y-3">
             <Link to="/" className="inline-flex font-display text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Stomp Lab

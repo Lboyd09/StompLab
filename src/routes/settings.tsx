@@ -363,9 +363,12 @@ function SettingsPage() {
         <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
         <p>
           Featured demos load instantly. Custom research uses the server. Each custom song counts as a
-          build — demos never do. Free accounts get {FREE_BUILDS} custom builds plus the three demos.
-          Subscribe is {formatUsd(PRICE_MONTHLY_USD)}/month or {formatUsd(PRICE_YEARLY_USD)}/year, stuck to your email. Same 50
-          custom builds a month on either plan.
+          build — demos never do.
+          {plan.paid
+            ? plan.admin
+              ? " Admin has no monthly cap."
+              : ` ${plan.monthUsed} of ${plan.monthLimit} custom builds used this month.`
+            : ` Free accounts get ${FREE_BUILDS} custom builds plus the three demos. Subscribe is ${formatUsd(PRICE_MONTHLY_USD)}/month or ${formatUsd(PRICE_YEARLY_USD)}/year, stuck to your email. Same 50 custom builds a month on either plan.`}
         </p>
         <p>
           <Link to="/" className="text-primary underline underline-offset-2">

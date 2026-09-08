@@ -2,7 +2,7 @@ import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-ro
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn, requireAdmin } from "@/lib/billing";
+import { adminDashboard, adminDeleteCache, adminInspectCache, adminMoneySetup, probeResearchFn } from "@/lib/billing";
 import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
@@ -21,6 +21,12 @@ function AdminPage() {
   const savePreset = useAppStore((s) => s.savePreset);
   const setStompModel = useAppStore((s) => s.setStompModel);
   const [dash, setDash] = useState<Dash | null>(null);
+  const [money, setMoney] = useState<{
+    token: boolean;
+    monthly: boolean;
+    yearly: boolean;
+    ready: boolean;
+  } | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
   const [probing, setProbing] = useState(false);
@@ -29,31 +35,40 @@ function AdminPage() {
   useEffect(() => {
     if (isPending || !user) return;
     let cancelled = false;
-    const timeout = window.setTimeout(() => {
+    const statsTimeout = window.setTimeout(() => {
       if (!cancelled) setError((e) => e || "Stats are taking too long. Refresh — the database may be waking up.");
-    }, 12000);
-    void requireAdmin()
-      .then(() => {
-        if (!cancelled) setGate("ok");
+    }, 16000);
+    void adminMoneySetup()
+      .then((p) => {
+        if (!cancelled) {
+          setMoney(p);
+          setGate("ok");
+        }
       })
-      .catch(() => {
-        if (!cancelled) setGate("no");
+      .catch((err) => {
+        if (cancelled) return;
+        const msg = err instanceof Error ? err.message : "";
+        if (/unauthorized/i.test(msg)) setGate("no");
       });
     void adminDashboard()
       .then((d) => {
         if (cancelled) return;
-        window.clearTimeout(timeout);
+        window.clearTimeout(statsTimeout);
+        setGate("ok");
         setDash(d);
+        if (d.polar) setMoney(d.polar);
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
         if (cancelled) return;
-        window.clearTimeout(timeout);
-        setError(err instanceof Error ? err.message : "Could not load admin.");
+        window.clearTimeout(statsTimeout);
+        const msg = err instanceof Error ? err.message : "Could not load admin.";
+        if (/unauthorized/i.test(msg)) setGate("no");
+        else setError(msg);
       });
     return () => {
       cancelled = true;
-      window.clearTimeout(timeout);
+      window.clearTimeout(statsTimeout);
     };
   }, [user?.id, isPending]);
 
@@ -94,6 +109,8 @@ function AdminPage() {
     await navigate({ to: "/preset/$id", params: { id: playable.id } });
   }
 
+  const polar = money ?? dash?.polar ?? null;
+
   async function onProbe() {
     setProbing(true);
     try {
@@ -124,9 +141,13 @@ function AdminPage() {
           onClick={() => {
             setError("");
             setDash(null);
+            void adminMoneySetup()
+              .then(setMoney)
+              .catch(() => undefined);
             void adminDashboard()
               .then((d) => {
                 setDash(d);
+                if (d.polar) setMoney(d.polar);
                 if (d.dbError) setError(d.dbError);
               })
               .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
@@ -148,7 +169,7 @@ function AdminPage() {
             {dash.db.mode ? ` · ${dash.db.mode}` : ""}
             {dash.db.host ? ` · ${dash.db.host}` : ""}
             {` · ${dash.db.pingMs} ms`}
-            {dash.db.rewritten ? " · session pooler" : ""}
+            {dash.db.rewritten ? " · transaction pooler" : ""}
           </p>
           {dash.db.error ? <p className="mt-2 text-sm text-destructive">{dash.db.error}</p> : null}
           {(dash.queryErrors ?? []).length ? (
@@ -173,9 +194,9 @@ function AdminPage() {
           hint={`${dash?.visits?.d30 ?? 0} in the last 30 days`}
         />
         <Stat
-          label="Visitors (all-time)"
+          label="Visitors (90d)"
           value={String(dash?.visits?.unique_all ?? "—")}
-          hint={`${dash?.visits?.hits ?? 0} total pings · one per browser per day`}
+          hint="Unique browsers in the last 90 days. Scanners are not counted."
         />
         <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
         <Stat
@@ -218,8 +239,17 @@ function AdminPage() {
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Money setup</h2>
         <ul className="space-y-1 text-sm">
-          <li>Polar products: {dash?.polarReady ? "ready" : "missing POLAR_PRODUCT_ID_MONTHLY / YEARLY"}</li>
+          <li>Polar token: {polar ? (polar.token ? "set" : "missing") : "checking…"}</li>
+          <li>Monthly product ($6.99): {polar ? (polar.monthly ? "set" : "missing") : "checking…"}</li>
+          <li>Yearly product ($75): {polar ? (polar.yearly ? "set" : "missing") : "checking…"}</li>
         </ul>
+        <p className="text-xs text-muted-foreground">
+          {polar?.ready
+            ? "Checkout can run. Polar keeps the product names — this only checks that the token and at least one product id are on the host."
+            : polar
+              ? "Need POLAR_ACCESS_TOKEN plus POLAR_PRODUCT_ID_MONTHLY and/or POLAR_PRODUCT_ID_YEARLY. Checkout stays closed until the token and one product id are set."
+              : "Money setup does not wait on Postgres."}
+        </p>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">

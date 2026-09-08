@@ -9,8 +9,12 @@ export function notifyResearchError(
     toast.error(err.error, { action: { label: "Sign in", onClick: go.login }, duration: 8000 });
     return;
   }
-  if (err.reason === "paywall" || err.reason === "quota") {
+  if (err.reason === "paywall") {
     toast.error(err.error, { action: { label: "Unlock", onClick: go.upgrade }, duration: 8000 });
+    return;
+  }
+  if (err.reason === "quota") {
+    toast.error(err.error, { duration: 8000 });
     return;
   }
   const raw = err.error || "Research failed";

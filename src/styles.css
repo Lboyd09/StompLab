@@ -97,13 +97,12 @@ html.dark {
   }
 }
 
-/* Vinyl SL sticker — cream field, ink letters, reads on cream and on dark. */
+/* Cream SL tile, thin ink border — same mark as the favicon / app icon. */
 .sl-sticker {
   background: var(--color-mark);
   color: var(--color-mark-foreground);
   border: 1.5px solid var(--color-mark-foreground);
   border-radius: 22%;
-  box-shadow: var(--shadow-sticker);
   letter-spacing: -0.08em;
   line-height: 1;
 }

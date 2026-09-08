@@ -233,6 +233,9 @@ export function patchPoolSimpleQuery<T extends { query: QueryFn; connect: QueryF
 
 export function friendlyDbError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err ?? "");
+  if (/egress|bandwidth|quota exceeded|exceeded the.*quota|over_quota|1028|storage quota/i.test(msg)) {
+    return "Postgres is out of monthly bandwidth (egress). Pages still load; Admin stats and new cache writes wait until the quota resets.";
+  }
   if (/self-signed|certificate|unable_to_verify|cert_/i.test(msg)) {
     return "The database connection was rejected (certificate). Refresh once — Stomp Lab now accepts the pooler's certificate.";
   }

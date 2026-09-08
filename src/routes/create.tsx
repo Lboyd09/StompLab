@@ -48,6 +48,10 @@ function CreatePage() {
       return;
     }
     if (!plan.canCreate) {
+      if (plan.paid) {
+        toast.error("You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.");
+        return;
+      }
       await navigate({ to: "/upgrade" });
       return;
     }
@@ -67,7 +71,11 @@ function CreatePage() {
         },
       });
       if (!result.ok) {
-        if (result.reason === "paywall" || result.reason === "quota") {
+        if (result.reason === "quota") {
+          toast.error(result.error);
+          return;
+        }
+        if (result.reason === "paywall") {
           await navigate({ to: "/upgrade" });
           return;
         }
@@ -100,6 +108,20 @@ function CreatePage() {
   }
 
   if (!isPending && plan.signedIn && !plan.canCreate) {
+    if (plan.paid) {
+      return (
+        <div className="mx-auto max-w-lg space-y-3 py-8">
+          <h1 className="font-display text-3xl font-semibold uppercase tracking-tight">This month’s builds are used</h1>
+          <p className="text-sm text-muted-foreground">
+            Your subscription stays active. Custom research opens again at the start of next month. Demos
+            never count.
+          </p>
+          <Button asChild>
+            <Link to="/">Back to Lab</Link>
+          </Button>
+        </div>
+      );
+    }
     return (
       <PaywallCard
         title="You've used the three free custom songs"

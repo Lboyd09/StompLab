@@ -32,6 +32,9 @@ describe("isScannerPath", () => {
       "/.well-known/security.txt",
       "/favicon.svg",
       "/tutorial/lab.png",
+      "/_server",
+      "/_server/fn",
+      "/_tanstack/start",
     ]) {
       assert.equal(isScannerPath(path), false, path);
       assert.equal(isCheap404Path(path), false, path);

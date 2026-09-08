@@ -11,6 +11,32 @@ type PlanState = {
 
 const PlanContext = createContext<PlanState | null>(null);
 
+function planStoreKey(id: string) {
+  return `stomplab.plan.v1.${id}`;
+}
+
+function readStoredPlan(id: string | null): Plan | null {
+  if (!id || typeof localStorage === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(planStoreKey(id));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Plan;
+    if (!parsed || parsed.userId !== id || !parsed.signedIn) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+function writeStoredPlan(plan: Plan) {
+  if (!plan.userId || typeof localStorage === "undefined") return;
+  try {
+    localStorage.setItem(planStoreKey(plan.userId), JSON.stringify(plan));
+  } catch {
+    /* ignore quota */
+  }
+}
+
 /**
  * One plan for the whole tree. Separate usePlan() calls were each starting at
  * emptyPlan() and racing getMyPlan — that's the "unlocked for a second, then
@@ -35,6 +61,7 @@ function usePlanState(): PlanState {
   const applyPlan = useCallback((next: Plan) => {
     setPlan((prev) => (planFingerprint(prev) === planFingerprint(next) ? prev : next));
     setReady(true);
+    writeStoredPlan(next);
   }, []);
 
   const refresh = useCallback(async () => {
@@ -52,23 +79,40 @@ function usePlanState(): PlanState {
       return next;
     } catch {
       if (gen !== genRef.current || userIdRef.current !== id) return emptyPlan();
-      // Keep them signed in. Admin email still unlocks via assemblePlan.
-      // Never invent paid:true for a normal account.
-      const fallback = assemblePlan({
-        userId: id,
-        email: em,
-        paid: false,
-        freeUsed: 0,
-        monthUsed: 0,
+      let kept: Plan | null = null;
+      setPlan((prev) => {
+        const stored = readStoredPlan(id);
+        if (prev.signedIn && prev.userId === id) {
+          kept = prev;
+          setReady(true);
+          return prev;
+        }
+        if (stored) {
+          kept = stored;
+          setReady(true);
+          return stored;
+        }
+        const fallback = assemblePlan({
+          userId: id,
+          email: em,
+          paid: false,
+          freeUsed: 0,
+          monthUsed: 0,
+        });
+        kept = fallback;
+        setReady(true);
+        return fallback;
       });
-      applyPlan(fallback);
-      return fallback;
+      return kept ?? emptyPlan();
     }
   }, [applyPlan]);
 
   useEffect(() => {
     setReady(false);
-    setPlan(emptyPlan());
+    setPlan((prev) => {
+      if (prev.userId === userId && userId) return prev;
+      return readStoredPlan(userId) ?? emptyPlan();
+    });
   }, [userId]);
 
   useEffect(() => {

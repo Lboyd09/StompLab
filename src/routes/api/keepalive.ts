@@ -3,8 +3,8 @@ import { getSql, pingDatabase } from "@/lib/db";
 
 /**
  * Once-a-day ping so a free Supabase project does not pause after 7 idle days.
- * Touches real tables (user + rig_cache), not only `select 1`, and retries
- * once so a cold project can wake. Preview deploys never hit production Postgres.
+ * Touches user + rig_cache with `limit 1` so it does not count whole tables
+ * (that burned egress). Preview deploys never hit production Postgres.
  */
 function authorized(request: Request) {
   const cron = request.headers.get("x-vercel-cron");
@@ -25,12 +25,12 @@ async function pingOnce() {
     return { ...ping, users: 0, cache: 0 };
   }
   const sql = await getSql();
-  const users = await sql.query<{ n: number }>(`select count(*)::int as n from "user"`);
-  const cache = await sql.query<{ n: number }>(`select count(*)::int as n from rig_cache`);
+  await sql.query(`select 1 from "user" limit 1`);
+  await sql.query(`select 1 from rig_cache limit 1`);
   return {
     ...ping,
-    users: Number(users[0]?.n ?? 0),
-    cache: Number(cache[0]?.n ?? 0),
+    users: 1,
+    cache: 1,
   };
 }
 

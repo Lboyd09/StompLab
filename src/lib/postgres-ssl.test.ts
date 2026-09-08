@@ -51,6 +51,9 @@ describe("postgresConnectionString", () => {
   it("maps pool busy to a short line", () => {
     assert.match(friendlyDbError(new Error("(EMAXCONNSESSION) max clients reached")), /busy|pooler/i);
   });
+  it("maps egress quota to a short line", () => {
+    assert.match(friendlyDbError(new Error("egress quota exceeded")), /bandwidth|egress/i);
+  });
   it("maps prepared-statement failures to the simple-SQL line", () => {
     assert.match(friendlyDbError(new Error("unnamed prepared statement does not exist")), /simple SQL/i);
   });

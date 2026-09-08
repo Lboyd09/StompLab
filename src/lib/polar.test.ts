@@ -5,11 +5,13 @@ import {
   isRealPolarOrderId,
   polarCheckoutIsReady,
   polarCheckoutNeedsPoll,
+  polarConfigured,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
   polarEventIsSubscriptionRevoke,
   polarFriendlyError,
   polarPortalUrlFromPayload,
+  polarSetup,
   polarStatusIsPaid,
   purchaseLooksPaid,
 } from "./polar.ts";
@@ -194,5 +196,83 @@ describe("polarFriendlyError", () => {
   it("maps a rejected Polar return URL to domain copy", () => {
     assert.match(polarFriendlyError(422, "Invalid success_url"), /real domain/);
     assert.match(polarFriendlyError(422, "customer email is required"), /needs the email/);
+  });
+});
+
+describe("polarSetup", () => {
+  const keys = [
+    "POLAR_ACCESS_TOKEN",
+    "POLAR_OAT",
+    "POLAR_PRODUCT_ID_MONTHLY",
+    "POLAR_PRODUCT_ID_YEARLY",
+    "POLAR_PRODUCT_ID",
+    "POLAR_MONTHLY_PRODUCT_ID",
+    "POLAR_YEARLY_PRODUCT_ID",
+    "POLAR_PRODUCT_MONTHLY",
+    "POLAR_PRODUCT_YEARLY",
+  ] as const;
+
+  function snap() {
+    return Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  }
+
+  function restore(prev: Record<string, string | undefined>) {
+    for (const k of keys) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k];
+    }
+  }
+
+  it("lists token / monthly / yearly independently and stays ready with only yearly", () => {
+    const prev = snap();
+    try {
+      process.env.POLAR_ACCESS_TOKEN = "polar_tok";
+      delete process.env.POLAR_OAT;
+      delete process.env.POLAR_PRODUCT_ID_MONTHLY;
+      delete process.env.POLAR_PRODUCT_ID;
+      delete process.env.POLAR_MONTHLY_PRODUCT_ID;
+      delete process.env.POLAR_PRODUCT_MONTHLY;
+      process.env.POLAR_PRODUCT_ID_YEARLY = "prod_year";
+      const s = polarSetup();
+      assert.equal(s.token, true);
+      assert.equal(s.monthly, false);
+      assert.equal(s.yearly, true);
+      assert.equal(s.ready, true);
+      assert.equal(polarConfigured(), true);
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("accepts POLAR_YEARLY_PRODUCT_ID as an alias", () => {
+    const prev = snap();
+    try {
+      process.env.POLAR_ACCESS_TOKEN = "polar_tok";
+      delete process.env.POLAR_PRODUCT_ID_YEARLY;
+      delete process.env.POLAR_PRODUCT_YEARLY;
+      process.env.POLAR_YEARLY_PRODUCT_ID = "prod_year_alias";
+      const s = polarSetup();
+      assert.equal(s.yearly, true);
+      assert.equal(s.ready, true);
+    } finally {
+      restore(prev);
+    }
+  });
+
+  it("is not ready when the token is missing even if product ids are set", () => {
+    const prev = snap();
+    try {
+      delete process.env.POLAR_ACCESS_TOKEN;
+      delete process.env.POLAR_OAT;
+      process.env.POLAR_PRODUCT_ID_MONTHLY = "prod_month";
+      process.env.POLAR_PRODUCT_ID_YEARLY = "prod_year";
+      const s = polarSetup();
+      assert.equal(s.token, false);
+      assert.equal(s.monthly, true);
+      assert.equal(s.yearly, true);
+      assert.equal(s.ready, false);
+    } finally {
+      restore(prev);
+    }
   });
 });

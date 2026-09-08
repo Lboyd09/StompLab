@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import type { Plan } from "@/lib/plan";
-import { buildsUsedCopy } from "@/lib/plan";
 
 export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending) {
@@ -16,24 +15,16 @@ export function GeminiHint({ plan, pending }: { plan: Plan; pending?: boolean })
       </p>
     );
   }
-  if (plan.paid) {
-    return <p className="text-xs text-muted-foreground">{buildsUsedCopy(plan)}</p>;
+  if (plan.paid || plan.freeRemaining > 0) {
+    return null;
   }
-  if (plan.freeRemaining <= 0) {
-    return (
-      <p className="text-xs text-muted-foreground">
-        0 free songs left.{" "}
-        <Link to="/upgrade" className="text-primary underline underline-offset-2">
-          Unlock StompLab
-        </Link>{" "}
-        to research any song.
-      </p>
-    );
-  }
-  const n = plan.freeRemaining;
   return (
     <p className="text-xs text-muted-foreground">
-      {n} free song{n === 1 ? "" : "s"} left. Featured demos never count.
+      0 free songs left.{" "}
+      <Link to="/upgrade" className="text-primary underline underline-offset-2">
+        Unlock StompLab
+      </Link>{" "}
+      to research any song.
     </p>
   );
 }
