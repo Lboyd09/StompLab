@@ -21,6 +21,7 @@ import {
   purchaseLooksPaid,
   subscriptionStatusIsActive,
   waitForPolarCheckout,
+  fetchPolarAdminStats,
 } from "./polar";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
@@ -1056,7 +1057,26 @@ async function loadAdminDashboard(empty: {
       rewritten: ping.rewritten,
     };
     if (!ping.ok) {
-      return { ...empty, dbError: ping.error, db, queryErrors: ping.error ? [ping.error] : [] };
+      const polarLive = await fetchPolarAdminStats(ownerEmails());
+      const stats = emptyAdminStats();
+      if (polarLive.source === "polar") {
+        stats.mrrCents = polarLive.mrrCents;
+        stats.arrCents = polarLive.mrrCents * 12;
+      }
+      const dbError =
+        polarLive.source === "polar"
+          ? `${ping.error} Revenue and subscribers below are from Polar.`
+          : ping.error;
+      return {
+        ...empty,
+        dbError,
+        db,
+        queryErrors: ping.error ? [ping.error] : [],
+        revenueCents: polarLive.revenueCents,
+        subscribedCount: polarLive.subscribedCount,
+        purchases: polarLive.purchases,
+        stats,
+      };
     }
     const sql = await getSql();
     const queryErrors: string[] = [];

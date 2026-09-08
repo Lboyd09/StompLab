@@ -32,9 +32,15 @@ function AdminPage() {
   const [probe, setProbe] = useState<Probe | null>(null);
   const [probing, setProbing] = useState(false);
   const [gate, setGate] = useState<"wait" | "ok" | "no">("wait");
+  const [authWaited, setAuthWaited] = useState(false);
 
   useEffect(() => {
-    if (isPending || !user) return;
+    const t = window.setTimeout(() => setAuthWaited(true), 3500);
+    return () => window.clearTimeout(t);
+  }, []);
+
+  useEffect(() => {
+    if (!user) return;
     let cancelled = false;
     const statsTimeout = window.setTimeout(() => {
       if (!cancelled) {
@@ -73,12 +79,27 @@ function AdminPage() {
       cancelled = true;
       window.clearTimeout(statsTimeout);
     };
-  }, [user?.id, isPending]);
+  }, [user?.id]);
 
   const adminUser = isAdminEmail(user?.primaryEmail) || plan.admin;
 
-  if (isPending) {
+  if (!user && isPending && !authWaited) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+  if (!user && isPending && authWaited) {
+    return (
+      <div className="space-y-3">
+        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
+        <h1 className="font-display text-2xl font-semibold uppercase">Admin</h1>
+        <p className="text-sm text-muted-foreground">
+          Sign-in is taking longer than usual. This page still opens once the session lands — wait, or
+          sign in again.
+        </p>
+        <Link to="/login" search={{ next: "/admin" }} className="text-sm underline">
+          Sign in again
+        </Link>
+      </div>
+    );
   }
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
   if (!adminUser && gate === "wait") {

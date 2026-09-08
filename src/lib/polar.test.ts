@@ -14,6 +14,7 @@ import {
   polarSetup,
   polarStatusIsPaid,
   purchaseLooksPaid,
+  polarAdminStatsFromLists,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -274,5 +275,89 @@ describe("polarSetup", () => {
     } finally {
       restore(prev);
     }
+  });
+});
+
+describe("polarAdminStatsFromLists", () => {
+  it("sums paid customer orders and skips owner Polar tests", () => {
+    const stats = polarAdminStatsFromLists(
+      {
+        items: [
+          {
+            id: "ord_paid",
+            created_at: "2026-09-01T00:00:00Z",
+            amount: 699,
+            paid: true,
+            customer: { email: "fan@example.com" },
+            metadata: { user_id: "u1" },
+          },
+          {
+            id: "ord_year",
+            created_at: "2026-09-02T00:00:00Z",
+            amount: 7500,
+            status: "paid",
+            customer_email: "other@example.com",
+          },
+          {
+            id: "ord_owner",
+            amount: 699,
+            paid: true,
+            customer: { email: "stomplab1@gmail.com" },
+          },
+          {
+            id: "ord_open",
+            amount: 699,
+            paid: false,
+            status: "pending",
+            customer: { email: "pending@example.com" },
+          },
+        ],
+      },
+      {
+        items: [
+          {
+            id: "sub_m",
+            status: "active",
+            amount: 699,
+            recurring_interval: "month",
+            customer: { email: "fan@example.com" },
+          },
+          {
+            id: "sub_y",
+            status: "active",
+            amount: 7500,
+            recurring_interval: "year",
+            customer: { email: "other@example.com" },
+          },
+          {
+            id: "sub_owner",
+            status: "active",
+            amount: 699,
+            recurring_interval: "month",
+            customer: { email: "stomplab1@gmail.com" },
+          },
+        ],
+      },
+      ["stomplab1@gmail.com"],
+    );
+    assert.equal(stats.source, "polar");
+    assert.equal(stats.revenueCents, 699 + 7500);
+    assert.equal(stats.subscribedCount, 2);
+    assert.equal(stats.mrrCents, 699 + Math.round(7500 / 12));
+    assert.equal(stats.purchases.length, 2);
+    assert.equal(stats.purchases[0]?.email, "fan@example.com");
+  });
+
+  it("reads Polar { items } and raw arrays the same way", () => {
+    const fromArray = polarAdminStatsFromLists(
+      [{ id: "o1", amount: 699, paid: true, customer: { email: "a@b.com" } }],
+      [{ id: "s1", status: "trialing", amount: 699, recurring_interval: "month", customer: { email: "a@b.com" } }],
+    );
+    assert.equal(fromArray.revenueCents, 699);
+    assert.equal(fromArray.subscribedCount, 1);
+    const empty = polarAdminStatsFromLists({ items: [] }, { items: [] });
+    assert.equal(empty.revenueCents, 0);
+    assert.equal(empty.subscribedCount, 0);
+    assert.equal(empty.source, "polar");
   });
 });

@@ -39,6 +39,137 @@ export function polarConfigured() {
   return polarSetup().ready;
 }
 
+export type PolarAdminPurchase = {
+  created_at: string;
+  email: string;
+  user_id: string;
+  polar_order_id: string;
+  polar_checkout_id: string;
+  amount_cents: number;
+};
+
+export type PolarAdminStats = {
+  source: "polar" | "none";
+  revenueCents: number;
+  subscribedCount: number;
+  mrrCents: number;
+  purchases: PolarAdminPurchase[];
+};
+
+function polarListItems(raw: unknown): Record<string, unknown>[] {
+  if (Array.isArray(raw)) {
+    return raw.filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, unknown>[];
+  }
+  if (!raw || typeof raw !== "object") return [];
+  const rec = raw as Record<string, unknown>;
+  if (Array.isArray(rec.items)) {
+    return rec.items.filter((x) => x && typeof x === "object" && !Array.isArray(x)) as Record<string, unknown>[];
+  }
+  const nested = rec.result;
+  if (nested && typeof nested === "object" && Array.isArray((nested as { items?: unknown }).items)) {
+    return ((nested as { items: unknown[] }).items).filter(
+      (x) => x && typeof x === "object" && !Array.isArray(x),
+    ) as Record<string, unknown>[];
+  }
+  return [];
+}
+
+/** Pure parser so Admin can show Polar revenue when Postgres is down. */
+export function polarAdminStatsFromLists(
+  orders: unknown,
+  subscriptions: unknown,
+  owner: string[] = [],
+): PolarAdminStats {
+  const owners = new Set(owner.map((e) => String(e ?? "").trim().toLowerCase()).filter(Boolean));
+  const purchases: PolarAdminPurchase[] = [];
+  let revenueCents = 0;
+  for (const item of polarListItems(orders)) {
+    if (item.refunded === true) continue;
+    const customer = asRecord(item.customer);
+    const email = String(item.customer_email ?? customer.email ?? "")
+      .trim()
+      .toLowerCase();
+    if (email && owners.has(email)) continue;
+    const amount = Number(item.amount ?? item.net_amount ?? item.total_amount ?? 0) || 0;
+    const status = String(item.status ?? item.paid ?? "")
+      .trim()
+      .toLowerCase();
+    const paid = item.paid === true || status === "paid" || status === "succeeded" || polarStatusIsPaid(item);
+    if (!paid || amount <= 0) continue;
+    revenueCents += amount;
+    purchases.push({
+      created_at: String(item.created_at ?? item.createdAt ?? ""),
+      email,
+      user_id: String(asRecord(item.metadata).user_id ?? ""),
+      polar_order_id: String(item.id ?? ""),
+      polar_checkout_id: String(item.checkout_id ?? ""),
+      amount_cents: amount,
+    });
+  }
+  const subEmails = new Set<string>();
+  let mrrCents = 0;
+  for (const item of polarListItems(subscriptions)) {
+    const customer = asRecord(item.customer);
+    const email = String(item.customer_email ?? customer.email ?? "")
+      .trim()
+      .toLowerCase();
+    if (email && owners.has(email)) continue;
+    const status = String(item.status ?? "")
+      .trim()
+      .toLowerCase();
+    if (!subscriptionStatusIsActive(status)) continue;
+    if (email) subEmails.add(email);
+    else subEmails.add(String(item.id ?? `anon-${subEmails.size}`));
+    const amount = Number(item.amount ?? 0) || 0;
+    const interval = String(item.recurring_interval ?? item.recurringInterval ?? "")
+      .trim()
+      .toLowerCase();
+    if (interval === "year" || interval === "yearly") mrrCents += Math.round(amount / 12);
+    else mrrCents += amount;
+  }
+  return {
+    source: "polar",
+    revenueCents,
+    subscribedCount: subEmails.size,
+    mrrCents,
+    purchases: purchases.slice(0, 20),
+  };
+}
+
+const EMPTY_POLAR_ADMIN: PolarAdminStats = {
+  source: "none",
+  revenueCents: 0,
+  subscribedCount: 0,
+  mrrCents: 0,
+  purchases: [],
+};
+
+/** Live Polar totals for Admin when the database cannot answer. 2s cap. */
+export async function fetchPolarAdminStats(owner: string[] = []): Promise<PolarAdminStats> {
+  const token = polarToken();
+  if (!token) return EMPTY_POLAR_ADMIN;
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const get = async (path: string) => {
+    const res = await fetch(`${polarBase()}${path}`, { headers });
+    if (!res.ok) return null;
+    return res.json();
+  };
+  try {
+    const pair = await Promise.race([
+      Promise.all([get("/v1/orders/?limit=100"), get("/v1/subscriptions/?limit=100")]),
+      new Promise<null>((resolve) => {
+        setTimeout(() => resolve(null), 2_000);
+      }),
+    ]);
+    if (!pair) return EMPTY_POLAR_ADMIN;
+    const [orders, subs] = pair;
+    if (!orders && !subs) return EMPTY_POLAR_ADMIN;
+    return polarAdminStatsFromLists(orders ?? { items: [] }, subs ?? { items: [] }, owner);
+  } catch {
+    return EMPTY_POLAR_ADMIN;
+  }
+}
+
 export function polarFriendlyError(status: number, detail: unknown): string {
   const d =
     typeof detail === "string"

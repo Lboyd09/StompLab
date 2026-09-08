@@ -31,6 +31,13 @@ test("injects before </head>", () => {
   assert.ok(out.indexOf("manifest") < out.indexOf("</head>"));
 });
 
+test("does not inject grok apple-touch when /icon-192.png is already linked", () => {
+  const html = '<html><head><link rel="apple-touch-icon" sizes="180x180" href="/icon-192.png"></head></html>';
+  const out = injectGrokPwaHead(html);
+  assert.equal(out.includes('href="/__grok/icon-180.png"'), false);
+  assert.match(out, /href="\/icon-192\.png"/);
+});
+
 test("injects the extensions script without a project id", () => {
   const out = injectGrokPwaHead("<html><head></head></html>", {
     appName: "Demo",
