@@ -4,6 +4,7 @@ import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/sonner";
+import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
@@ -59,6 +60,7 @@ function Root() {
           <ShellSwitch />
           <Toaster />
         </AuthProvider>
+        <Analytics />
         <Scripts />
       </body>
     </html>
