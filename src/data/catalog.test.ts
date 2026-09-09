@@ -95,6 +95,13 @@ describe("research prompt", () => {
     assert.equal(fx.includes("amp-guitar") || fx.includes("# Guitar Amps"), false);
     assert.equal(/cali-rectifire|essex-a30|4x12-cali-v30/.test(fx), false);
     assert.match(fx, /deez-one-vintage/);
+    assert.match(fx, /knobs: Drive/);
+  });
+
+  it("lists factory knobs on guitar amps so Google cannot leave them at 5", () => {
+    const gtr = compactCatalogForPrompt("guitar", "hx-stomp");
+    assert.match(gtr, /# Guitar Amps \(knobs: Drive/);
+    assert.match(gtr, /cali-iv-rhythm-2\|/);
   });
 });
 

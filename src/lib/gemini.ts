@@ -17,7 +17,7 @@ const GOOGLE_MODEL = "gemini-2.5-flash";
 const GATEWAY_MODEL = "google/gemini-2.5-flash";
 const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
 const GOOGLE_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
-const GENERATE_MS = 32000;
+const GENERATE_MS = 40000;
 const BUSY = "Research is busy. Try again in a minute.";
 const SYSTEM =
   "You are a session tech. Program one Line 6 Helix-family preset (HX Stomp, POD Go, Helix, HX Effects) that A/Bs against a specific RECORD. Research the tracking rig first — album, year, player, guitar, amp, pedals, cab/mic, technique — then map to catalog model ids. Reply with a single JSON object. No markdown. Never a generic genre patch.";
@@ -99,6 +99,16 @@ async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Pro
   }
 }
 
+/** Drop Gemini thinking parts so `{` in the chain-of-thought cannot break JSON. */
+export function googleAnswerText(
+  parts: { text?: string; thought?: boolean }[] | undefined,
+): string {
+  return (parts ?? [])
+    .filter((p) => p.thought !== true)
+    .map((p) => p.text ?? "")
+    .join("");
+}
+
 async function googleGenerate(key: string, prompt: string): Promise<string> {
   const url = `${GOOGLE_GENERATE}?key=${encodeURIComponent(key)}`;
   let payload: RequestInit = {
@@ -112,9 +122,9 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 4096,
+        maxOutputTokens: 8192,
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 0 },
+        thinkingConfig: { thinkingBudget: 1024 },
       },
     }),
   };
@@ -146,7 +156,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
             responseMimeType: "application/json",
           },
         }),
@@ -160,7 +170,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
   let text = "";
   try {
     const body = JSON.parse(raw) as {
-      candidates?: { content?: { parts?: { text?: string }[] }; finishReason?: string }[];
+      candidates?: { content?: { parts?: { text?: string; thought?: boolean }[] }; finishReason?: string }[];
       promptFeedback?: { blockReason?: string };
       error?: { message?: string };
     };
@@ -168,7 +178,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
     if (body.promptFeedback?.blockReason) {
       throw new Error("Research blocked that prompt. Try a different song title.");
     }
-    text = body.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    text = googleAnswerText(body.candidates?.[0]?.content?.parts);
   } catch (err) {
     if (err instanceof Error && /blocked|rejected|billing|Research/.test(err.message)) throw err;
     throw new Error("Could not read that answer. Try the song again.");
@@ -189,8 +199,8 @@ async function gatewayGenerate(token: string, prompt: string): Promise<string> {
       body: JSON.stringify({
         model: GATEWAY_MODEL,
         temperature: 0.2,
-        max_tokens: 4096,
-        reasoning_effort: "none",
+        max_tokens: 8192,
+        reasoning_effort: "low",
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: SYSTEM },

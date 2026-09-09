@@ -1,4 +1,4 @@
-import { CATEGORIES, CATEGORY_MAP, DEVICE_MAP } from "./categories";
+import { CATEGORIES, CATEGORY_MAP, DEFAULT_PARAMS, DEVICE_MAP } from "./categories";
 import { helixIdFor } from "./helix-ids";
 import { AMP_MODELS } from "./models-amps";
 import { CAB_MODELS } from "./models-cabs";
@@ -171,7 +171,8 @@ export function compactCatalogForPrompt(instrument?: Instrument, deviceId?: Stom
       return m.instrument === "both" || m.instrument === instrument;
     });
     if (!models.length) continue;
-    rows.push(`# ${cat.label}`);
+    const knobs = DEFAULT_PARAMS[cat.id] ?? [];
+    rows.push(knobs.length ? `# ${cat.label} (knobs: ${knobs.join(",")})` : `# ${cat.label}`);
     for (const m of models) {
       rows.push(`- ${m.id}|${m.basedOn}`);
     }

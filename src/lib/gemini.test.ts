@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { describe, it } from "node:test";
-import { classifyKey, collectResearchKeys, friendlyResearchError } from "./gemini.ts";
+import { classifyKey, collectResearchKeys, friendlyResearchError, googleAnswerText } from "./gemini.ts";
 
 describe("classifyKey", () => {
   it("treats Google AI Studio keys as google", () => {
@@ -58,5 +59,30 @@ describe("friendlyResearchError", () => {
       friendlyResearchError(new Error("self-signed certificate in certificate chain")),
       /secure connection failed/i,
     );
+  });
+});
+
+describe("googleAnswerText", () => {
+  it("keeps JSON and drops thought parts that would break extractJson", () => {
+    const json = '{"name":"Teen Spirit","tempo":117}';
+    assert.equal(
+      googleAnswerText([
+        { thought: true, text: "The record used a Twin {not a Recto}." },
+        { text: json },
+      ]),
+      json,
+    );
+    assert.equal(googleAnswerText([{ text: json }]), json);
+    assert.equal(googleAnswerText(undefined), "");
+  });
+});
+
+describe("research thinking", () => {
+  const src = readFileSync(new URL("./gemini.ts", import.meta.url), "utf8");
+  it("lets Flash think so it can A/B against the record", () => {
+    assert.match(src, /thinkingBudget:\s*1024/);
+    assert.match(src, /reasoning_effort:\s*"low"/);
+    assert.equal(/thinkingBudget:\s*0/.test(src), false);
+    assert.equal(/reasoning_effort:\s*"none"/.test(src), false);
   });
 });
