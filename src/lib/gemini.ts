@@ -20,7 +20,7 @@ const GOOGLE_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models
 const GENERATE_MS = 32000;
 const BUSY = "Research is busy. Try again in a minute.";
 const SYSTEM =
-  "You are a session tech programming Line 6 HX Stomp presets. Reply with a single JSON object. No markdown.";
+  "You are a session tech. Program one Line 6 Helix-family preset (HX Stomp, POD Go, Helix, HX Effects) that A/Bs against a specific RECORD. Research the tracking rig first — album, year, player, guitar, amp, pedals, cab/mic, technique — then map to catalog model ids. Reply with a single JSON object. No markdown. Never a generic genre patch.";
 
 export function friendlyResearchError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err ?? "");

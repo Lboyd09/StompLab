@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
 import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
-import { systemForDevice } from "../lib/preset-schema.ts";
+import { systemForDevice, songResearchInstructions } from "../lib/preset-schema.ts";
 
 describe("DS-1 catalog", () => {
   it("aliases DS-1 to Deez One Vintage first, never Stupor OD", () => {
@@ -64,6 +64,18 @@ describe("research prompt", () => {
     assert.match(prompt, /solo is almost never the rhythm tone/i);
     assert.match(prompt, /session tech/i);
     assert.match(prompt, /guitar\/pickups/i);
+    assert.match(prompt, /A\/Bs against the RECORD/);
+    assert.match(prompt, /EVERY factory knob/);
+    assert.match(prompt, /Unknown rock song/);
+  });
+
+  it("asks for the tracked rig before any model id", () => {
+    const brief = songResearchInstructions("Black Hole Sun", "Soundgarden", "guitar");
+    assert.match(brief, /Black Hole Sun by Soundgarden/);
+    assert.match(brief, /TRACKED on the record/);
+    assert.match(brief, /Listener test/);
+    assert.match(brief, /album title, year, studio, producer/);
+    assert.match(brief, /paramOverrides/);
   });
 
   it("tells HX Effects it has no amp or cab", () => {

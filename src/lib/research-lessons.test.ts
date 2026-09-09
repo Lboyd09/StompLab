@@ -33,5 +33,7 @@ describe("research lessons", () => {
     assert.match(block, /stupor-od is the SD-1/);
     assert.equal(/everlong|like a stone|show me how to live/i.test(block), false);
     assert.match(STANDING_RESEARCH_RULES, /deez-one-vintage/);
+    assert.match(STANDING_RESEARCH_RULES, /Set every factory knob/);
+    assert.match(STANDING_RESEARCH_RULES, /brightness and midrange/);
   });
 });

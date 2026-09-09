@@ -17,6 +17,7 @@ import {
   overlayUserGear,
   parsePresetJson,
   publicPreset,
+  songResearchInstructions,
   systemForDevice,
   toPreset,
 } from "./preset-schema";
@@ -239,16 +240,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
 ${lessons}
 
-Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
-Research the original recorded ${data.instrument} tone before you pick a single model:
-1. Exact recording (album, year, studio vs live, which player if a band).
-2. Guitar + pickups + selector + volume/tone as played on that track.
-3. Amp head, channel, and documented settings if they exist.
-4. Pedal order as used on that session — not a generic chain.
-5. Cab + speakers + mic + distance.
-6. Technique: pick vs fingers, attack, palm mute, volume-knob clean-up.
-Only then map each real piece to a catalog modelId. If sources disagree, prefer the tracking/studio rig over a later live rig.
-Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone.
+${songResearchInstructions(data.song, data.artist, data.instrument)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
@@ -459,7 +451,7 @@ export const revisePresetFn = createServerFn({ method: "POST" })
       const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
 ${lessons}
 
-Revise this ${DEVICE_MAP[data.stompModel].name} path. Keep factory model ids. Only change what the note asks.
+Revise this ${DEVICE_MAP[data.stompModel].name} path so it is closer to the RECORD. Keep factory model ids. Only change what the note asks.
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
 Current path: ${data.current}

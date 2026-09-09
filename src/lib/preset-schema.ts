@@ -278,8 +278,8 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"album/year, real rig, HX stand-ins. Distinctive parts named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real gear","notes":""}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""},{"name":"Solo","color":"#e24a3a","enabledModelIds":["deez-one-vintage","kinky-boost"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":5.5,"Ch Vol":7.2}},"notes":"lead — not the rhythm tone"}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"},{"index":4,"label":"SOLO","color":"#e24a3a","action":"snapshot","snapshotName":"Solo"}],"programming":["step"],"tips":["how to play it like the record"]}
-Params MUST be JSON numbers 0-10. Cab Mic is 0 (SM57) — never a string. If the song has a solo or signature trick, it MUST appear as its own snapshot.`;
+  return `{"name":"<=18 chars","tempo":120,"summary":"album/year/studio, real rig, HX stand-ins. Distinctive parts named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product name","notes":"how it was used on the record"}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""},{"name":"Solo","color":"#e24a3a","enabledModelIds":["deez-one-vintage","kinky-boost"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":5.5,"Ch Vol":7.2}},"notes":"lead — not the rhythm tone"}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"},{"index":4,"label":"SOLO","color":"#e24a3a","action":"snapshot","snapshotName":"Solo"}],"programming":["step"],"tips":["how to play it like the record"]}
+Params MUST be JSON numbers 0-10. Set EVERY factory knob on every block — omitting a param stores 5 and misses the record. Cab Mic is 0 (SM57) — never a string. If the song has a solo or signature trick, it MUST appear as its own snapshot.`;
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
@@ -313,17 +313,20 @@ export function systemForDevice(
         ? `Export is a .pgp for POD Go Edit (device ${d.hlxDeviceId ?? "2162695"}). Same HX model ids as Helix. Do not invent models. Skip poly pitch/whammy.`
         : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
   const snapCount = d.snapshots;
-  return `Session tech. Program a Line 6 ${d.name} preset that sounds like the RECORD. JSON only.
+  return `Session tech. Program a Line 6 ${d.name} preset that A/Bs against the RECORD — not a genre template, not a YouTube cover. JSON only.
 Max ${d.maxBlocks} blocks, ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
 ${exportRule}
 
-Tone:
-- Research the RECORD, not a generic genre patch. Album + year in summary. Studio tracking rig first.
+Tone — match THIS record:
+- Listener test: album in one ear, this preset in the other. Brightness, dirt amount, midrange, pick attack, and room must match. A generic rock/metal patch is a failed answer.
+- Research the RECORD first. Album + year + studio/producer in summary. Tracking/studio rig beats a later tour rig.
 - Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after that.
 - originalGear = real guitars/pedals/amps/cabs (the actual products). Then map each to a catalog id.
 - Every block must be on that recording. No spare gate/comp/chorus/hall.
-- Params 0–10 numbers. Cab Mic = 0 (SM57). Never strings in params.
-- GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain.
+- Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5 and the preset sounds generic. Cab Mic = 0 (SM57) unless the session used something else — still a number, never a string.
+- EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
+- GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
+- Unknown rock song ≠ Dual Rectifier. Unknown Fender song ≠ Deluxe. Pick the closest documented amp from that album/era.
 - ${ampRule}
 - Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
 - ${play.prompt}
@@ -339,5 +342,30 @@ Arrangement (mandatory — this is how you miss a song):
 - Snapshots MUST sound different. Documented clean intros (Teen Spirit Twin+Clone no DS-1; Sandman wah arpeggio) are SNAPSHOT 1.
 - Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in section order (closest row first: 1, 2, 3…). No TAP on FS1–3. MODE/TAP are hardware extras — do not spend numbered FS on them.
 
-programming = unit steps. tips = pick/volume so it matches the record.`;
+programming = unit steps. tips = pick, pickup, and guitar volume so the player can match the record.`;
+}
+
+/** Song-specific research brief. Catalog + schema are appended by the caller. */
+export function songResearchInstructions(
+  song: string,
+  artist: string | undefined,
+  instrument: "guitar" | "bass",
+) {
+  const title = song.trim();
+  const billed = (artist ?? "").trim();
+  const who = billed ? `${title} by ${billed}` : title;
+  return `Song: ${who}
+Instrument: ${instrument} as it was TRACKED on the record (not a cover, not a live-only tour).
+
+Research the original recorded ${instrument} tone BEFORE you pick a single model. Put what you found in summary + originalGear (real product names). Then map to catalog ids.
+1. Exact recording — album title, year, studio, producer, which player. Album beats a later live version.
+2. Guitar + pickups + selector + volume/tone as tracked. Note if it is doubled L/R.
+3. Amp head, channel, and documented settings (Drive / Bass / Mid / Treble / Presence) if they exist.
+4. Pedal order as used on THAT session — not a generic chain and not a later tour board.
+5. Cab + speakers + mic + distance. Close and dry unless the record is roomy.
+6. Technique — pick vs fingers, attack, palm mute, volume-knob clean-up. Put this in tips; the player has to play it like the record or the preset will miss.
+
+Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
+Only then map each real piece to a catalog modelId. If sources disagree, prefer the tracking/studio rig over a later live rig.
+Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone. Put Drive / Ch Vol / Mix changes in paramOverrides so they actually export.`;
 }

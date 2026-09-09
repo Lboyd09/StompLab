@@ -16,6 +16,8 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - ONLY catalog modelId values that appear in the catalog list. Factory HX names only. Never invent models. Never emit german-mottled, knuckle-dragon, poly-sustain, glitch-delay, 12-string, shimmer, dynamic-hall, stereo-imager, split-y, split-a-b, crossover-split, merge, impulse-response, or any IR/CabMicIr/Agoura/VIC/HX2 id. HX Edit rejects those.
 - Cab = a factory HD2 cab (4x12-cali-v30, 4x12-whoWatt, 1x12-us-deluxe, …). Never an IR block.
 - Prefer the tracking/studio rig over a later tour rig when sources disagree. If the record is a Twin, do not pick a Rectifier. If it is a Plexi, do not pick a Deluxe.
+- Set every factory knob. Missing params become 5 and miss the record.
+- Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
 - Do not "fix" a previous song by name. If a note says a part was wrong, turn it into a general rule (gain staging, missing solo snap, wrong dirt pedal) and apply it next time.`;
 
 export function generalizeLesson(raw: string): string | null {
