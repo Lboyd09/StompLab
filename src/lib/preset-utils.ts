@@ -91,6 +91,59 @@ const TAP_FS: FootswitchAssign = {
   notes: "TAP",
 };
 
+export const GATE_TOGGLE_IDS = new Set(["noise-gate", "hard-gate", "horizon-gate"]);
+export const EQ_TOGGLE_IDS = new Set([
+  "simple-eq",
+  "low-and-high-cut",
+  "low-high-shelf",
+  "parametric",
+  "tilt",
+  "10-band-graphic",
+  "cali-q-graphic",
+]);
+
+export function isGateBlock(modelId: string) {
+  return GATE_TOGGLE_IDS.has(modelId);
+}
+
+export function isEqToggleBlock(modelId: string) {
+  return EQ_TOGGLE_IDS.has(modelId);
+}
+
+function assignUtilityBypassFs(
+  blocks: StompBlock[],
+  fs: FootswitchAssign[],
+  device: { footswitches: number; layout: string },
+): FootswitchAssign[] {
+  if (device.footswitches <= 3) return fs;
+  const reserved = device.layout === "xl" ? new Set([7, 8]) : new Set<number>();
+  const used = new Set(fs.map((f) => f.index));
+  const free: number[] = [];
+  for (let i = 1; i <= device.footswitches; i++) {
+    if (reserved.has(i) || used.has(i)) continue;
+    free.push(i);
+  }
+  const next = [...fs];
+  const take = (label: string, color: string, block: StompBlock, notes: string) => {
+    if (!free.length) return;
+    if (next.some((f) => f.action === "bypass" && f.targetBlockId === block.id)) return;
+    const index = free.shift()!;
+    next.push({
+      index,
+      label,
+      color,
+      action: "bypass",
+      targetBlockId: block.id,
+      notes,
+    });
+  };
+  const gate = blocks.find((b) => isGateBlock(b.modelId));
+  const eq = blocks.find((b) => isEqToggleBlock(b.modelId));
+  if (gate) take("GATE", "#f5d000", gate, "On/off the noise gate.");
+  if (eq) take("EQ", "#c6e800", eq, "On/off the EQ.");
+  return next;
+}
+
 export function featuredOriginal(id: string): Preset | undefined {
   const base = featuredBaseId(id);
   return FEATURED.find((p) => p.id === base || p.id === id);
@@ -180,6 +233,7 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
         },
       ];
     }
+    fs = assignUtilityBypassFs(blocks, fs, device);
     if (device.layout === "xl") {
       fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
     } else {

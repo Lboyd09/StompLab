@@ -1,9 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <rect width="32" height="32" rx="7" fill="#F3EFE6"/>
   <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="6.25" fill="none" stroke="#141414" stroke-width="1.5"/>
-  <g fill="none" stroke="#141414" stroke-width="3.05" stroke-linecap="butt" stroke-linejoin="miter">
-    <path d="M18.55 11.2c.05-1.55-1.35-2.55-3.35-2.55-2.15 0-3.5 1.05-3.5 2.55 0 1.35 1.05 2.15 3.35 2.7 2.45.55 3.85 1.4 3.8 3.35-.05 1.85-1.7 3.05-3.9 3.05-2.35 0-3.75-1.2-3.85-3.05"/>
-    <path d="M21.35 8.75 V21.2 H27.1"/>
-  </g>
-  <image href="data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACAAAAAgCAIAAAD8GO2jAAADLUlEQVR4nOyWa0iTURjHz9wLhZd52WbO+ywV27xfCyqDUguFLpRoK81IUrzVlyIyUfyiYDpNR1QQSWreUrzbRXNpOp3LsmnrNo3cdHPZhoYutSdXYYS2se1D0I/3w3mf9z3/55znnPOcB1teXkYrfJ6ZKSpi8ni8l/yR6WkZ0hwi0YK21c3Pzy85OdXYxERlxKkctLY0pZ09B7qODvYBAb4UKyukOSKxuK9vYGz8g6UlOf9KXkjovh8OQP34iVgfb8+M9Ase7jSkHYO8oazsnKHnw2V3SveGhOE+yWSBQYEO9nY1laU4HA7pAhj0kagYoXC8n9OPt7ez6ejorCy7ZfIzatoDA90WFHDj5m0i0RxPJhGNjYziYhlIp5gSCJ2P2QqFwmCQ98zVxRnpAVdX5/4BLiYSiWF7IT1gSSaDuAHSM/++A2ydb3NzX2ru1be1PxS8fqtUKl2ct/j7+Rw6GNHY1JrPLIkIDyvMz0XaOIhPSOnu6QsK9GdEH5VKZd1Pe4tZ1yFTeXt5IO1nMDs7B+rQKLmaZ25mBo2JCVFmdo6NNWVxcRGpzZprsHHjBjtbG2hUVNSoLNbWlGslBZcvncfj8Uh7B6CSnZUOBzI3j0l19nBz94+JO1NeUb20tIQ0Yb012Llje3NDVW1dw/z8wgCX18Xugae5tV03a6ACwpKUGK9qi8WTkdEnn3T3WliYI7VZM0T3H3Ts3hMexTgFG1RlIRAIeOx79JULX5HarDkDXx8vuUIhHBsPPxDp6UHHMKyjkw2ToFA2OVLt4Yc+DpcRc3p1l8yMi5udqOo6gDg01Vferapta39UVV0HFrhNIaszjkU2NLbA69SUBJ7VXWBn/6mDI5FIqckJaSkJSNcUFLKYRaz/2fSvYCQSUSKVIj0wJZGQySQMarGRkVdID/D5o+50mgGNRoMiaXRUgHTKi2E+yNLpdJzw/btdwcFOVMf62nIdFl5h4YfFokk2u8vAwZFayCwAh4yYeKl0GmkNnD6QEgjesFjF1ja2vxW/cJME+PtCGWloaIg0Ry6Xf5wQcThcSFnMgvzQsP3oV3WNdFq+JyYmma5cgsA3AAAA//+s3LqvAAAABklEQVQDAJqcVLiL+4jUAAAAAElFTkSuQmCC" width="32" height="32"/>
+  <text x="15.6" y="23.2" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="15.4" font-weight="900" letter-spacing="-1.6" fill="#141414">SL</text>
 </svg>

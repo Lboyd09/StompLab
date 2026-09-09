@@ -85,4 +85,9 @@ describe("research thinking", () => {
     assert.equal(/thinkingBudget:\s*0/.test(src), false);
     assert.equal(/reasoning_effort:\s*"none"/.test(src), false);
   });
+  it("uses a separate custom-sound system that is not a song replica", () => {
+    assert.match(src, /export const CUSTOM_SYSTEM/);
+    assert.match(src, /not a song replica/);
+    assert.match(src, /opts\?\.system \?\? SYSTEM/);
+  });
 });

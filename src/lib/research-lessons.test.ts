@@ -35,5 +35,7 @@ describe("research lessons", () => {
     assert.match(STANDING_RESEARCH_RULES, /deez-one-vintage/);
     assert.match(STANDING_RESEARCH_RULES, /Set every factory knob/);
     assert.match(STANDING_RESEARCH_RULES, /brightness and midrange/);
+    assert.match(STANDING_RESEARCH_RULES, /GATE:/);
+    assert.match(STANDING_RESEARCH_RULES, /dedicated EQ/);
   });
 });

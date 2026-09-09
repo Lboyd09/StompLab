@@ -9,7 +9,9 @@ import {
   featuredOriginal,
   formatParam,
   isDemoId,
+  isEqToggleBlock,
   isFeaturedKnownId,
+  isGateBlock,
   sortedBlocks,
   withSnapshot,
   withStompModel,
@@ -314,6 +316,41 @@ export function PresetWorkspace({
             <CardDescription>Tap a block on the screen or here. The three knobs edit the selected block.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-2">
+            {(() => {
+              const gateBlock = displayed.blocks.find((b) => isGateBlock(b.modelId));
+              const eqBlock = displayed.blocks.find((b) => isEqToggleBlock(b.modelId));
+              if (!gateBlock && !eqBlock) return null;
+              return (
+                <div className="mb-1 flex flex-wrap gap-2">
+                  {gateBlock ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleBlock(gateBlock.id)}
+                      className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                        gateBlock.enabled
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      Gate {gateBlock.enabled ? "on" : "off"}
+                    </button>
+                  ) : null}
+                  {eqBlock ? (
+                    <button
+                      type="button"
+                      onClick={() => toggleBlock(eqBlock.id)}
+                      className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                        eqBlock.enabled
+                          ? "border-foreground bg-foreground text-background"
+                          : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      EQ {eqBlock.enabled ? "on" : "off"}
+                    </button>
+                  ) : null}
+                </div>
+              );
+            })()}
             {sortedBlocks(displayed).map((b, i) => {
               const model = blockModel(b);
               if (!model) return null;

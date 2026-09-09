@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
 import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
-import { systemForDevice, songResearchInstructions } from "../lib/preset-schema.ts";
+import { systemForDevice, songResearchInstructions, systemForCustomSound, customSoundInstructions } from "../lib/preset-schema.ts";
 
 describe("DS-1 catalog", () => {
   it("aliases DS-1 to Deez One Vintage first, never Stupor OD", () => {
@@ -67,6 +67,8 @@ describe("research prompt", () => {
     assert.match(prompt, /A\/Bs against the RECORD/);
     assert.match(prompt, /EVERY factory knob/);
     assert.match(prompt, /Unknown rock song/);
+    assert.match(prompt, /GATE:/);
+    assert.match(prompt, /cali-q-graphic/);
   });
 
   it("asks for the tracked rig before any model id", () => {
@@ -76,6 +78,18 @@ describe("research prompt", () => {
     assert.match(brief, /Listener test/);
     assert.match(brief, /album title, year, studio, producer/);
     assert.match(brief, /paramOverrides/);
+    assert.match(brief, /noise gate or a dedicated EQ/);
+  });
+
+  it("custom sound prompt invents a rig instead of copying a record", () => {
+    const prompt = systemForCustomSound("hx-stomp", "guitar");
+    assert.match(prompt, /not a song replica/i);
+    assert.match(prompt, /Do not research a similar song/);
+    assert.equal(/A\/Bs against the RECORD/.test(prompt), false);
+    const brief = customSoundInstructions("Klon into a Deluxe, slapback, Strat neck", "guitar");
+    assert.match(brief, /CUSTOM SOUND/);
+    assert.match(brief, /Klon into a Deluxe/);
+    assert.match(brief, /not a song/);
   });
 
   it("tells HX Effects it has no amp or cab", () => {

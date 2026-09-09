@@ -137,8 +137,9 @@ function CreatePage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Custom rig</p>
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Describe a sound</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          Pedalboard, amp stack, or a feeling. You get a path on the replica and a .hlx HX Edit will
-          import — for your {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}.
+          Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}
+          {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica.
+          If you want a record, use Research a song.
         </p>
         <RigDisclaimer />
       </header>

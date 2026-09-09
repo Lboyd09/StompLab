@@ -19,8 +19,10 @@ const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
 const GOOGLE_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
 const GENERATE_MS = 40000;
 const BUSY = "Research is busy. Try again in a minute.";
-const SYSTEM =
+export const SYSTEM =
   "You are a session tech. Program one Line 6 Helix-family preset (HX Stomp, POD Go, Helix, HX Effects) that A/Bs against a specific RECORD. Research the tracking rig first — album, year, player, guitar, amp, pedals, cab/mic, technique — then map to catalog model ids. Reply with a single JSON object. No markdown. Never a generic genre patch.";
+export const CUSTOM_SYSTEM =
+  "You are a session tech. Invent one original Line 6 Helix-family preset from a player's description. This is a custom sound, not a song replica. Do not copy a famous player's documented rig or a similar recorded song unless they named that song. Reply with a single JSON object. No markdown.";
 
 export function friendlyResearchError(err: unknown): string {
   const msg = err instanceof Error ? err.message : String(err ?? "");
@@ -109,7 +111,7 @@ export function googleAnswerText(
     .join("");
 }
 
-async function googleGenerate(key: string, prompt: string): Promise<string> {
+async function googleGenerate(key: string, prompt: string, system = SYSTEM): Promise<string> {
   const url = `${GOOGLE_GENERATE}?key=${encodeURIComponent(key)}`;
   let payload: RequestInit = {
     method: "POST",
@@ -118,7 +120,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
       "x-goog-api-key": key,
     },
     body: JSON.stringify({
-      systemInstruction: { parts: [{ text: SYSTEM }] },
+      systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
         temperature: 0.2,
@@ -152,7 +154,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
       payload = {
         ...payload,
         body: JSON.stringify({
-          systemInstruction: { parts: [{ text: SYSTEM }] },
+          systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
             temperature: 0.2,
@@ -187,7 +189,7 @@ async function googleGenerate(key: string, prompt: string): Promise<string> {
   return text;
 }
 
-async function gatewayGenerate(token: string, prompt: string): Promise<string> {
+async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): Promise<string> {
   const res = await fetchWithTimeout(
     GATEWAY,
     {
@@ -203,7 +205,7 @@ async function gatewayGenerate(token: string, prompt: string): Promise<string> {
         reasoning_effort: "low",
         response_format: { type: "json_object" },
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: system },
           { role: "user", content: prompt },
         ],
       }),
@@ -233,17 +235,18 @@ async function gatewayGenerate(token: string, prompt: string): Promise<string> {
   }
 }
 
-export async function geminiJson(prompt: string): Promise<unknown> {
+export async function geminiJson(prompt: string, opts?: { system?: string }): Promise<unknown> {
   const { google, gateway } = collectResearchKeys();
   if (!google && !gateway) {
     throw new Error("Song research isn't configured on this copy yet. Try a featured demo, or try again later.");
   }
+  const system = opts?.system ?? SYSTEM;
 
   const errors: string[] = [];
   const tryGoogle = async () => {
     if (!google) return null;
     try {
-      return extractJson(await googleGenerate(google, prompt));
+      return extractJson(await googleGenerate(google, prompt, system));
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Google research failed.";
       if (err instanceof Error && err.name === "AbortError") throw new Error(BUSY);
@@ -254,7 +257,7 @@ export async function geminiJson(prompt: string): Promise<unknown> {
   const tryGateway = async () => {
     if (!gateway) return null;
     try {
-      return extractJson(await gatewayGenerate(gateway, prompt));
+      return extractJson(await gatewayGenerate(gateway, prompt, system));
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw new Error(BUSY);
       errors.push(err instanceof Error ? err.message : "Gateway research failed.");

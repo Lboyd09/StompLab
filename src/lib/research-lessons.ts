@@ -18,6 +18,8 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Prefer the tracking/studio rig over a later tour rig when sources disagree. If the record is a Twin, do not pick a Rectifier. If it is a Plexi, do not pick a Deluxe.
 - Set every factory knob. Missing params become 5 and miss the record.
 - Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
+- GATE: only if the record is tight high-gain / palm-muted / documented as gated. Snapshots and spare FS turn it on/off. Never invent a gate on a clean or vintage record.
+- EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ). Spare FS = bypass. Never add a spare EQ "just in case."
 - Do not "fix" a previous song by name. If a note says a part was wrong, turn it into a general rule (gain staging, missing solo snap, wrong dirt pedal) and apply it next time.`;
 
 export function generalizeLesson(raw: string): string | null {

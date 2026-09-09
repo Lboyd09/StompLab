@@ -238,6 +238,29 @@ describe("visual FS map", () => {
     assert.equal(intro?.index, 1);
   });
 
+  it("gives Sandman on/off GATE and EQ on spare XL switches, not on 3-switch Stomp", () => {
+    const src = featured("featured-sandman");
+    assert.ok(src.blocks.some((b) => b.modelId === "hard-gate"));
+    assert.ok(src.blocks.some((b) => b.modelId === "cali-q-graphic"));
+    const xl = withStompModel(src, "hx-stomp-xl");
+    const gate = xl.footswitches.find((f) => f.label === "GATE");
+    const eq = xl.footswitches.find((f) => f.label === "EQ");
+    assert.equal(gate?.action, "bypass");
+    assert.equal(eq?.action, "bypass");
+    assert.ok((gate?.index ?? 0) >= 4);
+    assert.ok((eq?.index ?? 0) >= 4);
+    const stomp = withStompModel(src, "hx-stomp");
+    assert.equal(
+      stomp.footswitches.some((f) => f.label === "GATE" || f.label === "EQ"),
+      false,
+    );
+    const teen = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
+    assert.equal(
+      teen.footswitches.some((f) => f.label === "GATE" || f.label === "EQ"),
+      false,
+    );
+  });
+
   it("exports only factory HD2/L6SPB ids for every featured rig", () => {
     for (const p of FEATURED) {
       const hlx = buildHlx(p);
@@ -380,11 +403,14 @@ describe("HLX import safety", () => {
     const hlx = buildHlx(featured("featured-sandman"));
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
     const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
-    assert.ok((dsp0.block2.Drive as number) <= 0.2);
+    const rectoEntry = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_AmpCaliRectifire");
+    assert.ok(rectoEntry, "Sandman must export Cali Rectifire");
+    const [rectoKey, recto] = rectoEntry;
+    assert.ok((recto.Drive as number) <= 0.2);
     const snap1 = tone.snapshot1 as {
       controllers: { dsp0: Record<string, Record<string, { "@value": number }>> };
     };
-    const drive = snap1.controllers.dsp0.block2?.Drive?.["@value"];
+    const drive = snap1.controllers.dsp0[rectoKey]?.Drive?.["@value"];
     assert.ok(typeof drive === "number" && drive <= 0.45);
   });
 

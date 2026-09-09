@@ -10,15 +10,18 @@ import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
 import { standingRulesBlock } from "./research-lessons";
-import { friendlyResearchError, geminiJson } from "./gemini";
+import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM } from "./gemini";
 import {
   GearSchema,
   jsonSchemaHint,
+  jsonSchemaHintCustom,
   overlayUserGear,
   parsePresetJson,
   publicPreset,
   songResearchInstructions,
+  customSoundInstructions,
   systemForDevice,
+  systemForCustomSound,
   toPreset,
 } from "./preset-schema";
 import { isDemoId, newId, withStompModel } from "./preset-utils";
@@ -159,6 +162,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
 
 async function runGeminiPreset(opts: {
   prompt: string;
+  system?: string;
   instrument: "guitar" | "bass";
   stompModel: StompModelId;
   playbackTarget?: PlaybackTarget;
@@ -167,7 +171,7 @@ async function runGeminiPreset(opts: {
   artist?: string;
   userGear: UserGear[];
 }): Promise<Preset> {
-  const json = await geminiJson(opts.prompt);
+  const json = await geminiJson(opts.prompt, opts.system ? { system: opts.system } : undefined);
   const parsed = parsePresetJson(json);
   return overlayUserGear(
     toPreset(parsed, {
@@ -321,21 +325,19 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
 
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
-      const lessons = await standingFeedbackLessons();
-      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
-${lessons}
+      const prompt = `${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}
 
-Build this sound on the ${DEVICE_MAP[data.stompModel].name}:
-${data.description}
+${customSoundInstructions(data.description, data.instrument)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
 ${catalog}
 
 JSON schema:
-${jsonSchemaHint()}`;
+${jsonSchemaHintCustom()}`;
       const preset = await runGeminiPreset({
         prompt,
+        system: CUSTOM_SYSTEM,
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "custom",

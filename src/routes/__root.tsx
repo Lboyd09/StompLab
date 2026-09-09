@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl4";
+const ICON_V = "sl5";
 
 export const Route = createRootRoute({
   head: () => ({

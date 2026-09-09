@@ -25,7 +25,7 @@ export const FEATURED: Preset[] = [
     name: "Teen Spirit",
     tempo: 117,
     summary:
-      "Nevermind (1991). Guitar Chalk + Butch Vig: the INTRO is a clean Twin Reverb with the EHX Small Clone — no DS-1. Dirt is a BOSS DS-1 into the Mesa Studio .22 for verse/chorus. The watery swirl is the pre-chorus ('hello, hello'), not the loud HELLO. Snapshot 1 is that clean intro.",
+      "Nevermind (1991, Sound City / Butch Vig). The INTRO is a clean Twin Reverb with the EHX Small Clone — no DS-1. Dirt is a BOSS DS-1 into the Mesa Studio .22 for verse/chorus. The watery swirl is the pre-chorus ('hello, hello'), not the loud HELLO. Snapshot 1 is that clean intro. No gate on the record — don't add one.",
     originalGear: [
       { role: "Guitar", name: "1969 Fender Mustang (L) / 1965 Jaguar (R)", notes: "Single coils, doubled left/right. Kurt also used Strats with a bridge humbucker on some takes." },
       { role: "Amp (intro)", name: "Fender Twin Reverb", notes: "Guitar Chalk: the opening riff is a clean Twin platform + Small Clone. Headroom, spring tank, no pedal dirt." },
@@ -119,13 +119,14 @@ export const FEATURED: Preset[] = [
     name: "Sandman",
     tempo: 123,
     summary:
-      "Metallica Black Album (1991). Three parts, three snapshots — this is the whole song. INTRO: wah on, TS off, Recto almost clean (Kirk's arpeggio). RHYTHM: wah off, TS-9 tightener, Dual Rectifier slammed, gate on (James). LEAD: same as rhythm, Channel Volume up. After import, put the Stomp in Snapshot mode so FS1–FS3 actually switch sections.",
+      "Metallica (The Black Album, 1991, One on One / Bob Rock). Three parts, three snapshots — this is the whole song. INTRO: wah on, TS off, Recto almost clean, gate off, Mesa graphic off (Kirk's arpeggio). RHYTHM: wah off, TS-9 tightener, Dual Rectifier, hard gate on, Mesa 5-band V-scoop on (James). LEAD: same as rhythm, Channel Volume up. Gate and EQ have on/off on spare switches. After import, put the unit in Snapshot mode so FS1–FS3 switch sections.",
     originalGear: [
       { role: "Guitar", name: "ESP Explorer, EMG 81", notes: "James rhythm. Kirk's intro is the wah lick." },
       { role: "Pedal", name: "Ibanez TS-9 Tube Screamer", notes: "Drive low, Level high — tightens the Recto. Off for the clean intro." },
       { role: "Pedal", name: "Dunlop Cry Baby", notes: "Kirk intro. Assign EXP 1 to Wah Position." },
-      { role: "Amp", name: "Mesa Dual Rectifier + Marshall JCM-800", notes: "Bob Rock blended a Recto and a Marshall. This patch is the Recto body." },
+      { role: "Amp", name: "Mesa Dual Rectifier + Marshall JCM-800", notes: "Bob Rock blended a Recto and a Marshall. This patch is the Recto body. The Mesa 5-band graphic is the scoop on the rhythm — kick EQ off for the clean intro." },
       { role: "Cab", name: "Mesa / Marshall 4×12 V30, SM57", notes: "Tight, close." },
+      { role: "Gate", name: "Studio noise gate", notes: "Tight palm mutes on the record. Off for the clean wah intro. Hard Gate on the Stomp; FS GATE toggles it." },
     ],
     recommendedGear: [
       { item: "Humbucker bridge (EMG or hot passive)", why: "Single coils will be thin and noisy on this riff." },
@@ -137,6 +138,7 @@ export const FEATURED: Preset[] = [
       block("b3", "cali-rectifire", { Drive: 1.6, Bass: 5.0, Mid: 6.0, Treble: 5.8, Presence: 3.8, Master: 5.4, "Ch Vol": 5.4, Sag: 3.2 }, 2),
       block("b4", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 6.8, "Early Refl": 2.2 }, 3),
       block("b5", "hard-gate", { Threshold: 5.8, Decay: 2.0 }, 4, false),
+      block("b6", "cali-q-graphic", { "80Hz": 6.4, "240Hz": 3.6, "750Hz": 3.2, "2200Hz": 6.5, "6600Hz": 6.0 }, 5, false),
     ],
     snapshots: [
       {
@@ -144,7 +146,7 @@ export const FEATURED: Preset[] = [
         name: "Intro",
         color: "#c5c9c2",
         enabledBlocks: ["b1", "b3", "b4"],
-        notes: "CLEAN intro. Wah on EXP 1, Tube Screamer off, gate off, Recto Drive 1.6 so the arpeggio rings.",
+        notes: "CLEAN intro. Wah on EXP 1, Tube Screamer off, gate off, Mesa graphic off, Recto Drive 1.6 so the arpeggio rings.",
         paramOverrides: {
           b1: { Position: 4.0 },
           b3: { Drive: 1.6, "Ch Vol": 5.4, Presence: 3.8, Treble: 5.8 },
@@ -154,8 +156,8 @@ export const FEATURED: Preset[] = [
         id: "s2",
         name: "Rhythm",
         color: "#e24a3a",
-        enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Main chug. Wah off, TS-9 on, gate on, Recto Drive 4.2.",
+        enabledBlocks: ["b2", "b3", "b4", "b5", "b6"],
+        notes: "Main chug. Wah off, TS-9 on, gate on, Mesa V-scoop on, Recto Drive 4.2.",
         paramOverrides: {
           b3: { Drive: 4.2, "Ch Vol": 6.0, Presence: 4.6, Treble: 5.4 },
         },
@@ -164,8 +166,8 @@ export const FEATURED: Preset[] = [
         id: "s3",
         name: "Lead",
         color: "#f5d000",
-        enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Kirk solo bump — same chain, a little louder, not more gain.",
+        enabledBlocks: ["b2", "b3", "b4", "b5", "b6"],
+        notes: "Kirk solo bump — same chain, a little louder, not more gain. Gate and EQ stay on; kick them off from GATE / EQ if you want the raw Recto.",
         paramOverrides: {
           b3: { Drive: 4.6, "Ch Vol": 6.8, Presence: 5.4, Treble: 5.6 },
         },
@@ -175,12 +177,15 @@ export const FEATURED: Preset[] = [
       { index: 1, label: "INTRO", color: "#c5c9c2", action: "snapshot", snapshotId: "s1", notes: "Clean wah intro." },
       { index: 2, label: "RHYTHM", color: "#e24a3a", action: "snapshot", snapshotId: "s2", notes: "James chug." },
       { index: 3, label: "LEAD", color: "#f5d000", action: "snapshot", snapshotId: "s3", notes: "Kirk solo." },
+      { index: 4, label: "GATE", color: "#f5d000", action: "bypass", targetBlockId: "b5", notes: "On/off the hard gate." },
+      { index: 5, label: "EQ", color: "#c6e800", action: "bypass", targetBlockId: "b6", notes: "On/off the Mesa 5-band graphic." },
     ],
     programming: [
-      "SNAPSHOT MODE. After import: press the Stomp PAGE button until the scribble strips say INTRO / RHYTHM / LEAD. FS1–FS3 recall those snapshots.",
-      "Path: UK Wah 846 → Scream 808 → Cali Rectifire → 4x12 Cali V30 → Hard Gate.",
-      "Intro snapshot: wah ON, TS OFF, gate OFF, Drive 1.6. That is the clean arpeggio.",
-      "Rhythm snapshot: wah OFF, TS ON (Drive 1.6 / Level 7.4), gate ON, Recto Drive 4.2 — tight, not a wall.",
+      "SNAPSHOT MODE. After import: press PAGE until the scribbles say INTRO / RHYTHM / LEAD. FS1–FS3 recall those snapshots.",
+      "Path: UK Wah 846 → Scream 808 → Cali Rectifire → 4x12 Cali V30 → Hard Gate → Cali Q Graphic.",
+      "Intro snapshot: wah ON, TS OFF, gate OFF, EQ OFF, Drive 1.6. That is the clean arpeggio.",
+      "Rhythm snapshot: wah OFF, TS ON (Drive 1.6 / Level 7.4), gate ON, Mesa graphic ON (scooped V), Recto Drive 4.2 — tight, not a wall.",
+      "On XL / POD Go / Helix, FS4 = GATE and FS5 = EQ so you can kick them without leaving the snapshot. HX Stomp uses the snapshot on/off plus the Gate / EQ buttons on the page.",
       "Assign EXP 1 to Wah Position for the intro lick.",
     ],
     tips: [
@@ -199,7 +204,7 @@ export const FEATURED: Preset[] = [
     name: "Numb Solo",
     tempo: 64,
     summary:
-      "The Wall (1979). Gilmour's solos are a Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp. Verses are the Hiwatt almost clean. Snapshots: verse / solo 1 / solo 2. The vibrato is in his hands — keep modulation off.",
+      "The Wall (1979, Super Bear / Bob Ezrin, James Guthrie). Gilmour's solos are a Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp. Verses are the Hiwatt almost clean. Snapshots: verse / solo 1 / solo 2. The vibrato is in his hands — keep modulation off. No gate and no extra EQ on the tracking chain.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster", notes: "Neck pickup for the first solo, bridge-leaning for the second. Tone rolled back." },
       { role: "Pedal", name: "Electro-Harmonix Big Muff (Ram's Head)", notes: "Sustain up, tone around 11–12 o'clock. Off for verses." },

@@ -278,8 +278,13 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"album/year/studio, real rig, HX stand-ins. Distinctive parts named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product name","notes":"how it was used on the record"}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""},{"name":"Solo","color":"#e24a3a","enabledModelIds":["deez-one-vintage","kinky-boost"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":5.5,"Ch Vol":7.2}},"notes":"lead — not the rhythm tone"}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"},{"index":4,"label":"SOLO","color":"#e24a3a","action":"snapshot","snapshotName":"Solo"}],"programming":["step"],"tips":["how to play it like the record"]}
-Params MUST be JSON numbers 0-10. Set EVERY factory knob on every block — omitting a param stores 5 and misses the record. Cab Mic is 0 (SM57) — never a string. If the song has a solo or signature trick, it MUST appear as its own snapshot.`;
+  return `{"name":"<=18 chars","tempo":120,"summary":"album/year/studio, real rig, HX stand-ins. Distinctive parts named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product name","notes":"how it was used on the record"}],"blocks":[{"modelId":"deez-one-vintage","enabled":true,"params":{"Drive":5.2,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"Verse","color":"#7d9a6a","enabledModelIds":["deez-one-vintage"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":3.2}},"notes":""},{"name":"Solo","color":"#e24a3a","enabledModelIds":["deez-one-vintage","kinky-boost"],"paramOverrides":{"cali-iv-rhythm-2":{"Drive":5.5,"Ch Vol":7.2}},"notes":"lead — not the rhythm tone"}],"footswitches":[{"index":1,"label":"INTRO","color":"#c5c9c2","action":"snapshot","snapshotName":"Intro"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
+Params MUST be JSON numbers 0-10. Set EVERY factory knob on every block — omitting a param stores 5 and misses the record. Cab Mic is 0 (SM57) — never a string. If the song has a solo or signature trick, it MUST appear as its own snapshot. If the record used a gate or a dedicated EQ, include those blocks and give spare FS (4+) action "bypass" so they can be kicked on/off.`;
+}
+
+export function jsonSchemaHintCustom() {
+  return `{"name":"<=18 chars","tempo":120,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur"],"paramOverrides":{},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost"],"paramOverrides":{"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
+Params MUST be JSON numbers 0-10. Set EVERY factory knob. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
@@ -322,7 +327,9 @@ Tone — match THIS record:
 - Research the RECORD first. Album + year + studio/producer in summary. Tracking/studio rig beats a later tour rig.
 - Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after that.
 - originalGear = real guitars/pedals/amps/cabs (the actual products). Then map each to a catalog id.
-- Every block must be on that recording. No spare gate/comp/chorus/hall.
+- Every block must be on that recording. No spare chorus/hall/comp.
+- GATE: include noise-gate or hard-gate ONLY if the record is tight high-gain / palm-muted / documented as gated. Snapshots turn it ON for tight rhythm and OFF for clean intro / ambient parts. Spare FS (4+) = action "bypass" labeled GATE. Do not invent a gate on a clean, indie, or vintage record.
+- EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5 and the preset sounds generic. Cab Mic = 0 (SM57) unless the session used something else — still a number, never a string.
 - EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
 - GAIN: never dime Drive. Distortion pedals ~noon (4.5–6.5). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
@@ -367,5 +374,59 @@ Research the original recorded ${instrument} tone BEFORE you pick a single model
 
 Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
 Only then map each real piece to a catalog modelId. If sources disagree, prefer the tracking/studio rig over a later live rig.
-Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone. Put Drive / Ch Vol / Mix changes in paramOverrides so they actually export.`;
+Map the arrangement: intro, verse, chorus, SOLO, outro, and any signature trick. Each distinctive part is its own snapshot with a different tone — a solo is almost never the rhythm tone. Put Drive / Ch Vol / Mix changes in paramOverrides so they actually export.
+If that session used a noise gate or a dedicated EQ, those blocks go in the chain with on/off via snapshots and spare FS. If it did not, leave them out.`;
+}
+
+export function systemForCustomSound(
+  stompModel: StompModelId,
+  instrument: "guitar" | "bass",
+  playbackTarget: PlaybackTarget = "frfr",
+) {
+  const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
+  const play = PLAYBACK_MAP[playbackTarget];
+  const ampRule = d.hasAmpCab
+    ? "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp."
+    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+  const exportRule =
+    d.exportFormat === "hlx"
+      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
+      : d.exportFormat === "pgp"
+        ? `Export is a .pgp for POD Go Edit (device ${d.hlxDeviceId ?? "2162695"}). Same HX model ids as Helix. Do not invent models. Skip poly pitch/whammy.`
+        : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
+  const snapCount = d.snapshots;
+  return `Session tech. Invent a NEW Line 6 ${d.name} preset from the player's description. This is a custom rig — not a song replica, not a famous player's documented patch, not a close copy of Teen Spirit / Sandman / Numb or any other record. JSON only.
+Max ${d.maxBlocks} blocks, ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
+${exportRule}
+
+Custom-sound rules:
+- Build only what they asked for. If they said "Klon into a Deluxe with slapback", that is the chain. Do not add a DS-1, Rectifier, wah intro, Small Clone, or any other famous-song leftover.
+- Do not research a similar song and copy it. Do not name a real song in summary unless they named one.
+- originalGear = the products implied by THIS description, not an album credit list.
+- Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5.
+- ${ampRule}
+- GAIN: never dime Drive. Pedals ~noon (4.5–6.5). Amp Drive 1.5–3 clean, 3–5 crunch, 5–6.5 high-gain, metal 5–7.
+- GATE: include a gate only if they asked for tightness / metal chug / a gate. Spare FS = bypass GATE.
+- EQ: include simple-eq / parametric / cali-q-graphic only if they asked for a scoop, mid boost, or a graphic. Spare FS = bypass EQ. Do not add a spare EQ "just in case."
+- Skip Poly Pitch/Wham/12-string/Trinity Chorus unless they asked.
+- ${play.prompt}
+
+${STAND_INS}
+
+Order: dirt → amp → cab → time unless they specified otherwise. Amp+cab as a pair.
+
+Snapshots: if they described scenes (clean / crunch / lead), those are the snapshots and they MUST sound different. Otherwise three useful scenes: Rhythm, Lift, Lead. FS 1..${Math.min(snapCount, d.footswitches)} = snapshot in that order. Spare FS after that: GATE then EQ bypass if those blocks exist. No TAP on FS1–3.
+
+programming = unit steps. tips = how to play this custom sound.`;
+}
+
+/** Custom-sound brief. Catalog + schema are appended by the caller. */
+export function customSoundInstructions(description: string, instrument: "guitar" | "bass") {
+  return `CUSTOM SOUND (not a song). Instrument: ${instrument}.
+Player description:
+${description.trim()}
+
+Invent a unique HX chain that delivers THAT description. Do not substitute a similar famous record. Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.
+If the description is a feeling ("warm broken-up American clean") pick the closest catalog amp and set knobs — still original, not a named-song patch.
+Listener test: would a player who typed that sentence recognize this preset as what they asked for, not as a cover of a hit?`;
 }
