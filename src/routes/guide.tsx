@@ -100,6 +100,23 @@ function GuidePage() {
         </p>
       </Section>
 
+      <Section title="Wah">
+        <p>
+          A wah only goes in the Helix chain if you want the modeler to do it — expression pedal or a
+          footswitch. If you already own a Cry Baby, Vox, or similar, leave Wah on “I have a wah pedal”
+          and plug it in front of the unit. Sandman and Killing in the Name are wah parts; the demos
+          leave the block out on purpose.
+        </p>
+      </Section>
+
+      <Section title="Name the snapshots">
+        <p>
+          Before you download, rename the snapshots. Those names write onto the unit’s scribble strips
+          (FS1, FS2, FS3…). Intro and verse that share a chain stay one snapshot — we do not invent a
+          switch for a lyric section that sounds the same.
+        </p>
+      </Section>
+
       <Section title="Catalog">
         <p>
           Every HX model, filtered by guitar or bass from the header. Find equivalent maps a real

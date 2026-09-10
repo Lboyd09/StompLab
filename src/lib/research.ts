@@ -9,7 +9,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
-import { playerDerivedRules } from "./research-lessons";
+import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM } from "./gemini";
 import {
   GearSchema,
@@ -93,7 +93,7 @@ async function standingFeedbackLessons(): Promise<string> {
       else if (want.length >= 8) bits.push(want);
       else if (msg.length >= 12) bits.push(msg);
     }
-    const extra = playerDerivedRules(bits);
+    const extra = standingRulesBlock(bits);
     g.__stompLessons__ = extra;
     g.__stompLessonsAt__ = Date.now();
     return extra;

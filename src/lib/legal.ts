@@ -1,4 +1,4 @@
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd } from "./plan";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, priceYearlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
 export const LEGAL_VERSION = "2026-09-10";
@@ -115,6 +115,7 @@ export const SUBSCRIPTION_SECTIONS: { id: string; title: string; body: string[] 
     title: "Subscription, price, and renewal",
     body: [
       `Paid Lab is ${formatUsd(PRICE_MONTHLY_USD)} per month or ${formatUsd(PRICE_YEARLY_USD)} per year. Both plans include ${PAID_MONTHLY_BUILDS} custom builds each calendar month. Featured demos stay free. After you sign in, you get ${FREE_BUILDS} custom songs before you have to subscribe.`,
+      `Launch: the first invoice is ${LAUNCH_DISCOUNT_PERCENT}% off — ${formatUsd(priceMonthlyLaunchUsd())} the first month or ${formatUsd(priceYearlyLaunchUsd())} the first year. After that Polar charges the regular ${formatUsd(PRICE_MONTHLY_USD)}/month or ${formatUsd(PRICE_YEARLY_USD)}/year until you cancel. The discount is once; it does not repeat at renewal.`,
       "Polar (merchant of record) charges your card. Stomp Lab never sees the card number.",
       "This is an automatic-renewal subscription. Unless you cancel, Polar will charge the same plan again at the then-current price when the period ends — monthly plans every month, yearly plans every year.",
       "Cancel any time from Account → Manage subscription (Polar’s customer portal). Cancellation takes the same path you used to subscribe: online, no phone call required. You keep paid access until the period you already paid for ends. We do not prorate unused days.",

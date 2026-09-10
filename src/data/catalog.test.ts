@@ -69,6 +69,8 @@ describe("research prompt", () => {
     assert.match(prompt, /Unknown rock song/);
     assert.match(prompt, /GATE:/);
     assert.match(prompt, /cali-q-graphic/);
+    assert.match(prompt, /cali-iv-rhythm-1/);
+    assert.match(prompt, /pedal platform/);
   });
 
   it("asks for the tracked rig before any model id", () => {
@@ -80,6 +82,8 @@ describe("research prompt", () => {
     assert.match(brief, /session credits/);
     assert.match(brief, /paramOverrides/);
     assert.match(brief, /noise gate or a dedicated EQ/);
+    assert.match(brief, /never a category/);
+    assert.match(brief, /tone fingerprint/);
   });
 
   it("custom sound prompt invents a rig instead of copying a record", () => {
@@ -136,9 +140,10 @@ describe("research prompt", () => {
 
   it("does not leak Teen Spirit model ids into the JSON schema example", () => {
     const hint = jsonSchemaHint();
-    assert.equal(/deez-one-vintage|70s-chorus|cali-iv-rhythm-2/.test(hint), false);
+    assert.equal(/deez-one-vintage|70s-chorus|cali-iv-rhythm-1|cali-iv-rhythm-2/.test(hint), false);
     assert.match(hint, /catalog-id/);
     assert.match(hint, /Do not copy the example modelIds/);
+    assert.match(hint, /fingerprint/);
   });
 
   it("maps Twin Reverb to us-double, never Deluxe", () => {

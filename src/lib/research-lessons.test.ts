@@ -38,4 +38,11 @@ describe("research lessons", () => {
     assert.match(STANDING_RESEARCH_RULES, /GATE:/);
     assert.match(STANDING_RESEARCH_RULES, /dedicated EQ/);
   });
+
+  it("is actually injected into song research, not only tested", async () => {
+    const { readFileSync } = await import("node:fs");
+    const src = readFileSync(new URL("./research.ts", import.meta.url), "utf8");
+    assert.match(src, /standingRulesBlock/);
+    assert.equal(/playerDerivedRules\(bits\)/.test(src), false);
+  });
 });

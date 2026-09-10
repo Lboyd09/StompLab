@@ -184,7 +184,7 @@ export function compactCatalogForPrompt(
     rows.push(knobs.length ? `# ${cat.label} (knobs: ${knobs.join(",")})` : `# ${cat.label}`);
     for (const m of models) {
       if (cat.id === "amp-guitar" || cat.id === "amp-bass" || cat.id === "cab" || cat.id === "distortion") {
-        const hint = m.description.replace(/\s+/g, " ").split(".")[0].slice(0, 42);
+        const hint = m.description.replace(/\s+/g, " ").split(".")[0].slice(0, 56);
         rows.push(`- ${m.id}|${m.basedOn}|${hint}`);
       } else {
         rows.push(`- ${m.id}|${m.basedOn}`);

@@ -76,6 +76,7 @@ export const PresetOut = z.object({
   name: z.string(),
   tempo: z.preprocess((v) => coerceNum(v) ?? 120, z.number()),
   summary: z.string().optional().default(""),
+  fingerprint: z.string().optional().default(""),
   originalGear: z
     .array(
       z.object({
@@ -224,6 +225,11 @@ export function toPreset(
       };
     });
 
+  const fingerprint = (out.fingerprint ?? "").trim();
+  const summary = fingerprint && !out.summary.toLowerCase().includes(fingerprint.slice(0, 28).toLowerCase())
+    ? `${fingerprint} ${out.summary}`.trim()
+    : out.summary;
+
   return {
     id: newId("pst"),
     createdAt: Date.now(),
@@ -234,7 +240,7 @@ export function toPreset(
     stompModel: meta.stompModel,
     name: out.name.slice(0, 18),
     tempo: Math.max(40, Math.min(240, Math.round(out.tempo || 120))),
-    summary: out.summary,
+    summary,
     originalGear: out.originalGear,
     recommendedGear: out.recommendedGear ?? [],
     blocks,
@@ -278,7 +284,7 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":3.0}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
+  return `{"name":"<=18 chars","tempo":120,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":3.0}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
 Params MUST be JSON numbers 0-10. Set EVERY factory knob. Cab Mic is 0 (SM57). Only snapshots that change the tone. If the record used a gate or dedicated EQ, include those blocks and spare FS bypass. Do not copy the example modelIds — pick from the catalog for THIS song.`;
 }
 
@@ -294,7 +300,7 @@ const STAND_INS = `HX stand-ins (use these ids, never invent):
 - EHX Small Clone / BOSS CE-1 → 70s-chorus.
 - ProCo RAT → vermin-dist. Klon → minotaur. Big Muff → bighorn-fuzz or triangle-fuzz.
 - Marshall Shredmaster → kwb. Silver Jubilee 2555 → placater-dirty.
-- Mesa Dual Rectifier → cali-rectifire. Mesa Mark / Studio Pre → cali-iv-rhythm-2.
+- Mesa Dual Rectifier → cali-rectifire. Mesa Studio Pre / Mark clean rhythm used as a pedal platform → cali-iv-rhythm-1. Mark IV crunch → cali-iv-rhythm-2. Mark IV lead → cali-iv-lead.
 - Fender Twin Reverb → us-double-nrm (NOT us-deluxe-nrm — Deluxe is a different amp).
 - Fender Deluxe Reverb → us-deluxe-nrm.
 - Marshall JCM-800 → brit-2203 or brit-2204. Plexi → brit-plexi-brt. Hiwatt DR-103 → whowatt-100.
@@ -365,7 +371,7 @@ export function songResearchInstructions(
   return `Song: ${who}
 Instrument: ${instrument} as it was TRACKED on the record (not a cover, not a live-only tour).
 
-Fill originalGear with REAL products BEFORE any modelId. Summary must include album title, year, studio, producer, and which player.
+Fill originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
 If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.
 Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
 Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.

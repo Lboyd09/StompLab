@@ -59,10 +59,11 @@ describe("buildHlx Teen Spirit", () => {
   const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
   const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
 
-  it("emits factory Cali IV R2 + 70s Chorus + Deez One Vintage + 1960 T75 cab", () => {
-    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR2");
+  it("emits factory Cali IV R1 + 70s Chorus + Deez One Vintage + 1960 T75 cab", () => {
+    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR1");
     assert.equal(dsp0.block2["@type"], 3);
     assert.equal(dsp0.block2["@cab"], "cab0");
+    assert.equal(dsp0.block2.Bright, true);
     assert.equal(dsp0.block1["@model"], "HD2_Chorus70sChorus");
     assert.equal(dsp0.block0["@model"], "HD2_DistDeezOneVintage");
     assert.equal(dsp0.cab0["@model"], "HD2_Cab4x121960T75");
@@ -231,6 +232,8 @@ describe("visual FS map", () => {
     const src = featured("featured-teen-spirit");
     assert.equal(src.snapshots[0]?.name, "Clean");
     assert.equal(src.snapshots.map((s) => s.name).join("/"), "Clean/Hello/Chorus");
+    assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-1"), true);
+    assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-2"), false);
     assert.equal(src.footswitches[0]?.action, "snapshot");
     const stomp = withStompModel(src, "hx-stomp");
     assert.equal(stomp.snapshots.length, 3);

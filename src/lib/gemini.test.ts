@@ -94,5 +94,8 @@ describe("research thinking", () => {
     assert.match(src, /Tracking rig beats a later tour rig/);
     assert.match(src, /Session credits beat/);
     assert.match(src, /Guitar Chalk/);
+    assert.match(src, /Fill originalGear with REAL product/);
+    assert.match(src, /arrangement by TONE/);
+    assert.match(src, /tone fingerprint/);
   });
 });

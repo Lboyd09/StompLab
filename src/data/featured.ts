@@ -28,7 +28,7 @@ export const FEATURED: Preset[] = [
       "Nevermind (1991, Sound City / Butch Vig). Kurt tracked a Mesa/Boogie Studio preamp on the CLEAN rhythm channel and used a BOSS DS-1 as the dirty channel. Intro and verses are the same tone: Small Clone, DS-1 off. The watery 'hello, hello' is DS-1 + Clone. The loud HELLO is DS-1, Clone off. Mesa 5-band graphic in. No gate. Reverb 0.",
     originalGear: [
       { role: "Guitar", name: "Early-'90s MIJ Strat with Seymour Duncan JB (bridge)", notes: "Guitar World: volume 10, standard tuning. Bridge pickup, pick near the bridge. Live he also used Mustangs/Jaguars." },
-      { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown Power Base 2", notes: "Rhythm channel, Volume 6, Master 5, Treble 6, Bass 3, Middle 8, Reverb 0, Rhythm Bright on. He did not switch channels — the DS-1 is the dirty channel." },
+      { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown Power Base 2", notes: "Rhythm channel used CLEAN as a pedal platform. Volume 6, Master 5, Treble 6, Bass 3, Middle 8, Reverb 0, Rhythm Bright on. He did not switch channels — the DS-1 is the dirty channel. Helix: Cali IV Rhythm 1 (clean), not Rhythm 2 crunch." },
       { role: "EQ", name: "Mesa 5-band graphic (in)", notes: "80 +3, 240 −2, 750 0, 2200 +5, 6600 +3. Andy Wallace also boosted ~2.5–3 kHz on the mix." },
       { role: "Pedal", name: "BOSS DS-1", notes: "Guitar World: Distortion 7, Tone 4, Level 10. Off for intro and verses. On for pre-chorus, chorus, and solo." },
       { role: "Pedal", name: "EHX Small Clone", notes: "Rate 5, Depth switch UP. On for verses and the watery pre-chorus. Off for the loud chorus. The solo is the same chain as the watery hello — not its own snapshot." },
@@ -41,7 +41,7 @@ export const FEATURED: Preset[] = [
     blocks: [
       block("b1", "deez-one-vintage", { Drive: 7.0, Treble: 4.0, Output: 10.0 }, 0, false),
       block("b2", "70s-chorus", { Rate: 5.0, Depth: 8.0, Mix: 6.8, Tone: 5.4 }, 1),
-      block("b3", "cali-iv-rhythm-2", { Drive: 3.0, Bass: 3.0, Mid: 8.0, Treble: 6.0, Presence: 4.8, Master: 5.0, "Ch Vol": 5.5, Sag: 3.2 }, 2),
+      block("b3", "cali-iv-rhythm-1", { Drive: 2.6, Bass: 3.0, Mid: 8.0, Treble: 6.0, Presence: 4.8, Master: 5.0, "Ch Vol": 5.5, Sag: 3.2, Bright: 10 }, 2),
       block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.0, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.4 }, 3),
       block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 4.0, "750Hz": 5.0, "2200Hz": 7.5, "6600Hz": 6.5 }, 4),
     ],
@@ -85,7 +85,7 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import the scribbles should say CLEAN / HELLO / CHORUS on FS1–FS3. That assignment is in the file.",
-      "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone) → Cali IV Rhythm 2 (Studio pre) → 4x12 1960 T75 → Cali Q Graphic.",
+      "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone) → Cali IV Rhythm 1 (Studio Pre clean channel) → 4x12 1960 T75 → Cali Q Graphic.",
       "Clean (FS1): DS-1 OFF, Clone ON. Covers the opening riff and the verses — they are the same recorded tone.",
       "Hello (FS2): DS-1 ON (Drive 7 / Tone 4 / Level 10), Clone ON. Use this for the watery hello AND the solo.",
       "Chorus (FS3): DS-1 ON, Clone OFF. EQ stays on — kick it from the EQ switch on XL if you want the raw preamp.",
@@ -661,7 +661,7 @@ export const FEATURED: Preset[] = [
       { role: "Guitar", name: "Fender Jaguar / Mustang", notes: "Single coil, slightly dark." },
       { role: "Pedal", name: "EHX Small Clone", notes: "Always on. The watery line is the riff." },
       { role: "Pedal", name: "BOSS DS-1", notes: "On for the louder hits. Deez One Vintage (MIJ DS-1)." },
-      { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown + Marshall 1960 T75", notes: "Same Nevermind rack as Teen Spirit." },
+      { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown + Marshall 1960 T75", notes: "Same Nevermind rack as Teen Spirit. Helix: Cali IV Rhythm 1 (clean pedal platform), Bright on." },
       { role: "EQ", name: "Mesa 5-band graphic (in)", notes: "Same session graphic as Teen Spirit. Milder than the icepick slam — this riff is woolier." },
     ],
     recommendedGear: [
@@ -670,7 +670,7 @@ export const FEATURED: Preset[] = [
     blocks: [
       block("b1", "deez-one-vintage", { Drive: 5.0, Treble: 5.2, Output: 5.8 }, 0, false),
       block("b2", "70s-chorus", { Rate: 3.2, Depth: 7.4, Mix: 6.2, Tone: 5.2 }, 1),
-      block("b3", "cali-iv-rhythm-2", { Drive: 2.8, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.4, Master: 5.4, "Ch Vol": 5.6, Sag: 4.0 }, 2),
+      block("b3", "cali-iv-rhythm-1", { Drive: 2.4, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.4, Master: 5.4, "Ch Vol": 5.6, Sag: 4.0, Bright: 8 }, 2),
       block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.2, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.6 }, 3),
       block("b5", "cali-q-graphic", { "80Hz": 6.0, "240Hz": 4.5, "750Hz": 5.0, "2200Hz": 6.5, "6600Hz": 5.8 }, 4),
     ],
@@ -702,7 +702,7 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import: FS1–FS2 are VERSE / CHORUS. The solo is the chorus tone — we did not invent a third snapshot.",
-      "Path: Deez One Vintage (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 2 → 4x12 1960 T75 → Cali Q Graphic.",
+      "Path: Deez One Vintage (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 1 → 4x12 1960 T75 → Cali Q Graphic.",
       "70s Chorus Rate 3.2 Depth 7.4 Mix 6.2. Depth switch ON. Do not bypass it — the song disappears.",
     ],
     tips: [
