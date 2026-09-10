@@ -657,7 +657,7 @@ function buildFootswitch(preset: Preset, others: StompBlock[]) {
   return footswitch;
 }
 
-function emptySnapshot(index: number, others: StompBlock[], tempo: number) {
+function emptySnapshot(index: number, others: StompBlock[], tempo: number, hwIndex: number) {
   const blocks: Record<string, boolean> = { split: true };
   others.forEach((_, i) => {
     blocks[`block${i}`] = true;
@@ -669,6 +669,8 @@ function emptySnapshot(index: number, others: StompBlock[], tempo: number) {
     "@pedalstate": 0,
     "@ledcolor": 0,
     "@custom_name": false,
+    "@fs_index": hwIndex,
+    "@fs_label": `SNAP ${index + 1}`,
     blocks: { dsp0: blocks },
     controllers: { dsp0: {} },
   };
@@ -719,17 +721,18 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
     const hwIndex = visualToHardwareFs(i + 1, preset.stompModel === "hx-stomp-xl");
     tone[`snapshot${i}`] = snap
       ? {
-          "@name": sanitizeLabel(snap.name, 10).toUpperCase(),
+          "@name": sanitizeLabel(snap.name, 12).toUpperCase(),
           "@tempo": tempo,
           "@valid": true,
           "@pedalstate": 0,
           "@ledcolor": snapshotLed(snap.color),
           "@custom_name": true,
           "@fs_index": hwIndex,
+          "@fs_label": sanitizeLabel(snap.name, 12).toUpperCase(),
           blocks: { dsp0: snapshotBlockStates(snap, others) },
           controllers: { dsp0: snapshotControllers(snap, others) },
         }
-      : emptySnapshot(i, others, tempo);
+      : emptySnapshot(i, others, tempo, hwIndex);
   }
 
   return {

@@ -9,6 +9,7 @@ import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/l
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
+import { WahSelect } from "@/components/layout/wah-select";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
 
@@ -34,6 +35,10 @@ function SettingsPage() {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
+  const wahMode = useAppStore((s) => s.wahMode);
+  const setWahMode = useAppStore((s) => s.setWahMode);
+  const wahModelId = useAppStore((s) => s.wahModelId);
+  const setWahModelId = useAppStore((s) => s.setWahModelId);
   const { plan, isPending: planPending } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
   const [mounted, setMounted] = useState(false);
@@ -172,6 +177,7 @@ function SettingsPage() {
             ))}
           </div>
         </fieldset>
+        <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
         <fieldset className="space-y-2">
           <Label>When a rig opens, start in</Label>
           <div className="flex flex-wrap gap-2">
@@ -285,6 +291,11 @@ function SettingsPage() {
         </label>
       </section>
 
+      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Wah</h2>
+        <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
+      </section>
+
       <section id="troubleshoot" className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold text-foreground">If something isn't working</h2>
         <details className="group border-b border-border pb-3">
@@ -346,8 +357,9 @@ function SettingsPage() {
         <details className="border-b border-border pb-3">
           <summary className="cursor-pointer text-sm font-medium text-foreground">The wah doesn't sweep</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Assign an expression pedal to Wah Position in HX Edit (EXP 1). Without a pedal you can still
-            park the Position knob.
+            Default: your real wah lives in front of the unit, so we leave Helix wah out. If you want
+            the modeler to do it, pick Helix wah + expression pedal (EXP 1 → Position) or Helix wah +
+            a footswitch. Change that under Wah above, then re-open the preset.
           </p>
         </details>
         <details>

@@ -7,6 +7,8 @@ import { Mark } from "@/components/layout/mark";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
+import { LegalAgree } from "@/components/layout/legal-agree";
+import { recordLegalAccept } from "@/lib/legal";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string } => ({
@@ -45,6 +47,7 @@ function LoginPage() {
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  const [agreed, setAgreed] = useState(false);
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
 
@@ -102,6 +105,10 @@ function LoginPage() {
       setError("Password needs at least 8 characters.");
       return;
     }
+    if (mode === "up" && !agreed) {
+      setError("Check the box to agree to the Terms and Privacy Policy.");
+      return;
+    }
     setBusy(true);
     try {
       if (mode === "up") {
@@ -132,6 +139,7 @@ function LoginPage() {
           setError(friendlyAuthError(err.message || "", "up"));
           return;
         }
+        recordLegalAccept("signup");
       }
       const { error: err } = await authClient.signIn.email({
         email: trimmed,
@@ -229,7 +237,8 @@ function LoginPage() {
               />
             </div>
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
-            <Button type="submit" className="w-full" disabled={busy}>
+            {mode === "up" ? <LegalAgree kind="signup" checked={agreed} onChange={setAgreed} /> : null}
+            <Button type="submit" className="w-full" disabled={busy || (mode === "up" && !agreed)}>
               {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
             </Button>
           </form>

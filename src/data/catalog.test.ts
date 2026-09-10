@@ -3,7 +3,7 @@ import { describe, it } from "node:test";
 import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
 import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
-import { systemForDevice, songResearchInstructions, systemForCustomSound, customSoundInstructions } from "../lib/preset-schema.ts";
+import { systemForDevice, songResearchInstructions, systemForCustomSound, customSoundInstructions, jsonSchemaHint } from "../lib/preset-schema.ts";
 
 describe("DS-1 catalog", () => {
   it("aliases DS-1 to Deez One Vintage first, never Stupor OD", () => {
@@ -77,6 +77,7 @@ describe("research prompt", () => {
     assert.match(brief, /TRACKED on the record/);
     assert.match(brief, /Listener test/);
     assert.match(brief, /album title, year, studio, producer/);
+    assert.match(brief, /session credits/);
     assert.match(brief, /paramOverrides/);
     assert.match(brief, /noise gate or a dedicated EQ/);
   });
@@ -101,6 +102,7 @@ describe("research prompt", () => {
   it("names a based-on original for every catalog model", () => {
     for (const m of ALL_MODELS) {
       assert.ok(m.basedOn.trim().length >= 3, m.id);
+      assert.ok(m.description.trim().length >= 12, `${m.id} missing description`);
     }
   });
 
@@ -116,6 +118,33 @@ describe("research prompt", () => {
     const gtr = compactCatalogForPrompt("guitar", "hx-stomp");
     assert.match(gtr, /# Guitar Amps \(knobs: Drive/);
     assert.match(gtr, /cali-iv-rhythm-2\|/);
+  });
+
+  it("omits wah models when the player has a real pedal", () => {
+    const withWah = compactCatalogForPrompt("guitar", "hx-stomp");
+    const noWah = compactCatalogForPrompt("guitar", "hx-stomp", { omitWah: true });
+    assert.match(withWah, /teardrop-310/);
+    assert.equal(/teardrop-310|uk-wah-846|# Wah/.test(noWah), false);
+    assert.match(noWah, /deez-one-vintage/);
+  });
+
+  it("adds a short character hint on amps so unknown metal is not always a Recto", () => {
+    const gtr = compactCatalogForPrompt("guitar", "hx-stomp");
+    assert.match(gtr, /cali-rectifire\|/);
+    assert.match(gtr, /us-double-nrm\|Fender Twin Reverb/);
+  });
+
+  it("does not leak Teen Spirit model ids into the JSON schema example", () => {
+    const hint = jsonSchemaHint();
+    assert.equal(/deez-one-vintage|70s-chorus|cali-iv-rhythm-2/.test(hint), false);
+    assert.match(hint, /catalog-id/);
+    assert.match(hint, /Do not copy the example modelIds/);
+  });
+
+  it("maps Twin Reverb to us-double, never Deluxe", () => {
+    const prompt = systemForDevice("hx-stomp", "guitar");
+    assert.match(prompt, /us-double-nrm/);
+    assert.match(prompt, /NOT us-deluxe-nrm/);
   });
 });
 

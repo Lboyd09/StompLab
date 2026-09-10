@@ -1,5 +1,6 @@
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import { parseStompModelId } from "@/data/types";
+import { parseWahMode, parseWahModelId, type WahMode } from "./wah";
 
 const PRESETS_KEY = "stomplab.presets.v1";
 const GEAR_KEY = "stomplab.gear.v1";
@@ -21,6 +22,8 @@ export type Settings = {
   largeControls: boolean;
   lcdBright: boolean;
   reduceMotion: boolean;
+  wahMode: WahMode;
+  wahModelId: string;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -34,6 +37,8 @@ const DEFAULT_SETTINGS: Settings = {
   largeControls: false,
   lcdBright: false,
   reduceMotion: false,
+  wahMode: "pedal",
+  wahModelId: "teardrop-310",
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -130,6 +135,8 @@ export function loadSettings(): Settings {
     ...DEFAULT_SETTINGS,
     ...raw,
     stompModel: parseStompModelId(raw.stompModel, DEFAULT_SETTINGS.stompModel),
+    wahMode: parseWahMode(raw.wahMode),
+    wahModelId: parseWahModelId(raw.wahModelId),
   };
 }
 

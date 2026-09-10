@@ -156,25 +156,39 @@ export function findEquivalents(query: string, limit = 8): EquivalentHit[] {
   }));
 }
 
-export function compactCatalogForPrompt(instrument?: Instrument, deviceId?: StompModelId): string {
+export function compactCatalogForPrompt(
+  instrument?: Instrument,
+  deviceId?: StompModelId,
+  opts?: { omitWah?: boolean },
+): string {
   const device = deviceId ? DEVICE_MAP[deviceId] : undefined;
+  const skipCat = new Set<string>(["mic", "ir", "looper", "volume"]);
+  if (opts?.omitWah) skipCat.add("wah");
   const rows: string[] = [];
   for (const cat of CATEGORIES) {
+    if (skipCat.has(cat.id)) continue;
     if (device && !device.hasAmpCab && ["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"].includes(cat.id)) {
       continue;
     }
-    const models = modelsByCategory(cat.id).filter((m) => {
+    let models = modelsByCategory(cat.id).filter((m) => {
       if (m.io === "legacy") return false;
-      if (cat.id === "mic" || cat.id === "ir") return false;
       if (!helixIdFor(m.id)) return false;
       if (!instrument || instrument === "both") return true;
       return m.instrument === "both" || m.instrument === instrument;
     });
+    if (cat.id === "send-return") {
+      models = models.filter((m) => ["fx-loop", "send", "return"].includes(m.id));
+    }
     if (!models.length) continue;
     const knobs = DEFAULT_PARAMS[cat.id] ?? [];
     rows.push(knobs.length ? `# ${cat.label} (knobs: ${knobs.join(",")})` : `# ${cat.label}`);
     for (const m of models) {
-      rows.push(`- ${m.id}|${m.basedOn}`);
+      if (cat.id === "amp-guitar" || cat.id === "amp-bass" || cat.id === "cab" || cat.id === "distortion") {
+        const hint = m.description.replace(/\s+/g, " ").split(".")[0].slice(0, 42);
+        rows.push(`- ${m.id}|${m.basedOn}|${hint}`);
+      } else {
+        rows.push(`- ${m.id}|${m.basedOn}`);
+      }
     }
   }
   return rows.join("\n");

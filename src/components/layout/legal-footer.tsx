@@ -13,14 +13,14 @@ export function LegalFooter({ className, full }: { className?: string; full?: bo
   return (
     <footer className={cn("space-y-4 text-[11px] leading-relaxed text-muted-foreground", className)}>
       <nav className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] uppercase tracking-[0.14em]">
-        <Link to="/guide" hash="help" className="text-foreground/80 underline-offset-2 hover:underline">
-          Help
+        <Link to="/terms" className="text-foreground/80 underline-offset-2 hover:underline">
+          Terms
         </Link>
-        <Link to="/guide" hash="privacy" className="text-foreground/80 underline-offset-2 hover:underline">
+        <Link to="/privacy" className="text-foreground/80 underline-offset-2 hover:underline">
           Privacy
         </Link>
-        <Link to="/guide" hash="legal" className="text-foreground/80 underline-offset-2 hover:underline">
-          Legal
+        <Link to="/guide" hash="help" className="text-foreground/80 underline-offset-2 hover:underline">
+          Help
         </Link>
         <a href={`mailto:${PUBLIC_SUPPORT_EMAIL}`} className="text-foreground/80 underline-offset-2 hover:underline">
           {PUBLIC_SUPPORT_EMAIL}
@@ -36,12 +36,12 @@ export function LegalFooter({ className, full }: { className?: string; full?: bo
       ) : (
         <p>
           {LEGAL_SHORT} {HELP_COPY}{" "}
-          <Link to="/guide" hash="privacy" className="text-foreground/80 underline underline-offset-2">
+          <Link to="/privacy" className="text-foreground/80 underline underline-offset-2">
             Privacy
           </Link>
           {" · "}
-          <Link to="/guide" hash="legal" className="text-foreground/80 underline underline-offset-2">
-            Full legal
+          <Link to="/terms" className="text-foreground/80 underline underline-offset-2">
+            Terms
           </Link>
         </p>
       )}

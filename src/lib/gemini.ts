@@ -17,10 +17,10 @@ const GOOGLE_MODEL = "gemini-2.5-flash";
 const GATEWAY_MODEL = "google/gemini-2.5-flash";
 const GATEWAY = "https://ai-gateway.vercel.sh/v1/chat/completions";
 const GOOGLE_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models/${GOOGLE_MODEL}:generateContent`;
-const GENERATE_MS = 40000;
+const GENERATE_MS = 50000;
 const BUSY = "Research is busy. Try again in a minute.";
 export const SYSTEM =
-  "You are a session tech. Program one Line 6 Helix-family preset (HX Stomp, POD Go, Helix, HX Effects) that A/Bs against a specific RECORD. Research the tracking rig first — album, year, player, guitar, amp, pedals, cab/mic, technique — then map to catalog model ids. Reply with a single JSON object. No markdown. Never a generic genre patch.";
+  "Studio tech. One job: a Line 6 Helix-family preset that A/Bs against THIS record (brightness, dirt, mids, pick attack, room). JSON object only. No markdown. Never a generic genre patch. Research the TRACKING session in thinking before any modelId — fill originalGear with REAL products first. Protocol (Guitar Chalk / Guitar World / session-credit method): 1) album, year, studio, producer, player — album beats a later live version. 2) one-sentence tone fingerprint of the recorded guitar/bass. 3) guitar + pickups + selector + volume as tracked. 4) amp + channel + published Drive/Bass/Mid/Treble/Presence — published numbers beat guesses. 5) pedal order on THAT session, not a later tour board. 6) cab + speakers + mic + distance; close and dry unless the record is roomy. 7) technique in tips. 8) THEN map each real piece to a catalog modelId. Session credits beat a simplified 'use a Twin' guide. Tracking rig beats a later tour rig. Guitar Chalk is good for tone language; credits win on gear. Listener test: album in one ear, this preset in the other.";
 export const CUSTOM_SYSTEM =
   "You are a session tech. Invent one original Line 6 Helix-family preset from a player's description. This is a custom sound, not a song replica. Do not copy a famous player's documented rig or a similar recorded song unless they named that song. Reply with a single JSON object. No markdown.";
 
@@ -123,10 +123,10 @@ async function googleGenerate(key: string, prompt: string, system = SYSTEM): Pro
       systemInstruction: { parts: [{ text: system }] },
       contents: [{ role: "user", parts: [{ text: prompt }] }],
       generationConfig: {
-        temperature: 0.2,
+        temperature: 0.15,
         maxOutputTokens: 8192,
         responseMimeType: "application/json",
-        thinkingConfig: { thinkingBudget: 1024 },
+        thinkingConfig: { thinkingBudget: 4096 },
       },
     }),
   };
@@ -157,7 +157,7 @@ async function googleGenerate(key: string, prompt: string, system = SYSTEM): Pro
           systemInstruction: { parts: [{ text: system }] },
           contents: [{ role: "user", parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0.15,
             maxOutputTokens: 8192,
             responseMimeType: "application/json",
           },
@@ -200,9 +200,9 @@ async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): 
       },
       body: JSON.stringify({
         model: GATEWAY_MODEL,
-        temperature: 0.2,
+        temperature: 0.15,
         max_tokens: 8192,
-        reasoning_effort: "low",
+        reasoning_effort: "medium",
         response_format: { type: "json_object" },
         messages: [
           { role: "system", content: system },

@@ -22,6 +22,8 @@ import {
 } from "@/lib/plan";
 import { parseCheckoutId } from "@/lib/next-path";
 import { usePlan } from "@/lib/use-plan";
+import { LegalAgree } from "@/components/layout/legal-agree";
+import { recordLegalAccept } from "@/lib/legal";
 
 export const Route = createFileRoute("/upgrade")({
   validateSearch: (s: Record<string, unknown>): { checkout_id?: string } => ({
@@ -45,6 +47,7 @@ function UpgradePage() {
   const { plan, refresh, isPending: planPending } = usePlan();
   const [busy, setBusy] = useState<PlanInterval | null>(null);
   const [error, setError] = useState("");
+  const [agreed, setAgreed] = useState(false);
   const checkoutId = parseCheckoutId(search.checkout_id);
   const [confirming, setConfirming] = useState(Boolean(checkoutId));
 
@@ -107,12 +110,17 @@ function UpgradePage() {
       await navigate({ to: "/login", search: { next: "/upgrade" } });
       return;
     }
+    if (!agreed) {
+      setError("Check the box to agree to the Terms and the automatic-renewal subscription.");
+      return;
+    }
     setBusy(interval);
     try {
       const latest = await refresh();
       if (latest.paid) {
         return;
       }
+      recordLegalAccept("subscribe");
       const res = await startCheckout({ data: { interval } });
       if (!res.ok) {
         setError(res.error);
@@ -198,6 +206,13 @@ function UpgradePage() {
           Polar applies the discount once — after that you are billed the regular price unless you cancel.
         </p>
 
+        <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          First invoice is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}/month
+          or {formatUsd(PRICE_YEARLY_USD)}/year until you cancel from Account → Manage subscription. Cancel online the
+          same way you subscribed. You keep the Lab until the period ends. No proration.
+        </p>
+
         <div className="grid gap-4 md:grid-cols-2">
           <PlanCard
             label="Monthly"
@@ -209,7 +224,7 @@ function UpgradePage() {
             cta={`Subscribe — ${formatUsd(priceMonthlyLaunchUsd())} first month`}
             busy={busy === "month"}
             confirming={confirming}
-            pending={isPending}
+            pending={isPending || !agreed}
             onClick={() => void onSubscribe("month")}
             perks={PERKS}
           />
@@ -224,7 +239,7 @@ function UpgradePage() {
             cta={`Subscribe — ${formatUsd(priceYearlyLaunchUsd())} first year`}
             busy={busy === "year"}
             confirming={confirming}
-            pending={isPending}
+            pending={isPending || !agreed}
             onClick={() => void onSubscribe("year")}
             perks={PERKS}
           />

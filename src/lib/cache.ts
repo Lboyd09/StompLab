@@ -16,8 +16,9 @@ export function songCacheKey(
   instrument: string,
   stompModel: string,
   playbackTarget = "frfr",
+  wahMode = "pedal",
 ) {
-  return `song|v4|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}`;
+  return `song|v7|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}`;
 }
 
 export function soundCacheKey(
@@ -26,7 +27,7 @@ export function soundCacheKey(
   stompModel: string,
   playbackTarget = "frfr",
 ) {
-  return `sound|v4|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}`;
+  return `sound|v7|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}`;
 }
 
 export function eqCacheKey(query: string) {

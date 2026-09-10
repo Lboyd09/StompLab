@@ -9,8 +9,8 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
-import { standingRulesBlock } from "./research-lessons";
-import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM } from "./gemini";
+import { playerDerivedRules } from "./research-lessons";
+import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM } from "./gemini";
 import {
   GearSchema,
   jsonSchemaHint,
@@ -25,6 +25,7 @@ import {
   toPreset,
 } from "./preset-schema";
 import { isDemoId, newId, withStompModel } from "./preset-utils";
+import { applyWahPreference, parseWahMode, parseWahModelId, wahPromptLine } from "./wah";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -92,12 +93,12 @@ async function standingFeedbackLessons(): Promise<string> {
       else if (want.length >= 8) bits.push(want);
       else if (msg.length >= 12) bits.push(msg);
     }
-    const block = standingRulesBlock(bits);
-    g.__stompLessons__ = block;
+    const extra = playerDerivedRules(bits);
+    g.__stompLessons__ = extra;
     g.__stompLessonsAt__ = Date.now();
-    return block;
+    return extra;
   } catch {
-    return standingRulesBlock([]);
+    return "";
   }
 }
 
@@ -133,6 +134,8 @@ const ResearchIn = z.object({
   stompModel: DeviceEnum,
   playbackTarget: PlaybackEnum.optional().default("frfr"),
   userGear: z.array(GearSchema).optional().default([]),
+  wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
+  wahModelId: z.string().max(40).optional().default("teardrop-310"),
 });
 
 const CreateIn = z.object({
@@ -141,6 +144,8 @@ const CreateIn = z.object({
   stompModel: DeviceEnum,
   playbackTarget: PlaybackEnum.optional().default("frfr"),
   userGear: z.array(GearSchema).optional().default([]),
+  wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
+  wahModelId: z.string().max(40).optional().default("teardrop-310"),
 });
 
 const EqIn = z.object({ query: z.string().min(2).max(120) });
@@ -186,6 +191,19 @@ async function runGeminiPreset(opts: {
   );
 }
 
+function finishPreset(
+  preset: Preset,
+  gear: UserGear[],
+  wahMode: string | undefined,
+  wahModelId: string | undefined,
+): Preset {
+  return applyWahPreference(
+    overlayUserGear(preset, gear),
+    parseWahMode(wahMode),
+    parseWahModelId(wahModelId),
+  );
+}
+
 export const researchSongFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ResearchIn.parse(input))
@@ -196,7 +214,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
         { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
         data.stompModel,
       );
-      return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
+      return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
     }
 
     const email = await emailFor(context.userId, context.email);
@@ -207,7 +225,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
         { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
         data.stompModel,
       );
-      return { ok: true, preset: overlayUserGear(featured, data.userGear), source: "library" };
+      return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
     }
 
     const key = songCacheKey(
@@ -216,6 +234,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       data.instrument,
       data.stompModel,
       data.playbackTarget,
+      data.wahMode,
     );
 
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
@@ -232,19 +251,21 @@ export const researchSongFn = createServerFn({ method: "POST" })
         } catch {
           /* ignore */
         }
-        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
+        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
       }
     } catch {
       /* miss */
     }
 
     try {
-      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
+      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel, {
+        omitWah: data.wahMode === "pedal",
+      });
       const lessons = await standingFeedbackLessons();
-      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
-${lessons}
+      const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
+      const prompt = `${lessons}
 
-${songResearchInstructions(data.song, data.artist, data.instrument)}
+${songResearchInstructions(data.song, data.artist, data.instrument, wah)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
@@ -254,6 +275,9 @@ JSON schema:
 ${jsonSchemaHint()}`;
       const preset = await runGeminiPreset({
         prompt,
+        system: `${SYSTEM}
+
+${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "song",
@@ -279,7 +303,7 @@ ${jsonSchemaHint()}`;
       } catch {
         /* cache miss next time is fine */
       }
-      return { ok: true, preset, source: "gemini" };
+      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
@@ -317,17 +341,18 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
         } catch {
           /* ignore */
         }
-        return { ok: true, preset: overlayUserGear(preset, data.userGear), source: "gemini" };
+        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
       }
     } catch {
       /* miss */
     }
 
     try {
-      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
-      const prompt = `${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}
-
-${customSoundInstructions(data.description, data.instrument)}
+      const catalog = compactCatalogForPrompt(data.instrument, data.stompModel, {
+        omitWah: data.wahMode === "pedal",
+      });
+      const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
+      const prompt = `${customSoundInstructions(data.description, data.instrument, wah)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
@@ -337,7 +362,9 @@ JSON schema:
 ${jsonSchemaHintCustom()}`;
       const preset = await runGeminiPreset({
         prompt,
-        system: CUSTOM_SYSTEM,
+        system: `${CUSTOM_SYSTEM}
+
+${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "custom",
@@ -361,7 +388,7 @@ ${jsonSchemaHintCustom()}`;
       } catch {
         /* ignore */
       }
-      return { ok: true, preset, source: "gemini" };
+      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
@@ -450,8 +477,7 @@ export const revisePresetFn = createServerFn({ method: "POST" })
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
       const lessons = await standingFeedbackLessons();
-      const prompt = `${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}
-${lessons}
+      const prompt = `${lessons}
 
 Revise this ${DEVICE_MAP[data.stompModel].name} path so it is closer to the RECORD. Keep factory model ids. Only change what the note asks.
 
@@ -467,6 +493,9 @@ JSON schema:
 ${jsonSchemaHint()}`;
       const preset = await runGeminiPreset({
         prompt,
+        system: `${SYSTEM}
+
+${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "song",

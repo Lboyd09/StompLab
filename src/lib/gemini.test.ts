@@ -80,8 +80,8 @@ describe("googleAnswerText", () => {
 describe("research thinking", () => {
   const src = readFileSync(new URL("./gemini.ts", import.meta.url), "utf8");
   it("lets Flash think so it can A/B against the record", () => {
-    assert.match(src, /thinkingBudget:\s*1024/);
-    assert.match(src, /reasoning_effort:\s*"low"/);
+    assert.match(src, /thinkingBudget:\s*4096/);
+    assert.match(src, /reasoning_effort:\s*"medium"/);
     assert.equal(/thinkingBudget:\s*0/.test(src), false);
     assert.equal(/reasoning_effort:\s*"none"/.test(src), false);
   });
@@ -89,5 +89,10 @@ describe("research thinking", () => {
     assert.match(src, /export const CUSTOM_SYSTEM/);
     assert.match(src, /not a song replica/);
     assert.match(src, /opts\?\.system \?\? SYSTEM/);
+  });
+  it("tells Flash to research the tracking session before any model id", () => {
+    assert.match(src, /Tracking rig beats a later tour rig/);
+    assert.match(src, /Session credits beat/);
+    assert.match(src, /Guitar Chalk/);
   });
 });

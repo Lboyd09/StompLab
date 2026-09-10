@@ -19,7 +19,9 @@ import { Route as GearRouteImport } from './routes/gear'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as LoginRouteImport } from './routes/login'
+import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
 import { Route as ApiVisitRouteImport } from './routes/api/visit'
@@ -77,9 +79,19 @@ const LoginRoute = LoginRouteImport.update({
   path: '/login',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrivacyRoute = PrivacyRouteImport.update({
+  id: '/privacy',
+  path: '/privacy',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TermsRoute = TermsRouteImport.update({
+  id: '/terms',
+  path: '/terms',
   getParentRoute: () => rootRouteImport,
 } as any)
 const UpgradeRoute = UpgradeRouteImport.update({
@@ -124,7 +136,9 @@ export interface FileRoutesByFullPath {
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
@@ -143,7 +157,9 @@ export interface FileRoutesByTo {
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
@@ -163,7 +179,9 @@ export interface FileRoutesById {
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/login': typeof LoginRoute
+  '/privacy': typeof PrivacyRoute
   '/settings': typeof SettingsRoute
+  '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
@@ -184,7 +202,9 @@ export interface FileRouteTypes {
     | '/guide'
     | '/history'
     | '/login'
+    | '/privacy'
     | '/settings'
+    | '/terms'
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
@@ -203,7 +223,9 @@ export interface FileRouteTypes {
     | '/guide'
     | '/history'
     | '/login'
+    | '/privacy'
     | '/settings'
+    | '/terms'
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
@@ -222,7 +244,9 @@ export interface FileRouteTypes {
     | '/guide'
     | '/history'
     | '/login'
+    | '/privacy'
     | '/settings'
+    | '/terms'
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
@@ -242,7 +266,9 @@ export interface RootRouteChildren {
   GuideRoute: typeof GuideRoute
   HistoryRoute: typeof HistoryRoute
   LoginRoute: typeof LoginRoute
+  PrivacyRoute: typeof PrivacyRoute
   SettingsRoute: typeof SettingsRoute
+  TermsRoute: typeof TermsRoute
   UpgradeRoute: typeof UpgradeRoute
   ApiKeepaliveRoute: typeof ApiKeepaliveRoute
   ApiVisitRoute: typeof ApiVisitRoute
@@ -323,11 +349,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof LoginRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/privacy': {
+      id: '/privacy'
+      path: '/privacy'
+      fullPath: '/privacy'
+      preLoaderRoute: typeof PrivacyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/terms': {
+      id: '/terms'
+      path: '/terms'
+      fullPath: '/terms'
+      preLoaderRoute: typeof TermsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/upgrade': {
@@ -386,7 +426,9 @@ const rootRouteChildren: RootRouteChildren = {
   GuideRoute: GuideRoute,
   HistoryRoute: HistoryRoute,
   LoginRoute: LoginRoute,
+  PrivacyRoute: PrivacyRoute,
   SettingsRoute: SettingsRoute,
+  TermsRoute: TermsRoute,
   UpgradeRoute: UpgradeRoute,
   ApiKeepaliveRoute: ApiKeepaliveRoute,
   ApiVisitRoute: ApiVisitRoute,

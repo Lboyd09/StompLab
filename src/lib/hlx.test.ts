@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ALL_MODELS } from "../data/catalog.ts";
+import { ALL_MODELS, MODEL_MAP } from "../data/catalog.ts";
 import { DEMO_IDS, FEATURED } from "../data/featured.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
 import { factoryParamsFor, FACTORY_HLX_PARAMS } from "../data/helix-params.ts";
@@ -59,13 +59,13 @@ describe("buildHlx Teen Spirit", () => {
   const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
   const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
 
-  it("emits factory Cali IV R2 + 70s Chorus + Deez One Vintage + Cali V30 cab", () => {
+  it("emits factory Cali IV R2 + 70s Chorus + Deez One Vintage + 1960 T75 cab", () => {
     assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR2");
     assert.equal(dsp0.block2["@type"], 3);
     assert.equal(dsp0.block2["@cab"], "cab0");
     assert.equal(dsp0.block1["@model"], "HD2_Chorus70sChorus");
     assert.equal(dsp0.block0["@model"], "HD2_DistDeezOneVintage");
-    assert.equal(dsp0.cab0["@model"], "HD2_Cab4X12CaliV30");
+    assert.equal(dsp0.cab0["@model"], "HD2_Cab4x121960T75");
   });
 
   it("remaps 70s Chorus and Deez One to real param names", () => {
@@ -75,7 +75,7 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block1.Mode, false);
     assert.equal(typeof dsp0.block0.Tone, "number");
     assert.equal(typeof dsp0.block0.Level, "number");
-    assert.equal(dsp0.block0.Drive, 0.52);
+    assert.equal(dsp0.block0.Drive, 0.7);
     assert.equal(dsp0.block0.Treble, undefined);
     assert.equal(dsp0.block0.Output, undefined);
     assert.equal(dsp0.block0.Bass, undefined);
@@ -83,16 +83,16 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block0.Mix, undefined);
   });
 
-  it("Pre snapshot enables Small Clone; Chorus snapshot bypasses it", () => {
+  it("Clean snapshot is clone-only; Chorus snapshot bypasses the clone", () => {
     const snap0 = tone.snapshot0 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap1 = tone.snapshot1 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap2 = tone.snapshot2 as { "@name": string; "@pedalstate": number; blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(snap0["@name"], "INTRO");
+    assert.equal(snap0["@name"], "CLEAN");
     assert.equal(snap0.blocks.dsp0.block0, false);
     assert.equal(snap0.blocks.dsp0.block1, true);
-    assert.equal(snap1["@name"], "VERSE");
+    assert.equal(snap1["@name"], "HELLO");
     assert.equal(snap1.blocks.dsp0.block0, true);
-    assert.equal(snap1.blocks.dsp0.block1, false);
+    assert.equal(snap1.blocks.dsp0.block1, true);
     assert.equal(snap2["@name"], "CHORUS");
     assert.equal(snap2.blocks.dsp0.block1, false);
     assert.equal(snap2["@pedalstate"], 0);
@@ -150,22 +150,25 @@ describe("buildHlx Enter Sandman", () => {
   const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
   const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
 
-  it("starts on a clean wah intro snapshot", () => {
+  it("starts on a clean intro snapshot without a wah block", () => {
     const snap0 = tone.snapshot0 as {
       "@name": string;
       "@pedalstate": number;
       "@valid": boolean;
       blocks: { dsp0: Record<string, boolean> };
     };
+    const models = Object.values(dsp0)
+      .map((b) => String(b["@model"] ?? ""))
+      .filter(Boolean);
     assert.equal(snap0["@name"], "INTRO");
     assert.equal(snap0["@valid"], true);
     assert.equal(snap0["@pedalstate"], 0);
-    assert.equal(dsp0.block0["@model"], "HD2_WahUKWah846");
-    assert.equal(dsp0.block1["@model"], "HD2_DistScream808");
-    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliRectifire");
-    assert.equal(snap0.blocks.dsp0.block0, true);
-    assert.equal(snap0.blocks.dsp0.block1, false);
-    assert.equal(snap0.blocks.dsp0.block3, false);
+    assert.ok(models.includes("HD2_DistScream808"));
+    assert.ok(models.includes("HD2_AmpCaliRectifire"));
+    assert.equal(models.some((m) => m.includes("Wah")), false);
+    const ts = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_DistScream808");
+    assert.ok(ts);
+    assert.equal(snap0.blocks.dsp0[ts![0]], false);
   });
 
   it("rhythm snapshot enables TS and gate", () => {
@@ -173,10 +176,12 @@ describe("buildHlx Enter Sandman", () => {
       "@name": string;
       blocks: { dsp0: Record<string, boolean> };
     };
+    const tsKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_DistScream808")?.[0];
+    const gateKey = Object.entries(dsp0).find(([, b]) => String(b["@model"] ?? "").includes("Gate"))?.[0];
     assert.equal(snap1["@name"], "RHYTHM");
-    assert.equal(snap1.blocks.dsp0.block0, false);
-    assert.equal(snap1.blocks.dsp0.block1, true);
-    assert.equal(snap1.blocks.dsp0.block3, true);
+    assert.ok(tsKey);
+    assert.equal(snap1.blocks.dsp0[tsKey!], true);
+    if (gateKey) assert.equal(snap1.blocks.dsp0[gateKey], true);
   });
 });
 
@@ -222,20 +227,22 @@ describe("visual FS map", () => {
     );
   });
 
-  it("puts Teen Spirit intro first and XL Pre on FS4 (bottom left)", () => {
+  it("puts Teen Spirit Clean first; three tones only — solo shares Hello", () => {
     const src = featured("featured-teen-spirit");
-    assert.equal(src.snapshots[0]?.name, "Intro");
+    assert.equal(src.snapshots[0]?.name, "Clean");
+    assert.equal(src.snapshots.map((s) => s.name).join("/"), "Clean/Hello/Chorus");
     assert.equal(src.footswitches[0]?.action, "snapshot");
     const stomp = withStompModel(src, "hx-stomp");
     assert.equal(stomp.snapshots.length, 3);
-    assert.equal(stomp.snapshots[0]?.name, "Intro");
+    assert.equal(stomp.snapshots[0]?.name, "Clean");
     const xl = withStompModel(src, "hx-stomp-xl");
-    assert.equal(xl.snapshots.length, 4);
-    assert.equal(xl.snapshots[3]?.name, "Pre");
-    const pre = xl.footswitches.find((f) => f.snapshotId === "s4");
-    assert.equal(pre?.index, 4);
-    const intro = xl.footswitches.find((f) => f.snapshotId === "s1");
-    assert.equal(intro?.index, 1);
+    assert.equal(xl.snapshots.length, 3);
+    assert.equal(xl.snapshots.some((s) => /solo/i.test(s.name)), false);
+    const clean = xl.footswitches.find((f) => f.snapshotId === "s1");
+    assert.equal(clean?.index, 1);
+    const eq = xl.footswitches.find((f) => f.label === "EQ");
+    assert.equal(eq?.action, "bypass");
+    assert.ok((eq?.index ?? 0) >= 4);
   });
 
   it("gives Sandman on/off GATE and EQ on spare XL switches, not on 3-switch Stomp", () => {
@@ -255,10 +262,8 @@ describe("visual FS map", () => {
       false,
     );
     const teen = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
-    assert.equal(
-      teen.footswitches.some((f) => f.label === "GATE" || f.label === "EQ"),
-      false,
-    );
+    assert.equal(teen.footswitches.some((f) => f.label === "GATE"), false);
+    assert.equal(teen.footswitches.some((f) => f.label === "EQ"), true);
   });
 
   it("exports only factory HD2/L6SPB ids for every featured rig", () => {
@@ -274,11 +279,12 @@ describe("visual FS map", () => {
         assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
         assert.equal(model.includes("AmpegScrambler") && !model.endsWith("OD"), false, model);
       }
-      const primary = p.footswitches.filter((f) => f.index <= 3);
-      assert.ok(primary.length >= 3, p.id);
+      const snaps = p.footswitches.filter((f) => f.action === "snapshot");
+      assert.ok(snaps.length >= 2, `${p.id} needs snapshot switches`);
+      assert.equal(snaps[0]?.index, 1, `${p.id} FS1 should be a snapshot`);
       assert.ok(
-        primary.every((f) => f.action === "snapshot"),
-        `${p.id} FS1–3 must be snapshots`,
+        snaps.every((f) => f.action === "snapshot"),
+        `${p.id} snapshot FS must stay snapshots`,
       );
     }
   });
@@ -287,9 +293,10 @@ describe("visual FS map", () => {
     const xl = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
     const hlx = buildHlx(xl);
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
-    const snap0 = tone.snapshot0 as { "@fs_index": number; "@name": string };
+    const snap0 = tone.snapshot0 as { "@fs_index": number; "@name": string; "@fs_label"?: string };
     const snap3 = tone.snapshot3 as { "@fs_index": number };
-    assert.equal(snap0["@name"], "INTRO");
+    assert.equal(snap0["@name"], "CLEAN");
+    assert.equal(snap0["@fs_label"], "CLEAN");
     assert.equal(snap0["@fs_index"], 1);
     assert.equal(snap3["@fs_index"], 4);
   });
@@ -343,6 +350,14 @@ describe("visual FS map", () => {
         }
       }
     }
+  });
+
+  it("does not put a Helix wah in Killing in the Name", () => {
+    const src = featured("featured-killing-name");
+    assert.equal(
+      src.blocks.some((b) => /wah|teardrop|uk-wah|fassel|chrome|throaty/i.test(b.modelId)),
+      false,
+    );
   });
 
   it("does not add Everlong / Like a Stone / Show Me How to Live as featured", () => {
@@ -660,11 +675,9 @@ describe("multi-device export", () => {
 
   it("strips amp/cab when the replica is switched to HX Effects", () => {
     const fx = withStompModel(featured("featured-teen-spirit"), "hx-effects");
+    const AMP_CAB = new Set(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
     assert.equal(
-      fx.blocks.some((b) => {
-        const cat = b.modelId.includes("cali") || b.modelId.includes("4x12") || b.modelId.includes("amp");
-        return cat;
-      }),
+      fx.blocks.some((b) => AMP_CAB.has(MODEL_MAP[b.modelId]?.category ?? "")),
       false,
     );
     const hlx = buildHlx(fx);

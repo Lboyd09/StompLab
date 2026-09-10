@@ -30,6 +30,8 @@ import { PresetFeedbackDialog, PresetFeedbackForm } from "../layout/preset-feedb
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
+import { WahSelect } from "../layout/wah-select";
+import { applyWahPreference, parseWahMode, type WahMode } from "@/lib/wah";
 
 export function PresetWorkspace({
   preset,
@@ -53,6 +55,10 @@ export function PresetWorkspace({
   const defaultFsMode = useAppStore((s) => s.defaultFsMode);
   const showDsp = useAppStore((s) => s.showDsp);
   const confirmDownload = useAppStore((s) => s.confirmDownload);
+  const wahMode = useAppStore((s) => s.wahMode);
+  const wahModelId = useAppStore((s) => s.wahModelId);
+  const setWahMode = useAppStore((s) => s.setWahMode);
+  const setWahModelId = useAppStore((s) => s.setWahModelId);
   const { plan, isPending: planPending } = usePlan();
   const [copying, setCopying] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
@@ -129,6 +135,27 @@ export function PresetWorkspace({
       ...preset,
       blocks: preset.blocks.map((b) => (b.id === blockId ? { ...b, enabled: !b.enabled } : b)),
     });
+  }
+
+  function renameSnapshot(id: string, name: string) {
+    const nextName = name.slice(0, 12);
+    onChange({
+      ...preset,
+      snapshots: preset.snapshots.map((s) => (s.id === id ? { ...s, name: nextName } : s)),
+      footswitches: preset.footswitches.map((f) =>
+        f.snapshotId === id ? { ...f, label: nextName.slice(0, 8).toUpperCase() } : f,
+      ),
+    });
+  }
+
+  function onWahMode(mode: WahMode) {
+    setWahMode(mode);
+    onChange(applyWahPreference(preset, mode, wahModelId));
+  }
+
+  function onWahModel(id: string) {
+    setWahModelId(id);
+    onChange(applyWahPreference(preset, parseWahMode(wahMode), id));
   }
 
   function assignFs(index: number, patch: Partial<FootswitchAssign> | null) {
@@ -425,7 +452,8 @@ export function PresetWorkspace({
             <CardHeader>
               <CardTitle>Snapshots</CardTitle>
               <CardDescription>
-                {preset.snapshots.length} sections · tap to hear the change on the Stomp
+                {preset.snapshots.length} sections · rename them before you download — the .hlx uses these names on
+                the switches
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -439,33 +467,58 @@ export function PresetWorkspace({
                   .filter(Boolean)
                   .join(" · ");
                 return (
-                  <button
+                  <div
                     key={s.id}
-                    type="button"
-                    onClick={() => {
-                      setActiveSnapshot(i);
-                      setFsMode("snapshot");
-                    }}
-                    className={`flex w-full gap-3 rounded-lg px-3 py-2.5 text-left ${
+                    className={`flex w-full gap-3 rounded-lg px-3 py-2.5 ${
                       on ? "bg-secondary" : "hover:bg-secondary/60"
                     }`}
                   >
-                    <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: s.color }} />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium">
-                        Snap {i + 1} · {s.name}
+                    <button
+                      type="button"
+                      aria-label={`Recall ${s.name}`}
+                      onClick={() => {
+                        setActiveSnapshot(i);
+                        setFsMode("snapshot");
+                      }}
+                      className="mt-2 size-2.5 shrink-0 rounded-full"
+                      style={{ background: s.color }}
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-[10px] text-muted-foreground">FS{i + 1}</span>
+                        <input
+                          value={s.name}
+                          maxLength={12}
+                          aria-label={`Snapshot ${i + 1} name`}
+                          onChange={(e) => renameSnapshot(s.id, e.target.value)}
+                          onFocus={() => {
+                            setActiveSnapshot(i);
+                            setFsMode("snapshot");
+                          }}
+                          className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm font-medium"
+                        />
                       </div>
                       <p className="text-xs text-muted-foreground">{s.notes}</p>
                       {onNames ? (
-                        <p className="mt-0.5 font-mono text-[10px] text-muted-foreground">{onNames}</p>
+                        <p className="font-mono text-[10px] text-muted-foreground">{onNames}</p>
                       ) : null}
                     </div>
-                  </button>
+                  </div>
                 );
               })}
             </CardContent>
           </Card>
         ) : null}
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Wah</CardTitle>
+            <CardDescription>Does not go in the chain unless you want the Helix to do it.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <WahSelect mode={wahMode} modelId={wahModelId} onMode={onWahMode} onModel={onWahModel} />
+          </CardContent>
+        </Card>
 
         <Card>
           <CardHeader>

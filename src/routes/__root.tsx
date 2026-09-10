@@ -1,5 +1,5 @@
 import { createRootRoute, HeadContent, Outlet, Scripts, useRouterState } from "@tanstack/react-router";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppShell } from "@/components/layout/app-shell";
@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl5";
+const ICON_V = "sl7";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -60,11 +60,22 @@ function Root() {
           <ShellSwitch />
           <Toaster />
         </AuthProvider>
-        <Analytics />
+        <HostedAnalytics />
         <Scripts />
       </body>
     </html>
   );
+}
+
+/** Vercel Web Analytics 404s on loopback preview. Only load it on a real host. */
+function HostedAnalytics() {
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    const host = window.location.hostname;
+    if (host === "localhost" || host === "127.0.0.1") return;
+    setOn(true);
+  }, []);
+  return on ? <Analytics /> : null;
 }
 
 /** One ping per browser per day. Bots that do not run JS are not counted. */

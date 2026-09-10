@@ -154,6 +154,18 @@ function GuidePage() {
           Presets are unofficial starting points — not copies of commercial patches or master
           recordings. Song titles identify the recording we researched.
         </p>
+        <p>
+          The full agreement is on{" "}
+          <Link to="/terms" className="text-primary underline underline-offset-2">
+            Terms
+          </Link>{" "}
+          and{" "}
+          <Link to="/privacy" className="text-primary underline underline-offset-2">
+            Privacy
+          </Link>
+          . You check a box (your electronic signature) when you create an account and again when you
+          subscribe. Paid Lab renews automatically until you cancel from Account → Manage subscription.
+        </p>
       </section>
 
       <p className="text-sm text-muted-foreground">

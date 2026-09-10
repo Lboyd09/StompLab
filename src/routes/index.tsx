@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
+import { WahSelect } from "@/components/layout/wah-select";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
@@ -16,6 +17,7 @@ import type { PlaybackTarget } from "@/data/types";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { isDemoId, withStompModel } from "@/lib/preset-utils";
+import { applyWahPreference } from "@/lib/wah";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -33,6 +35,10 @@ function Home() {
   const instrument = useAppStore((s) => s.instrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const gear = useAppStore((s) => s.gear);
+  const wahMode = useAppStore((s) => s.wahMode);
+  const wahModelId = useAppStore((s) => s.wahModelId);
+  const setWahMode = useAppStore((s) => s.setWahMode);
+  const setWahModelId = useAppStore((s) => s.setWahModelId);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
@@ -60,7 +66,11 @@ function Home() {
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear);
+    const preset = applyWahPreference(
+      overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
+      wahMode,
+      wahModelId,
+    );
     savePreset(preset);
     void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
@@ -74,7 +84,7 @@ function Home() {
         (p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song,
       );
       if (src && isDemoId(src.id)) {
-        savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
+        savePreset(applyWahPreference(overlayUserGear(withStompModel(featuredHit, stompModel), gear), wahMode, wahModelId));
         notifyResearchSource("library");
         await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
         return;
@@ -84,7 +94,7 @@ function Home() {
         return;
       }
       if (src && plan.paid) {
-        savePreset(overlayUserGear(withStompModel(featuredHit, stompModel), gear));
+        savePreset(applyWahPreference(overlayUserGear(withStompModel(featuredHit, stompModel), gear), wahMode, wahModelId));
         notifyResearchSource("library");
         await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
         return;
@@ -118,6 +128,8 @@ function Home() {
           stompModel,
           playbackTarget,
           userGear: gear,
+          wahMode,
+          wahModelId,
         },
       });
       if (!result.ok) {
@@ -226,6 +238,7 @@ function Home() {
             }}
           />
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+          <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}

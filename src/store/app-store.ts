@@ -17,6 +17,7 @@ import {
   type ThemeId,
   upsertPreset,
 } from "@/lib/storage";
+import type { WahMode } from "@/lib/wah";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
 type FsMode = "stomp" | "snapshot" | "preset";
@@ -34,6 +35,8 @@ type AppState = {
   largeControls: boolean;
   lcdBright: boolean;
   reduceMotion: boolean;
+  wahMode: WahMode;
+  wahModelId: string;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -55,6 +58,8 @@ type AppState = {
   setLcdBright: (bright: boolean) => void;
   setReduceMotion: (reduce: boolean) => void;
   setConfirmDownload: (confirm: boolean) => void;
+  setWahMode: (mode: WahMode) => void;
+  setWahModelId: (id: string) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
@@ -87,6 +92,8 @@ export const useAppStore = create<AppState>((set, get) => ({
   largeControls: false,
   lcdBright: false,
   reduceMotion: false,
+  wahMode: "pedal",
+  wahModelId: "teardrop-310",
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -112,6 +119,8 @@ export const useAppStore = create<AppState>((set, get) => ({
       lcdBright: settings.lcdBright,
       reduceMotion: settings.reduceMotion,
       confirmDownload: settings.confirmDownload,
+      wahMode: settings.wahMode,
+      wahModelId: settings.wahModelId,
       geminiKey: loadGeminiKey(),
     });
   },
@@ -165,6 +174,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   setConfirmDownload: (confirmDownload) => {
     persist({ confirmDownload });
     set({ confirmDownload });
+  },
+  setWahMode: (wahMode) => {
+    persist({ wahMode });
+    set({ wahMode });
+  },
+  setWahModelId: (wahModelId) => {
+    persist({ wahModelId });
+    set({ wahModelId });
   },
   setGeminiKey: (geminiKey) => {
     saveGeminiKey(geminiKey);
