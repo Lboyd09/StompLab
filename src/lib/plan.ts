@@ -8,6 +8,21 @@ export const PRICE_MONTHLY_USD = 6.99;
 export const PRICE_YEARLY_USD = 75;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
+/** Launch promo: first invoice only (Polar duration=once). Then full price. */
+export const LAUNCH_DISCOUNT_PERCENT = 20;
+
+export function launchPriceUsd(full: number) {
+  return Math.round(full * (100 - LAUNCH_DISCOUNT_PERCENT)) / 100;
+}
+
+export function priceMonthlyLaunchUsd() {
+  return launchPriceUsd(PRICE_MONTHLY_USD);
+}
+
+export function priceYearlyLaunchUsd() {
+  return launchPriceUsd(PRICE_YEARLY_USD);
+}
+
 
 /** @deprecated aliases so leftover one-time copy still compiles */
 export const PRICE_USD = PRICE_YEARLY_USD;
