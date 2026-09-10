@@ -12,6 +12,9 @@ import {
   PAID_MONTHLY_BUILDS,
   PRICE_MONTHLY_USD,
   PRICE_YEARLY_USD,
+  LAUNCH_DISCOUNT_PERCENT,
+  priceMonthlyLaunchUsd,
+  priceYearlyLaunchUsd,
   yearlySavingsUsd,
   formatUsd,
   buildsUsedCopy,
@@ -188,12 +191,22 @@ function UpgradePage() {
           </div>
         </div>
 
+        <p className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
+          <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first invoice.</span>{" "}
+          Monthly pays {formatUsd(priceMonthlyLaunchUsd())} the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo.
+          Yearly pays {formatUsd(priceYearlyLaunchUsd())} the first year, then {formatUsd(PRICE_YEARLY_USD)}/yr at renewal.
+          Polar applies the discount once — after that you are billed the regular price unless you cancel.
+        </p>
+
         <div className="grid gap-4 md:grid-cols-2">
           <PlanCard
             label="Monthly"
-            price={PRICE_MONTHLY_USD}
-            period="/ month"
-            cta={`Subscribe — ${formatUsd(PRICE_MONTHLY_USD)}/mo`}
+            price={priceMonthlyLaunchUsd()}
+            period=" first month"
+            compareAt={PRICE_MONTHLY_USD}
+            renewNote={`Then ${formatUsd(PRICE_MONTHLY_USD)}/mo after the first month`}
+            badge={`${LAUNCH_DISCOUNT_PERCENT}% off first month`}
+            cta={`Subscribe — ${formatUsd(priceMonthlyLaunchUsd())} first month`}
             busy={busy === "month"}
             confirming={confirming}
             pending={isPending}
@@ -202,11 +215,13 @@ function UpgradePage() {
           />
           <PlanCard
             label="Yearly"
-            price={PRICE_YEARLY_USD}
-            period="/ year"
-            badge={`Save ${formatUsd(saving)}`}
+            price={priceYearlyLaunchUsd()}
+            period=" first year"
+            compareAt={PRICE_YEARLY_USD}
+            renewNote={`Then ${formatUsd(PRICE_YEARLY_USD)}/yr at renewal`}
+            badge={`Launch · save ${formatUsd(saving)}/yr vs monthly`}
             highlight
-            cta={`Subscribe — ${formatUsd(PRICE_YEARLY_USD)}/yr`}
+            cta={`Subscribe — ${formatUsd(priceYearlyLaunchUsd())} first year`}
             busy={busy === "year"}
             confirming={confirming}
             pending={isPending}
@@ -217,10 +232,12 @@ function UpgradePage() {
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <p className="text-xs text-muted-foreground">
-          Checkout is Polar (merchant of record). Going back before you pay does not unlock anything.
-          Polar marks the payment confirmed, then succeeded — we wait for succeeded. The subscription
-          sticks to {user?.primaryEmail || "your email"} after Polar says it is active. Cancel any time
-          from Account → Manage subscription; you keep the Lab until the period ends.
+          Checkout is Polar (merchant of record). The launch discount is 20% off your first invoice only —
+          Polar shows the discounted total at checkout, then renewals are the regular price above.
+          Going back before you pay does not unlock anything. Polar marks the payment confirmed, then
+          succeeded — we wait for succeeded. The subscription sticks to {user?.primaryEmail || "your email"}{" "}
+          after Polar says it is active. Cancel any time from Account → Manage subscription; you keep the
+          Lab until the period ends.
         </p>
 
         <p className="text-sm text-muted-foreground">
@@ -241,6 +258,8 @@ function PlanCard({
   label,
   price,
   period,
+  compareAt,
+  renewNote,
   badge,
   highlight,
   cta,
@@ -253,6 +272,8 @@ function PlanCard({
   label: string;
   price: number;
   period: string;
+  compareAt?: number;
+  renewNote?: string;
   badge?: string;
   highlight?: boolean;
   cta: string;
@@ -280,6 +301,14 @@ function PlanCard({
         {formatUsd(price)}
         <span className="ml-1 text-base font-normal text-muted-foreground">{period}</span>
       </p>
+      {compareAt != null ? (
+        <p className="mt-1 text-sm text-muted-foreground">
+          <span className="line-through">{formatUsd(compareAt)}</span>
+          {renewNote ? <> · {renewNote}</> : null}
+        </p>
+      ) : renewNote ? (
+        <p className="mt-1 text-sm text-muted-foreground">{renewNote}</p>
+      ) : null}
       <ul className="mt-6 space-y-3">
         {perks.map((p) => (
           <li key={p} className="flex gap-2 text-sm">

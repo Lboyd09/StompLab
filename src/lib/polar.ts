@@ -26,6 +26,14 @@ export function polarProductId(interval: PlanInterval): string {
   return envFirst("POLAR_PRODUCT_ID_MONTHLY", "POLAR_MONTHLY_PRODUCT_ID", "POLAR_PRODUCT_MONTHLY", "POLAR_PRODUCT_ID");
 }
 
+/** First-invoice launch discount. Prefer interval-specific env; fall back to shared POLAR_DISCOUNT_ID. */
+export function polarDiscountId(interval: PlanInterval): string {
+  if (interval === "year") {
+    return envFirst("POLAR_DISCOUNT_ID_YEARLY", "POLAR_YEARLY_DISCOUNT_ID", "POLAR_DISCOUNT_ID");
+  }
+  return envFirst("POLAR_DISCOUNT_ID_MONTHLY", "POLAR_MONTHLY_DISCOUNT_ID", "POLAR_DISCOUNT_ID");
+}
+
 export function polarSetup() {
   const token = Boolean(polarToken());
   const monthly = Boolean(polarProductId("month"));
@@ -365,7 +373,7 @@ export async function createPolarCheckout(opts: {
       metadata,
     },
   ];
-  const discount = (process.env.POLAR_DISCOUNT_ID ?? "").trim();
+  const discount = polarDiscountId(opts.interval);
   if (discount) {
     for (const body of bodies) body.discount_id = discount;
   }
