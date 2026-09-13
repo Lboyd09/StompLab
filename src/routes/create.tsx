@@ -7,7 +7,6 @@ import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { PlaybackSelect } from "@/components/layout/playback-select";
-import { WahSelect } from "@/components/layout/wah-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -35,8 +34,6 @@ function CreatePage() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
-  const setWahMode = useAppStore((s) => s.setWahMode);
-  const setWahModelId = useAppStore((s) => s.setWahModelId);
   const savePreset = useAppStore((s) => s.savePreset);
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
@@ -169,7 +166,6 @@ function CreatePage() {
           placeholder="Dumble-ish overdrive into a Twin, with a slow Univibe and a short plate…"
         />
         <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-        <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}

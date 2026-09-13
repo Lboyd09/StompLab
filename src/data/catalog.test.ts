@@ -71,6 +71,9 @@ describe("research prompt", () => {
     assert.match(prompt, /cali-q-graphic/);
     assert.match(prompt, /cali-iv-rhythm-1/);
     assert.match(prompt, /pedal platform/);
+    assert.match(prompt, /CLEAN OPENING/);
+    assert.match(prompt, /SINGING FUZZ/);
+    assert.match(prompt, /SATURATING ECHO/);
   });
 
   it("asks for the tracked rig before any model id", () => {
@@ -84,6 +87,7 @@ describe("research prompt", () => {
     assert.match(brief, /noise gate or a dedicated EQ/);
     assert.match(brief, /never a category/);
     assert.match(brief, /tone fingerprint/);
+    assert.match(brief, /If the recorded opening is clean/);
   });
 
   it("custom sound prompt invents a rig instead of copying a record", () => {

@@ -14,7 +14,6 @@ import {
   PRICE_YEARLY_USD,
   LAUNCH_DISCOUNT_PERCENT,
   priceMonthlyLaunchUsd,
-  priceYearlyLaunchUsd,
   yearlySavingsUsd,
   formatUsd,
   buildsUsedCopy,
@@ -200,15 +199,14 @@ function UpgradePage() {
         </div>
 
         <p className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first invoice.</span>{" "}
+          <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first month.</span>{" "}
           Monthly pays {formatUsd(priceMonthlyLaunchUsd())} the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo.
-          Yearly pays {formatUsd(priceYearlyLaunchUsd())} the first year, then {formatUsd(PRICE_YEARLY_USD)}/yr at renewal.
-          Polar applies the discount once — after that you are billed the regular price unless you cancel.
+          Yearly is {formatUsd(PRICE_YEARLY_USD)} — that is the only yearly price, every year, until you cancel.
         </p>
 
         <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          First invoice is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}/month
+          First month is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}/month
           or {formatUsd(PRICE_YEARLY_USD)}/year until you cancel from Account → Manage subscription. Cancel online the
           same way you subscribed. You keep the Lab until the period ends. No proration.
         </p>
@@ -230,13 +228,12 @@ function UpgradePage() {
           />
           <PlanCard
             label="Yearly"
-            price={priceYearlyLaunchUsd()}
-            period=" first year"
-            compareAt={PRICE_YEARLY_USD}
-            renewNote={`Then ${formatUsd(PRICE_YEARLY_USD)}/yr at renewal`}
-            badge={`Launch · save ${formatUsd(saving)}/yr vs monthly`}
+            price={PRICE_YEARLY_USD}
+            period="/yr"
+            renewNote={`Billed ${formatUsd(PRICE_YEARLY_USD)} once a year`}
+            badge={`Save ${formatUsd(saving)}/yr vs monthly`}
             highlight
-            cta={`Subscribe — ${formatUsd(priceYearlyLaunchUsd())} first year`}
+            cta={`Subscribe — ${formatUsd(PRICE_YEARLY_USD)}/year`}
             busy={busy === "year"}
             confirming={confirming}
             pending={isPending || !agreed}
@@ -247,9 +244,9 @@ function UpgradePage() {
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <p className="text-xs text-muted-foreground">
-          Checkout is Polar (merchant of record). The launch discount is 20% off your first invoice only —
-          Polar shows the discounted total at checkout, then renewals are the regular price above.
-          Going back before you pay does not unlock anything. Polar marks the payment confirmed, then
+          Checkout is Polar (merchant of record). The launch discount is 20% off your first month only —
+          Polar shows the discounted monthly total at checkout. Yearly checkout is {formatUsd(PRICE_YEARLY_USD)}, every
+          year. Going back before you pay does not unlock anything. Polar marks the payment confirmed, then
           succeeded — we wait for succeeded. The subscription sticks to {user?.primaryEmail || "your email"}{" "}
           after Polar says it is active. Cancel any time from Account → Manage subscription; you keep the
           Lab until the period ends.

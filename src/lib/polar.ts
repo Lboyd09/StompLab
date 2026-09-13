@@ -26,10 +26,11 @@ export function polarProductId(interval: PlanInterval): string {
   return envFirst("POLAR_PRODUCT_ID_MONTHLY", "POLAR_MONTHLY_PRODUCT_ID", "POLAR_PRODUCT_MONTHLY", "POLAR_PRODUCT_ID");
 }
 
-/** First-invoice launch discount. Prefer interval-specific env; fall back to shared POLAR_DISCOUNT_ID. */
+/** First-invoice launch discount. Monthly only. Yearly is always $75. */
 export function polarDiscountId(interval: PlanInterval): string {
   if (interval === "year") {
-    return envFirst("POLAR_DISCOUNT_ID_YEARLY", "POLAR_YEARLY_DISCOUNT_ID", "POLAR_DISCOUNT_ID");
+    // Do not fall back to the shared POLAR_DISCOUNT_ID — that 20% off would make yearly $60.
+    return envFirst("POLAR_DISCOUNT_ID_YEARLY", "POLAR_YEARLY_DISCOUNT_ID");
   }
   return envFirst("POLAR_DISCOUNT_ID_MONTHLY", "POLAR_MONTHLY_DISCOUNT_ID", "POLAR_DISCOUNT_ID");
 }

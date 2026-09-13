@@ -177,7 +177,6 @@ function SettingsPage() {
             ))}
           </div>
         </fieldset>
-        <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
         <fieldset className="space-y-2">
           <Label>When a rig opens, start in</Label>
           <div className="flex flex-wrap gap-2">
@@ -293,6 +292,9 @@ function SettingsPage() {
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Wah</h2>
+        <p className="text-sm text-muted-foreground">
+          Default after you build a preset. Change it on the preset page too — it is not on the Lab form.
+        </p>
         <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
       </section>
 
@@ -303,16 +305,14 @@ function SettingsPage() {
             Sign in, sign up, or forgot password
           </summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Email and a password of 8+ characters. No Google, no X. Change your password from{" "}
-            <Link to="/account" className="text-primary underline underline-offset-2">
-              Account
-            </Link>
-            . This site does not email reset links. If you already paid, use the same email you used at
-            checkout. If sign-in sits there doing nothing, refresh once and try again.{" "}
+            Email and a password of 12+ characters on new accounts. No Google, no X. Forgot it? Request a
+            reset email from{" "}
             <Link to="/login" className="text-primary underline underline-offset-2">
-              Open sign in
-            </Link>
-            .
+              Sign in
+            </Link>{" "}
+            or Account. The link expires in 15 minutes — we do not let you change a password from Account
+            without that email. If you already paid, use the same email you used at checkout. If sign-in
+            sits there doing nothing, refresh once and try again.
           </p>
         </details>
         <details className="group border-b border-border pb-3">

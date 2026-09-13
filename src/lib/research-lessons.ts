@@ -21,7 +21,15 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - GATE: only if the record is tight high-gain / palm-muted / documented as gated.
 - EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ).
 - WAH: do not put a wah block in the chain unless the wah instruction says the player wants Helix wah. A real wah lives in front of the unit.
-- Do not "fix" a previous song by name. Turn a miss into a general rule.`;
+- Do not "fix" a previous song by name. Turn a miss into a general rule.
+- CLEAN OPENING: if the recorded intro/verse is clean, snapshot 1 MUST be clean — dirt pedals OFF, amp Drive 1.2–2.4, gate OFF. A dirty opening means you left a dirt pedal on or Drive ≥ 3.
+- PEDAL-PLATFORM AMPS: when the session used a clean preamp/head as a pedal platform (Mesa Studio Pre rhythm-clean, Hiwatt, Twin), use the CLEAN channel (cali-iv-rhythm-1, us-double-nrm, whowatt-100). Do not sneak the crunch/lead channel. The pedal is the dirty channel.
+- SOLOS: raise Ch Vol / Presence / a clean boost — not Drive. Extra Drive on the same amp is a different song.
+- VERSE CHORUS/MOD: if a chorus/vibe is the verse identity, it turns OFF for the dry anthem chorus (Small Clone pattern). Do not leave it on for the loud section unless the record did.
+- SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
+- SINGING FUZZ: Big Muff / Ram's Head used for a vocal lead needs Mid around 5–6, not a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
+- TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Gate ON for the chug snapshot only; OFF for clean/wah intros.
+- PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
 
 export function generalizeLesson(raw: string): string | null {
   let s = raw.replace(/\s+/g, " ").trim();

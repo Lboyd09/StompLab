@@ -33,7 +33,10 @@ export const SYSTEM =
   "8) arrangement by TONE not lyrics — sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. " +
   "9) THEN map each real piece to a catalog modelId. " +
   "Session credits beat a simplified 'use a Twin' guide. Tracking rig beats a later tour rig. Guitar Chalk is good for tone language; credits win on gear. " +
-  "Listener test: album in one ear, this preset in the other.";
+  "Listener test: album in one ear, this preset in the other. " +
+  "If the opening is clean, snapshot 1 is clean (dirt OFF, Drive 1.2–2.4). If a clean head is a pedal platform, use the clean channel — the pedal is the dirty channel. " +
+  "Solos: Ch Vol / Presence / a boost, not extra Drive. Verse chorus/mod turns off for a dry anthem chorus unless the record left it on. " +
+  "Saturating echo (Echorec, tape) goes before the amp. Singing muffs keep Mid near 5–6. Tight chug = TS tightener + moderate amp Drive, not a wall.";
 export const CUSTOM_SYSTEM =
   "You are a session tech. Invent one original Line 6 Helix-family preset from a player's description. This is a custom sound, not a song replica. Do not copy a famous player's documented rig or a similar recorded song unless they named that song. Reply with a single JSON object. No markdown.";
 

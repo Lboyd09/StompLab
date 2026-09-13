@@ -1,13 +1,12 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
 import { openCustomerPortal } from "@/lib/billing";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
+import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
@@ -15,10 +14,9 @@ export const Route = createFileRoute("/account")({ component: AccountPage });
 function AccountPage() {
   const { user, isPending } = useCurrentUserState();
   const { plan, isPending: planPending } = usePlan();
-  const [current, setCurrent] = useState("");
-  const [next, setNext] = useState("");
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -30,32 +28,49 @@ function AccountPage() {
     return <Navigate to="/login" search={{ next: "/account" }} />;
   }
 
-  async function onChangePassword(e: React.FormEvent) {
-    e.preventDefault();
+  const accountEmail = user.primaryEmail;
+
+  async function onEmailReset() {
     setError("");
     setMessage("");
-    if (next.length < 8) {
-      setError("New password needs at least 8 characters.");
+    const email = accountEmail?.trim().toLowerCase();
+    if (!email) {
+      setError("This account has no email to send to.");
       return;
     }
     setBusy(true);
     try {
-      const { error: err } = await authClient.changePassword({
-        currentPassword: current,
-        newPassword: next,
-        revokeOtherSessions: true,
+      const { error: err } = await authClient.requestPasswordReset({
+        email,
+        redirectTo: "/reset-password",
       });
       if (err) {
-        setError(err.message || "Could not change password.");
+        setError(err.message || "Could not send the reset email.");
         return;
       }
-      setCurrent("");
-      setNext("");
-      setMessage("Password updated.");
+      setMessage(`Check ${email} for a reset link. It expires in ${RESET_TOKEN_MINUTES} minutes.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not change password.");
+      setError(err instanceof Error ? err.message : "Could not send the reset email.");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function onRevokeOtherSessions() {
+    setError("");
+    setMessage("");
+    setRevoking(true);
+    try {
+      const { error: err } = await authClient.revokeOtherSessions();
+      if (err) {
+        setError(err.message || "Could not sign out other devices.");
+        return;
+      }
+      setMessage("Signed out every other device. This one stays signed in.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not sign out other devices.");
+    } finally {
+      setRevoking(false);
     }
   }
 
@@ -123,41 +138,44 @@ function AccountPage() {
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Password</h2>
-        <form onSubmit={(e) => void onChangePassword(e)} className="space-y-3">
-          <div className="space-y-1.5">
-            <Label htmlFor="current">Current password</Label>
-            <Input
-              id="current"
-              type="password"
-              autoComplete="current-password"
-              value={current}
-              onChange={(e) => setCurrent(e.target.value)}
-              required
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="next">New password</Label>
-            <Input
-              id="next"
-              type="password"
-              autoComplete="new-password"
-              minLength={8}
-              value={next}
-              onChange={(e) => setNext(e.target.value)}
-              required
-            />
-          </div>
-          {error ? <p className="text-sm text-destructive">{error}</p> : null}
-          {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
-          <Button type="submit" disabled={busy}>
-            {busy ? "Saving…" : "Update password"}
-          </Button>
-        </form>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          We email a reset link to {user.primaryEmail || "your account"}. You cannot change the password from this
+          page. New passwords need {MIN_PASSWORD_LENGTH}+ characters. The link dies in {RESET_TOKEN_MINUTES}{" "}
+          minutes.
+        </p>
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
+        <Button type="button" disabled={busy} onClick={() => void onEmailReset()}>
+          {busy ? "Sending…" : "Email me a reset link"}
+        </Button>
         <p className="text-xs leading-relaxed text-muted-foreground">{FORGOT_PASSWORD_COPY}</p>
       </section>
 
       <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Session</h2>
+        <h2 className="font-display text-lg font-semibold">Security</h2>
+        <ul className="list-disc space-y-1 pl-4 text-sm text-muted-foreground">
+          <li>Session cookies are host-only and expire after {SESSION_DAYS} days of inactivity.</li>
+          <li>Password reset signs you in only after you pick the new password from the emailed link.</li>
+          <li>Sign out other devices if you think someone else used this account.</li>
+        </ul>
+        <div className="flex flex-wrap gap-3">
+          <Button type="button" variant="secondary" disabled={revoking} onClick={() => void onRevokeOtherSessions()}>
+            {revoking ? "Signing out…" : "Sign out other devices"}
+          </Button>
+          {authEnabled ? (
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={signingOut}
+              onClick={() => {
+                setSigningOut(true);
+                void signOut().catch(() => setSigningOut(false));
+              }}
+            >
+              {signingOut ? "Signing out…" : "Sign out this device"}
+            </Button>
+          ) : null}
+        </div>
         <p className="text-sm text-muted-foreground">
           Always use stomplab.app — not www. Look and feel lives in{" "}
           <Link to="/settings" className="text-primary underline underline-offset-2">
@@ -165,19 +183,6 @@ function AccountPage() {
           </Link>
           .
         </p>
-        {authEnabled ? (
-          <Button
-            type="button"
-            variant="secondary"
-            disabled={signingOut}
-            onClick={() => {
-              setSigningOut(true);
-              void signOut().catch(() => setSigningOut(false));
-            }}
-          >
-            {signingOut ? "Signing out…" : "Sign out"}
-          </Button>
-        ) : null}
       </section>
     </div>
   );

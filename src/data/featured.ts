@@ -41,9 +41,9 @@ export const FEATURED: Preset[] = [
     blocks: [
       block("b1", "deez-one-vintage", { Drive: 7.0, Treble: 4.0, Output: 10.0 }, 0, false),
       block("b2", "70s-chorus", { Rate: 5.0, Depth: 8.0, Mix: 6.8, Tone: 5.4 }, 1),
-      block("b3", "cali-iv-rhythm-1", { Drive: 2.6, Bass: 3.0, Mid: 8.0, Treble: 6.0, Presence: 4.8, Master: 5.0, "Ch Vol": 5.5, Sag: 3.2, Bright: 10 }, 2),
+      block("b3", "cali-iv-rhythm-1", { Drive: 2.0, Bass: 3.0, Mid: 8.0, Treble: 6.0, Presence: 4.2, Master: 5.0, "Ch Vol": 5.2, Sag: 3.2, Bright: 10 }, 2),
       block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.0, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.4 }, 3),
-      block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 4.0, "750Hz": 5.0, "2200Hz": 7.5, "6600Hz": 6.5 }, 4),
+      block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 3.8, "750Hz": 5.0, "2200Hz": 7.2, "6600Hz": 6.4 }, 4),
     ],
     snapshots: [
       {
@@ -51,9 +51,9 @@ export const FEATURED: Preset[] = [
         name: "Clean",
         color: "#7d9a6a",
         enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Intro AND verse — they are the same recorded tone. DS-1 off, Small Clone on, Mesa graphic on.",
+        notes: "Intro AND verse — they are the same recorded tone. DS-1 off, Small Clone on, Mesa graphic on. This snapshot has to shimmer, not crunch.",
         paramOverrides: {
-          b3: { Drive: 3.0, "Ch Vol": 5.5, Presence: 4.8, Treble: 6.0 },
+          b3: { Drive: 2.2, "Ch Vol": 5.2, Presence: 4.2, Treble: 6.0 },
         },
       },
       {
@@ -61,10 +61,10 @@ export const FEATURED: Preset[] = [
         name: "Hello",
         color: "#2ec8ff",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
-        notes: "Watery pre-chorus AND the solo — same chain. DS-1 + Small Clone.",
+        notes: "Watery pre-chorus AND the solo — same chain. DS-1 + Small Clone. Amp stays a clean platform; the DS-1 is the dirt.",
         paramOverrides: {
           b2: { Mix: 6.8, Depth: 8.0 },
-          b3: { Drive: 3.2, "Ch Vol": 5.8, Presence: 5.0 },
+          b3: { Drive: 2.4, "Ch Vol": 5.8, Presence: 4.6 },
         },
       },
       {
@@ -72,9 +72,9 @@ export const FEATURED: Preset[] = [
         name: "Chorus",
         color: "#e24a3a",
         enabledBlocks: ["b1", "b3", "b4", "b5"],
-        notes: "Loud HELLO. DS-1 on, Small Clone off. Play harder, guitar wide open.",
+        notes: "Loud HELLO. DS-1 on, Small Clone off. Amp still the clean Mesa platform — louder, not a second channel.",
         paramOverrides: {
-          b3: { Drive: 3.4, "Ch Vol": 6.4, Presence: 5.2, Treble: 6.0 },
+          b3: { Drive: 2.6, "Ch Vol": 6.4, Presence: 5.0, Treble: 6.0 },
         },
       },
     ],
@@ -86,15 +86,15 @@ export const FEATURED: Preset[] = [
     programming: [
       "SNAPSHOT MODE. After import the scribbles should say CLEAN / HELLO / CHORUS on FS1–FS3. That assignment is in the file.",
       "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone) → Cali IV Rhythm 1 (Studio Pre clean channel) → 4x12 1960 T75 → Cali Q Graphic.",
-      "Clean (FS1): DS-1 OFF, Clone ON. Covers the opening riff and the verses — they are the same recorded tone.",
+      "Clean (FS1): DS-1 OFF, Clone ON, Cali IV Drive ~2.2. Covers the opening riff and the verses — they are the same recorded tone. If this snapshot crunches, you are on the wrong footswitch.",
       "Hello (FS2): DS-1 ON (Drive 7 / Tone 4 / Level 10), Clone ON. Use this for the watery hello AND the solo.",
-      "Chorus (FS3): DS-1 ON, Clone OFF. EQ stays on — kick it from the EQ switch on XL if you want the raw preamp.",
+      "Chorus (FS3): DS-1 ON, Clone OFF. Amp Drive stays low — the DS-1 is the dirty channel. EQ stays on.",
       "Download the .hlx. HX Edit: File → Import. The unit should open in Snapshot mode.",
     ],
     tips: [
-      "If the opening riff is dirty, you're on Chorus — hit FS1. The intro should shimmer, not crunch.",
+      "If the opening riff is dirty, you're on Chorus — hit FS1. The intro should shimmer, not crunch. Guitar volume ~7 thins the verse further.",
       "Play the loud chorus with the guitar wide open and pick near the bridge. Leave the Small Clone off.",
-      "The Mesa graphic is the session EQ. Leave it on unless you want a flatter amp.",
+      "The Mesa graphic is the session EQ. Leave it on unless you want a flatter amp. 2.2 kHz is the icepick — don't scoop it.",
     ],
   },
   {
@@ -123,10 +123,10 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "scream-808", { Drive: 2.0, Treble: 5.5, Output: 8.0 }, 0, false),
-      block("b2", "cali-rectifire", { Drive: 1.8, Bass: 5.5, Mid: 4.2, Treble: 5.4, Presence: 3.8, Master: 5.5, "Ch Vol": 5.6, Sag: 3.4 }, 1),
-      block("b3", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 6.8, "Early Refl": 2.2 }, 2),
-      block("b4", "hard-gate", { Threshold: 5.8, Decay: 2.0 }, 3, false),
-      block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 3.5, "750Hz": 3.0, "2200Hz": 6.5, "6600Hz": 6.0 }, 4, false),
+      block("b2", "cali-rectifire", { Drive: 1.3, Bass: 5.5, Mid: 4.2, Treble: 5.4, Presence: 3.2, Master: 5.5, "Ch Vol": 5.8, Sag: 3.4 }, 1),
+      block("b3", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 7.4, "Early Refl": 2.2 }, 2),
+      block("b4", "hard-gate", { Threshold: 5.4, Decay: 2.2 }, 3, false),
+      block("b5", "cali-q-graphic", { "80Hz": 7.0, "240Hz": 3.4, "750Hz": 2.6, "2200Hz": 6.4, "6600Hz": 5.8 }, 4, false),
     ],
     snapshots: [
       {
@@ -134,9 +134,9 @@ export const FEATURED: Preset[] = [
         name: "Intro",
         color: "#c5c9c2",
         enabledBlocks: ["b2", "b3"],
-        notes: "CLEAN intro. TS off, gate off, Mesa graphic off, Recto Drive 1.8. Sweep your wah in front.",
+        notes: "CLEAN intro. TS off, gate off, Mesa graphic off, Recto Drive 1.3. Almost a clean Recto — sweep your wah in front.",
         paramOverrides: {
-          b2: { Drive: 1.8, "Ch Vol": 5.6, Presence: 3.8, Treble: 5.8 },
+          b2: { Drive: 1.3, "Ch Vol": 5.8, Presence: 3.2, Treble: 5.4 },
         },
       },
       {
@@ -144,9 +144,9 @@ export const FEATURED: Preset[] = [
         name: "Rhythm",
         color: "#e24a3a",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
-        notes: "Main chug. TS on, gate on, Mesa V-scoop on, Recto Drive 4.2.",
+        notes: "Main chug. TS on, gate on, Mesa V-scoop on, Recto Drive 3.6 — tight, not a wall of gain.",
         paramOverrides: {
-          b2: { Drive: 4.2, "Ch Vol": 6.0, Presence: 4.6, Treble: 5.4 },
+          b2: { Drive: 3.6, "Ch Vol": 6.0, Presence: 4.4, Treble: 5.4 },
         },
       },
       {
@@ -154,9 +154,9 @@ export const FEATURED: Preset[] = [
         name: "Lead",
         color: "#f5d000",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
-        notes: "Kirk solo bump — same chain, louder, not more gain. Gate and EQ stay on.",
+        notes: "Kirk solo bump — same chain, louder and a little more presence, not more gain. Gate and EQ stay on.",
         paramOverrides: {
-          b2: { Drive: 4.6, "Ch Vol": 6.8, Presence: 5.4, Treble: 5.6 },
+          b2: { Drive: 3.8, "Ch Vol": 7.2, Presence: 5.6, Treble: 5.6 },
         },
       },
     ],
@@ -170,14 +170,15 @@ export const FEATURED: Preset[] = [
     programming: [
       "SNAPSHOT MODE. After import: FS1–FS3 are INTRO / RHYTHM / LEAD. That assignment is in the file — you do not re-assign it on the unit.",
       "Path: Scream 808 → Cali Rectifire → 4x12 Cali V30 → Hard Gate → Cali Q Graphic. No wah block.",
-      "Intro: TS OFF, gate OFF, EQ OFF, Drive 1.8. Sweep a real wah in front for Kirk's arpeggio.",
-      "Rhythm: TS ON (Drive 2 / Level 8), gate ON, Mesa graphic ON (scooped V), Recto Drive 4.2 — tight, not a wall.",
+      "Intro: TS OFF, gate OFF, EQ OFF, Drive 1.3. Sweep a real wah in front for Kirk's arpeggio. This snapshot has to be almost clean.",
+      "Rhythm: TS ON (Drive 2 / Level 8), gate ON, Mesa graphic ON (deeper V), Recto Drive 3.6 — tight palm mutes, not a wall.",
+      "Lead: same chain, Ch Vol 7.2 and Presence up. Do not add Drive.",
       "On XL / POD Go / Helix, FS4 = GATE and FS5 = EQ. HX Stomp uses the snapshot on/off plus the Gate / EQ buttons on the page.",
     ],
     tips: [
-      "If the intro isn't clean, you're on the Rhythm snapshot. Hit FS1.",
+      "If the intro isn't clean, you're on the Rhythm snapshot. Hit FS1. Drive 1.3 should barely break up.",
       "Palm mute harder than you think. The gate only works if your right hand is tight.",
-      "Want the Helix wah instead? Settings → Wah → Use Helix wah with expression pedal, then re-open the demo.",
+      "Want the Helix wah instead? After the preset is open, use the Wah card — not the Lab form.",
     ],
   },
   {
@@ -203,11 +204,11 @@ export const FEATURED: Preset[] = [
       { item: "Roll the guitar tone to 6–7", why: "Tames muff fizz the same way Gilmour's secret sauce does." },
     ],
     blocks: [
-      block("b1", "bighorn-fuzz", { Drive: 7.0, Bass: 6.2, Mid: 4.6, Treble: 4.8, Output: 5.8, Mix: 10 }, 0, false),
+      block("b1", "bighorn-fuzz", { Drive: 6.4, Bass: 6.2, Mid: 5.4, Treble: 5.0, Output: 5.8, Mix: 10 }, 0, false),
       block("b2", "cosmos-echo", { Time: 3.6, Feedback: 3.0, Mix: 2.6, Mod: 1.8, Scale: 5 }, 1),
-      block("b3", "whowatt-100", { Drive: 2.8, Bass: 5.4, Mid: 6.2, Treble: 5.8, Presence: 5.0, Master: 6.2, "Ch Vol": 6.0, Sag: 2.8 }, 2),
-      block("b4", "4x12-whowatt-100", { Mic: 0, Distance: 3.4, "Low Cut": 2.0, "High Cut": 7.6, "Early Refl": 4.2 }, 3),
-      block("b5", "plate", { Decay: 3.4, Predelay: 2.0, Mix: 2.2, "Low Cut": 3.4, "High Cut": 7.0 }, 4),
+      block("b3", "whowatt-100", { Drive: 2.4, Bass: 5.4, Mid: 6.2, Treble: 5.8, Presence: 5.0, Master: 6.2, "Ch Vol": 6.0, Sag: 2.8 }, 2),
+      block("b4", "4x12-whowatt-100", { Mic: 0, Distance: 3.0, "Low Cut": 2.0, "High Cut": 7.6, "Early Refl": 4.2 }, 3),
+      block("b5", "plate", { Decay: 3.0, Predelay: 2.0, Mix: 1.6, "Low Cut": 3.4, "High Cut": 7.0 }, 4),
     ],
     snapshots: [
       {
@@ -215,10 +216,10 @@ export const FEATURED: Preset[] = [
         name: "Verse",
         color: "#7d9a6a",
         enabledBlocks: ["b2", "b3", "b4", "b5"],
-        notes: "Muff off. Hiwatt almost clean, short echo.",
+        notes: "Muff off. Hiwatt almost clean, short echo. The vibrato is in your hands.",
         paramOverrides: {
-          b2: { Mix: 1.8, Feedback: 2.4 },
-          b3: { Drive: 2.6, "Ch Vol": 5.6 },
+          b2: { Mix: 1.6, Feedback: 2.4 },
+          b3: { Drive: 2.2, "Ch Vol": 5.6 },
         },
       },
       {
@@ -226,10 +227,10 @@ export const FEATURED: Preset[] = [
         name: "Solo 1",
         color: "#f5d000",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
-        notes: "Muff on, Echorec mix 2.6. Neck pickup.",
+        notes: "Muff on, Echorec mix 3.2 so repeats sit behind the note. Neck pickup. Mid is open so the muff sings.",
         paramOverrides: {
-          b2: { Mix: 2.6, Feedback: 3.0 },
-          b3: { Drive: 2.8, "Ch Vol": 6.0 },
+          b2: { Mix: 3.2, Feedback: 3.2 },
+          b3: { Drive: 2.4, "Ch Vol": 6.0 },
         },
       },
       {
@@ -237,10 +238,10 @@ export const FEATURED: Preset[] = [
         name: "Solo 2",
         color: "#e24a3a",
         enabledBlocks: ["b1", "b2", "b3", "b4", "b5"],
-        notes: "More delay, a little more Hiwatt. Play more aggressively. Bridge-leaning pickup.",
+        notes: "More delay, a little more Hiwatt volume — not more muff. Play more aggressively. Bridge-leaning pickup.",
         paramOverrides: {
-          b2: { Mix: 3.4, Feedback: 3.6 },
-          b3: { Drive: 3.4, "Ch Vol": 6.6 },
+          b2: { Mix: 4.0, Feedback: 3.8 },
+          b3: { Drive: 2.8, "Ch Vol": 6.6 },
         },
       },
     ],
@@ -251,14 +252,15 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. FS1–FS3 = VERSE / SOLO1 / SOLO2. Assigned in the file.",
-      "Path: Bighorn Fuzz (Ram's Head) → Cosmos Echo (Echorec) → WhoWatt 100 → 4x12 WhoWatt 100 → Plate. Delay BEFORE the amp.",
-      "Cosmos Echo Mix 1.8 verse / 2.6 solo 1 / 3.4 solo 2 via snapshot parameter recall.",
-      "WhoWatt Drive stays low — 2.6 / 2.8 / 3.4. The muff is the gain.",
+      "Path: Bighorn Fuzz (Ram's Head) → Cosmos Echo (Echorec) → WhoWatt 100 → 4x12 WhoWatt 100 → Plate. Delay BEFORE the amp so repeats saturate.",
+      "Cosmos Echo Mix 1.6 verse / 3.2 solo 1 / 4.0 solo 2 via snapshot parameter recall.",
+      "WhoWatt Drive stays low — 2.2 / 2.4 / 2.8. The muff is the gain. Muff Mid 5.4 so it sings instead of scooping.",
       "Tempo 64. EXP 1 can be a Volume Pedal in front of the muff for violin swells.",
     ],
     tips: [
       "Play behind the beat. The delay should feel like a second guitar, not a dotted-eighth U2 part.",
-      "If the muff scoops too hard, raise Mid to 5.2. Don't stack another overdrive unless you want a different song.",
+      "Neck pickup, guitar tone ~6–7 for solo 1. Don't stack a Tube Screamer — the muff into a clean Hiwatt is the record.",
+      "The vibrato is in your hands. Leave chorus/vibe off.",
     ],
   },
   {

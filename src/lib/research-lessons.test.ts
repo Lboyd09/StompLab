@@ -37,12 +37,17 @@ describe("research lessons", () => {
     assert.match(STANDING_RESEARCH_RULES, /brightness and midrange/);
     assert.match(STANDING_RESEARCH_RULES, /GATE:/);
     assert.match(STANDING_RESEARCH_RULES, /dedicated EQ/);
+    assert.match(STANDING_RESEARCH_RULES, /CLEAN OPENING/);
+    assert.match(STANDING_RESEARCH_RULES, /PEDAL-PLATFORM/);
+    assert.match(STANDING_RESEARCH_RULES, /SINGING FUZZ/);
+    assert.match(STANDING_RESEARCH_RULES, /TIGHT CHUG/);
   });
 
   it("is actually injected into song research, not only tested", async () => {
     const { readFileSync } = await import("node:fs");
     const src = readFileSync(new URL("./research.ts", import.meta.url), "utf8");
     assert.match(src, /standingRulesBlock/);
+    assert.match(src, /standingRulesBlock\(\[\]\)/);
     assert.equal(/playerDerivedRules\(bits\)/.test(src), false);
   });
 });

@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl7";
+const ICON_V = "sl9";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -106,7 +106,7 @@ function VisitBeacon() {
 
 function ShellSwitch() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const bare = pathname === "/login" || pathname === "/upgrade";
+  const bare = pathname === "/login" || pathname === "/upgrade" || pathname === "/reset-password";
   if (bare) return <Outlet />;
   return (
     <AppShell>

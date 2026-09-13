@@ -513,7 +513,9 @@ export function PresetWorkspace({
         <Card>
           <CardHeader>
             <CardTitle>Wah</CardTitle>
-            <CardDescription>Does not go in the chain unless you want the Helix to do it.</CardDescription>
+            <CardDescription>
+              After you build — not on the Lab form. A real wah stays in front of the unit unless you pick Helix wah here.
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <WahSelect mode={wahMode} modelId={wahModelId} onMode={onWahMode} onModel={onWahModel} />

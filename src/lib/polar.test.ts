@@ -15,6 +15,7 @@ import {
   polarStatusIsPaid,
   purchaseLooksPaid,
   polarAdminStatsFromLists,
+  polarDiscountId,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -272,6 +273,39 @@ describe("polarSetup", () => {
       assert.equal(s.monthly, true);
       assert.equal(s.yearly, true);
       assert.equal(s.ready, false);
+    } finally {
+      restore(prev);
+    }
+  });
+});
+
+describe("polarDiscountId", () => {
+  const keys = [
+    "POLAR_DISCOUNT_ID",
+    "POLAR_DISCOUNT_ID_MONTHLY",
+    "POLAR_DISCOUNT_ID_YEARLY",
+    "POLAR_MONTHLY_DISCOUNT_ID",
+    "POLAR_YEARLY_DISCOUNT_ID",
+  ] as const;
+  function snap() {
+    return Object.fromEntries(keys.map((k) => [k, process.env[k]]));
+  }
+  function restore(prev: Record<string, string | undefined>) {
+    for (const k of keys) {
+      if (prev[k] === undefined) delete process.env[k];
+      else process.env[k] = prev[k];
+    }
+  }
+  it("does not apply the shared launch discount to yearly", () => {
+    const prev = snap();
+    try {
+      process.env.POLAR_DISCOUNT_ID = "disc_shared_20";
+      delete process.env.POLAR_DISCOUNT_ID_YEARLY;
+      delete process.env.POLAR_YEARLY_DISCOUNT_ID;
+      delete process.env.POLAR_DISCOUNT_ID_MONTHLY;
+      delete process.env.POLAR_MONTHLY_DISCOUNT_ID;
+      assert.equal(polarDiscountId("year"), "");
+      assert.equal(polarDiscountId("month"), "disc_shared_20");
     } finally {
       restore(prev);
     }

@@ -97,5 +97,8 @@ describe("research thinking", () => {
     assert.match(src, /Fill originalGear with REAL product/);
     assert.match(src, /arrangement by TONE/);
     assert.match(src, /tone fingerprint/);
+    assert.match(src, /If the opening is clean, snapshot 1 is clean/);
+    assert.match(src, /Singing muffs keep Mid near 5–6/);
+    assert.match(src, /Tight chug = TS tightener/);
   });
 });

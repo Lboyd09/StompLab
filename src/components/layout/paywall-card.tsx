@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, priceYearlyLaunchUsd, formatUsd } from "@/lib/plan";
+import { PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, formatUsd } from "@/lib/plan";
 
 export function PaywallCard({ title, body }: { title: string; body: string }) {
   return (
@@ -14,12 +14,12 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
         <p className="font-display text-4xl font-semibold tabular-nums">
           {formatUsd(priceMonthlyLaunchUsd())}
           <span className="ml-2 text-base font-normal text-muted-foreground">
-            first mo · or {formatUsd(priceYearlyLaunchUsd())} first year
+            first mo · or {formatUsd(PRICE_YEARLY_USD)}/yr
           </span>
         </p>
         <p className="text-xs text-muted-foreground">
-          Launch {LAUNCH_DISCOUNT_PERCENT}% off the first invoice. Then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
-          {formatUsd(PRICE_YEARLY_USD)}/yr.
+          Launch {LAUNCH_DISCOUNT_PERCENT}% off the first month. Then {formatUsd(PRICE_MONTHLY_USD)}/mo. Yearly is{" "}
+          {formatUsd(PRICE_YEARLY_USD)} — no discount on the year plan.
         </p>
         <ul className="space-y-2 text-sm text-muted-foreground">
           <li>Type any song. Download a .hlx HX Edit can import.</li>

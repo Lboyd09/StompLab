@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { WahSelect } from "@/components/layout/wah-select";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
@@ -37,8 +36,6 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
-  const setWahMode = useAppStore((s) => s.setWahMode);
-  const setWahModelId = useAppStore((s) => s.setWahModelId);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
@@ -238,7 +235,6 @@ function Home() {
             }}
           />
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-          <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}

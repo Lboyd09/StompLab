@@ -6,6 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Mark } from "@/components/layout/mark";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
+import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "@/lib/password-policy";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
@@ -29,8 +31,8 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
   if (m.includes("invalid email or password") || m.includes("invalid password") || m.includes("credential")) {
     return "Email or password didn't match. Use the same email you signed up with — creating a second account starts over.";
   }
-  if (m.includes("password") && (m.includes("8") || m.includes("least") || m.includes("short"))) {
-    return "Password needs at least 8 characters.";
+  if (m.includes("password") && (m.includes("12") || m.includes("8") || m.includes("least") || m.includes("short"))) {
+    return `Password needs at least ${MIN_PASSWORD_LENGTH} characters.`;
   }
   if (m.includes("invalid email") || m.includes("email")) {
     return "That email doesn't look right.";
@@ -41,13 +43,14 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
 function LoginPage() {
   const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
-  const [mode, setMode] = useState<"in" | "up">("in");
+  const [mode, setMode] = useState<"in" | "up" | "reset">("in");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
+  const [resetSent, setResetSent] = useState(false);
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
 
@@ -101,8 +104,32 @@ function LoginPage() {
       setError("That email doesn't look right.");
       return;
     }
-    if (password.length < 8) {
-      setError("Password needs at least 8 characters.");
+    if (mode === "reset") {
+      setBusy(true);
+      try {
+        const { error: err } = await authClient.requestPasswordReset({
+          email: trimmed,
+          redirectTo: "/reset-password",
+        });
+        if (err) {
+          setError(err.message || "Could not send the reset email.");
+          return;
+        }
+        rememberEmail(trimmed);
+        setResetSent(true);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not send the reset email.");
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
+    if (mode === "up" && password.length < MIN_PASSWORD_LENGTH) {
+      setError(`Password needs at least ${MIN_PASSWORD_LENGTH} characters.`);
+      return;
+    }
+    if (mode === "in" && password.length < SIGN_IN_PASSWORD_MIN) {
+      setError("Password didn't match.");
       return;
     }
     if (mode === "up" && !agreed) {
@@ -184,12 +211,12 @@ function LoginPage() {
           </a>
           <div className="space-y-2">
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
-              {mode === "in" ? "Sign in" : "Create account"}
+              {mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact
-              email. Always sign in with the same address — creating a second account starts over.
-              Use stomplab.app, not www.
+              {mode === "reset"
+                ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
+                : "Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact email. Always sign in with the same address — creating a second account starts over. Use stomplab.app, not www."}
             </p>
           </div>
         </div>
@@ -223,54 +250,94 @@ function LoginPage() {
                 inputMode="email"
               />
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="password">Password</Label>
-              <Input
-                id="password"
-                type="password"
-                required
-                minLength={8}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                autoComplete={mode === "up" ? "new-password" : "current-password"}
-                placeholder="8+ characters"
-              />
-            </div>
+            {mode !== "reset" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  required
+                  minLength={mode === "up" ? MIN_PASSWORD_LENGTH : SIGN_IN_PASSWORD_MIN}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  autoComplete={mode === "up" ? "new-password" : "current-password"}
+                  placeholder={mode === "up" ? `${MIN_PASSWORD_LENGTH}+ characters` : "Your password"}
+                />
+              </div>
+            ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
+            {resetSent ? (
+              <p className="text-sm text-muted-foreground">
+                If that email has an account, a reset link is on the way. It expires in {RESET_TOKEN_MINUTES}{" "}
+                minutes. Check spam.
+              </p>
+            ) : null}
             {mode === "up" ? <LegalAgree kind="signup" checked={agreed} onChange={setAgreed} /> : null}
             <Button type="submit" className="w-full" disabled={busy || (mode === "up" && !agreed)}>
-              {busy ? "Working…" : mode === "in" ? "Sign in" : "Create account"}
+              {busy
+                ? "Working…"
+                : mode === "in"
+                  ? "Sign in"
+                  : mode === "up"
+                    ? "Create account"
+                    : "Email me a reset link"}
             </Button>
           </form>
         )}
+
+        <div className="flex flex-col items-start gap-2">
+        {mode === "in" ? (
+          <button
+            type="button"
+            className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => {
+              setMode("reset");
+              setError("");
+              setResetSent(false);
+            }}
+          >
+            Forgot password? Email me a reset
+          </button>
+        ) : null}
 
         <button
           type="button"
           className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
           onClick={() => {
-            setMode(mode === "in" ? "up" : "in");
+            setMode(mode === "up" ? "in" : "up");
             setError("");
+            setResetSent(false);
           }}
         >
-          {mode === "in" ? "Need an account? Create one" : "Already have an account? Sign in"}
+          {mode === "up" ? "Already have an account? Sign in" : "Need an account? Create one"}
         </button>
+
+        {mode === "reset" ? (
+          <button
+            type="button"
+            className="text-sm text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
+            onClick={() => {
+              setMode("in");
+              setError("");
+              setResetSent(false);
+            }}
+          >
+            Back to sign in
+          </button>
+        ) : null}
+        </div>
 
         <div className="space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Help</p>
           <details>
             <summary className="cursor-pointer font-medium">Forgot password?</summary>
-            <p className="mt-2 text-muted-foreground">
-              Stomp Lab does not email reset links — there is no mailbox on this site. Try the
-              password you picked, or create a new account with a different email. If you already
-              unlocked, sign in with the same email you used at checkout. The unlock follows that
-              address.
-            </p>
+            <p className="mt-2 text-muted-foreground">{FORGOT_PASSWORD_COPY}</p>
           </details>
           <details>
             <summary className="cursor-pointer font-medium">Sign-in isn't working</summary>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
               <li>Use the email you typed when you created the account — not a nickname.</li>
-              <li>Password is at least 8 characters, exactly as you set it.</li>
+              <li>Existing passwords still work. New passwords need {MIN_PASSWORD_LENGTH}+ characters.</li>
               <li>Refresh the page once and try again. A stuck session is the usual culprit.</li>
               <li>This is email + password only. There is no Google or X button.</li>
             </ul>
@@ -279,7 +346,7 @@ function LoginPage() {
             <summary className="cursor-pointer font-medium">Create account failed</summary>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
               <li>If it says the email already exists, switch to Sign in.</li>
-              <li>Pick a password of 8+ characters. Spaces at the ends count.</li>
+              <li>Pick a password of {MIN_PASSWORD_LENGTH}+ characters. Spaces at the ends count.</li>
               <li>
                 After it works you should land in the Lab automatically. If you stay here, sign in
                 with the same email.

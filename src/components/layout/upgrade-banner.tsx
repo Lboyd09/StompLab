@@ -1,5 +1,5 @@
 import { Link } from "@tanstack/react-router";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, priceMonthlyLaunchUsd, priceYearlyLaunchUsd, formatUsd, type Plan } from "@/lib/plan";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, priceMonthlyLaunchUsd, formatUsd, type Plan } from "@/lib/plan";
 
 export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending || plan.paid || plan.admin) return null;
@@ -17,8 +17,7 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
         <span className="font-medium text-foreground">{formatUsd(priceMonthlyLaunchUsd())} first mo</span>
         <span className="text-muted-foreground">
           {" "}
-          (then {formatUsd(PRICE_MONTHLY_USD)}) or {formatUsd(priceYearlyLaunchUsd())} first yr (then{" "}
-          {formatUsd(PRICE_YEARLY_USD)})
+          (then {formatUsd(PRICE_MONTHLY_USD)}) or {formatUsd(PRICE_YEARLY_USD)}/yr
         </span>
       </span>
       <span className="shrink-0 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground">

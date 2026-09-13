@@ -23,6 +23,7 @@ import {
   waitForPolarCheckout,
   fetchPolarAdminStats,
 } from "./polar";
+import { mailerConfigured } from "./mailer";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -860,7 +861,7 @@ export const adminMoneySetup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId, context.email);
-    return polarSetup();
+    return { ...polarSetup(), mail: mailerConfigured() };
   });
 
 export const adminDashboard = createServerFn({ method: "POST" })
@@ -921,6 +922,7 @@ export const adminDashboard = createServerFn({ method: "POST" })
       affiliateClicks: [] as { vendor: string; n: number }[],
       polar: polarSetup(),
       polarReady: polarSetup().ready,
+      mail: mailerConfigured(),
       amazonReady: false,
       stats: emptyAdminStats(),
       visits: { today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 },
@@ -1016,6 +1018,7 @@ async function loadAdminDashboard(empty: {
   affiliateClicks: { vendor: string; n: number }[];
   polar: ReturnType<typeof polarSetup>;
   polarReady: boolean;
+  mail: boolean;
   amazonReady: boolean;
   stats: AdminStats;
   visits: { today: number; d7: number; d30: number; unique_all: number; hits: number };
@@ -1395,6 +1398,7 @@ async function loadAdminDashboard(empty: {
       affiliateClicks: [] as { vendor: string; n: number }[],
       polar: polarSetup(),
       polarReady: polarSetup().ready,
+      mail: mailerConfigured(),
       amazonReady: false,
       stats,
       visits,

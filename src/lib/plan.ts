@@ -8,7 +8,7 @@ export const PRICE_MONTHLY_USD = 6.99;
 export const PRICE_YEARLY_USD = 75;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
-/** Launch promo: first invoice only (Polar duration=once). Then full price. */
+/** Launch promo: first MONTHLY invoice only (Polar duration=once). Yearly is always $75. */
 export const LAUNCH_DISCOUNT_PERCENT = 20;
 
 export function launchPriceUsd(full: number) {
@@ -19,8 +19,9 @@ export function priceMonthlyLaunchUsd() {
   return launchPriceUsd(PRICE_MONTHLY_USD);
 }
 
+/** Yearly is $75 — no launch discount on the year plan. */
 export function priceYearlyLaunchUsd() {
-  return launchPriceUsd(PRICE_YEARLY_USD);
+  return PRICE_YEARLY_USD;
 }
 
 

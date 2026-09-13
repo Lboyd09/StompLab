@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="Stomp Lab">
   <rect width="32" height="32" rx="7" fill="#F3EFE6"/>
   <rect x="0.75" y="0.75" width="30.5" height="30.5" rx="6.25" fill="none" stroke="#141414" stroke-width="1.5"/>
-  <text x="15.6" y="23.2" text-anchor="middle" font-family="Arial Black, Arial, Helvetica, sans-serif" font-size="15.4" font-weight="900" letter-spacing="-1.6" fill="#141414">SL</text>
+  <text x="16" y="23" text-anchor="middle" font-family="Oswald, Arial Black, Arial, Helvetica, sans-serif" font-size="16" font-weight="700" letter-spacing="-1.2" fill="#141414">SL</text>
 </svg>

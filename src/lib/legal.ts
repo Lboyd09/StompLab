@@ -1,7 +1,7 @@
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, priceYearlyLaunchUsd } from "./plan";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
-export const LEGAL_VERSION = "2026-09-10";
+export const LEGAL_VERSION = "2026-09-13";
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";
 
@@ -115,7 +115,7 @@ export const SUBSCRIPTION_SECTIONS: { id: string; title: string; body: string[] 
     title: "Subscription, price, and renewal",
     body: [
       `Paid Lab is ${formatUsd(PRICE_MONTHLY_USD)} per month or ${formatUsd(PRICE_YEARLY_USD)} per year. Both plans include ${PAID_MONTHLY_BUILDS} custom builds each calendar month. Featured demos stay free. After you sign in, you get ${FREE_BUILDS} custom songs before you have to subscribe.`,
-      `Launch: the first invoice is ${LAUNCH_DISCOUNT_PERCENT}% off — ${formatUsd(priceMonthlyLaunchUsd())} the first month or ${formatUsd(priceYearlyLaunchUsd())} the first year. After that Polar charges the regular ${formatUsd(PRICE_MONTHLY_USD)}/month or ${formatUsd(PRICE_YEARLY_USD)}/year until you cancel. The discount is once; it does not repeat at renewal.`,
+      `Launch: the first monthly invoice is ${LAUNCH_DISCOUNT_PERCENT}% off — ${formatUsd(priceMonthlyLaunchUsd())} the first month, then ${formatUsd(PRICE_MONTHLY_USD)}/month. Yearly is ${formatUsd(PRICE_YEARLY_USD)} every year — no launch discount on the year plan. Polar charges until you cancel. The monthly discount is once; it does not repeat at renewal.`,
       "Polar (merchant of record) charges your card. Stomp Lab never sees the card number.",
       "This is an automatic-renewal subscription. Unless you cancel, Polar will charge the same plan again at the then-current price when the period ends — monthly plans every month, yearly plans every year.",
       "Cancel any time from Account → Manage subscription (Polar’s customer portal). Cancellation takes the same path you used to subscribe: online, no phone call required. You keep paid access until the period you already paid for ends. We do not prorate unused days.",
@@ -132,7 +132,7 @@ export const PRIVACY_SECTIONS: { id: string; title: string; body: string[] }[] =
     id: "collect",
     title: "What we store",
     body: [
-      "Email and password hash (Better Auth). Name if you typed one.",
+      "Email and password hash (Better Auth). Name if you typed one. Password-reset tokens live for 15 minutes, then they expire.",
       "Presets you build, gear locker items, and usage counts so the monthly limit works.",
       "Polar customer / subscription ids so we can unlock the Lab after you pay. Polar stores the card.",
       "Optional feedback you send (rating, what to change). We use that to improve research. We do not put your name on it.",
@@ -143,7 +143,7 @@ export const PRIVACY_SECTIONS: { id: string; title: string; body: string[] }[] =
     id: "use",
     title: "What we use it for",
     body: [
-      "To run the Lab: sign-in, builds, unlock, support.",
+      "To run the Lab: sign-in, builds, unlock, support. Password-reset mail goes only to the address on the account, and only when you ask.",
       "Song research is sent to Google Gemini (song, artist, instrument, unit, gear notes you typed). Google’s Gemini API terms apply to that call.",
       "We do not sell your email. We do not send marketing mail from this product.",
     ],

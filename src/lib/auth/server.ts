@@ -37,6 +37,8 @@ import { randomBytes } from "node:crypto";
 import { ensureDbReady, getPglite } from "../db";
 import { getAppPool } from "../pg-pool";
 import { emailAndPasswordEnabled } from "./email-password";
+import { sendPasswordResetEmail } from "../mailer";
+import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "../password-policy";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { GROK_PROVIDERS } from "./providers";
 import { pgliteDialect } from "./pglite-dialect";
@@ -243,6 +245,19 @@ export const auth = betterAuth({
   // local loopback variants, or clients get "Invalid origin".
   trustedOrigins,
 
+  rateLimit: {
+    enabled: true,
+    window: 60,
+    max: 20,
+    customRules: {
+      "/forget-password": { window: 60 * 15, max: 3 },
+      "/request-password-reset": { window: 60 * 15, max: 3 },
+      "/reset-password": { window: 60, max: 5 },
+      "/sign-in/email": { window: 60, max: 8 },
+      "/sign-up/email": { window: 60, max: 5 },
+    },
+  },
+
   // Encrypt broker-issued OAuth tokens at rest, and treat the broker's upstreams
   // as trusted first-party identities. The broker owns identity and X emails are
   // synthetic/unverified, so WITHOUT this a login can fail with
@@ -268,9 +283,10 @@ export const auth = betterAuth({
   // window and reduces auth flicker. See the `auth` skill for the full
   // flicker-prevention guidance (gate on `isPending`; SSR the session).
   session: {
-    expiresIn: 60 * 60 * 24 * 30,
-    updateAge: 60 * 60 * 24,
+    expiresIn: 60 * 60 * 24 * SESSION_DAYS,
+    updateAge: 60 * 60 * 12,
     cookieCache: { enabled: true, maxAge: 5 * 60 },
+    freshAge: 60 * 10,
   },
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
@@ -279,8 +295,13 @@ export const auth = betterAuth({
         emailAndPassword: {
           enabled: true,
           autoSignIn: true,
-          minPasswordLength: 8,
+          minPasswordLength: MIN_PASSWORD_LENGTH,
           requireEmailVerification: false,
+          resetPasswordTokenExpiresIn: 60 * RESET_TOKEN_MINUTES,
+          revokeSessionsOnPasswordReset: true,
+          sendResetPassword: async ({ user, url }: { user: { email: string }; url: string }) => {
+            await sendPasswordResetEmail({ to: user.email, url });
+          },
         },
       }
     : {}),
@@ -294,7 +315,7 @@ export const auth = betterAuth({
   // `http://localhost`, so local dev still works.)
   advanced: {
     useSecureCookies: false,
-    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * 30 },
+    defaultCookieAttributes: { secure: true, sameSite: "lax", path: "/", maxAge: 60 * 60 * 24 * SESSION_DAYS },
     cookies: {
       session_token: { name: SESSION_TOKEN_COOKIE },
       session_data: { name: "__Host-grok-auth.session_data" },

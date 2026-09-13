@@ -98,7 +98,10 @@ async function standingFeedbackLessons(): Promise<string> {
     g.__stompLessonsAt__ = Date.now();
     return extra;
   } catch {
-    return "";
+    const extra = standingRulesBlock([]);
+    g.__stompLessons__ = extra;
+    g.__stompLessonsAt__ = Date.now();
+    return extra;
   }
 }
 

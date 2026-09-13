@@ -27,6 +27,7 @@ function AdminPage() {
     monthly: boolean;
     yearly: boolean;
     ready: boolean;
+    mail?: boolean;
   } | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
@@ -65,7 +66,7 @@ function AdminPage() {
         window.clearTimeout(statsTimeout);
         setGate("ok");
         setDash(d);
-        if (d.polar) setMoney(d.polar);
+        if (d.polar) setMoney({ ...d.polar, mail: d.mail });
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
@@ -139,6 +140,7 @@ function AdminPage() {
   }
 
   const polar = money ?? dash?.polar ?? null;
+  const mailOn = money?.mail ?? dash?.mail;
 
   async function onProbe() {
     setProbing(true);
@@ -176,7 +178,7 @@ function AdminPage() {
             void adminDashboard()
               .then((d) => {
                 setDash(d);
-                if (d.polar) setMoney(d.polar);
+                if (d.polar) setMoney({ ...d.polar, mail: d.mail });
                 if (d.dbError) setError(d.dbError);
               })
               .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
@@ -271,13 +273,15 @@ function AdminPage() {
           <li>Polar token: {polar ? (polar.token ? "set" : "missing") : "checking…"}</li>
           <li>Monthly product ($6.99): {polar ? (polar.monthly ? "set" : "missing") : "checking…"}</li>
           <li>Yearly product ($75): {polar ? (polar.yearly ? "set" : "missing") : "checking…"}</li>
+          <li>Password-reset mail: {polar ? (mailOn ? "set" : "missing") : "checking…"}</li>
         </ul>
         <p className="text-xs text-muted-foreground">
           {polar?.ready
             ? "Checkout can run. Polar keeps the product names — this only checks that the token and at least one product id are on the host."
             : polar
               ? "Need POLAR_ACCESS_TOKEN plus POLAR_PRODUCT_ID_MONTHLY and/or POLAR_PRODUCT_ID_YEARLY. Checkout stays closed until the token and one product id are set."
-              : "Money setup does not wait on Postgres."}
+              : "Money setup does not wait on Postgres."}{" "}
+          Password resets need RESEND_API_KEY (and MAIL_FROM on a verified domain) on the host.
         </p>
       </section>
 

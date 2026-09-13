@@ -339,7 +339,12 @@ This unit:
 - EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5 and the preset sounds generic. Cab Mic = 0 (SM57) unless the session used something else — still a number, never a string.
 - EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
-- GAIN: never dime Drive unless the session documented it. Distortion pedals ~noon (4.5–6.5) unless a published number exists (use that). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.5–3 clean intro, 3–5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
+- GAIN: never dime Drive unless the session documented it. Distortion pedals ~noon (4.5–6.5) unless a published number exists (use that). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.2–2.4 clean intro, 3–4.5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. Tight chug = TS + moderate amp Drive (3–4.5), not a wall. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
+- CLEAN OPENING: snapshot 1 matches the recorded intro. Dirt off + Drive ≤ 2.4 when the intro is clean.
+- SOLOS: raise Ch Vol / Presence / a clean boost. Do not add Drive to "make a solo."
+- VERSE MOD: chorus/vibe that is the verse identity turns OFF for the dry anthem chorus unless the record left it on.
+- SATURATING ECHO: Echorec / tape / Memory Man tracked in front of dirt stays BEFORE the amp. Digital dotted-8th often after.
+- SINGING FUZZ: muff used as a vocal lead keeps Mid 5–6. Do not scoop it into a mid-horn and do not stack a TS unless the session did.
 - Unknown rock song ≠ Dual Rectifier. Unknown Fender song ≠ Deluxe. Pick the closest documented amp from that album/era.
 - ${ampRule}
 - Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
@@ -374,6 +379,9 @@ Instrument: ${instrument} as it was TRACKED on the record (not a cover, not a li
 Fill originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
 If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.
 Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
+If the recorded opening is clean, snapshot 1 is clean — dirt pedals off, Drive 1.2–2.4, gate off.
+If the session used a clean preamp as a pedal platform, pick the clean channel. The pedal is the dirty channel.
+Solos: Ch Vol / Presence / a boost — not extra Drive.
 Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.
 If that session used a noise gate or a dedicated EQ, those blocks go in the chain with on/off via snapshots and spare FS. If it did not, leave them out.
 ${wahLine ? `\n${wahLine}` : ""}`;
