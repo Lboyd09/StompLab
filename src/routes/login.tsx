@@ -23,7 +23,7 @@ export const Route = createFileRoute("/login")({
 function friendlyAuthError(raw: string, mode: "in" | "up"): string {
   const m = raw.toLowerCase();
   if (m.includes("invalid origin") || m.includes("forbidden") || m.includes("csrf")) {
-    return "This address is new to sign-in. Refresh once on the domain you just bought, then try again.";
+    return "Could not sign in from this address. Refresh the page and try again.";
   }
   if (m.includes("already exists") || m.includes("user already")) {
     return "That email already has an account. Sign in instead.";
@@ -189,7 +189,7 @@ function LoginPage() {
       }
       const session = await waitForSession();
       if (!session?.data?.user) {
-        setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again. Always use stomplab.app — not www.");
+        setError("Signed in, but this browser didn't keep the session. Allow cookies for this site and try again.");
         return;
       }
       rememberEmail(trimmed);
@@ -216,7 +216,7 @@ function LoginPage() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {mode === "reset"
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
-                : "Email and a password. That's it — no Google, no X. Unlock and admin stick to this exact email. Always sign in with the same address — creating a second account starts over. Use stomplab.app, not www."}
+                : "Email and a password. Use the same address every time — a second account starts over."}
             </p>
           </div>
         </div>

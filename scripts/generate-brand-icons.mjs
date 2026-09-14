@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
- * Rasterize the cream SL sticker (the physical mark Liam printed) into
- * favicon / PWA / apple / OG assets. Oswald, same as the in-app lockup.
+ * Rasterize the Chrome-tab mark into every icon the OS will ask for.
+ * Same glyph everywhere: cream tile, thin ink border, Oswald "SL".
+ * OG is that tile plus the wordmark.
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
@@ -11,8 +12,7 @@ import { fileURLToPath } from "node:url";
 const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
 const CREAM = "#F3EFE6";
 const INK = "#141414";
-const FONT =
-  "https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap";
+const FONT = "https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap";
 
 function wrap(body, size) {
   return `<!doctype html><html><head><meta charset="utf-8"/>
@@ -21,28 +21,18 @@ function wrap(body, size) {
   html,body{margin:0;padding:0;background:${CREAM}}
   *{box-sizing:border-box}
   .tile{width:${size}px;height:${size}px;background:${CREAM};color:${INK};
-    display:flex;flex-direction:column;align-items:center;justify-content:center;
-    font-family:Oswald,Arial Black,Arial,sans-serif}
+    display:grid;place-items:center;
+    font-family:Oswald,Arial Black,Arial,sans-serif;font-weight:700;letter-spacing:-0.08em;line-height:1}
 </style></head><body>${body}</body></html>`;
 }
 
-function stickerHtml(size) {
-  const sl = Math.round(size * 0.42);
-  const word = Math.max(9, Math.round(size * 0.092));
-  const gap = Math.max(2, Math.round(size * 0.028));
-  return wrap(
-    `<div class="tile">
-      <div style="font-size:${sl}px;font-weight:700;letter-spacing:-0.06em;line-height:0.82">SL</div>
-      <div style="margin-top:${gap}px;font-size:${word}px;font-weight:600;letter-spacing:0.22em;line-height:1">STOMP LAB</div>
-    </div>`,
-    size,
-  );
-}
-
+/** Matches public/favicon.svg and .sl-sticker: cream, 22% radius, ink stroke, SL. */
 function slOnlyHtml(size) {
-  const sl = Math.round(size * 0.52);
+  const sl = Math.round(size * (size <= 32 ? 0.56 : 0.54));
+  const radius = Math.round(size * 0.22);
+  const stroke = Math.max(1, Math.round(size * 0.047));
   return wrap(
-    `<div class="tile" style="display:grid;place-items:center;font-size:${sl}px;font-weight:700;letter-spacing:-0.08em">SL</div>`,
+    `<div class="tile" style="font-size:${sl}px;border:${stroke}px solid ${INK};border-radius:${radius}px">SL</div>`,
     size,
   );
 }
@@ -54,17 +44,15 @@ const OG = `<!doctype html><html><head><meta charset="utf-8"/>
   .og{width:1200px;height:630px;background:${CREAM};display:flex;flex-direction:column;
     align-items:flex-start;justify-content:center;padding:72px 88px;box-sizing:border-box;
     color:${INK};font-family:Oswald,Arial,sans-serif}
-  .row{display:flex;align-items:center;gap:32px}
-  .mark{width:168px;height:168px;background:${CREAM};border:2.5px solid ${INK};border-radius:36px;
-    display:grid;place-items:center;font-size:86px;font-weight:700;letter-spacing:-0.08em;line-height:1}
-  .word{font-size:96px;font-weight:700;letter-spacing:0.14em;line-height:0.9}
-  .tag{margin-top:40px;font-family:Arial,Helvetica,sans-serif;font-size:26px;letter-spacing:0.02em;
-    color:#3a3a3a;max-width:820px;line-height:1.4;font-weight:400}
+  .row{display:flex;align-items:center;gap:28px}
+  .mark{width:168px;height:168px;background:${CREAM};border:3px solid ${INK};border-radius:38px;
+    display:grid;place-items:center;font-size:84px;font-weight:700;letter-spacing:-0.08em;line-height:1}
+  .word{font-size:92px;font-weight:700;letter-spacing:0.12em;line-height:0.9}
+  .tag{margin-top:36px;font-family:Arial,Helvetica,sans-serif;font-size:28px;letter-spacing:0.04em;
+    color:#3a3a3a;max-width:760px;line-height:1.35}
 </style></head><body>
-  <div class="og">
-    <div class="row"><div class="mark">SL</div><div class="word">STOMP LAB</div></div>
-    <div class="tag">Research any song. Get a Line 6 preset that sounds like the record.</div>
-  </div>
+  <div class="og"><div class="row"><div class="mark">SL</div><div class="word">STOMP LAB</div></div>
+  <div class="tag">Research any song. Get a Line 6 preset that sounds like the record.</div></div>
 </body></html>`;
 
 function pngToIco(png16, png32) {
@@ -104,9 +92,9 @@ const page = await browser.newPage({ deviceScaleFactor: 1 });
 
 async function shot(html, width, height, type = "png") {
   await page.setViewportSize({ width, height });
-  await page.setContent(html, { waitUntil: "networkidle" });
+  await page.setContent(html, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
-  await page.waitForTimeout(120);
+  await new Promise((r) => setTimeout(r, 80));
   const buf = await page.screenshot({
     type,
     quality: type === "jpeg" ? 88 : undefined,
@@ -115,20 +103,30 @@ async function shot(html, width, height, type = "png") {
   return Buffer.from(buf);
 }
 
-const sticker512 = await shot(stickerHtml(512), 512, 512);
-const sticker192 = await shot(stickerHtml(192), 192, 192);
-const sticker180 = await shot(stickerHtml(180), 180, 180);
+const sl512 = await shot(slOnlyHtml(512), 512, 512);
+const sl192 = await shot(slOnlyHtml(192), 192, 192);
+const sl180 = await shot(slOnlyHtml(180), 180, 180);
+const sl167 = await shot(slOnlyHtml(167), 167, 167);
+const sl152 = await shot(slOnlyHtml(152), 152, 152);
+const sl120 = await shot(slOnlyHtml(120), 120, 120);
 const sl32 = await shot(slOnlyHtml(32), 32, 32);
 const sl16 = await shot(slOnlyHtml(16), 16, 16);
 const og = await shot(OG, 1200, 630, "jpeg");
 
-writeFileSync(join(publicDir, "icon-512.png"), sticker512);
-writeFileSync(join(publicDir, "icon-192.png"), sticker192);
-writeFileSync(join(publicDir, "apple-touch-icon.png"), sticker180);
+writeFileSync(join(publicDir, "icon-512.png"), sl512);
+writeFileSync(join(publicDir, "icon-192.png"), sl192);
+writeFileSync(join(publicDir, "icon-180.png"), sl180);
+writeFileSync(join(publicDir, "sl-touch.png"), sl180);
+writeFileSync(join(publicDir, "apple-touch-icon.png"), sl180);
+writeFileSync(join(publicDir, "apple-touch-icon-precomposed.png"), sl180);
+writeFileSync(join(publicDir, "apple-touch-icon-180x180.png"), sl180);
+writeFileSync(join(publicDir, "apple-touch-icon-167x167.png"), sl167);
+writeFileSync(join(publicDir, "apple-touch-icon-152x152.png"), sl152);
+writeFileSync(join(publicDir, "apple-touch-icon-120x120.png"), sl120);
 writeFileSync(join(publicDir, "favicon-32.png"), sl32);
 writeFileSync(join(publicDir, "favicon-16.png"), sl16);
 writeFileSync(join(publicDir, "favicon.ico"), pngToIco(sl16, sl32));
 writeFileSync(join(publicDir, "og.jpg"), og);
 
 await browser.close();
-console.log("wrote brand icons");
+console.log("wrote brand icons (cream SL sticker, every size including Safari 180)");

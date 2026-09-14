@@ -25,7 +25,7 @@ export const FEATURED: Preset[] = [
     name: "Teen Spirit",
     tempo: 117,
     summary:
-      "Nevermind (1991, Sound City / Butch Vig). Kurt tracked a Mesa/Boogie Studio preamp on the CLEAN rhythm channel and used a BOSS DS-1 as the dirty channel. Intro and verses are the same tone: Small Clone, DS-1 off. The watery 'hello, hello' is DS-1 + Clone. The loud HELLO is DS-1, Clone off. Mesa 5-band graphic in. No gate. Reverb 0.",
+      "Clean intro and verses. DS-1 for the loud parts. Small Clone off when it hits. Nevermind (1991, Sound City / Butch Vig). Kurt tracked a Mesa/Boogie Studio preamp on the CLEAN rhythm channel and used a BOSS DS-1 as the dirty channel. Intro and verses are the same tone: Small Clone, DS-1 off. The watery 'hello, hello' is DS-1 + Clone. The loud HELLO is DS-1, Clone off. Mesa 5-band graphic in. No gate. Reverb 0.",
     originalGear: [
       { role: "Guitar", name: "Early-'90s MIJ Strat with Seymour Duncan JB (bridge)", notes: "Guitar World: volume 10, standard tuning. Bridge pickup, pick near the bridge. Live he also used Mustangs/Jaguars." },
       { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown Power Base 2", notes: "Rhythm channel used CLEAN as a pedal platform. Volume 6, Master 5, Treble 6, Bass 3, Middle 8, Reverb 0, Rhythm Bright on. He did not switch channels — the DS-1 is the dirty channel. Helix: Cali IV Rhythm 1 (clean), not Rhythm 2 crunch." },
@@ -108,7 +108,7 @@ export const FEATURED: Preset[] = [
     name: "Sandman",
     tempo: 123,
     summary:
-      "Metallica (The Black Album, 1991, One on One / Bob Rock). James: ESP Explorer, EMG 81, Ibanez TS-9 into a Mesa Dual Rectifier (blended with a Marshall on the session), Mesa 5-band V-scoop, tight gate. Kirk's intro is a wah arpeggio into a nearly clean Recto — plug your wah in front; there is no wah block in this patch. Three tones: clean intro / rhythm chug / lead bump.",
+      "Clean wah intro. Tight Recto chug. Louder lead — not more gain. Metallica (The Black Album, 1991, One on One / Bob Rock). James: ESP Explorer, EMG 81, Ibanez TS-9 into a Mesa Dual Rectifier (blended with a Marshall on the session), Mesa 5-band V-scoop, tight gate. Kirk's intro is a wah arpeggio into a nearly clean Recto — plug your wah in front; there is no wah block in this patch. Three tones: clean intro / rhythm chug / lead bump.",
     originalGear: [
       { role: "Guitar", name: "ESP Explorer, EMG 81", notes: "James rhythm. Bridge. Kirk's intro is the wah lick on a wah in front of the amp." },
       { role: "Pedal", name: "Ibanez TS-9 Tube Screamer", notes: "Drive low, Level high — tightens the Recto. Off for the clean intro." },
@@ -192,7 +192,7 @@ export const FEATURED: Preset[] = [
     name: "Numb Solo",
     tempo: 64,
     summary:
-      "The Wall (1979, Super Bear / Bob Ezrin, James Guthrie). Gilmour's solos are a Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp so repeats saturate. Verses are the Hiwatt almost clean. Three tones: verse / solo 1 / solo 2. The vibrato is in his hands. No gate, no extra EQ, no wah.",
+      "Clean Hiwatt verses. Singing muff solos. Echo in front of the amp. The Wall (1979, Super Bear / Bob Ezrin, James Guthrie). Gilmour's solos are a Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp so repeats saturate. Verses are the Hiwatt almost clean. Three tones: verse / solo 1 / solo 2. The vibrato is in his hands. No gate, no extra EQ, no wah.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster", notes: "Neck pickup for the first solo, bridge-leaning for the second. Tone rolled back to ~6–7." },
       { role: "Pedal", name: "Electro-Harmonix Big Muff (Ram's Head)", notes: "Sustain up, tone around 11–12 o'clock. Off for verses." },

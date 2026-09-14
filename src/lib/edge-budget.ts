@@ -13,6 +13,7 @@ const APP_DOCUMENTS = new Set([
   "/guide",
   "/login",
   "/upgrade",
+  "/reset-password",
   "/account",
   "/admin",
   "/settings",

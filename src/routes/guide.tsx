@@ -140,11 +140,11 @@ function GuidePage() {
             stomplab1@gmail.com
           </a>
           . That is the Stomp Lab inbox. Polar handles cards and invoices — use Account → Manage
-          subscription to change or cancel. Always sign in at{" "}
+          subscription to change or cancel. Sign in at{" "}
           <a href="https://stomplab.app" className="text-primary underline underline-offset-2">
             stomplab.app
-          </a>{" "}
-          (not www).
+          </a>
+          .
         </p>
       </section>
 

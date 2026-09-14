@@ -2,7 +2,6 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { GeminiHint } from "@/components/layout/gemini-hint";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -92,8 +91,7 @@ function CatalogPage() {
       <header className="space-y-2">
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
-          Every amp, cab, mic, and effect on the HX Stomp — plus a finder that maps a real pedal to
-          the Line 6 name.
+          Browse every amp, cab, and effect — or type a pedal you own and we’ll show the Line 6 name.
         </p>
       </header>
 
@@ -123,7 +121,7 @@ function CatalogPage() {
       {tab === "find" ? (
         <div className="mx-auto max-w-2xl space-y-6">
           <form onSubmit={onAsk} className="space-y-3">
-            <Label htmlFor="eq">Pedal or amp</Label>
+            <Label htmlFor="eq">Pedal or amp you own</Label>
             <div className="flex gap-2">
               <Input
                 id="eq"
@@ -135,10 +133,12 @@ function CatalogPage() {
                 placeholder="Ibanez TS808, Klon Centaur, Ampeg SVT…"
               />
               <Button type="submit" disabled={busy || planPending || eqQuery.trim().length < 2}>
-                {busy ? <Loader2 className="size-4 animate-spin" /> : "Explain"}
+                {busy ? <Loader2 className="size-4 animate-spin" /> : "Find it"}
               </Button>
             </div>
-            <GeminiHint plan={plan} pending={planPending} />
+            <p className="text-xs text-muted-foreground">
+              Instant matches as you type. Sign in to have us explain the closest HX model.
+            </p>
           </form>
 
           {aiHits?.length ? (

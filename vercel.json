@@ -35,6 +35,18 @@
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
     },
     {
+      "source": "/apple-touch-icon-precomposed.png",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    },
+    {
+      "source": "/apple-touch-icon-:size.png",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    },
+    {
+      "source": "/sl-touch.png",
+      "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
+    },
+    {
       "source": "/icon-:size.png",
       "headers": [{ "key": "Cache-Control", "value": "public, max-age=3600" }]
     },

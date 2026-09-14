@@ -1,8 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { replayTutorial } from "@/components/layout/tutorial";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
@@ -10,8 +9,59 @@ import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { WahSelect } from "@/components/layout/wah-select";
+import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/settings")({ component: SettingsPage });
+
+function Chip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        "h-11 rounded-full px-4 text-sm font-medium",
+        active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-muted",
+      )}
+    >
+      {children}
+    </button>
+  );
+}
+
+function ToggleRow({
+  checked,
+  onChange,
+  title,
+  hint,
+}: {
+  checked: boolean;
+  onChange: (v: boolean) => void;
+  title: string;
+  hint: string;
+}) {
+  return (
+    <label className="flex cursor-pointer items-start justify-between gap-4 rounded-xl bg-secondary/50 px-4 py-3.5">
+      <span className="min-w-0">
+        <span className="block text-sm font-medium">{title}</span>
+        <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{hint}</span>
+      </span>
+      <input
+        type="checkbox"
+        className="mt-1 size-5 shrink-0 accent-primary"
+        checked={checked}
+        onChange={(e) => onChange(e.target.checked)}
+      />
+    </label>
+  );
+}
 
 function SettingsPage() {
   const hydrate = useAppStore((s) => s.hydrate);
@@ -55,16 +105,15 @@ function SettingsPage() {
   const accountPending = !mounted || authPending || planPending;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-8">
+    <div className="mx-auto max-w-2xl space-y-6">
       <header className="space-y-2">
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Settings</h1>
         <p className="text-sm text-muted-foreground">
-          Your {unitLabel} · {instrument}. Theme, unit, and how the replica behaves. Research runs on
-          the server — nothing to paste.
+          Your {unitLabel} · {instrument}. Theme, unit, and how the replica feels.
         </p>
       </header>
 
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Account</h2>
         {accountPending ? (
           <p className="text-sm text-muted-foreground">Checking your account…</p>
@@ -77,9 +126,7 @@ function SettingsPage() {
               </div>
               {plan.paid ? (
                 <span className="text-sm text-muted-foreground">
-                  {plan.admin
-                    ? "Unlimited builds"
-                    : `${plan.monthUsed} / ${plan.monthLimit} builds this month`}
+                  {plan.admin ? "Full Lab" : `${plan.monthUsed} / ${plan.monthLimit} this month`}
                 </span>
               ) : (
                 <span className="text-sm text-muted-foreground">
@@ -101,24 +148,30 @@ function SettingsPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Sign in with email to use {FREE_BUILDS} free custom songs, then subscribe for {formatUsd(PRICE_MONTHLY_USD)}/mo.
+              Sign in for {FREE_BUILDS} free custom songs, then subscribe for any title.
             </p>
-            <Button asChild>
-              <Link to="/login">Sign in</Link>
-            </Button>
+            <div className="flex flex-wrap gap-2">
+              <Button asChild>
+                <Link to="/login">Sign in</Link>
+              </Button>
+              <Button asChild variant="secondary">
+                <Link to="/upgrade">See plans</Link>
+              </Button>
+            </div>
           </>
         )}
       </section>
 
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Look and feel</h2>
-        <div>
-          <Button type="button" variant="secondary" onClick={() => replayTutorial()}>
+      <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-display text-lg font-semibold">Look and feel</h2>
+          <Button type="button" variant="secondary" size="sm" onClick={() => replayTutorial()}>
             Replay tutorial
           </Button>
         </div>
-        <fieldset className="space-y-2">
-          <Label>Theme</Label>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Theme</p>
           <div className="flex flex-wrap gap-2">
             {(
               [
@@ -127,267 +180,181 @@ function SettingsPage() {
                 ["system", "Match device"],
               ] as const
             ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setTheme(id satisfies ThemeId)}
-                className={`h-10 rounded-full px-4 text-sm ${
-                  theme === id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                }`}
-              >
+              <Chip key={id} active={theme === id} onClick={() => setTheme(id satisfies ThemeId)}>
                 {label}
-              </button>
+              </Chip>
             ))}
           </div>
-        </fieldset>
-        <fieldset className="space-y-2">
-          <Label>Default instrument</Label>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Instrument</p>
           <div className="flex flex-wrap gap-2">
             {(["guitar", "bass"] as const).map((id) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setInstrument(id)}
-                className={`h-10 rounded-full px-4 text-sm capitalize ${
-                  instrument === id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                }`}
-              >
-                {id}
-              </button>
+              <Chip key={id} active={instrument === id} onClick={() => setInstrument(id)}>
+                {id === "guitar" ? "Guitar" : "Bass"}
+              </Chip>
             ))}
           </div>
-        </fieldset>
-        <fieldset className="space-y-2">
-          <Label>Default unit</Label>
-          <p className="text-xs text-muted-foreground">
-            HX Stomp, XL, Helix Floor, Helix LT, HX Effects, and POD Go. Export matches the unit.
-          </p>
-          <div className="flex flex-wrap gap-2">
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Unit</p>
+          <p className="text-xs text-muted-foreground">The replica and the download file follow this.</p>
+          <div className="grid grid-cols-2 gap-2">
             {STOMP_DEVICES.map((d) => (
               <button
                 key={d.id}
                 type="button"
                 onClick={() => setStompModel(d.id)}
-                className={`h-10 rounded-full px-4 text-sm ${
-                  stompModel === d.id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                }`}
+                className={cn(
+                  "h-12 rounded-xl px-3 text-left text-sm font-medium",
+                  stompModel === d.id
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-secondary text-secondary-foreground hover:bg-muted",
+                )}
               >
                 {d.name}
               </button>
             ))}
           </div>
-        </fieldset>
-        <fieldset className="space-y-2">
-          <Label>When a rig opens, start in</Label>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">When a rig opens</p>
           <div className="flex flex-wrap gap-2">
             {(
               [
-                ["auto", "Auto (match the song)"],
+                ["auto", "Match the song"],
                 ["snapshot", "Snapshot mode"],
                 ["stomp", "Stomp mode"],
               ] as const
             ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                onClick={() => setDefaultFsMode(id satisfies FsModePref)}
-                className={`h-10 rounded-full px-4 text-sm ${
-                  defaultFsMode === id ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground"
-                }`}
-              >
+              <Chip key={id} active={defaultFsMode === id} onClick={() => setDefaultFsMode(id satisfies FsModePref)}>
                 {label}
-              </button>
+              </Chip>
             ))}
           </div>
-        </fieldset>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={showDsp}
-            onChange={(e) => setShowDsp(e.target.checked)}
-          />
-          <span>
-            Show DSP load on the replica
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              The percentage in the corner of the Line 6 display.
-            </span>
-          </span>
-        </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={showFsNumbers}
-            onChange={(e) => setShowFsNumbers(e.target.checked)}
-          />
-          <span>
-            Number the footswitches 1–6
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              1 is top-left. Same map the .hlx writes onto the unit.
-            </span>
-          </span>
-        </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={largeControls}
-            onChange={(e) => setLargeControls(e.target.checked)}
-          />
-          <span>
-            Larger knobs and switches
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Easier on a phone. The hardware still has the same layout.
-            </span>
-          </span>
-        </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={lcdBright}
-            onChange={(e) => setLcdBright(e.target.checked)}
-          />
-          <span>
-            Brighter LCD
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              More glow on the replica screen. Off matches a dim stage unit.
-            </span>
-          </span>
-        </label>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={reduceMotion}
-            onChange={(e) => setReduceMotion(e.target.checked)}
-          />
-          <span>
-            Reduce motion
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Cuts animations on this site.
-            </span>
-          </span>
-        </label>
-        <p className="text-sm text-muted-foreground">
-          Footswitches on the replica are numbered 1–6, starting top-left. That is the same map the .hlx
-          writes onto the unit.
-        </p>
-        <label className="flex items-start gap-3 text-sm">
-          <input
-            type="checkbox"
-            className="mt-1 size-4 accent-primary"
-            checked={confirmDownload}
-            onChange={(e) => setConfirmDownload(e.target.checked)}
-          />
-          <span>
-            Confirm before downloading a .hlx
-            <span className="mt-0.5 block text-xs text-muted-foreground">
-              Extra tap so a misclick doesn't save a file.
-            </span>
-          </span>
-        </label>
+        </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Replica</h2>
+        <div className="space-y-2">
+          <ToggleRow
+            checked={showDsp}
+            onChange={setShowDsp}
+            title="Show DSP load"
+            hint="The percentage in the corner of the display."
+          />
+          <ToggleRow
+            checked={showFsNumbers}
+            onChange={setShowFsNumbers}
+            title="Number the footswitches"
+            hint="1 is top-left — same numbers the file writes onto the unit."
+          />
+          <ToggleRow
+            checked={largeControls}
+            onChange={setLargeControls}
+            title="Larger knobs and switches"
+            hint="Easier on a phone. The hardware layout stays the same."
+          />
+          <ToggleRow
+            checked={lcdBright}
+            onChange={setLcdBright}
+            title="Brighter LCD"
+            hint="More glow on the replica screen."
+          />
+          <ToggleRow
+            checked={reduceMotion}
+            onChange={setReduceMotion}
+            title="Reduce motion"
+            hint="Cuts animations on this site."
+          />
+          <ToggleRow
+            checked={confirmDownload}
+            onChange={setConfirmDownload}
+            title="Confirm before download"
+            hint="Extra tap so a misclick doesn’t save a file."
+          />
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Wah</h2>
         <p className="text-sm text-muted-foreground">
-          Default after you build a preset. Change it on the preset page too — it is not on the Lab form.
+          Default after you build. If you already own a wah, leave it on Pedal — it stays in front of the
+          unit.
         </p>
         <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
       </section>
 
-      <section id="troubleshoot" className="space-y-4 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold text-foreground">If something isn't working</h2>
+      <section id="troubleshoot" className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">If something isn’t working</h2>
         <details className="group border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">
-            Sign in, sign up, or forgot password
-          </summary>
+          <summary className="cursor-pointer text-sm font-medium">Sign in or forgot password</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Email and a password of 12+ characters on new accounts. No Google, no X. Forgot it? Request a
-            reset email from{" "}
+            Email and a password of 12+ characters on new accounts. Forgot it? Request a reset from{" "}
             <Link to="/login" className="text-primary underline underline-offset-2">
               Sign in
             </Link>{" "}
-            or Account. The link expires in 15 minutes — we do not let you change a password from Account
-            without that email. If you already paid, use the same email you used at checkout. If sign-in
-            sits there doing nothing, refresh once and try again.
+            or Account. The link expires in 15 minutes.
           </p>
         </details>
         <details className="group border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">
-            "Research is busy. Try again in a minute."
-          </summary>
+          <summary className="cursor-pointer text-sm font-medium">Research is busy</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Custom songs run on the server. If it's overloaded, wait — we do not switch models.
-            Featured demos still work.
+            Wait a minute and try again. The three demos still work.
           </p>
         </details>
         <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">HX Edit doesn't recognize the preset</summary>
+          <summary className="cursor-pointer text-sm font-medium">HX Edit doesn’t recognize the preset</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            File → Import, not drag-and-drop onto a setlist. Firmware 3.80 or newer. Every block in the
-            file is a factory HX Stomp model — if Edit still complains, re-download from this site and
-            import again. After import, press PAGE until SNAP or STOMP matches what you picked here.
+            File → Import — don’t drag onto a setlist. Firmware 3.80 or newer. After import, press PAGE
+            until the screen says SNAP or STOMP.
           </p>
         </details>
         <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Snapshots don't change the sound</summary>
+          <summary className="cursor-pointer text-sm font-medium">Snapshots don’t change the sound</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            On this site, tap Snapshot above the replica. On the real Stomp, PAGE until the display says
-            SNAP. Front switches 1–3 then recall verse / chorus / solo. Stomp mode only toggles individual
-            effects.
+            Tap Snapshot above the replica. On the unit, PAGE until it says SNAP. Switches 1–3 then
+            recall verse / chorus / solo.
           </p>
         </details>
         <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Download was blocked</summary>
+          <summary className="cursor-pointer text-sm font-medium">The wah doesn’t sweep</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            Some browsers block the file save. Use Copy JSON, paste it into a text file, name it
-            something.hlx, then File → Import in HX Edit.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">Wrong guitar or bass models</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            The header Guitar / Bass filter is global. Switch it before you research. Catalog and featured
-            songs follow it too.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium text-foreground">The wah doesn't sweep</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Default: your real wah lives in front of the unit, so we leave Helix wah out. If you want
-            the modeler to do it, pick Helix wah + expression pedal (EXP 1 → Position) or Helix wah +
-            a footswitch. Change that under Wah above, then re-open the preset.
+            Default: your real wah lives in front of the unit. To use the modeler’s wah, pick Helix wah
+            above, then re-open the preset.
           </p>
         </details>
         <details>
-          <summary className="cursor-pointer text-sm font-medium text-foreground">DSP is in the red</summary>
+          <summary className="cursor-pointer text-sm font-medium">DSP is in the red</summary>
           <p className="mt-2 text-sm text-muted-foreground">
-            HX Stomp has a real ceiling. Drop a cab, a second delay, or a heavy amp. The replica's
-            percentage is a guide — the unit is the authority.
+            Drop a cab, a second delay, or a heavy amp. The percentage is a guide — the unit is the
+            authority.
           </p>
         </details>
       </section>
 
-      <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-        <h2 className="font-display text-lg font-semibold text-foreground">How sharing works</h2>
-        <p>
-          Featured demos load instantly. Custom research uses the server. Each custom song counts as a
-          build — demos never do.
-          {plan.paid
-            ? plan.admin
-              ? " Admin has no monthly cap."
-              : ` ${plan.monthUsed} of ${plan.monthLimit} custom builds used this month.`
-            : ` Free accounts get ${FREE_BUILDS} custom builds plus the three demos. Subscribe is ${formatUsd(PRICE_MONTHLY_USD)}/month or ${formatUsd(PRICE_YEARLY_USD)}/year, stuck to your email. Same 50 custom builds a month on either plan.`}
-        </p>
-        <p>
+      {!plan.paid && !plan.admin && !accountPending ? (
+        <section className="space-y-3 rounded-2xl bg-primary p-5 text-primary-foreground">
+          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Unlock every song</h2>
+          <p className="text-sm text-primary-foreground/80">
+            {FREE_BUILDS} custom builds after sign-in, then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
+            {formatUsd(PRICE_YEARLY_USD)}/yr. Demos stay free.
+          </p>
+          <Button asChild variant="secondary">
+            <Link to="/upgrade">Subscribe</Link>
+          </Button>
+        </section>
+      ) : (
+        <p className="text-sm text-muted-foreground">
           <Link to="/" className="text-primary underline underline-offset-2">
             Back to the Lab
           </Link>
         </p>
-      </section>
+      )}
     </div>
   );
 }

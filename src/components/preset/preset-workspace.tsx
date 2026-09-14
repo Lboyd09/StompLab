@@ -92,8 +92,9 @@ export function PresetWorkspace({
 
   function changeParam(blockId: string, name: string, value: number) {
     const snap = preset.snapshots[activeSnapshot];
-    const hasOverride = Boolean(snap?.paramOverrides?.[blockId] && name in (snap.paramOverrides[blockId] ?? {}));
-    if (hasOverride && snap) {
+    const already = Boolean(snap?.paramOverrides?.[blockId] && name in (snap.paramOverrides[blockId] ?? {}));
+    const writeSnap = Boolean(snap) && (fsMode === "snapshot" || already);
+    if (writeSnap && snap) {
       onChange({
         ...preset,
         snapshots: preset.snapshots.map((s, i) =>
@@ -102,7 +103,7 @@ export function PresetWorkspace({
                 ...s,
                 paramOverrides: {
                   ...s.paramOverrides,
-                  [blockId]: { ...s.paramOverrides![blockId], [name]: value },
+                  [blockId]: { ...(s.paramOverrides?.[blockId] ?? {}), [name]: value },
                 },
               }
             : s,

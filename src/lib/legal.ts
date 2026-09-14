@@ -1,7 +1,7 @@
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
-export const LEGAL_VERSION = "2026-09-13";
+export const LEGAL_VERSION = "2026-09-14";
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";
 
@@ -40,7 +40,7 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     title: "2. Your account",
     body: [
       "You must be 13 or older to create an account. If you are under 18, you confirm a parent or guardian agrees to these terms.",
-      "You are responsible for the email and password you use. Sign in at stomplab.app (not www). One email is one account — a second signup is a new account with no history.",
+      "You are responsible for the email and password you use. One email is one account — a second signup is a new account with no history.",
       "We may close an account that abuses research, tries to scrape the catalog, reverse-engineers the research backend, or uses the Lab in a way that would get a reasonable operator sued. Email " +
         PUBLIC_SUPPORT_EMAIL +
         " if you think that was a mistake.",
@@ -107,6 +107,14 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
         " with the URL, the work, and your contact. We will look at it. We may remove a demo or a cached research result without admitting the claim is valid.",
     ],
   },
+  {
+    id: "refunds",
+    title: "10. Refunds",
+    body: [
+      "All sales are final. Paid subscriptions are non-refundable. Cancel any time from Account → Manage subscription; you keep the Lab until the period you already paid for ends. We do not prorate unused days.",
+      "Chargebacks go through Polar, the merchant of record.",
+    ],
+  },
 ];
 
 export const SUBSCRIPTION_SECTIONS: { id: string; title: string; body: string[] }[] = [
@@ -120,9 +128,7 @@ export const SUBSCRIPTION_SECTIONS: { id: string; title: string; body: string[] 
       "This is an automatic-renewal subscription. Unless you cancel, Polar will charge the same plan again at the then-current price when the period ends — monthly plans every month, yearly plans every year.",
       "Cancel any time from Account → Manage subscription (Polar’s customer portal). Cancellation takes the same path you used to subscribe: online, no phone call required. You keep paid access until the period you already paid for ends. We do not prorate unused days.",
       "If Polar cannot charge a renewal, paid access stops. Builds already exported stay on your unit.",
-      "Refunds: if a charge was a mistake or the Lab was down when you paid, email " +
-        PUBLIC_SUPPORT_EMAIL +
-        " within 14 days. Chargebacks go through Polar.",
+      "All sales are final. Subscriptions are non-refundable, including unused days in the current period. Cancel before renewal if you do not want the next charge. Chargebacks go through Polar.",
     ],
   },
 ];

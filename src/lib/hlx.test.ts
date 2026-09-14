@@ -184,6 +184,40 @@ describe("buildHlx Enter Sandman", () => {
     assert.equal(snap1.blocks.dsp0[tsKey!], true);
     if (gateKey) assert.equal(snap1.blocks.dsp0[gateKey], true);
   });
+
+  it("writes snapshot Drive knobs onto the Recto controllers in the .hlx", () => {
+    const snap0 = tone.snapshot0 as {
+      controllers?: { dsp0?: Record<string, Record<string, { "@value": number }>> };
+    };
+    const rectoKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_AmpCaliRectifire")?.[0];
+    assert.ok(rectoKey);
+    const drive = snap0.controllers?.dsp0?.[rectoKey!]?.Drive?.["@value"];
+    assert.equal(typeof drive, "number");
+    assert.ok(Math.abs((drive as number) - 0.13) < 0.02);
+  });
+
+  it("a new snapshot knob turn still lands on the Recto controllers", () => {
+    const src = structuredClone(featured("featured-sandman"));
+    const amp = src.blocks.find((b) => b.modelId === "cali-rectifire");
+    assert.ok(amp);
+    src.snapshots[0] = {
+      ...src.snapshots[0],
+      paramOverrides: {
+        ...src.snapshots[0].paramOverrides,
+        [amp!.id]: { ...src.snapshots[0].paramOverrides?.[amp!.id], Presence: 6.5 },
+      },
+    };
+    const next = buildHlx(src);
+    const nextTone = (next.data as { tone: Record<string, unknown> }).tone;
+    const nextDsp = nextTone.dsp0 as Record<string, Record<string, unknown>>;
+    const rectoKey = Object.entries(nextDsp).find(([, b]) => b["@model"] === "HD2_AmpCaliRectifire")?.[0];
+    const snap0 = nextTone.snapshot0 as {
+      controllers?: { dsp0?: Record<string, Record<string, { "@value": number }>> };
+    };
+    const presence = snap0.controllers?.dsp0?.[rectoKey!]?.Presence?.["@value"];
+    assert.equal(typeof presence, "number");
+    assert.ok(Math.abs((presence as number) - 0.65) < 0.02);
+  });
 });
 
 describe("visual FS map", () => {

@@ -457,7 +457,12 @@ export function injectGrokPwaHead(html, ctx = {}) {
     .filter(([key]) => {
       if (key === "manifest") return !next.includes('href="/__grok/manifest.webmanifest"');
       if (key === "apple-touch-icon") {
-        return !next.includes('href="/__grok/icon-180.png"') && !next.includes('href="/icon-192.png"');
+        return (
+          !next.includes('href="/__grok/icon-180.png"') &&
+          !next.includes('href="/icon-192.png"') &&
+          !next.includes('href="/sl-touch.png"') &&
+          !next.includes('href="/apple-touch-icon.png"')
+        );
       }
       return !next.includes(`name="${key}"`);
     })

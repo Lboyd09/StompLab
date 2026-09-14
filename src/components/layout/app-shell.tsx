@@ -1,6 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  ArrowRightLeft,
   BookOpen,
   Clock,
   Guitar,
@@ -41,7 +40,6 @@ const NAV = [
 
 const DESKTOP_NAV = [
   ...NAV,
-  { to: "/equivalents", label: "Equivalents", icon: ArrowRightLeft },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
 
@@ -63,8 +61,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const reduceMotion = useAppStore((s) => s.reduceMotion);
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
-  const catalogFind =
-    pathname === "/catalog" && (location.search as { tab?: string }).tab === "find";
   const navigate = useNavigate();
   const { plan } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
@@ -161,9 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [q]);
 
   function isActive(to: string) {
-    if (to === "/equivalents") return catalogFind;
-    if (to === "/catalog") return pathname === "/catalog" && !catalogFind;
-    return pathname === to;
+    return pathname === to || (to === "/catalog" && pathname.startsWith("/catalog"));
   }
 
   function closeSearch() {

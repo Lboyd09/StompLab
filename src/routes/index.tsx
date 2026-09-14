@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -20,7 +20,7 @@ import { applyWahPreference } from "@/lib/wah";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
-import { FREE_BUILDS } from "@/lib/plan";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd, priceMonthlyLaunchUsd } from "@/lib/plan";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>): { q?: string } => ({
@@ -185,8 +185,7 @@ function Home() {
             Research any song
           </h1>
           <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-            Type a title. Get a preset for your {unit} — path, knobs, snapshots, and a file HX Edit or
-            POD Go Edit will import.
+            Type a title. Get a preset for your {unit} — path, knobs, snapshots, and a file you can import.
           </p>
           {subscribed ? (
             <p className="text-sm text-muted-foreground">
@@ -289,6 +288,23 @@ function Home() {
           ))}
         </div>
       </section>
+
+      {!subscribed ? (
+        <section className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-primary px-6 py-7 text-primary-foreground sm:flex-row sm:items-center">
+          <div className="space-y-2">
+            <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">
+              Type any song
+            </h2>
+            <p className="max-w-md text-sm text-primary-foreground/80">
+              The three demos are free. After that, {formatUsd(priceMonthlyLaunchUsd())} the first month — then{" "}
+              {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. 50 custom builds a month.
+            </p>
+          </div>
+          <Button asChild variant="secondary" size="lg" className="h-12 w-full shrink-0 px-8 text-base sm:w-auto">
+            <Link to="/upgrade">Get the Lab</Link>
+          </Button>
+        </section>
+      ) : null}
 
       {rest.length ? (
         <section className="space-y-6">

@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl9";
+const ICON_V = "sl11";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -25,15 +25,20 @@ export const Route = createRootRoute({
       { name: "application-name", content: "StompLab" },
     ],
     links: [
-      // PNG/ICO first. apple-touch href must be exactly /icon-192.png (no query)
-      // so grok-pwa skips injecting an un-cache-busted /__grok/icon-180.png.
+      // SVG first so Chrome's tab matches the header sticker.
+      { rel: "icon", type: "image/svg+xml", href: `/favicon.svg?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "32x32", href: `/favicon-32.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "16x16", href: `/favicon-16.png?v=${ICON_V}` },
       { rel: "shortcut icon", href: `/favicon.ico?v=${ICON_V}` },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/icon-192.png" },
+      // href="/icon-192.png" (no query) must stay so grok-pwa does not inject /__grok/icon-180.png.
+      { rel: "apple-touch-icon", href: "/icon-192.png" },
+      // Last 180×180 wins on Safari Add to Home Screen. New path busts iOS cache.
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/sl-touch.png" },
+      { rel: "apple-touch-icon", sizes: "167x167", href: "/apple-touch-icon-167x167.png" },
+      { rel: "apple-touch-icon", sizes: "152x152", href: "/apple-touch-icon-152x152.png" },
+      { rel: "apple-touch-icon-precomposed", sizes: "180x180", href: "/sl-touch.png" },
       { rel: "icon", type: "image/png", sizes: "192x192", href: `/icon-192.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "512x512", href: `/icon-512.png?v=${ICON_V}` },
-      { rel: "icon", type: "image/svg+xml", href: `/favicon.svg?v=${ICON_V}` },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

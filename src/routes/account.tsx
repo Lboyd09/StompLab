@@ -177,7 +177,7 @@ function AccountPage() {
           ) : null}
         </div>
         <p className="text-sm text-muted-foreground">
-          Always use stomplab.app — not www. Look and feel lives in{" "}
+          Theme, unit, and the replica live in{" "}
           <Link to="/settings" className="text-primary underline underline-offset-2">
             Settings
           </Link>

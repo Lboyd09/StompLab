@@ -4,7 +4,7 @@ export const RIG_DISCLAIMER =
   "These rigs are research and starting points — not a 100% copy of the record. Use them as a reference, then tweak on your unit.";
 
 export const FORGOT_PASSWORD_COPY =
-  `Forgot your password? Request a reset email from Sign in or Account. The link expires in 15 minutes. We never let you change a password from Account without that email. Locked out of mail? Write ${PUBLIC_SUPPORT_EMAIL}.`;
+  `Forgot your password? Request a reset email from Sign in or Account. The link expires in 15 minutes. Locked out of mail? Write ${PUBLIC_SUPPORT_EMAIL}.`;
 
 export const LINE6_DISCLAIMER =
   "Stomp Lab is an independent research tool. It is not affiliated with, endorsed by, or sponsored by Line 6, Yamaha Guitar Group, Inc., or any manufacturer named in the catalog. Helix®, HX Stomp®, HX Stomp XL®, HX Effects®, POD®, and POD Go® are trademarks of Yamaha Guitar Group, Inc. Other product names are trademarks of their respective owners and are used only to identify the gear our models and research refer to.";
