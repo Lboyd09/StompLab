@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl11";
+const ICON_V = "sl12";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,15 +30,15 @@ export const Route = createRootRoute({
       { rel: "icon", type: "image/png", sizes: "32x32", href: `/favicon-32.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "16x16", href: `/favicon-16.png?v=${ICON_V}` },
       { rel: "shortcut icon", href: `/favicon.ico?v=${ICON_V}` },
-      // href="/icon-192.png" (no query) must stay so grok-pwa does not inject /__grok/icon-180.png.
-      { rel: "apple-touch-icon", href: "/icon-192.png" },
-      // Last 180×180 wins on Safari Add to Home Screen. New path busts iOS cache.
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/sl-touch.png" },
+      { rel: "apple-touch-icon", href: "/sl-icon-192.png" },
       { rel: "apple-touch-icon", sizes: "167x167", href: "/apple-touch-icon-167x167.png" },
       { rel: "apple-touch-icon", sizes: "152x152", href: "/apple-touch-icon-152x152.png" },
-      { rel: "apple-touch-icon-precomposed", sizes: "180x180", href: "/sl-touch.png" },
-      { rel: "icon", type: "image/png", sizes: "192x192", href: `/icon-192.png?v=${ICON_V}` },
-      { rel: "icon", type: "image/png", sizes: "512x512", href: `/icon-512.png?v=${ICON_V}` },
+      { rel: "apple-touch-icon", sizes: "120x120", href: "/apple-touch-icon-120x120.png" },
+      // Last 180×180 wins on Safari Add to Home Screen. New path busts iOS cache.
+      { rel: "apple-touch-icon", sizes: "180x180", href: "/sl-home-180.png" },
+      { rel: "apple-touch-icon-precomposed", sizes: "180x180", href: "/sl-home-180.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: `/sl-icon-192.png?v=${ICON_V}` },
+      { rel: "icon", type: "image/png", sizes: "512x512", href: `/sl-icon-512.png?v=${ICON_V}` },
       { rel: "stylesheet", href: appCss },
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "preconnect", href: "https://fonts.googleapis.com" },

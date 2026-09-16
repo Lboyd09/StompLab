@@ -30,7 +30,7 @@ export const SYSTEM =
   "5) pedal order on THAT session, not a later tour board. Distortion ~noon unless a published number exists. " +
   "6) cab + speakers + mic + distance; close and dry unless the record is roomy. " +
   "7) technique in tips (pick, palm mute, guitar volume as a gain stage). " +
-  "8) arrangement by TONE not lyrics — sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. " +
+  "8) arrangement by TONE not lyrics — sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. Rhythm and lead are different tones. Never mash them into one snapshot. Amp + cab stay ON in every snapshot. " +
   "9) THEN map each real piece to a catalog modelId. " +
   "Session credits beat a simplified 'use a Twin' guide. Tracking rig beats a later tour rig. Guitar Chalk is good for tone language; credits win on gear. " +
   "Listener test: album in one ear, this preset in the other. " +

@@ -11,11 +11,14 @@ import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
+import { captureReferralCode, peekReferralCode, clearReferralCode } from "@/lib/referral-code";
+import { redeemReferral } from "@/lib/referrals";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
     checkout_id: typeof s.checkout_id === "string" ? s.checkout_id : undefined,
+    ref: typeof s.ref === "string" && s.ref.length ? s.ref : undefined,
   }),
   component: LoginPage,
 });
@@ -51,6 +54,7 @@ function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [resetSent, setResetSent] = useState(false);
+  const [invite, setInvite] = useState("");
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
 
@@ -61,7 +65,10 @@ function LoginPage() {
     } catch {
       /* ignore */
     }
-  }, []);
+    if (search.ref) captureReferralCode(search.ref);
+    const existing = peekReferralCode();
+    if (existing) setInvite(existing);
+  }, [search.ref]);
 
   async function waitForSession() {
     for (let i = 0; i < 12; i++) {
@@ -78,6 +85,17 @@ function LoginPage() {
     } catch {
       /* ignore */
     }
+  }
+
+  async function applyInviteIfAny() {
+    const code = invite.trim() || peekReferralCode();
+    if (code.length < 4) return;
+    try {
+      await redeemReferral({ data: { code } });
+    } catch {
+      /* invite is optional — don't block sign-up */
+    }
+    clearReferralCode();
   }
 
   async function goAfterAuth() {
@@ -155,6 +173,7 @@ function LoginPage() {
               const session = await waitForSession();
               if (session?.data?.user) {
                 rememberEmail(trimmed);
+                await applyInviteIfAny();
                 await goAfterAuth();
                 return;
               }
@@ -180,6 +199,7 @@ function LoginPage() {
           const session = await waitForSession();
           if (session?.data?.user) {
             rememberEmail(trimmed);
+            await applyInviteIfAny();
             await goAfterAuth();
             return;
           }
@@ -193,6 +213,7 @@ function LoginPage() {
         return;
       }
       rememberEmail(trimmed);
+      if (mode === "up") await applyInviteIfAny();
       await goAfterAuth();
     } catch (err) {
       setError(friendlyAuthError(err instanceof Error ? err.message : "", mode));
@@ -263,6 +284,20 @@ function LoginPage() {
                   autoComplete={mode === "up" ? "new-password" : "current-password"}
                   placeholder={mode === "up" ? `${MIN_PASSWORD_LENGTH}+ characters` : "Your password"}
                 />
+              </div>
+            ) : null}
+            {mode === "up" ? (
+              <div className="space-y-1.5">
+                <Label htmlFor="invite">Invite code (optional)</Label>
+                <Input
+                  id="invite"
+                  value={invite}
+                  onChange={(e) => setInvite(e.target.value.toUpperCase())}
+                  autoComplete="off"
+                  placeholder="From a friend"
+                  maxLength={12}
+                />
+                <p className="text-xs text-muted-foreground">You and your friend each get an extra custom build.</p>
               </div>
             ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}

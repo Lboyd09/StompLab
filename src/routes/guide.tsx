@@ -9,17 +9,17 @@ function GuidePage() {
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Tutorial</p>
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">How to use Stomp Lab</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          One idea: look up a song, see it on a Stomp, copy the file onto the real unit. You do not need
+          One idea: look up a song, see it on your unit, copy the file onto the hardware. You do not need
           to learn HX Edit first.
         </p>
       </header>
 
       <Section title="The 30-second path">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Pick Guitar or Bass, and your unit (Stomp, XL, Floor, LT, HX Effects, or POD Go), in the header.</li>
+          <li>Pick Guitar or Bass, and your unit, in the header. Guitar players also pick rhythm, lead, or both.</li>
           <li>Open a featured song, or type a title and build a preset.</li>
           <li>Tap Snapshot or Stomp above the replica. Play the switches.</li>
-          <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp.</li>
+          <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp. File → Import — don’t drag it.</li>
         </ol>
       </Section>
 

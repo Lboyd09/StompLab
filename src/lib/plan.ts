@@ -126,6 +126,7 @@ export type Plan = {
   canLockerSync: boolean;
   canSharedLibrary: boolean;
   blockedReason: "signin" | "paywall" | "quota" | null;
+  bonusBuilds: number;
 };
 
 export function planFingerprint(plan: Plan): string {
@@ -138,6 +139,7 @@ export function planFingerprint(plan: Plan): string {
     plan.planInterval ?? "",
     plan.subscriptionStatus,
     plan.blockedReason ?? "",
+    String(plan.bonusBuilds),
   ].join("|");
 }
 
@@ -164,6 +166,7 @@ export function emptyPlan(): Plan {
     canLockerSync: false,
     canSharedLibrary: false,
     blockedReason: "signin",
+    bonusBuilds: 0,
   };
 }
 
@@ -175,13 +178,15 @@ export function assemblePlan(opts: {
   monthUsed: number;
   planInterval?: PlanInterval | null;
   subscriptionStatus?: string;
+  bonusBuilds?: number;
 }): Plan {
   const month = yearMonth();
   const email = normalizeEmail(opts.email) || opts.email;
   const admin = isAdminEmail(opts.email);
   const paid = admin || opts.paid;
+  const bonusBuilds = Math.max(0, Math.floor(opts.bonusBuilds ?? 0));
   const freeUsed = opts.freeUsed;
-  const freeRemaining = Math.max(0, FREE_BUILDS - freeUsed);
+  const freeRemaining = Math.max(0, FREE_BUILDS + bonusBuilds - freeUsed);
   const monthUsed = opts.monthUsed;
   if (admin) {
     return {
@@ -205,9 +210,11 @@ export function assemblePlan(opts: {
       canLockerSync: true,
       canSharedLibrary: false,
       blockedReason: null,
+      bonusBuilds,
     };
   }
-  const canBuild = paid ? monthUsed < PAID_MONTHLY_BUILDS : freeRemaining > 0;
+  const monthLimit = paid ? PAID_MONTHLY_BUILDS + bonusBuilds : FREE_BUILDS + bonusBuilds;
+  const canBuild = paid ? monthUsed < monthLimit : freeRemaining > 0;
   return {
     signedIn: true,
     userId: opts.userId,
@@ -217,7 +224,7 @@ export function assemblePlan(opts: {
     freeUsed,
     freeRemaining,
     monthUsed: paid ? monthUsed : freeUsed,
-    monthLimit: paid ? PAID_MONTHLY_BUILDS : FREE_BUILDS,
+    monthLimit,
     month,
     planInterval: paid ? (opts.planInterval ?? null) : null,
     subscriptionStatus: opts.subscriptionStatus ?? "",
@@ -229,6 +236,7 @@ export function assemblePlan(opts: {
     canLockerSync: paid,
     canSharedLibrary: false,
     blockedReason: canBuild ? null : paid ? "quota" : "paywall",
+    bonusBuilds,
   };
 }
 
@@ -241,5 +249,6 @@ export function buildsUsedCopy(plan: Plan): string {
   if (plan.paid) {
     return `${plan.monthUsed} of ${plan.monthLimit} custom builds used this month. Demos never count.`;
   }
-  return `${plan.freeRemaining} of ${FREE_BUILDS} custom builds left.`;
+  const cap = FREE_BUILDS + (plan.bonusBuilds ?? 0);
+  return `${plan.freeRemaining} of ${cap} custom builds left.`;
 }

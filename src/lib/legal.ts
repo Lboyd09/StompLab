@@ -1,11 +1,11 @@
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
-export const LEGAL_VERSION = "2026-09-14";
+export const LEGAL_VERSION = "2026-09-15";
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";
 
-export const LEGAL_EFFECTIVE = "September 10, 2026";
+export const LEGAL_EFFECTIVE = "September 15, 2026";
 
 export function legalAcceptKey() {
   return `stomplab.legal.${LEGAL_VERSION}`;
@@ -31,88 +31,88 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     id: "who",
     title: "1. Who we are",
     body: [
-      "Stomp Lab is an independent web app that researches recorded guitar and bass tones and builds unofficial starting-point presets for Line 6 Helix-family units (HX Stomp, HX Stomp XL, Helix Floor, Helix LT, HX Effects, POD Go).",
-      "Stomp Lab is not affiliated with, endorsed by, or sponsored by Line 6, Yamaha Guitar Group, Inc., or any manufacturer, artist, label, or studio named in the catalog or in a preset. Helix, HX Stomp, HX Stomp XL, HX Effects, POD, and POD Go are trademarks of Yamaha Guitar Group, Inc. Other product names are trademarks of their respective owners and are used only to identify the gear our models and research refer to.",
+      "Stomp Lab researches recorded guitar and bass tones and builds unofficial starting-point presets for Line 6 Helix-family units (HX Stomp, HX Stomp XL, Helix Floor, Helix LT, HX Effects, POD Go).",
+      "Stomp Lab is not affiliated with, endorsed by, or sponsored by Line 6, Yamaha Guitar Group, Inc., or any manufacturer, artist, or label named here. Helix, HX Stomp, HX Stomp XL, HX Effects, POD, and POD Go are trademarks of Yamaha Guitar Group, Inc. Other product names identify the gear our research refers to.",
     ],
   },
   {
     id: "account",
     title: "2. Your account",
     body: [
-      "You must be 13 or older to create an account. If you are under 18, you confirm a parent or guardian agrees to these terms.",
-      "You are responsible for the email and password you use. One email is one account — a second signup is a new account with no history.",
-      "We may close an account that abuses research, tries to scrape the catalog, reverse-engineers the research backend, or uses the Lab in a way that would get a reasonable operator sued. Email " +
+      "You must be 13 or older. If you are under 18, a parent or guardian agrees to these terms.",
+      "One email is one account. You are responsible for that password.",
+      "We may close an account that abuses research, scrapes the catalog, or tries to game invites. Email " +
         PUBLIC_SUPPORT_EMAIL +
         " if you think that was a mistake.",
     ],
   },
   {
     id: "service",
-    title: "3. What the Lab does — and what it is not",
+    title: "3. What the Lab does",
     body: [
-      "The Lab returns research and a starting-point .hlx / .pgp file. Presets are unofficial. They are not copies of commercial patches, artist signatures, or master recordings. Song titles identify the recording we researched.",
-      "We do not promise that a preset will sound identical to a record. Playback, guitar, hands, and the unit all change the result. Use the preset as a reference, then tweak.",
-      "Research uses Google Gemini. Song title, artist, instrument, unit, and optional gear notes are sent to Google to build the preset. Do not put personal data in those fields.",
-      "Featured demos are hand-built starting points. Custom research is generated. Both can be wrong. Feedback on a preset improves future research; it does not retune a named song for everyone else.",
+      "You type a song. We return research and a starting-point .hlx / .pgp file. Presets are unofficial. They are not copies of commercial patches, artist signatures, or master recordings. Song titles identify the recording we researched.",
+      "We do not promise a preset will sound identical to a record. Playback, guitar, hands, and the unit all change the result.",
+      "Research uses Google Gemini. Song title, artist, instrument, unit, part (rhythm / lead / both), and optional gear notes go to Google. Do not put personal data in those fields.",
+      "Featured demos are hand-built. Custom research is generated. Both can be wrong.",
+    ],
+  },
+  {
+    id: "cache",
+    title: "4. Shared research cache",
+    body: [
+      "When a custom song is researched, we may store the resulting preset (song title, artist, instrument, unit, and the preset JSON) so the next person who looks up that song does not wait on a new research call.",
+      "That cache is not tied to your account. It does not include your email, name, or password. It is not a public library you can browse.",
+    ],
+  },
+  {
+    id: "referrals",
+    title: "5. Invites",
+    body: [
+      "You can invite a friend with a personal code. Each of you gets extra custom builds when the invite is used, up to a cap.",
+      "Invites only work on a new account, in the first 48 hours, before that account has researched a custom song. You cannot invite yourself, a second account on the same email, or recycle codes. We may void bonus builds that look like abuse.",
     ],
   },
   {
     id: "ip",
-    title: "4. Your files and our catalog",
+    title: "6. Your files and our catalog",
     body: [
-      "You own the .hlx / .pgp files you download, for your own use on your own unit. You may not resell Stomp Lab presets as a pack, scrape the catalog, or republish our research text as your own product.",
-      "The Helix model list, factory ids, and export format are Line 6's. We map public model names to those ids so HX Edit / POD Go Edit will import. We do not grant you any Line 6 license beyond what your own unit and editor already give you.",
+      "You own the .hlx / .pgp files you download, for your own use on your own unit. You may not resell Stomp Lab presets as a pack, scrape the catalog, or republish our research as your own product.",
+      "The Helix model list and export format are Line 6's. We map public model names to those ids so HX Edit / POD Go Edit will import.",
     ],
   },
   {
     id: "as-is",
-    title: "5. No warranty",
+    title: "7. No warranty",
     body: [
       "THE LAB IS PROVIDED “AS IS.” We do not warrant that research will be accurate, that a file will import on every firmware, or that the service will be uninterrupted.",
-      "To the fullest extent allowed by law, Stomp Lab and its operator are not liable for indirect, incidental, special, or consequential damages, or for any amount above what you paid us in the 12 months before the claim (or $50 if you have not paid).",
-      "Some states do not allow these limits. In those states, our liability is limited to the minimum the law requires.",
-    ],
-  },
-  {
-    id: "law",
-    title: "6. Law and disputes",
-    body: [
-      "These terms are governed by the laws of the State of Arizona, without regard to conflict-of-law rules. If a dispute cannot be resolved by email, the state and federal courts in Maricopa County, Arizona have exclusive jurisdiction, except where consumer-protection law in your state says otherwise.",
-      "If a court strikes one clause, the rest still apply. We may update these terms; the version and date at the top of /terms is the one that applies. Material changes get a new version number. Continued use after a posted change is acceptance of the new version — a new subscribe still requires a fresh checkbox.",
-    ],
-  },
-  {
-    id: "contact",
-    title: "7. Contact",
-    body: [
-      "Questions, billing, locked out, or a broken preset: " + PUBLIC_SUPPORT_EMAIL + ".",
-      "Polar is the merchant of record for cards. Polar’s terms also apply to payment.",
-    ],
-  },
-  {
-    id: "signature",
-    title: "8. Electronic signature",
-    body: [
-      "Checking the box on Create account or Subscribe is your electronic signature under the federal ESIGN Act and Arizona’s Uniform Electronic Transactions Act. It has the same effect as signing on paper.",
-      "We record which version you agreed to and when. In this browser that lives next to the Lab; Polar keeps the payment record for paid plans. A new version of these terms gets a new version number. Signing up again or subscribing again requires a fresh checkbox.",
-    ],
-  },
-  {
-    id: "dmca",
-    title: "9. Copyright and takedowns",
-    body: [
-      "Song titles identify the recording we researched. Presets are unofficial starting points — not copies of master recordings, official artist patches, or commercial preset packs.",
-      "If you are a rights holder and believe something here infringes, email " +
-        PUBLIC_SUPPORT_EMAIL +
-        " with the URL, the work, and your contact. We will look at it. We may remove a demo or a cached research result without admitting the claim is valid.",
+      "To the fullest extent allowed by law, Stomp Lab is not liable for indirect or consequential damages, or for any amount above what you paid us in the 12 months before the claim (or $50 if you have not paid).",
     ],
   },
   {
     id: "refunds",
-    title: "10. Refunds",
+    title: "8. Refunds and Polar",
     body: [
       "All sales are final. Paid subscriptions are non-refundable. Cancel any time from Account → Manage subscription; you keep the Lab until the period you already paid for ends. We do not prorate unused days.",
-      "Chargebacks go through Polar, the merchant of record.",
+      "Polar is the merchant of record for cards. Polar’s terms also apply to payment. Chargebacks go through Polar.",
+    ],
+  },
+  {
+    id: "law",
+    title: "9. Law and contact",
+    body: [
+      "These terms are governed by the laws of the State of Arizona. Disputes go to the state and federal courts in Maricopa County, Arizona, except where consumer-protection law in your state says otherwise.",
+      "Questions, billing, locked out, or a broken preset: " + PUBLIC_SUPPORT_EMAIL + ".",
+      "Checking the box on Create account or Subscribe is your electronic signature under ESIGN and Arizona’s UETA. We record which version you agreed to.",
+    ],
+  },
+  {
+    id: "dmca",
+    title: "10. Copyright",
+    body: [
+      "Song titles identify the recording we researched. Presets are unofficial starting points — not copies of master recordings or official artist patches.",
+      "If you are a rights holder and believe something here infringes, email " +
+        PUBLIC_SUPPORT_EMAIL +
+        " with the URL, the work, and your contact. We may remove a demo or a cached result without admitting the claim is valid.",
     ],
   },
 ];
@@ -140,6 +140,8 @@ export const PRIVACY_SECTIONS: { id: string; title: string; body: string[] }[] =
     body: [
       "Email and password hash (Better Auth). Name if you typed one. Password-reset tokens live for 15 minutes, then they expire.",
       "Presets you build, gear locker items, and usage counts so the monthly limit works.",
+      "Anonymized song research (title, artist, instrument, unit, preset JSON) in a shared cache so a song already researched does not call research again. That row is not tied to your account.",
+      "Invite codes and redemptions so bonus builds can be granted. We store the two account ids, not a public list of who invited whom.",
       "Polar customer / subscription ids so we can unlock the Lab after you pay. Polar stores the card.",
       "Optional feedback you send (rating, what to change). We use that to improve research. We do not put your name on it.",
       "A daily visit ping from the browser so we can count unique days. No ads, no sale of the list.",
@@ -150,7 +152,7 @@ export const PRIVACY_SECTIONS: { id: string; title: string; body: string[] }[] =
     title: "What we use it for",
     body: [
       "To run the Lab: sign-in, builds, unlock, support. Password-reset mail goes only to the address on the account, and only when you ask.",
-      "Song research is sent to Google Gemini (song, artist, instrument, unit, gear notes you typed). Google’s Gemini API terms apply to that call.",
+      "Song research is sent to Google Gemini (song, artist, instrument, unit, part, gear notes you typed). Google’s Gemini API terms apply to that call.",
       "We do not sell your email. We do not send marketing mail from this product.",
     ],
   },

@@ -4,6 +4,7 @@ import { helixIdFor, isHxStompModelId, UNEXPORTABLE_MODELS } from "@/data/helix-
 import { factoryParamsFor } from "@/data/helix-params";
 import type { CategoryId, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { sanitizeSnapshots } from "./snapshot-sanitize";
 
 /**
  * HX Edit .hlx is L6Preset JSON. Layout taken from real HX Stomp dumps
@@ -313,7 +314,10 @@ function factoryDefault(name: string): number | boolean {
   if (name === "LowCut") return 20;
   if (name === "HighCut") return 20100;
   if (name === "Distance") return 1;
-  if (name === "EarlyReflections" || name === "Level") return 0;
+  if (name === "EarlyReflections") return 0;
+  if (name === "Level" || name === "Volume" || name === "Output" || name === "Master" || name === "ChVol" || name === "Boost") {
+    return 0.5;
+  }
   if (name === "Mix" || name === "Blend") return 0.5;
   if (/Hz$/i.test(name) || name.endsWith("Hz")) return 0;
   if (/SW$|Switch$/.test(name)) return false;
@@ -535,73 +539,123 @@ function snapshotBlockStates(
   return states;
 }
 
+const LEVEL_UI = new Set(["Ch Vol", "ChVol", "Output", "Level", "Master", "Volume", "Boost"]);
+
+type AssignedSnapParam = {
+  uiName: string;
+  helixName: string;
+  min: number;
+  max: number;
+};
+
+function dropUiParam(modelId: string, uiName: string, category: CategoryId): boolean {
+  const dropModel = DROP_BY_MODEL[modelId] ?? (THREE_KNOB_DIST.has(modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
+  if (dropModel?.has(uiName)) return true;
+  if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) return true;
+  return false;
+}
+
+function clampUiLevel(uiName: string, raw: number): number {
+  if (!LEVEL_UI.has(uiName) && !LEVEL_UI.has(uiName.replace(/\s+/g, ""))) return raw;
+  return raw < 1.5 ? 1.5 : raw;
+}
+
+/**
+ * Params that actually change across snapshots (including vs the base block).
+ * HX assigns these @controller 9. Any snapshot that omits @value recalls 0 — mute.
+ */
+function collectAssignedSnapshotParams(
+  preset: Preset,
+  others: StompBlock[],
+  maxSnapshots: number,
+): Map<string, AssignedSnapParam[]> {
+  const snaps = preset.snapshots.slice(0, maxSnapshots);
+  const out = new Map<string, AssignedSnapParam[]>();
+  others.forEach((block, i) => {
+    const key = `block${i}`;
+    const model = MODEL_MAP[block.modelId];
+    const category = model?.category ?? "distortion";
+    const allowedHlx = allowedHlxNames(block.modelId, category);
+    const uiNames = new Set<string>();
+    for (const snap of snaps) {
+      const over = snap.paramOverrides?.[block.id];
+      if (!over) continue;
+      for (const n of Object.keys(over)) uiNames.add(n);
+    }
+    const assigned: AssignedSnapParam[] = [];
+    for (const uiName of uiNames) {
+      if (dropUiParam(block.modelId, uiName, category)) continue;
+      const pname = helixParamName(block.modelId, uiName);
+      if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
+      const values: number[] = [];
+      const push = (raw: number | undefined) => {
+        const ui = clampUiLevel(uiName, typeof raw === "number" && Number.isFinite(raw) ? raw : 5);
+        const v = toHlxValue(block.modelId, uiName, ui, category);
+        if (typeof v === "number" && Number.isFinite(v)) values.push(v);
+      };
+      const base = block.params[uiName];
+      push(typeof base === "number" ? base : undefined);
+      for (const snap of snaps) {
+        const over = snap.paramOverrides?.[block.id]?.[uiName];
+        if (typeof over === "number") push(over);
+        else push(typeof base === "number" ? base : undefined);
+      }
+      const uniq = [...new Set(values)];
+      if (uniq.length < 2) continue;
+      assigned.push({
+        uiName,
+        helixName: pname,
+        min: Math.min(...uniq),
+        max: Math.max(...uniq),
+      });
+    }
+    if (assigned.length) out.set(key, assigned);
+  });
+  return out;
+}
+
 function snapshotControllers(
   snap: Snapshot | undefined,
   others: StompBlock[],
+  assigned: Map<string, AssignedSnapParam[]>,
 ): Record<string, Record<string, { "@fs_enabled": boolean; "@value": number | boolean }>> {
   const controllers: Record<
     string,
     Record<string, { "@fs_enabled": boolean; "@value": number | boolean }>
   > = {};
-  if (!snap?.paramOverrides) return controllers;
   others.forEach((block, i) => {
-    const over = snap.paramOverrides?.[block.id];
-    if (!over) return;
+    const key = `block${i}`;
+    const list = assigned.get(key);
+    if (!list?.length) return;
     const model = MODEL_MAP[block.modelId];
     const category = model?.category ?? "distortion";
-    const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
-    const allowedHlx = allowedHlxNames(block.modelId, category);
+    const over = snap?.paramOverrides?.[block.id];
     const params: Record<string, { "@fs_enabled": boolean; "@value": number | boolean }> = {};
-    for (const [uiName, raw] of Object.entries(over)) {
-      if (dropModel?.has(uiName)) continue;
-      if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
-      const value = toHlxValue(block.modelId, uiName, raw, category);
+    for (const item of list) {
+      const raw = over?.[item.uiName] ?? block.params[item.uiName];
+      const ui = clampUiLevel(item.uiName, typeof raw === "number" && Number.isFinite(raw) ? raw : 5);
+      const value = toHlxValue(block.modelId, item.uiName, ui, category);
       if (!finiteHlx(value)) continue;
-      const pname = helixParamName(block.modelId, uiName);
-      if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
-      params[pname] = { "@fs_enabled": false, "@value": value };
+      params[item.helixName] = { "@fs_enabled": false, "@value": value };
     }
-    if (Object.keys(params).length) controllers[`block${i}`] = params;
+    if (Object.keys(params).length) controllers[key] = params;
   });
   return controllers;
 }
 
-function buildControllerSection(preset: Preset, others: StompBlock[], maxSnapshots: number) {
+function buildControllerSection(
+  preset: Preset,
+  others: StompBlock[],
+  assigned: Map<string, AssignedSnapParam[]>,
+) {
   const controller: { dsp0: HlxJson; dsp1: HlxJson } = { dsp0: {}, dsp1: {} };
-  const variations = new Map<string, Map<string, Set<number>>>();
 
-  for (const snap of preset.snapshots.slice(0, maxSnapshots)) {
-    if (!snap.paramOverrides) continue;
-    others.forEach((block, i) => {
-      const over = snap.paramOverrides?.[block.id];
-      if (!over) return;
-      const model = MODEL_MAP[block.modelId];
-      const category = model?.category ?? "distortion";
-      const dropModel = DROP_BY_MODEL[block.modelId] ?? (THREE_KNOB_DIST.has(block.modelId) ? new Set(["Bass", "Mid", "Mix"]) : undefined);
-      const key = `block${i}`;
-      if (!variations.has(key)) variations.set(key, new Map());
-      const allowedHlx = allowedHlxNames(block.modelId, category);
-      for (const [uiName, raw] of Object.entries(over)) {
-        if (dropModel?.has(uiName)) continue;
-        if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
-        const value = toHlxValue(block.modelId, uiName, raw, category);
-        if (typeof value !== "number" || !Number.isFinite(value)) continue;
-        const pname = helixParamName(block.modelId, uiName);
-        if (!allowedHlx.has(pname) && !allowedHlx.has(uiName)) continue;
-        if (!variations.get(key)!.has(pname)) variations.get(key)!.set(pname, new Set());
-        variations.get(key)!.get(pname)!.add(value);
-      }
-    });
-  }
-
-  for (const [blockKey, params] of variations) {
-    for (const [paramName, values] of params) {
-      if (values.size < 2) continue;
-      const all = [...values];
+  for (const [blockKey, params] of assigned) {
+    for (const item of params) {
       const slot = (controller.dsp0[blockKey] as HlxJson) ?? {};
-      slot[paramName] = {
-        "@min": Math.min(...all),
-        "@max": Math.max(...all),
+      slot[item.helixName] = {
+        "@min": item.min,
+        "@max": item.max,
         "@controller": STOMP_SNAPSHOT_CONTROLLER,
         "@snapshot_disable": false,
       };
@@ -682,6 +736,7 @@ function sanitizeLabel(s: string, max: number) {
 }
 
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
+  preset = sanitizeSnapshots(preset);
   const device = exportProfile(preset.stompModel);
   const ext = exportExtension(preset.stompModel);
   if (!ext || !device.hlxDeviceId) {
@@ -694,11 +749,12 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
   const maxSnapshots = device.snapshots;
   const tempo = Math.max(40, Math.min(240, Math.round(preset.tempo || 120)));
   const mode = resolveFsMode(preset, opts?.fsMode);
+  const assigned = collectAssignedSnapshotParams(preset, others, maxSnapshots);
 
   const tone: HlxJson = {
     dsp0: dsp,
     dsp1: {},
-    controller: buildControllerSection(preset, others, maxSnapshots),
+    controller: buildControllerSection(preset, others, assigned),
     footswitch: mode === "stomp" ? buildFootswitch(preset, others) : { dsp0: {}, dsp1: {} },
     global: {
       "@model": "@global_params",
@@ -730,7 +786,7 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
           "@fs_index": hwIndex,
           "@fs_label": sanitizeLabel(snap.name, 12).toUpperCase(),
           blocks: { dsp0: snapshotBlockStates(snap, others) },
-          controllers: { dsp0: snapshotControllers(snap, others) },
+          controllers: { dsp0: snapshotControllers(snap, others, assigned) },
         }
       : emptySnapshot(i, others, tempo, hwIndex);
   }

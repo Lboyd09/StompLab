@@ -5,12 +5,26 @@ import { STOMP_MODEL_IDS } from "@/data/types";
 import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan } from "@/lib/billing";
+import { parseGuitarRole, type GuitarRole } from "@/lib/guitar-role";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
 }
 
 export function songCacheKey(
+  song: string,
+  artist: string | undefined,
+  instrument: string,
+  stompModel: string,
+  playbackTarget = "frfr",
+  wahMode = "pedal",
+  guitarRole: GuitarRole | string = "both",
+) {
+  return `song|v9|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
+}
+
+/** Previous key — still looked up so older rows hit. */
+export function songCacheKeyV8(
   song: string,
   artist: string | undefined,
   instrument: string,
@@ -88,6 +102,69 @@ export async function lookupCacheRaw(key: string) {
       kind: row.kind,
       preset,
       matches: Array.isArray(row.matches) ? row.matches : [],
+      hitCount: Number(row.hit_count) + 1,
+    };
+  } catch {
+    return miss;
+  }
+}
+
+/**
+ * Shared across accounts (rig_cache has no user_id). Exact key first, then
+ * older v8 keys, then any row with the same song + instrument.
+ */
+export async function lookupSongCache(opts: {
+  song: string;
+  artist?: string;
+  instrument: string;
+  stompModel: string;
+  playbackTarget?: string;
+  wahMode?: string;
+  guitarRole?: string;
+}) {
+  const playback = opts.playbackTarget ?? "frfr";
+  const wah = opts.wahMode ?? "pedal";
+  const role = parseGuitarRole(opts.guitarRole);
+  const keys = [
+    songCacheKey(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah, role),
+    songCacheKeyV8(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah),
+    songCacheKey(opts.song, "", opts.instrument, opts.stompModel, playback, wah, role),
+    songCacheKeyV8(opts.song, "", opts.instrument, opts.stompModel, playback, wah),
+  ];
+  const seen = new Set<string>();
+  for (const key of keys) {
+    if (seen.has(key)) continue;
+    seen.add(key);
+    const row = await lookupCacheRaw(key);
+    if (row.hit && row.preset) return row;
+  }
+  try {
+    const sql = await getSql();
+    const songN = norm(opts.song);
+    const rows = await sql<{
+      preset: Preset | null;
+      hit_count: number;
+      cache_key: string;
+    }>`
+      select preset, hit_count, cache_key from rig_cache
+      where kind = 'song'
+        and lower(trim(song)) = ${songN}
+        and instrument = ${opts.instrument}
+      order by
+        case when stomp_model = ${opts.stompModel} then 0 else 1 end,
+        hit_count desc,
+        updated_at desc
+      limit 1
+    `;
+    const row = rows[0];
+    const preset = playablePreset(row?.preset);
+    if (!row || !preset) return miss;
+    await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${row.cache_key}`;
+    return {
+      hit: true as const,
+      kind: "song",
+      preset,
+      matches: [] as EqHit[],
       hitCount: Number(row.hit_count) + 1,
     };
   } catch {

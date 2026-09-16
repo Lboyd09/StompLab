@@ -38,11 +38,17 @@ test("does not inject grok apple-touch when /icon-192.png is already linked", ()
   assert.match(out, /href="\/icon-192\.png"/);
 });
 
-test("does not inject grok apple-touch when /sl-touch.png is already linked", () => {
-  const html = '<html><head><link rel="apple-touch-icon" sizes="180x180" href="/sl-touch.png"></head></html>';
+test("does not inject grok apple-touch when /sl-home-180.png is already linked", () => {
+  const html = '<html><head><link rel="apple-touch-icon" sizes="180x180" href="/sl-home-180.png"></head></html>';
   const out = injectGrokPwaHead(html);
   assert.equal(out.includes('href="/__grok/icon-180.png"'), false);
-  assert.match(out, /href="\/sl-touch\.png"/);
+  assert.match(out, /href="\/sl-home-180\.png"/);
+});
+
+test("does not inject grok apple-touch when /sl-icon-192.png is already linked", () => {
+  const html = '<html><head><link rel="apple-touch-icon" href="/sl-icon-192.png"></head></html>';
+  const out = injectGrokPwaHead(html);
+  assert.equal(out.includes('href="/__grok/icon-180.png"'), false);
 });
 
 test("injects the extensions script without a project id", () => {
@@ -520,7 +526,7 @@ test("vercel hosts use baked site title and app icons", () => {
   );
   assert.equal(manifest.name, "Stomp Lab");
   assert.equal(manifest.short_name, "StompLab");
-  assert.equal(manifest.icons[0].src, "/icon-192.png");
+  assert.equal(manifest.icons[0].src, "/sl-icon-192.png");
 });
 
 test("install page uses site title on vercel hosts, not Grok App", () => {

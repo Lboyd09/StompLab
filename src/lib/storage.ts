@@ -1,5 +1,6 @@
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import { parseStompModelId } from "@/data/types";
+import { parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { parseWahMode, parseWahModelId, type WahMode } from "./wah";
 
 const PRESETS_KEY = "stomplab.presets.v1";
@@ -24,6 +25,7 @@ export type Settings = {
   reduceMotion: boolean;
   wahMode: WahMode;
   wahModelId: string;
+  guitarRole: GuitarRole;
 };
 
 const DEFAULT_SETTINGS: Settings = {
@@ -39,6 +41,7 @@ const DEFAULT_SETTINGS: Settings = {
   reduceMotion: false,
   wahMode: "pedal",
   wahModelId: "teardrop-310",
+  guitarRole: "both",
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -137,6 +140,7 @@ export function loadSettings(): Settings {
     stompModel: parseStompModelId(raw.stompModel, DEFAULT_SETTINGS.stompModel),
     wahMode: parseWahMode(raw.wahMode),
     wahModelId: parseWahModelId(raw.wahModelId),
+    guitarRole: parseGuitarRole(raw.guitarRole),
   };
 }
 

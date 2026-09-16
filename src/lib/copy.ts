@@ -22,6 +22,6 @@ export const LEGAL_SHORT =
   "Not affiliated with Line 6. Unofficial research tool.";
 
 export const PRIVACY_SHORT =
-  "We store the email you sign in with, the presets you build, and Polar’s payment ids so the Lab can unlock. We do not sell that. Polar is the merchant of record for subscriptions. Research calls go to Google Gemini.";
+  "We store the email you sign in with, the presets you build, Polar’s payment ids, and an anonymized song cache so a researched song can be reused. We do not sell that. Polar is the merchant of record. Research calls go to Google Gemini.";
 
 export const HELP_COPY = `Questions, billing, locked out, or a broken preset — email ${PUBLIC_SUPPORT_EMAIL}. We read it.`;

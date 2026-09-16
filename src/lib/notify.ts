@@ -27,5 +27,6 @@ export function notifyResearchError(
 export function notifyResearchSource(source: "library" | "cache" | "gemini" | "local") {
   if (source === "library") toast.success("Loaded a built-in demo. Ready to copy onto the Stomp.");
   else if (source === "local") toast.success("Matched from the HX catalog.");
+  else if (source === "cache") toast.success("Loaded a saved research. Ready to copy onto the Stomp.");
   else toast.success("Researched and saved.");
 }

@@ -4,7 +4,9 @@ import { DEVICE_MAP } from "@/data/categories";
 import { helixIdFor } from "@/data/helix-ids";
 import { PLAYBACK_MAP } from "@/data/playback";
 import type { PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
+import { guitarRolePrompt, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { newId } from "./preset-utils";
+import { sanitizeSnapshots } from "./snapshot-sanitize";
 
 export const GearSchema = z.object({
   id: z.string(),
@@ -230,7 +232,7 @@ export function toPreset(
     ? `${fingerprint} ${out.summary}`.trim()
     : out.summary;
 
-  return {
+  return sanitizeSnapshots({
     id: newId("pst"),
     createdAt: Date.now(),
     source: meta.source,
@@ -249,7 +251,7 @@ export function toPreset(
     programming: out.programming,
     tips: out.tips,
     playbackTarget: meta.playbackTarget,
-  };
+  });
 }
 
 export function overlayUserGear(preset: Preset, gear: UserGear[]): Preset {
@@ -284,13 +286,13 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":3.0}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["id-on"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
-Params MUST be JSON numbers 0-10. Set EVERY factory knob. Cab Mic is 0 (SM57). Only snapshots that change the tone. If the record used a gate or dedicated EQ, include those blocks and spare FS bypass. Do not copy the example modelIds — pick from the catalog for THIS song.`;
+  return `{"name":"<=18 chars","tempo":120,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":3.0,"Ch Vol":5.2}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
+Params MUST be JSON numbers 0-10. Set EVERY factory knob. Cab Mic is 0 (SM57). Every snapshot's enabledModelIds MUST include the amp and the cab — omitting them mutes the path. Only snapshots that change the tone. If the record used a gate or dedicated EQ, include those blocks and spare FS bypass. Do not copy the example modelIds — pick from the catalog for THIS song.`;
 }
 
 export function jsonSchemaHintCustom() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur"],"paramOverrides":{},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost"],"paramOverrides":{"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
-Params MUST be JSON numbers 0-10. Set EVERY factory knob. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
+  return `{"name":"<=18 chars","tempo":120,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":5.4}},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.6,"Ch Vol":6.4},"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
+Params MUST be JSON numbers 0-10. Set EVERY factory knob. Every snapshot's enabledModelIds MUST include the amp and the cab. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
@@ -369,6 +371,7 @@ export function songResearchInstructions(
   artist: string | undefined,
   instrument: "guitar" | "bass",
   wahLine?: string,
+  guitarRole: GuitarRole = "both",
 ) {
   const title = song.trim();
   const billed = (artist ?? "").trim();
@@ -383,6 +386,8 @@ If the recorded opening is clean, snapshot 1 is clean — dirt pedals off, Drive
 If the session used a clean preamp as a pedal platform, pick the clean channel. The pedal is the dirty channel.
 Solos: Ch Vol / Presence / a boost — not extra Drive.
 Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.
+Every snapshot's enabledModelIds MUST list the amp and the cab. Omitting them mutes the snapshot.
+${guitarRolePrompt(parseGuitarRole(guitarRole), instrument)}
 If that session used a noise gate or a dedicated EQ, those blocks go in the chain with on/off via snapshots and spare FS. If it did not, leave them out.
 ${wahLine ? `\n${wahLine}` : ""}`;
 }
@@ -431,7 +436,12 @@ programming = unit steps. tips = how to play this custom sound.`;
 }
 
 /** Custom-sound brief. Catalog + schema are appended by the caller. */
-export function customSoundInstructions(description: string, instrument: "guitar" | "bass", wahLine?: string) {
+export function customSoundInstructions(
+  description: string,
+  instrument: "guitar" | "bass",
+  wahLine?: string,
+  guitarRole: GuitarRole = "both",
+) {
   return `CUSTOM SOUND (not a song). Instrument: ${instrument}.
 Player description:
 ${description.trim()}
@@ -439,5 +449,7 @@ ${description.trim()}
 Invent a unique HX chain that delivers THAT description. Do not substitute a similar famous record. Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.
 If the description is a feeling ("warm broken-up American clean") pick the closest catalog amp and set knobs — still original, not a named-song patch.
 Listener test: would a player who typed that sentence recognize this preset as what they asked for, not as a cover of a hit?
+Every snapshot's enabledModelIds MUST include the amp and the cab.
+${guitarRolePrompt(parseGuitarRole(guitarRole), instrument)}
 ${wahLine ? `\n${wahLine}` : ""}`;
 }

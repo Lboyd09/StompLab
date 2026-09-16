@@ -726,3 +726,95 @@ describe("multi-device export", () => {
     assert.ok(models.length >= 1);
   });
 });
+
+describe("silent snapshot fix", () => {
+  it("fills snapshot controllers from the base block so later snaps are not muted", () => {
+    const preset: Preset = {
+      ...miniPreset("cali-iv-rhythm-1"),
+      blocks: [
+        {
+          id: "amp",
+          modelId: "cali-iv-rhythm-1",
+          enabled: true,
+          path: "main",
+          position: 0,
+          params: { Drive: 4, Bass: 5, Mid: 5, Treble: 5, Presence: 5, Master: 5, "Ch Vol": 5.5 },
+        },
+        {
+          id: "cab",
+          modelId: "4x12-1960-t75",
+          enabled: true,
+          path: "main",
+          position: 1,
+          params: { Mic: 0, Distance: 2, "Low Cut": 2, "High Cut": 7 },
+        },
+      ],
+      snapshots: [
+        {
+          id: "s1",
+          name: "Rhythm",
+          color: "#7d9a6a",
+          enabledBlocks: ["amp", "cab"],
+          notes: "",
+          paramOverrides: { amp: { Drive: 3.2, "Ch Vol": 5.2 } },
+        },
+        {
+          id: "s2",
+          name: "Lead",
+          color: "#e24a3a",
+          enabledBlocks: [],
+          notes: "",
+          paramOverrides: { amp: { Drive: 4.8 } },
+        },
+      ],
+    };
+    const hlx = buildHlx(preset);
+    const tone = (hlx.data as { tone: Record<string, Record<string, unknown>> }).tone;
+    const snap0 = tone.snapshot0 as {
+      blocks: { dsp0: Record<string, boolean> };
+      controllers: { dsp0: Record<string, Record<string, { "@value": number }>> };
+    };
+    const snap1 = tone.snapshot1 as {
+      "@valid": boolean;
+      blocks: { dsp0: Record<string, boolean> };
+      controllers: { dsp0: Record<string, Record<string, { "@value": number }>> };
+    };
+    assert.equal(snap1["@valid"], true);
+    assert.equal(snap0.blocks.dsp0.block0, true);
+    assert.equal(snap1.blocks.dsp0.block0, true);
+    const v0 = snap0.controllers.dsp0.block0?.ChVol?.["@value"];
+    const v1 = snap1.controllers.dsp0.block0?.ChVol?.["@value"];
+    const d0 = snap0.controllers.dsp0.block0?.Drive?.["@value"];
+    const d1 = snap1.controllers.dsp0.block0?.Drive?.["@value"];
+    assert.ok(typeof v0 === "number" && v0 > 0.1, `snap0 ChVol ${v0}`);
+    assert.ok(typeof v1 === "number" && v1 > 0.1, `snap1 ChVol ${v1}`);
+    assert.ok(typeof d0 === "number" && d0 > 0.1, `snap0 Drive ${d0}`);
+    assert.ok(typeof d1 === "number" && d1 > 0.1, `snap1 Drive ${d1}`);
+  });
+
+  it("never writes mute Level/ChVol/Output on featured snapshot controllers", () => {
+    for (const p of FEATURED.filter((x) => canExportHlx(x.stompModel))) {
+      const hlx = buildHlx(p);
+      const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+      for (let i = 0; i < 8; i++) {
+        const snap = tone[`snapshot${i}`] as
+          | {
+              "@valid"?: boolean;
+              controllers?: { dsp0?: Record<string, Record<string, { "@value": number | boolean }>> };
+            }
+          | undefined;
+        if (!snap || snap["@valid"] === false) continue;
+        const ctl = snap.controllers?.dsp0 ?? {};
+        for (const [blockKey, params] of Object.entries(ctl)) {
+          for (const [name, slot] of Object.entries(params)) {
+            if (!/Level|ChVol|Output|Master|Volume/i.test(name)) continue;
+            const v = slot["@value"];
+            if (typeof v !== "number") continue;
+            assert.ok(v > 0.05, `${p.id} snapshot${i} ${blockKey}.${name}=${v}`);
+          }
+        }
+      }
+    }
+  });
+});
+

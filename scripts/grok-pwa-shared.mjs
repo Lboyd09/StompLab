@@ -171,18 +171,18 @@ export function renderWebManifest(hostHeader, site = {}) {
       start_url: "/",
       scope: "/",
       display: "standalone",
-      background_color: "#000000",
-      theme_color: "#0B0C0E",
+      background_color: "#F3EFE6",
+      theme_color: "#F3EFE6",
       icons: customIcons
         ? [
             {
-              src: "/icon-192.png",
+              src: "/sl-icon-192.png",
               sizes: "192x192",
               type: "image/png",
               purpose: "any",
             },
             {
-              src: "/icon-512.png",
+              src: "/sl-icon-512.png",
               sizes: "512x512",
               type: "image/png",
               purpose: "any maskable",
@@ -461,6 +461,8 @@ export function injectGrokPwaHead(html, ctx = {}) {
           !next.includes('href="/__grok/icon-180.png"') &&
           !next.includes('href="/icon-192.png"') &&
           !next.includes('href="/sl-touch.png"') &&
+          !next.includes('href="/sl-home-180.png"') &&
+          !next.includes('href="/sl-icon-192.png"') &&
           !next.includes('href="/apple-touch-icon.png"')
         );
       }

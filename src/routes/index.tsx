@@ -6,6 +6,7 @@ import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
+import { GuitarRolePicker } from "@/components/layout/guitar-role";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
@@ -36,6 +37,8 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
+  const guitarRole = useAppStore((s) => s.guitarRole);
+  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
@@ -127,6 +130,7 @@ function Home() {
           userGear: gear,
           wahMode,
           wahModelId,
+          guitarRole,
         },
       });
       if (!result.ok) {
@@ -168,7 +172,7 @@ function Home() {
     }
   }
 
-  const used = plan.signedIn && !plan.paid ? Math.min(FREE_BUILDS, plan.freeUsed) : 0;
+  const used = plan.signedIn && !plan.paid ? Math.min(plan.monthLimit || FREE_BUILDS, plan.freeUsed) : 0;
 
   function openFirstDemo() {
     const first = demos[0];
@@ -182,11 +186,25 @@ function Home() {
       <section className="mx-auto max-w-2xl space-y-6" data-tutorial="lab">
         <div className="space-y-3">
           <h1 className="font-display text-[clamp(2.4rem,8vw,4.5rem)] font-semibold uppercase leading-[0.86] tracking-tight">
-            Research any song
+            Type a song. Get the tone.
           </h1>
-          <p className="max-w-md text-base leading-relaxed text-muted-foreground">
-            Type a title. Get a preset for your {unit} — path, knobs, snapshots, and a file you can import.
+          <p className="max-w-lg text-base leading-relaxed text-muted-foreground">
+            We research how the record was tracked and build a starting-point preset for your {unit}. Path, knobs, snapshots, and a file you import.
           </p>
+          <ol className="grid gap-2 sm:grid-cols-3">
+            {[
+              { n: "1", t: "Pick guitar or bass, and your unit, in the header." },
+              { n: "2", t: "Type a song you already play. Choose rhythm, lead, or both." },
+              { n: "3", t: "Download. In HX Edit: File → Import. Don’t drag the file." },
+            ].map((row) => (
+              <li key={row.n} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
+                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
+                  {row.n}
+                </span>
+                <span className="text-sm leading-snug text-foreground">{row.t}</span>
+              </li>
+            ))}
+          </ol>
           {subscribed ? (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground tabular-nums">
@@ -202,18 +220,20 @@ function Home() {
 
         {plan.signedIn && !plan.paid ? (
           <div className="flex items-center gap-3">
-            <div className="flex gap-1.5" aria-hidden>
-              {Array.from({ length: FREE_BUILDS }).map((_, i) => (
-                <span
-                  key={i}
-                  className={
-                    i < used
-                      ? "size-2.5 rounded-full bg-muted-foreground/40"
-                      : "size-2.5 rounded-full bg-primary"
-                  }
-                />
-              ))}
-            </div>
+            {plan.monthLimit <= 6 ? (
+              <div className="flex gap-1.5" aria-hidden>
+                {Array.from({ length: plan.monthLimit }).map((_, i) => (
+                  <span
+                    key={i}
+                    className={
+                      i < used
+                        ? "size-2.5 rounded-full bg-muted-foreground/40"
+                        : "size-2.5 rounded-full bg-primary"
+                    }
+                  />
+                ))}
+              </div>
+            ) : null}
             <p className="text-sm text-muted-foreground">
               {plan.freeRemaining} free custom build{plan.freeRemaining === 1 ? "" : "s"} left
             </p>
@@ -233,6 +253,9 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
+          {instrument === "guitar" ? (
+            <GuitarRolePicker value={guitarRole} onChange={setGuitarRole} compact />
+          ) : null}
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
@@ -245,7 +268,8 @@ function Home() {
           </div>
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
-            {instrument} · {unit}. Change both in the header. Type two letters to pick the recording.
+            {instrument} · {unit}
+            {instrument === "guitar" ? ` · ${guitarRole}` : ""}. Change the unit in the header. Type two letters to pick the recording.
           </p>
           <GeminiHint plan={plan} pending={planPending} />
           {status && busy === false && !plan.canResearch ? (

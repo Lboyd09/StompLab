@@ -17,6 +17,7 @@ import {
   type ThemeId,
   upsertPreset,
 } from "@/lib/storage";
+import type { GuitarRole } from "@/lib/guitar-role";
 import type { WahMode } from "@/lib/wah";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -37,6 +38,7 @@ type AppState = {
   reduceMotion: boolean;
   wahMode: WahMode;
   wahModelId: string;
+  guitarRole: GuitarRole;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -60,6 +62,7 @@ type AppState = {
   setConfirmDownload: (confirm: boolean) => void;
   setWahMode: (mode: WahMode) => void;
   setWahModelId: (id: string) => void;
+  setGuitarRole: (role: GuitarRole) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
@@ -94,6 +97,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   reduceMotion: false,
   wahMode: "pedal",
   wahModelId: "teardrop-310",
+  guitarRole: "both",
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -121,6 +125,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       confirmDownload: settings.confirmDownload,
       wahMode: settings.wahMode,
       wahModelId: settings.wahModelId,
+      guitarRole: settings.guitarRole,
       geminiKey: loadGeminiKey(),
     });
   },
@@ -182,6 +187,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setWahModelId: (wahModelId) => {
     persist({ wahModelId });
     set({ wahModelId });
+  },
+  setGuitarRole: (guitarRole) => {
+    persist({ guitarRole });
+    set({ guitarRole });
   },
   setGeminiKey: (geminiKey) => {
     saveGeminiKey(geminiKey);

@@ -29,6 +29,7 @@ import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pushMyPresets } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
+import { captureReferralCode } from "@/lib/referral-code";
 
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
@@ -75,6 +76,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     hydrate();
   }, [hydrate]);
+
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      captureReferralCode(params.get("ref"));
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (authPending) return;

@@ -8,7 +8,9 @@ import { STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
-import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey } from "./cache";
+import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
+import { parseGuitarRole } from "./guitar-role";
+import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM } from "./gemini";
 import {
@@ -119,7 +121,7 @@ function tooManyResearches(userId: string) {
   return false;
 }
 
-export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini" };
+export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini" | "cache" };
 export type ResearchErr = {
   ok: false;
   error: string;
@@ -139,6 +141,7 @@ const ResearchIn = z.object({
   userGear: z.array(GearSchema).optional().default([]),
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
+  guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
 });
 
 const CreateIn = z.object({
@@ -149,6 +152,7 @@ const CreateIn = z.object({
   userGear: z.array(GearSchema).optional().default([]),
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
+  guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
 });
 
 const EqIn = z.object({ query: z.string().min(2).max(120) });
@@ -200,10 +204,12 @@ function finishPreset(
   wahMode: string | undefined,
   wahModelId: string | undefined,
 ): Preset {
-  return applyWahPreference(
-    overlayUserGear(preset, gear),
-    parseWahMode(wahMode),
-    parseWahModelId(wahModelId),
+  return sanitizeSnapshots(
+    applyWahPreference(
+      overlayUserGear(preset, gear),
+      parseWahMode(wahMode),
+      parseWahModelId(wahModelId),
+    ),
   );
 }
 
@@ -238,6 +244,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       data.stompModel,
       data.playbackTarget,
       data.wahMode,
+      data.guitarRole,
     );
 
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
@@ -246,15 +253,26 @@ export const researchSongFn = createServerFn({ method: "POST" })
     }
 
     try {
-      const cached = await lookupCacheRaw(key);
+      const cached = await lookupSongCache({
+        song: data.song,
+        artist: data.artist,
+        instrument: data.instrument,
+        stompModel: data.stompModel,
+        playbackTarget: data.playbackTarget,
+        wahMode: data.wahMode,
+        guitarRole: data.guitarRole,
+      });
       if (cached.hit && cached.preset) {
-        const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+        const preset = withStompModel(
+          { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
+          data.stompModel,
+        );
         try {
           await recordBuild(context.userId, "song", data.song.trim());
         } catch {
           /* ignore */
         }
-        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
+        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "cache" };
       }
     } catch {
       /* miss */
@@ -268,7 +286,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
       const prompt = `${lessons}
 
-${songResearchInstructions(data.song, data.artist, data.instrument, wah)}
+${songResearchInstructions(data.song, data.artist, data.instrument, wah, parseGuitarRole(data.guitarRole))}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
@@ -338,13 +356,16 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
     try {
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
-        const preset: Preset = { ...cached.preset, id: newId("pst"), createdAt: Date.now() };
+        const preset = withStompModel(
+          { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
+          data.stompModel,
+        );
         try {
           await recordBuild(context.userId, "create", data.description.slice(0, 80));
         } catch {
           /* ignore */
         }
-        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
+        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "cache" };
       }
     } catch {
       /* miss */
@@ -355,7 +376,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
         omitWah: data.wahMode === "pedal",
       });
       const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
-      const prompt = `${customSoundInstructions(data.description, data.instrument, wah)}
+      const prompt = `${customSoundInstructions(data.description, data.instrument, wah, parseGuitarRole(data.guitarRole))}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):

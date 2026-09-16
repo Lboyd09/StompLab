@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { replayTutorial } from "@/components/layout/tutorial";
+import { GuitarRolePicker } from "@/components/layout/guitar-role";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
@@ -85,6 +86,8 @@ function SettingsPage() {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
+  const guitarRole = useAppStore((s) => s.guitarRole);
+  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const wahMode = useAppStore((s) => s.wahMode);
   const setWahMode = useAppStore((s) => s.setWahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
@@ -197,6 +200,10 @@ function SettingsPage() {
             ))}
           </div>
         </div>
+
+        {instrument === "guitar" ? (
+          <GuitarRolePicker value={guitarRole} onChange={setGuitarRole} compact />
+        ) : null}
 
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Unit</p>

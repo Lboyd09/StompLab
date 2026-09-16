@@ -285,6 +285,19 @@ async function paidVerifiedFor(userId: string, email: string | null, row: EntRow
   return false;
 }
 
+async function bonusBuildsFor(ids: string[]): Promise<number> {
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ n: number }>(
+      `select coalesce(sum(bonus_builds), 0)::int as n from entitlements where user_id = any($1::text[])`,
+      [ids],
+    );
+    return Math.max(0, Number(rows[0]?.n ?? 0));
+  } catch {
+    return 0;
+  }
+}
+
 export async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const em = normalizeEmail(email);
   const cached = planCache.get(userId);
@@ -338,6 +351,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     const lifetimeN = paid ? monthlyN : await countBuildsFor(ids);
     const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
     const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
+    const bonusBuilds = await bonusBuildsFor(ids);
     const plan = assemblePlan({
       userId,
       email: em || email,
@@ -346,6 +360,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
       monthUsed: monthlyN,
       planInterval,
       subscriptionStatus: String(ent?.subscription_status ?? ""),
+      bonusBuilds,
     });
     planCache.set(userId, { at: Date.now(), plan });
     return plan;

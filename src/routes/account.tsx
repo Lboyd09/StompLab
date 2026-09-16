@@ -1,25 +1,49 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
 import { openCustomerPortal } from "@/lib/billing";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
+import { getMyReferral, redeemReferral } from "@/lib/referrals";
+import { REFERRAL_BONUS } from "@/lib/referral-code";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
 
 function AccountPage() {
   const { user, isPending } = useCurrentUserState();
-  const { plan, isPending: planPending } = usePlan();
+  const { plan, isPending: planPending, refresh } = usePlan();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
+  const [invited, setInvited] = useState(0);
+  const [inviteCap, setInviteCap] = useState(15);
+  const [redeemInput, setRedeemInput] = useState("");
+  const [inviteBusy, setInviteBusy] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void getMyReferral()
+      .then((res) => {
+        if (cancelled || !res.ok) return;
+        setInviteCode(res.code);
+        setInvited(res.invited);
+        setInviteCap(res.cap);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   if (isPending || planPending) {
     return <p className="text-sm text-muted-foreground">Loading account…</p>;
@@ -113,8 +137,8 @@ function AccountPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Free plan. {plan.freeRemaining} of {FREE_BUILDS} custom builds left. Three demos always work. Catalog
-              is open. Gear locker is paid.
+              Free plan. {plan.freeRemaining} of {FREE_BUILDS + plan.bonusBuilds} custom builds left. Three demos
+              always work. Catalog is open. Gear locker is paid.
             </p>
             <Button asChild>
               <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
@@ -134,6 +158,73 @@ function AccountPage() {
         <p className="text-xs text-muted-foreground">
           Billing, card, and cancel live on Polar’s customer portal. Stomp Lab never sees your card.
         </p>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Invite a friend</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Share your code. When they create a new account, you each get {REFERRAL_BONUS} extra custom build
+          {REFERRAL_BONUS === 1 ? "" : "s"}. Cap {inviteCap} friends. Invites only work in their first 48 hours,
+          before they research a custom song.
+        </p>
+        {inviteCode ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <code className="rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em]">{inviteCode}</code>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              onClick={() => {
+                const url = `${window.location.origin}/login?ref=${encodeURIComponent(inviteCode)}`;
+                void navigator.clipboard?.writeText(url).then(
+                  () => setMessage("Invite link copied."),
+                  () => setMessage(url),
+                );
+              }}
+            >
+              Copy invite link
+            </Button>
+          </div>
+        ) : (
+          <p className="text-sm text-muted-foreground">Invite codes need the database.</p>
+        )}
+        <p className="text-xs text-muted-foreground">
+          {invited} of {inviteCap} used.
+          {plan.bonusBuilds ? ` You have ${plan.bonusBuilds} bonus build${plan.bonusBuilds === 1 ? "" : "s"}.` : ""}
+        </p>
+        <form
+          className="flex flex-wrap gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            const code = redeemInput.trim();
+            if (code.length < 4) return;
+            setInviteBusy(true);
+            setError("");
+            setMessage("");
+            void redeemReferral({ data: { code } })
+              .then((res) => {
+                if (res.ok) {
+                  setMessage(`Invite applied. You got ${res.bonus} extra custom build.`);
+                  void refresh();
+                } else {
+                  setError(res.error);
+                }
+              })
+              .catch((err) => setError(err instanceof Error ? err.message : "Could not apply that invite."))
+              .finally(() => setInviteBusy(false));
+          }}
+        >
+          <Input
+            value={redeemInput}
+            onChange={(e) => setRedeemInput(e.target.value.toUpperCase())}
+            placeholder="Have a code?"
+            maxLength={12}
+            className="max-w-40"
+          />
+          <Button type="submit" variant="secondary" disabled={inviteBusy || redeemInput.trim().length < 4}>
+            {inviteBusy ? "Applying…" : "Apply code"}
+          </Button>
+        </form>
       </section>
 
       <section className="space-y-4 rounded-xl border border-border bg-card p-5">

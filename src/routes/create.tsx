@@ -7,6 +7,7 @@ import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { PlaybackSelect } from "@/components/layout/playback-select";
+import { GuitarRolePicker } from "@/components/layout/guitar-role";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -34,6 +35,8 @@ function CreatePage() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
+  const guitarRole = useAppStore((s) => s.guitarRole);
+  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const savePreset = useAppStore((s) => s.savePreset);
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
@@ -72,6 +75,7 @@ function CreatePage() {
           userGear: gear,
           wahMode,
           wahModelId,
+          guitarRole,
         },
       });
       if (!result.ok) {
@@ -165,6 +169,9 @@ function CreatePage() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Dumble-ish overdrive into a Twin, with a slow Univibe and a short plate…"
         />
+        {instrument === "guitar" ? (
+          <GuitarRolePicker value={guitarRole} onChange={setGuitarRole} compact />
+        ) : null}
         <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}

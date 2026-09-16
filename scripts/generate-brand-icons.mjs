@@ -115,8 +115,11 @@ const og = await shot(OG, 1200, 630, "jpeg");
 
 writeFileSync(join(publicDir, "icon-512.png"), sl512);
 writeFileSync(join(publicDir, "icon-192.png"), sl192);
+writeFileSync(join(publicDir, "sl-icon-512.png"), sl512);
+writeFileSync(join(publicDir, "sl-icon-192.png"), sl192);
 writeFileSync(join(publicDir, "icon-180.png"), sl180);
 writeFileSync(join(publicDir, "sl-touch.png"), sl180);
+writeFileSync(join(publicDir, "sl-home-180.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-precomposed.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-180x180.png"), sl180);

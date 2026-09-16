@@ -121,6 +121,21 @@ describe("assemblePlan", () => {
     assert.equal(plan.canHistory, true);
     assert.equal(plan.blockedReason, "paywall");
   });
+  it("adds invite bonus builds to the free cap", () => {
+    const plan = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: false,
+      freeUsed: 3,
+      monthUsed: 3,
+      bonusBuilds: 1,
+    });
+    assert.equal(plan.canResearch, true);
+    assert.equal(plan.freeRemaining, 1);
+    assert.equal(plan.monthLimit, 4);
+    assert.equal(plan.bonusBuilds, 1);
+    assert.match(buildsUsedCopy(plan), /1 of 4/);
+  });
   it("gives paid subscribers 50 builds a month on either interval", () => {
     const monthly = assemblePlan({
       userId: "u1",
