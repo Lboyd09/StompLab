@@ -139,7 +139,7 @@ function CreatePage() {
     <div className="mx-auto max-w-2xl space-y-6" data-tutorial="create">
       <UpgradeBanner plan={plan} pending={isPending} />
       <header className="space-y-2">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Custom rig</p>
+        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">Custom rig</p>
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Describe a sound</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
           Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}

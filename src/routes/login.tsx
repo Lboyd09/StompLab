@@ -231,6 +231,9 @@ function LoginPage() {
             <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
           </a>
           <div className="space-y-2">
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
+              {mode === "in" ? "Welcome back" : mode === "up" ? "Join the Lab" : "Account"}
+            </p>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
               {mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}
             </h1>

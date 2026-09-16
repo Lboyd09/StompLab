@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl13";
+const ICON_V = "sl14";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -30,7 +30,7 @@ export const Route = createRootRoute({
       { rel: "icon", type: "image/png", sizes: "32x32", href: `/favicon-32.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "16x16", href: `/favicon-16.png?v=${ICON_V}` },
       { rel: "shortcut icon", href: `/favicon.ico?v=${ICON_V}` },
-      { rel: "apple-touch-icon", href: "/sl-icon-192.png" },
+      { rel: "apple-touch-icon", href: "/sl-home-180.png" },
       { rel: "apple-touch-icon", sizes: "167x167", href: "/apple-touch-icon-167x167.png" },
       { rel: "apple-touch-icon", sizes: "152x152", href: "/apple-touch-icon-152x152.png" },
       { rel: "apple-touch-icon", sizes: "120x120", href: "/apple-touch-icon-120x120.png" },

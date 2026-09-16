@@ -2,7 +2,11 @@
 /**
  * Rasterize the Chrome-tab mark into every icon the OS will ask for.
  * Same glyph everywhere: cream tile, thin ink border, Oswald "SL".
- * OG is that tile plus the wordmark.
+ *
+ * Chrome (tab + PWA 16/32/192/512) gets the rounded tile on a TRANSPARENT
+ * canvas so the OS shows the 22% corners instead of a cream square.
+ * iOS apple-touch stays a full opaque cream square — iOS applies its own
+ * squircle mask and transparent icons look wrong there.
  */
 import { chromium } from "playwright";
 import { writeFileSync } from "node:fs";
@@ -13,12 +17,14 @@ const publicDir = join(dirname(fileURLToPath(import.meta.url)), "..", "public");
 const CREAM = "#F3EFE6";
 const INK = "#141414";
 const FONT = "https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&display=swap";
+const RADIUS = 0.22;
 
-function wrap(body, size) {
+function wrap(body, size, { transparent = false } = {}) {
+  const pageBg = transparent ? "transparent" : CREAM;
   return `<!doctype html><html><head><meta charset="utf-8"/>
 <link rel="stylesheet" href="${FONT}"/>
 <style>
-  html,body{margin:0;padding:0;background:${CREAM}}
+  html,body{margin:0;padding:0;background:${pageBg}}
   *{box-sizing:border-box}
   .tile{width:${size}px;height:${size}px;background:${CREAM};color:${INK};
     display:grid;place-items:center;
@@ -26,17 +32,19 @@ function wrap(body, size) {
 </style></head><body>${body}</body></html>`;
 }
 
-/** Matches public/favicon.svg and .sl-sticker: cream, 30% radius, ink stroke, SL. */
-function slOnlyHtml(size) {
+/** Cream SL tile, 22% radius, ink stroke. Matches public/favicon.svg and .sl-sticker. */
+function slOnlyHtml(size, transparent = false) {
   const sl = Math.round(size * (size <= 32 ? 0.56 : 0.54));
-  const radius = Math.round(size * 0.3);
+  const radius = Math.round(size * RADIUS);
   const stroke = Math.max(1, Math.round(size * 0.047));
   return wrap(
     `<div class="tile" style="font-size:${sl}px;border:${stroke}px solid ${INK};border-radius:${radius}px">SL</div>`,
     size,
+    { transparent },
   );
 }
 
+const ogRadius = Math.round(168 * RADIUS);
 const OG = `<!doctype html><html><head><meta charset="utf-8"/>
 <link rel="stylesheet" href="${FONT}"/>
 <style>
@@ -45,7 +53,7 @@ const OG = `<!doctype html><html><head><meta charset="utf-8"/>
     align-items:flex-start;justify-content:center;padding:72px 88px;box-sizing:border-box;
     color:${INK};font-family:Oswald,Arial,sans-serif}
   .row{display:flex;align-items:center;gap:28px}
-  .mark{width:168px;height:168px;background:${CREAM};border:3px solid ${INK};border-radius:50px;
+  .mark{width:168px;height:168px;background:${CREAM};border:3px solid ${INK};border-radius:${ogRadius}px;
     display:grid;place-items:center;font-size:84px;font-weight:700;letter-spacing:-0.08em;line-height:1}
   .word{font-size:92px;font-weight:700;letter-spacing:0.12em;line-height:0.9}
   .tag{margin-top:36px;font-family:Arial,Helvetica,sans-serif;font-size:28px;letter-spacing:0.04em;
@@ -87,10 +95,10 @@ function pngToIco(png16, png32) {
   return buf;
 }
 
-const browser = await chromium.launch();
+const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ deviceScaleFactor: 1 });
 
-async function shot(html, width, height, type = "png") {
+async function shot(html, width, height, { type = "png", omitBackground = false } = {}) {
   await page.setViewportSize({ width, height });
   await page.setContent(html, { waitUntil: "load" });
   await page.evaluate(() => document.fonts.ready);
@@ -98,20 +106,20 @@ async function shot(html, width, height, type = "png") {
   const buf = await page.screenshot({
     type,
     quality: type === "jpeg" ? 88 : undefined,
-    omitBackground: false,
+    omitBackground,
   });
   return Buffer.from(buf);
 }
 
-const sl512 = await shot(slOnlyHtml(512), 512, 512);
-const sl192 = await shot(slOnlyHtml(192), 192, 192);
-const sl180 = await shot(slOnlyHtml(180), 180, 180);
-const sl167 = await shot(slOnlyHtml(167), 167, 167);
-const sl152 = await shot(slOnlyHtml(152), 152, 152);
-const sl120 = await shot(slOnlyHtml(120), 120, 120);
-const sl32 = await shot(slOnlyHtml(32), 32, 32);
-const sl16 = await shot(slOnlyHtml(16), 16, 16);
-const og = await shot(OG, 1200, 630, "jpeg");
+const sl512 = await shot(slOnlyHtml(512, true), 512, 512, { omitBackground: true });
+const sl192 = await shot(slOnlyHtml(192, true), 192, 192, { omitBackground: true });
+const sl180 = await shot(slOnlyHtml(180, false), 180, 180);
+const sl167 = await shot(slOnlyHtml(167, false), 167, 167);
+const sl152 = await shot(slOnlyHtml(152, false), 152, 152);
+const sl120 = await shot(slOnlyHtml(120, false), 120, 120);
+const sl32 = await shot(slOnlyHtml(32, true), 32, 32, { omitBackground: true });
+const sl16 = await shot(slOnlyHtml(16, true), 16, 16, { omitBackground: true });
+const og = await shot(OG, 1200, 630, { type: "jpeg" });
 
 writeFileSync(join(publicDir, "icon-512.png"), sl512);
 writeFileSync(join(publicDir, "icon-192.png"), sl192);
@@ -132,4 +140,4 @@ writeFileSync(join(publicDir, "favicon.ico"), pngToIco(sl16, sl32));
 writeFileSync(join(publicDir, "og.jpg"), og);
 
 await browser.close();
-console.log("wrote brand icons (cream SL sticker, every size including Safari 180)");
+console.log("wrote brand icons (22% cream SL; Chrome transparent, iOS opaque)");

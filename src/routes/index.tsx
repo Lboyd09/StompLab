@@ -181,30 +181,34 @@ function Home() {
     <div className="space-y-10 md:space-y-14">
       {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
 
-      <section className="mx-auto max-w-3xl space-y-6" data-tutorial="lab">
-        <div className="space-y-4">
-          <h1 className="font-display text-[clamp(2.4rem,8vw,4.5rem)] font-semibold uppercase leading-[0.86] tracking-tight">
-            Type a song. Get the tone.
+      <section className="relative mx-auto max-w-3xl space-y-6 overflow-x-clip" data-tutorial="lab">
+        <div className="pointer-events-none absolute inset-x-0 -top-12 h-72 sl-hero-wash sm:-inset-x-8" aria-hidden />
+        <div className="relative space-y-5">
+          <p className="sl-enter sl-enter-1 font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
+            For Line 6
+          </p>
+          <h1 className="font-display text-[clamp(2.6rem,9vw,5rem)] font-semibold uppercase leading-[0.84] tracking-tight">
+            <span className="sl-enter sl-enter-2 block">Type a song.</span>
+            <span className="sl-enter sl-enter-3 mt-1 block text-primary">Get the tone.</span>
           </h1>
-          <p className="max-w-lg text-base leading-relaxed text-muted-foreground">
+          <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
+          <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground">
             Stomp Lab is for players with a Line 6. You type a song. We research the recorded guitar or bass and build a preset for your {unit} — path, knobs, snapshots, and a file you import.
           </p>
-          <SignalPath />
           {subscribed ? (
-            <p className="text-sm text-muted-foreground">
+            <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">
               <span className="font-medium text-foreground tabular-nums">
                 {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
               </span>{" "}
               {plan.admin ? "custom builds" : "custom builds used this month"}
             </p>
           ) : (
-            <p className="text-sm text-muted-foreground">Three demos always work. No account needed.</p>
+            <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">Three demos always work. No account needed.</p>
           )}
-          <RigDisclaimer />
         </div>
 
         {plan.signedIn && !plan.paid ? (
-          <div className="flex items-center gap-3">
+          <div className="relative flex items-center gap-3">
             {plan.monthLimit <= 6 ? (
               <div className="flex gap-1.5" aria-hidden>
                 {Array.from({ length: plan.monthLimit }).map((_, i) => (
@@ -225,7 +229,8 @@ function Home() {
           </div>
         ) : null}
 
-        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="sl-tour-target space-y-4" data-tutorial="lab-form">
+        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6" data-tutorial="lab-form">
+          <span className="sl-form-bar" aria-hidden />
           <SongTypeahead
             song={song}
             artist={artist}
@@ -257,12 +262,17 @@ function Home() {
             <p className="text-sm text-destructive">{status}</p>
           ) : null}
         </form>
+
+        <div className="relative space-y-4">
+          <SignalPath />
+          <RigDisclaimer />
+        </div>
       </section>
 
       <section className="space-y-6" id="demos">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Always free</p>
+            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-pop">Always free</p>
             <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">Demos</h2>
           </div>
           <span className="text-xs text-muted-foreground">One tap. Download included.</span>
@@ -278,14 +288,14 @@ function Home() {
                 e.preventDefault();
                 openFeatured(p.id);
               }}
-              className="group rounded-2xl border border-border bg-card p-6 text-left transition-[border-color] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30"
+              className="sl-card group rounded-2xl border border-border bg-card p-6 text-left"
             >
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
               <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">
                 {p.song}
               </div>
               <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
-              <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
+              <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
                 Open on Stomp
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
@@ -335,7 +345,7 @@ function Home() {
                     e.preventDefault();
                     openFeatured(p.id);
                   }}
-                  className="group rounded-2xl border border-border bg-card p-6 text-left hover:border-foreground/30"
+                  className="sl-card group rounded-2xl border border-border bg-card p-6 text-left"
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
@@ -345,7 +355,7 @@ function Home() {
                     {p.song}
                   </div>
                   <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
-                  <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground">
+                  <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
                     {locked ? "Subscribe to open" : "View replica"}
                     <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
                   </div>

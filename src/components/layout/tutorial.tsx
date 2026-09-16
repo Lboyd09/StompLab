@@ -135,12 +135,12 @@ export function Tutorial({
     if (force) {
       setOpen(true);
       setStep(0);
-    } else {
-      try {
-        if (!window.localStorage.getItem(TUTORIAL_KEY)) setOpen(true);
-      } catch {
-        /* ignore */
-      }
+      return;
+    }
+    try {
+      setOpen(!window.localStorage.getItem(TUTORIAL_KEY));
+    } catch {
+      /* ignore */
     }
   }, [force]);
 
@@ -300,7 +300,7 @@ export function Tutorial({
               { n: "03", t: "Solo" },
             ].map((s) => (
               <div key={s.n} className="rounded-2xl border border-border bg-secondary px-3 py-4 text-center">
-                <p className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-primary">{s.n}</p>
+                <p className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-pop">{s.n}</p>
                 <p className="mt-2 font-display text-sm font-semibold uppercase tracking-tight">{s.t}</p>
               </div>
             ))}

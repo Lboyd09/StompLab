@@ -191,7 +191,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const results = open && q.trim().length >= 2;
 
   return (
-    <div className="min-h-dvh bg-background text-foreground">
+    <div className="min-h-dvh overflow-x-clip bg-background text-foreground">
       <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div className="flex items-center gap-3">

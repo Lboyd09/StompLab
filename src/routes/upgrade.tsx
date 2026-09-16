@@ -184,7 +184,7 @@ function UpgradePage() {
             <Link to="/" className="inline-flex font-display text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Stomp Lab
             </Link>
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
               Research any song
             </p>
             <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">

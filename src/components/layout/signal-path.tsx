@@ -11,8 +11,8 @@ export function SignalPath({ className }: { className?: string }) {
   return (
     <ol className={cn("grid gap-3 sm:grid-cols-3", className)}>
       {NODES.map((step) => (
-        <li key={step.n} className="rounded-2xl border border-border bg-card p-4">
-          <p className="font-mono text-[11px] tabular-nums tracking-[0.18em] text-primary">{step.n}</p>
+        <li key={step.n} className="sl-card rounded-2xl border border-border bg-card p-4">
+          <p className="font-mono text-[11px] tabular-nums tracking-[0.18em] text-pop">{step.n}</p>
           <p className="mt-3 font-display text-lg font-semibold uppercase leading-none tracking-tight">{step.title}</p>
           <p className="mt-2 text-sm leading-snug text-muted-foreground">{step.hint}</p>
         </li>
