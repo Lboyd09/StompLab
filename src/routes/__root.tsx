@@ -8,7 +8,7 @@ import { Analytics } from "@vercel/analytics/react";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl12";
+const ICON_V = "sl13";
 
 export const Route = createRootRoute({
   head: () => ({
@@ -20,7 +20,7 @@ export const Route = createRootRoute({
         name: "description",
         content: "Research any song. Get a Line 6 preset that sounds like the record.",
       },
-      { name: "theme-color", content: "#F3EFE6" },
+      { name: "theme-color", content: "#0B0D12" },
       { name: "apple-mobile-web-app-title", content: "StompLab" },
       { name: "application-name", content: "StompLab" },
     ],
@@ -54,7 +54,7 @@ export const Route = createRootRoute({
 
 function Root() {
   return (
-    <html lang="en" className="light antialiased" suppressHydrationWarning>
+    <html lang="en" className="dark antialiased" suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>

@@ -26,10 +26,10 @@ function wrap(body, size) {
 </style></head><body>${body}</body></html>`;
 }
 
-/** Matches public/favicon.svg and .sl-sticker: cream, 22% radius, ink stroke, SL. */
+/** Matches public/favicon.svg and .sl-sticker: cream, 30% radius, ink stroke, SL. */
 function slOnlyHtml(size) {
   const sl = Math.round(size * (size <= 32 ? 0.56 : 0.54));
-  const radius = Math.round(size * 0.22);
+  const radius = Math.round(size * 0.3);
   const stroke = Math.max(1, Math.round(size * 0.047));
   return wrap(
     `<div class="tile" style="font-size:${sl}px;border:${stroke}px solid ${INK};border-radius:${radius}px">SL</div>`,
@@ -45,7 +45,7 @@ const OG = `<!doctype html><html><head><meta charset="utf-8"/>
     align-items:flex-start;justify-content:center;padding:72px 88px;box-sizing:border-box;
     color:${INK};font-family:Oswald,Arial,sans-serif}
   .row{display:flex;align-items:center;gap:28px}
-  .mark{width:168px;height:168px;background:${CREAM};border:3px solid ${INK};border-radius:38px;
+  .mark{width:168px;height:168px;background:${CREAM};border:3px solid ${INK};border-radius:50px;
     display:grid;place-items:center;font-size:84px;font-weight:700;letter-spacing:-0.08em;line-height:1}
   .word{font-size:92px;font-weight:700;letter-spacing:0.12em;line-height:0.9}
   .tag{margin-top:36px;font-family:Arial,Helvetica,sans-serif;font-size:28px;letter-spacing:0.04em;

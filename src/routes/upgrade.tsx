@@ -23,7 +23,6 @@ import { parseCheckoutId } from "@/lib/next-path";
 import { usePlan } from "@/lib/use-plan";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
-import { LedStrip } from "@/components/layout/signal-path";
 
 export const Route = createFileRoute("/upgrade")({
   validateSearch: (s: Record<string, unknown>): { checkout_id?: string } => ({
@@ -191,7 +190,6 @@ function UpgradePage() {
             <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
               Subscribe
             </h1>
-            <LedStrip />
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
               Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
               Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.

@@ -88,7 +88,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   ownerId: "anon",
   instrument: "guitar",
   stompModel: "hx-stomp",
-  theme: "light",
+  theme: "dark",
   defaultFsMode: "auto",
   showDsp: true,
   showFsNumbers: true,

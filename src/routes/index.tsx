@@ -6,7 +6,7 @@ import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
-import { LedStrip, MiniStomp, SignalPath } from "@/components/layout/signal-path";
+import { SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
@@ -181,9 +181,8 @@ function Home() {
     <div className="space-y-10 md:space-y-14">
       {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
 
-      <section className="sl-hero-wash mx-auto max-w-3xl space-y-6" data-tutorial="lab">
+      <section className="mx-auto max-w-3xl space-y-6" data-tutorial="lab">
         <div className="space-y-4">
-          <LedStrip />
           <h1 className="font-display text-[clamp(2.4rem,8vw,4.5rem)] font-semibold uppercase leading-[0.86] tracking-tight">
             Type a song. Get the tone.
           </h1>
@@ -261,12 +260,6 @@ function Home() {
       </section>
 
       <section className="space-y-6" id="demos">
-        <div className="space-y-2">
-          <MiniStomp />
-          <p className="text-center text-xs text-muted-foreground">
-            What you get: verse, chorus, solo on three switches. Tap them.
-          </p>
-        </div>
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Always free</p>
@@ -285,31 +278,9 @@ function Home() {
                 e.preventDefault();
                 openFeatured(p.id);
               }}
-              className="group overflow-hidden rounded-2xl border border-border bg-card text-left transition-[border-color,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30 hover:-translate-y-0.5"
+              className="group rounded-2xl border border-border bg-card p-6 text-left transition-[border-color] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30"
             >
-              <div
-                className={
-                  p.id === "featured-sandman"
-                    ? "sl-demo-bar sl-demo-bar-sandman"
-                    : p.id === "featured-teen-spirit"
-                      ? "sl-demo-bar sl-demo-bar-teen"
-                      : "sl-demo-bar sl-demo-bar-numb"
-                }
-              />
-              <div className="p-6">
-              <div className="flex items-center gap-2">
-                <span
-                  className={
-                    p.id === "featured-sandman"
-                      ? "sl-led sl-led-on"
-                      : p.id === "featured-teen-spirit"
-                        ? "sl-led sl-led-lcd sl-led-on"
-                        : "sl-led sl-led-pulse sl-led-on"
-                  }
-                  aria-hidden
-                />
-                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
-              </div>
+              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
               <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">
                 {p.song}
               </div>
@@ -318,18 +289,14 @@ function Home() {
                 Open on Stomp
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
-              </div>
             </button>
           ))}
         </div>
       </section>
 
       {!subscribed ? (
-        <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
-          <div className="pointer-events-none absolute inset-x-6 top-4">
-            <LedStrip />
-          </div>
-          <div className="relative mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
+        <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
+          <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
             <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">
               Type any song

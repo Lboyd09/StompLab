@@ -10,9 +10,9 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 import { Mark } from "./mark";
-import { LedStrip, MiniStomp, SignalPath } from "./signal-path";
+import { SignalPath } from "./signal-path";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v13";
+export const TUTORIAL_KEY = "stomplab.tutorial.v14";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type StepId = "what" | "rig" | "snaps" | "song" | "demo" | "home";
@@ -101,7 +101,7 @@ export function Tutorial({
     {
       id: "snaps",
       title: "Three switches. Three sounds.",
-      body: "Tap verse, chorus, and solo. A song is never one tone — crunch stays on verse, the boost is its own switch. We never mash them together.",
+      body: "A song is never one tone. Verse crunch stays on verse. The solo boost is its own switch. We never mash them together.",
       cta: "Show me where to type",
     },
     {
@@ -242,7 +242,6 @@ export function Tutorial({
 
         {current.id === "what" ? (
           <div className="mt-5 space-y-4">
-            <LedStrip />
             <SignalPath />
             <p className="text-xs leading-relaxed text-muted-foreground">
               HX Stomp, XL, Helix Floor, LT, HX Effects, or POD Go. Computer: HX Edit or POD Go Edit → File → Import. Don’t drag the file.
@@ -294,9 +293,17 @@ export function Tutorial({
         ) : null}
 
         {current.id === "snaps" ? (
-          <div className="mt-5 space-y-3">
-            <MiniStomp />
-            <p className="text-center text-xs text-muted-foreground">Tap a switch. That’s a snapshot.</p>
+          <div className="mt-5 grid grid-cols-3 gap-2">
+            {[
+              { n: "01", t: "Verse" },
+              { n: "02", t: "Chorus" },
+              { n: "03", t: "Solo" },
+            ].map((s) => (
+              <div key={s.n} className="rounded-2xl border border-border bg-secondary px-3 py-4 text-center">
+                <p className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-primary">{s.n}</p>
+                <p className="mt-2 font-display text-sm font-semibold uppercase tracking-tight">{s.t}</p>
+              </div>
+            ))}
           </div>
         ) : null}
 

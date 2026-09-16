@@ -15,7 +15,6 @@ import { lookupEquivalentFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
-import { LedStrip } from "@/components/layout/signal-path";
 
 type Search = { q: string; cat: string; tab: string };
 
@@ -90,7 +89,6 @@ function CatalogPage() {
     <div className="space-y-6" data-tutorial="catalog">
       <UpgradeBanner plan={plan} pending={planPending} />
       <header className="space-y-3">
-        <LedStrip />
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">HX catalog</h1>
         <p className="max-w-2xl text-sm text-muted-foreground">
           Browse every amp, cab, and effect — or type a pedal you own and we’ll show the Line 6 name.

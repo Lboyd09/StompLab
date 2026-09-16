@@ -6,6 +6,7 @@ import { parseWahMode, parseWahModelId, type WahMode } from "./wah";
 const PRESETS_KEY = "stomplab.presets.v1";
 const GEAR_KEY = "stomplab.gear.v1";
 const SETTINGS_KEY = "stomplab.settings.v1";
+const PALETTE_KEY = "stomplab.palette.v2";
 const GEMINI_KEY = "stomplab.geminiKey.v1";
 const OWNER_KEY = "stomplab.presets.owner";
 
@@ -31,7 +32,7 @@ export type Settings = {
 const DEFAULT_SETTINGS: Settings = {
   instrument: "guitar",
   stompModel: "hx-stomp",
-  theme: "light",
+  theme: "dark",
   defaultFsMode: "auto",
   showDsp: true,
   confirmDownload: false,
@@ -134,9 +135,21 @@ export function adoptLegacyLocal(owner: string): { presets: Preset[]; gear: User
 
 export function loadSettings(): Settings {
   const raw = readJson<Partial<Settings>>(SETTINGS_KEY, {});
+  let theme: ThemeId =
+    raw.theme === "dark" || raw.theme === "light" || raw.theme === "system" ? raw.theme : DEFAULT_SETTINGS.theme;
+  try {
+    if (typeof window !== "undefined" && !window.localStorage.getItem(PALETTE_KEY)) {
+      window.localStorage.setItem(PALETTE_KEY, "1");
+      theme = "dark";
+      writeJson(SETTINGS_KEY, { ...DEFAULT_SETTINGS, ...raw, theme: "dark" });
+    }
+  } catch {
+    /* ignore */
+  }
   return {
     ...DEFAULT_SETTINGS,
     ...raw,
+    theme,
     stompModel: parseStompModelId(raw.stompModel, DEFAULT_SETTINGS.stompModel),
     wahMode: parseWahMode(raw.wahMode),
     wahModelId: parseWahModelId(raw.wahModelId),

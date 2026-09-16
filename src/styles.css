@@ -9,22 +9,19 @@
   --color-foreground: #141414;
   --color-card: #faf7f0;
   --color-card-foreground: #141414;
-  --color-primary: #0b8494;
+  --color-primary: #1e56d6;
   --color-primary-foreground: #f3efe6;
   --color-secondary: #e7e1d4;
   --color-secondary-foreground: #141414;
   --color-muted: #e7e1d4;
   --color-muted-foreground: #5c5850;
-  --color-accent: #0b8494;
+  --color-accent: #1e56d6;
   --color-accent-foreground: #f3efe6;
   --color-border: color-mix(in oklab, #141414 12%, transparent);
-  --color-ring: #0b8494;
+  --color-ring: #1e56d6;
   --color-danger: #b42318;
   --color-destructive: #b42318;
   --color-lcd: #7dff9a;
-  --color-led: #e39b12;
-  --color-signal: #2ee6c7;
-  --color-pulse: #3b9eff;
   --color-aluminum: #c5c9c2;
   --color-mark: #f3efe6;
   --color-mark-foreground: #141414;
@@ -45,28 +42,25 @@
 }
 
 html.dark {
-  --color-background: #0b0c0e;
-  --color-foreground: #e8e6df;
-  --color-card: #15171b;
-  --color-card-foreground: #e8e6df;
-  --color-primary: #3ee0d0;
-  --color-primary-foreground: #0b0c0e;
-  --color-secondary: #1c1f24;
-  --color-secondary-foreground: #e8e6df;
-  --color-muted: #1c1f24;
-  --color-muted-foreground: #8a8c86;
-  --color-accent: #3ee0d0;
-  --color-accent-foreground: #0b0c0e;
-  --color-border: color-mix(in oklab, #e8e6df 12%, transparent);
-  --color-ring: #3ee0d0;
+  --color-background: #0b0d12;
+  --color-foreground: #f3efe6;
+  --color-card: #14171e;
+  --color-card-foreground: #f3efe6;
+  --color-primary: #3d7eff;
+  --color-primary-foreground: #f3efe6;
+  --color-secondary: #1a1d24;
+  --color-secondary-foreground: #f3efe6;
+  --color-muted: #1a1d24;
+  --color-muted-foreground: #8b909a;
+  --color-accent: #3d7eff;
+  --color-accent-foreground: #f3efe6;
+  --color-border: color-mix(in oklab, #f3efe6 12%, transparent);
+  --color-ring: #3d7eff;
   --color-danger: #c4453c;
   --color-destructive: #c4453c;
-  --color-led: #f0b429;
-  --color-signal: #5eead4;
-  --color-pulse: #7db8ff;
   --color-mark: #f3efe6;
   --color-mark-foreground: #141414;
-  --shadow-border: 0 0 0 1px color-mix(in oklab, #e8e6df 8%, transparent);
+  --shadow-border: 0 0 0 1px color-mix(in oklab, #f3efe6 8%, transparent);
 }
 
 @layer base {
@@ -77,14 +71,6 @@ html.dark {
   }
   body {
     background-color: var(--color-background);
-    background-image:
-      radial-gradient(980px 420px at 8% -8%, color-mix(in oklab, var(--color-signal) 18%, transparent), transparent 58%),
-      radial-gradient(820px 360px at 96% 0%, color-mix(in oklab, var(--color-pulse) 14%, transparent), transparent 52%),
-      radial-gradient(
-        color-mix(in oklab, var(--color-foreground) 9%, transparent) 1.1px,
-        transparent 1.1px
-      );
-    background-size: auto, auto, 18px 18px;
     color: var(--color-foreground);
     font-family: var(--font-sans);
     overscroll-behavior: none;
@@ -110,13 +96,12 @@ html.dark {
     color: inherit;
   }
 }
-
 /* Cream SL tile, thin ink border — same mark as the favicon / app icon. */
 .sl-sticker {
   background: var(--color-mark);
   color: var(--color-mark-foreground);
   border: 1.5px solid var(--color-mark-foreground);
-  border-radius: 22%;
+  border-radius: 30%;
   letter-spacing: -0.08em;
   line-height: 1;
 }
@@ -723,10 +708,6 @@ html.dark {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
-  .sl-led-on,
-  .sl-path-wire {
-    animation: none;
-  }
 }
 
 html[data-motion="reduce"] * {
@@ -753,157 +734,17 @@ html[data-controls="large"] .hx-hw-btn {
   min-width: 48px;
 }
 
-/* Pedalboard LEDs, signal path, demo tints — tokens only. */
-.sl-led {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  flex-shrink: 0;
-  border-radius: 999px;
-  background: var(--color-led);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--color-led) 70%, transparent);
-}
-
-.sl-led-on {
-  animation: sl-led-pulse 1.6s var(--ease-out) infinite;
-}
-
-.sl-led-signal {
-  background: var(--color-signal);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--color-signal) 70%, transparent);
-}
-
-.sl-led-lcd {
-  background: var(--color-lcd);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--color-lcd) 55%, transparent);
-}
-
-.sl-led-pulse {
-  background: var(--color-pulse);
-  box-shadow: 0 0 8px color-mix(in oklab, var(--color-pulse) 60%, transparent);
-}
-
-@keyframes sl-led-pulse {
-  0%,
-  100% {
-    opacity: 0.45;
-  }
-  50% {
-    opacity: 1;
-  }
-}
-
-.sl-led-strip {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-}
-
-.sl-path-wire {
-  height: 3px;
-  flex: 1;
-  min-width: 16px;
-  border-radius: 999px;
-  background: linear-gradient(
-    90deg,
-    var(--color-signal),
-    var(--color-led),
-    var(--color-pulse),
-    var(--color-signal)
-  );
-  background-size: 220% 100%;
-  animation: sl-wire 2.4s linear infinite;
-}
-
-.sl-path-wire-v {
-  width: 3px;
-  height: 18px;
-  border-radius: 999px;
-  background: linear-gradient(
-    180deg,
-    var(--color-signal),
-    var(--color-led),
-    var(--color-pulse)
-  );
-}
-
-@keyframes sl-wire {
-  to {
-    background-position: 220% 0;
-  }
-}
-
-.sl-node-bar {
-  display: block;
-  height: 6px;
-  width: 100%;
-}
-
-.sl-node-bar-lcd {
-  background: var(--color-lcd);
-}
-
-.sl-node-bar-signal {
-  background: var(--color-signal);
-}
-
-.sl-node-bar-pulse {
-  background: var(--color-pulse);
-}
-
-.sl-hero-wash {
-  position: relative;
-}
-
-.sl-hero-wash::before {
-  content: "";
-  pointer-events: none;
-  position: absolute;
-  inset: -24px -12px auto;
-  height: 220px;
-  background:
-    radial-gradient(closest-side at 18% 40%, color-mix(in oklab, var(--color-signal) 28%, transparent), transparent 72%),
-    radial-gradient(closest-side at 88% 20%, color-mix(in oklab, var(--color-pulse) 22%, transparent), transparent 70%);
-  z-index: 0;
-}
-
-.sl-hero-wash > * {
-  position: relative;
-  z-index: 1;
-}
-
-.sl-demo-bar {
-  height: 8px;
-  width: 100%;
-}
-
-.sl-demo-bar-sandman {
-  background: var(--color-led);
-}
-
-.sl-demo-bar-teen {
-  background: var(--color-lcd);
-}
-
-.sl-demo-bar-numb {
-  background: var(--color-pulse);
-}
 
 .sl-spot-hole {
   pointer-events: none;
   border-radius: 16px;
   box-shadow:
     0 0 0 2px var(--color-primary),
-    0 0 0 9999px color-mix(in oklab, #141414 62%, transparent);
+    0 0 0 9999px color-mix(in oklab, #0b0d12 62%, transparent);
 }
 
 .sl-tour-target,
 #demos {
   scroll-margin-top: 18rem;
   scroll-margin-bottom: 2rem;
-}
-
-html[data-motion="reduce"] .sl-led-on,
-html[data-motion="reduce"] .sl-path-wire {
-  animation: none;
 }

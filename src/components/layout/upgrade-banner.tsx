@@ -1,6 +1,5 @@
 import { Link } from "@tanstack/react-router";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, priceMonthlyLaunchUsd, formatUsd, type Plan } from "@/lib/plan";
-import { LedStrip } from "./signal-path";
 
 export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending || plan.paid || plan.admin) return null;
@@ -13,12 +12,9 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
   return (
     <Link
       to="/upgrade"
-      className="relative flex flex-col items-stretch gap-3 overflow-hidden rounded-2xl bg-primary px-5 py-5 text-primary-foreground transition-opacity hover:opacity-90 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+      className="flex flex-col items-stretch gap-3 rounded-2xl bg-primary px-5 py-5 text-primary-foreground transition-opacity hover:opacity-90 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
-      <span className="pointer-events-none absolute inset-x-5 top-3">
-        <LedStrip />
-      </span>
-      <span className="mt-5 min-w-0 sm:mt-4">
+      <span className="min-w-0">
         <span className="block font-display text-lg font-semibold uppercase leading-none tracking-tight">
           Subscribe — {formatUsd(priceMonthlyLaunchUsd())} first month
         </span>

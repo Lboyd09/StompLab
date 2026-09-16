@@ -6,7 +6,6 @@ import { GeminiHint } from "@/components/layout/gemini-hint";
 import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
-import { LedStrip } from "@/components/layout/signal-path";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
@@ -140,7 +139,6 @@ function CreatePage() {
     <div className="mx-auto max-w-2xl space-y-6" data-tutorial="create">
       <UpgradeBanner plan={plan} pending={isPending} />
       <header className="space-y-2">
-        <LedStrip />
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Custom rig</p>
         <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Describe a sound</h1>
         <p className="text-sm leading-relaxed text-muted-foreground">
