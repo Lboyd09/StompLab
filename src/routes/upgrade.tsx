@@ -237,9 +237,20 @@ function UpgradePage() {
 
         <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
         <p className="text-xs leading-relaxed text-muted-foreground">
-          First month is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}/month
-          or {formatUsd(PRICE_YEARLY_USD)}/year until you cancel from Account → Manage subscription. Cancel online the
-          same way you subscribed. You keep the Lab until the period ends. No proration.
+          {monthOff ? (
+            <>
+              Invite: Polar charges {formatUsd(priceMonthlyReferralUsd())} for this first month, then{" "}
+              {formatUsd(PRICE_MONTHLY_USD)}/month. The friend who invited you gets the same cut on their next
+              monthly invoice. Yearly is {formatUsd(PRICE_YEARLY_USD)} with no invite cut. Cancel from Account →
+              Manage subscription. You keep the Lab until the period ends. No proration.
+            </>
+          ) : (
+            <>
+              First month is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}
+              /month or {formatUsd(PRICE_YEARLY_USD)}/year until you cancel from Account → Manage subscription.
+              Cancel online the same way you subscribed. You keep the Lab until the period ends. No proration.
+            </>
+          )}
         </p>
 
         <div className="grid gap-4 md:grid-cols-2">
@@ -279,12 +290,14 @@ function UpgradePage() {
 
         {error ? <p className="text-sm text-destructive">{error}</p> : null}
         <p className="text-xs text-muted-foreground">
-          Checkout is Polar (merchant of record). The launch discount is 20% off your first month only —
-          Polar shows the discounted monthly total at checkout. Yearly checkout is {formatUsd(PRICE_YEARLY_USD)}, every
-          year. Going back before you pay does not unlock anything. Polar marks the payment confirmed, then
-          succeeded — we wait for succeeded. The subscription sticks to {user?.primaryEmail || "your email"}{" "}
-          after Polar says it is active. Cancel any time from Account → Manage subscription; you keep the
-          Lab until the period ends.
+          Checkout is Polar (merchant of record).{" "}
+          {monthOff
+            ? `Invite is ${REFERRAL_SUBSCRIBE_PERCENT}% off the first monthly invoice only — Polar shows ${formatUsd(priceMonthlyReferralUsd())} at checkout. The friend who invited you gets the same cut on their next monthly invoice.`
+            : `The launch discount is ${LAUNCH_DISCOUNT_PERCENT}% off your first month only — Polar shows the discounted monthly total at checkout.`}{" "}
+          Yearly checkout is {formatUsd(PRICE_YEARLY_USD)}, every year. Going back before you pay does not
+          unlock anything. Polar marks the payment confirmed, then succeeded — we wait for succeeded. The
+          subscription sticks to {user?.primaryEmail || "your email"} after Polar says it is active. Cancel any
+          time from Account → Manage subscription; you keep the Lab until the period ends.
         </p>
 
         <InviteCard />

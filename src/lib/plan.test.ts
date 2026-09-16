@@ -128,13 +128,27 @@ describe("assemblePlan", () => {
       paid: false,
       freeUsed: 3,
       monthUsed: 3,
-      bonusBuilds: 1,
+      bonusBuilds: 3,
     });
     assert.equal(plan.canResearch, true);
-    assert.equal(plan.freeRemaining, 1);
-    assert.equal(plan.monthLimit, 4);
-    assert.equal(plan.bonusBuilds, 1);
-    assert.match(buildsUsedCopy(plan), /1 of 4/);
+    assert.equal(plan.freeRemaining, 3);
+    assert.equal(plan.monthLimit, 6);
+    assert.equal(plan.bonusBuilds, 3);
+    assert.match(buildsUsedCopy(plan), /3 of 6/);
+  });
+  it("adds invite bonus builds on top of a paid month", () => {
+    const plan = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: true,
+      freeUsed: 3,
+      monthUsed: 50,
+      bonusBuilds: 3,
+      planInterval: "month",
+    });
+    assert.equal(plan.canResearch, true);
+    assert.equal(plan.monthLimit, 53);
+    assert.equal(plan.bonusBuilds, 3);
   });
   it("gives paid subscribers 50 builds a month on either interval", () => {
     const monthly = assemblePlan({
