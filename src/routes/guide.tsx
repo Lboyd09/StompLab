@@ -16,7 +16,7 @@ function GuidePage() {
 
       <Section title="The 30-second path">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Pick Guitar or Bass, and your unit, in the header. Guitar players also pick rhythm, lead, or both.</li>
+          <li>Pick Guitar or Bass, and your unit, in the header.</li>
           <li>Open a featured song, or type a title and build a preset.</li>
           <li>Tap Snapshot or Stomp above the replica. Play the switches.</li>
           <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp. File → Import — don’t drag it.</li>

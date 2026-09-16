@@ -6,7 +6,7 @@ import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
-import { GuitarRolePicker } from "@/components/layout/guitar-role";
+import { LedStrip, MiniStomp, SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
@@ -37,8 +37,6 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
-  const guitarRole = useAppStore((s) => s.guitarRole);
-  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
@@ -130,7 +128,7 @@ function Home() {
           userGear: gear,
           wahMode,
           wahModelId,
-          guitarRole,
+          guitarRole: "both",
         },
       });
       if (!result.ok) {
@@ -183,28 +181,16 @@ function Home() {
     <div className="space-y-10 md:space-y-14">
       {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
 
-      <section className="mx-auto max-w-2xl space-y-6" data-tutorial="lab">
-        <div className="space-y-3">
+      <section className="sl-hero-wash mx-auto max-w-3xl space-y-6" data-tutorial="lab">
+        <div className="space-y-4">
+          <LedStrip />
           <h1 className="font-display text-[clamp(2.4rem,8vw,4.5rem)] font-semibold uppercase leading-[0.86] tracking-tight">
             Type a song. Get the tone.
           </h1>
           <p className="max-w-lg text-base leading-relaxed text-muted-foreground">
-            We research how the record was tracked and build a starting-point preset for your {unit}. Path, knobs, snapshots, and a file you import.
+            Stomp Lab is for players with a Line 6. You type a song. We research the recorded guitar or bass and build a preset for your {unit} — path, knobs, snapshots, and a file you import.
           </p>
-          <ol className="grid gap-2 sm:grid-cols-3">
-            {[
-              { n: "1", t: "Pick guitar or bass, and your unit, in the header." },
-              { n: "2", t: "Type a song you already play. Choose rhythm, lead, or both." },
-              { n: "3", t: "Download. In HX Edit: File → Import. Don’t drag the file." },
-            ].map((row) => (
-              <li key={row.n} className="flex gap-3 rounded-2xl border border-border bg-card p-4">
-                <span className="grid size-8 shrink-0 place-items-center rounded-full bg-primary font-display text-sm font-semibold text-primary-foreground">
-                  {row.n}
-                </span>
-                <span className="text-sm leading-snug text-foreground">{row.t}</span>
-              </li>
-            ))}
-          </ol>
+          <SignalPath />
           {subscribed ? (
             <p className="text-sm text-muted-foreground">
               <span className="font-medium text-foreground tabular-nums">
@@ -240,7 +226,7 @@ function Home() {
           </div>
         ) : null}
 
-        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="space-y-4" data-tutorial="lab-form">
+        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="sl-tour-target space-y-4" data-tutorial="lab-form">
           <SongTypeahead
             song={song}
             artist={artist}
@@ -253,9 +239,6 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
-          {instrument === "guitar" ? (
-            <GuitarRolePicker value={guitarRole} onChange={setGuitarRole} compact />
-          ) : null}
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
@@ -268,8 +251,7 @@ function Home() {
           </div>
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
-            {instrument} · {unit}
-            {instrument === "guitar" ? ` · ${guitarRole}` : ""}. Change the unit in the header. Type two letters to pick the recording.
+            {instrument} · {unit}. Change the unit in the header. Type two letters to pick the recording.
           </p>
           <GeminiHint plan={plan} pending={planPending} />
           {status && busy === false && !plan.canResearch ? (
@@ -279,6 +261,12 @@ function Home() {
       </section>
 
       <section className="space-y-6" id="demos">
+        <div className="space-y-2">
+          <MiniStomp />
+          <p className="text-center text-xs text-muted-foreground">
+            What you get: verse, chorus, solo on three switches. Tap them.
+          </p>
+        </div>
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
             <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Always free</p>
@@ -297,9 +285,31 @@ function Home() {
                 e.preventDefault();
                 openFeatured(p.id);
               }}
-              className="group rounded-2xl border border-border bg-card p-6 text-left transition-[border-color,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30"
+              className="group overflow-hidden rounded-2xl border border-border bg-card text-left transition-[border-color,transform] duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:border-foreground/30 hover:-translate-y-0.5"
             >
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
+              <div
+                className={
+                  p.id === "featured-sandman"
+                    ? "sl-demo-bar sl-demo-bar-sandman"
+                    : p.id === "featured-teen-spirit"
+                      ? "sl-demo-bar sl-demo-bar-teen"
+                      : "sl-demo-bar sl-demo-bar-numb"
+                }
+              />
+              <div className="p-6">
+              <div className="flex items-center gap-2">
+                <span
+                  className={
+                    p.id === "featured-sandman"
+                      ? "sl-led sl-led-on"
+                      : p.id === "featured-teen-spirit"
+                        ? "sl-led sl-led-lcd sl-led-on"
+                        : "sl-led sl-led-pulse sl-led-on"
+                  }
+                  aria-hidden
+                />
+                <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
+              </div>
               <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">
                 {p.song}
               </div>
@@ -308,13 +318,18 @@ function Home() {
                 Open on Stomp
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
+              </div>
             </button>
           ))}
         </div>
       </section>
 
       {!subscribed ? (
-        <section className="flex flex-col items-start justify-between gap-4 rounded-2xl bg-primary px-6 py-7 text-primary-foreground sm:flex-row sm:items-center">
+        <section className="relative overflow-hidden rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
+          <div className="pointer-events-none absolute inset-x-6 top-4">
+            <LedStrip />
+          </div>
+          <div className="relative mt-6 flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
             <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">
               Type any song
@@ -327,6 +342,7 @@ function Home() {
           <Button asChild variant="secondary" size="lg" className="h-12 w-full shrink-0 px-8 text-base sm:w-auto">
             <Link to="/upgrade">Get the Lab</Link>
           </Button>
+          </div>
         </section>
       ) : null}
 

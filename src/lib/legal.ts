@@ -1,11 +1,10 @@
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
-export const LEGAL_VERSION = "2026-09-15";
+export const LEGAL_VERSION = "2026-09-16";
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";
-
-export const LEGAL_EFFECTIVE = "September 15, 2026";
+export const LEGAL_EFFECTIVE = "September 16, 2026";
 
 export function legalAcceptKey() {
   return `stomplab.legal.${LEGAL_VERSION}`;
@@ -52,7 +51,7 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     body: [
       "You type a song. We return research and a starting-point .hlx / .pgp file. Presets are unofficial. They are not copies of commercial patches, artist signatures, or master recordings. Song titles identify the recording we researched.",
       "We do not promise a preset will sound identical to a record. Playback, guitar, hands, and the unit all change the result.",
-      "Research uses Google Gemini. Song title, artist, instrument, unit, part (rhythm / lead / both), and optional gear notes go to Google. Do not put personal data in those fields.",
+      "Research uses Google Gemini. Song title, artist, instrument, unit, and optional gear notes go to Google. Do not put personal data in those fields.",
       "Featured demos are hand-built. Custom research is generated. Both can be wrong.",
     ],
   },
@@ -85,7 +84,6 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     title: "7. No warranty",
     body: [
       "THE LAB IS PROVIDED “AS IS.” We do not warrant that research will be accurate, that a file will import on every firmware, or that the service will be uninterrupted.",
-      "To the fullest extent allowed by law, Stomp Lab is not liable for indirect or consequential damages, or for any amount above what you paid us in the 12 months before the claim (or $50 if you have not paid).",
     ],
   },
   {
@@ -152,7 +150,7 @@ export const PRIVACY_SECTIONS: { id: string; title: string; body: string[] }[] =
     title: "What we use it for",
     body: [
       "To run the Lab: sign-in, builds, unlock, support. Password-reset mail goes only to the address on the account, and only when you ask.",
-      "Song research is sent to Google Gemini (song, artist, instrument, unit, part, gear notes you typed). Google’s Gemini API terms apply to that call.",
+      "Song research is sent to Google Gemini (song, artist, instrument, unit, gear notes you typed). Google’s Gemini API terms apply to that call.",
       "We do not sell your email. We do not send marketing mail from this product.",
     ],
   },

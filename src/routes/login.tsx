@@ -11,6 +11,7 @@ import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
+import { LedStrip } from "@/components/layout/signal-path";
 import { captureReferralCode, peekReferralCode, clearReferralCode } from "@/lib/referral-code";
 import { redeemReferral } from "@/lib/referrals";
 
@@ -230,6 +231,7 @@ function LoginPage() {
             <Mark size="md" />
             <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
           </a>
+          <LedStrip />
           <div className="space-y-2">
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
               {mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}
