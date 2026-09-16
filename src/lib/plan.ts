@@ -19,6 +19,11 @@ export function priceMonthlyLaunchUsd() {
   return launchPriceUsd(PRICE_MONTHLY_USD);
 }
 
+/** Invite deal: 50% off one monthly invoice. Yearly stays $75. */
+export function priceMonthlyReferralUsd() {
+  return Math.round(PRICE_MONTHLY_USD * 50) / 100;
+}
+
 /** Yearly is $75 — no launch discount on the year plan. */
 export function priceYearlyLaunchUsd() {
   return PRICE_YEARLY_USD;

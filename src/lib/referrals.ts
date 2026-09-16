@@ -4,9 +4,10 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache, siblingUserIds } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { isAdminEmail, normalizeEmail } from "@/lib/plan";
-import { REFERRAL_BONUS, REFERRAL_CAP, normalizeReferralCode } from "@/lib/referral-code";
+import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
+import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
-export { REFERRAL_BONUS, REFERRAL_CAP, normalizeReferralCode } from "@/lib/referral-code";
+export { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
 
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
@@ -62,6 +63,17 @@ export const getMyReferral = createServerFn({ method: "GET" })
       return { ok: true as const, code, invited: Number(rows[0]?.n ?? 0), cap: REFERRAL_CAP, bonus: REFERRAL_BONUS };
     } catch {
       return { ok: false as const, error: "Invite codes need the database." };
+    }
+  });
+
+export const getReferralMonthOffer = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    try {
+      const eligible = await referredUserGetsMonthOff(context.userId);
+      return { ok: true as const, eligible, percent: REFERRAL_SUBSCRIBE_PERCENT };
+    } catch {
+      return { ok: true as const, eligible: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
     }
   });
 

@@ -12,7 +12,7 @@ import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 import { Mark } from "./mark";
 import { SignalPath } from "./signal-path";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v15";
+export const TUTORIAL_KEY = "stomplab.tutorial.v16";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type StepId = "what" | "rig" | "play" | "song" | "demo" | "home";
@@ -32,7 +32,7 @@ const LAB_BITS = [
   { t: "Lab", h: "Type a song. Get a file." },
   { t: "Catalog", h: "Every HX amp, cab, and effect." },
   { t: "Create", h: "Describe a sound that isn’t a record." },
-  { t: "Invite", h: "A friend signs up. You both get a build." },
+  { t: "Invite", h: "A friend signs up. You both get 3 builds." },
 ] as const;
 
 function detectDevice(): { mobile: boolean; ios: boolean; android: boolean } {

@@ -243,7 +243,7 @@ function LoginPage() {
               {mode === "reset"
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
                 : mode === "up"
-                  ? "Email and a password. A friend’s invite code gives you both an extra custom build."
+                  ? "Email and a password. A friend’s invite code gives you both 3 extra custom builds."
                   : "Email and a password. Use the same address every time — a second account starts over."}
             </p>
           </div>
@@ -305,7 +305,7 @@ function LoginPage() {
                   maxLength={12}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional. You and your friend each get an extra custom build.
+                  Optional. You and your friend each get 3 extra custom builds.
                 </p>
               </div>
             ) : null}

@@ -16,6 +16,7 @@ import {
   purchaseLooksPaid,
   polarAdminStatsFromLists,
   polarDiscountId,
+  polarReferralDiscountId,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -286,6 +287,8 @@ describe("polarDiscountId", () => {
     "POLAR_DISCOUNT_ID_YEARLY",
     "POLAR_MONTHLY_DISCOUNT_ID",
     "POLAR_YEARLY_DISCOUNT_ID",
+    "POLAR_DISCOUNT_ID_REFERRAL",
+    "POLAR_REFERRAL_DISCOUNT_ID",
   ] as const;
   function snap() {
     return Object.fromEntries(keys.map((k) => [k, process.env[k]]));
@@ -306,6 +309,18 @@ describe("polarDiscountId", () => {
       delete process.env.POLAR_MONTHLY_DISCOUNT_ID;
       assert.equal(polarDiscountId("year"), "");
       assert.equal(polarDiscountId("month"), "disc_shared_20");
+      assert.equal(polarReferralDiscountId(), "");
+    } finally {
+      restore(prev);
+    }
+  });
+  it("keeps the invite 50% discount off the launch monthly id", () => {
+    const prev = snap();
+    try {
+      process.env.POLAR_DISCOUNT_ID = "disc_shared_20";
+      process.env.POLAR_DISCOUNT_ID_REFERRAL = "disc_invite_50";
+      assert.equal(polarDiscountId("month"), "disc_shared_20");
+      assert.equal(polarReferralDiscountId(), "disc_invite_50");
     } finally {
       restore(prev);
     }

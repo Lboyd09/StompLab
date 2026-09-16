@@ -35,6 +35,13 @@ export function polarDiscountId(interval: PlanInterval): string {
   return envFirst("POLAR_DISCOUNT_ID_MONTHLY", "POLAR_MONTHLY_DISCOUNT_ID", "POLAR_DISCOUNT_ID");
 }
 
+/** 50% off one monthly invoice for a paid invite. Never applied to yearly. */
+export function polarReferralDiscountId(): string {
+  return envFirst("POLAR_DISCOUNT_ID_REFERRAL", "POLAR_REFERRAL_DISCOUNT_ID");
+}
+
+export const REFERRAL_DISCOUNT_NAME = "Stomp Lab invite 50% month";
+
 export function polarSetup() {
   const token = Boolean(polarToken());
   const monthly = Boolean(polarProductId("month"));
@@ -332,6 +339,8 @@ export async function createPolarCheckout(opts: {
   successUrl: string;
   interval: PlanInterval;
   returnUrl?: string;
+  /** When set (including ""), skip the launch discount and use this Polar discount id. */
+  discountId?: string;
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const token = polarToken();
   const productId = polarProductId(opts.interval);
@@ -374,7 +383,8 @@ export async function createPolarCheckout(opts: {
       metadata,
     },
   ];
-  const discount = polarDiscountId(opts.interval);
+  const discount =
+    opts.discountId !== undefined ? opts.discountId.trim() : polarDiscountId(opts.interval);
   if (discount) {
     for (const body of bodies) body.discount_id = discount;
   }
@@ -745,3 +755,120 @@ export function extractOrder(payload: Record<string, unknown>) {
     metadata,
   };
 }
+
+function polarListDiscounts(raw: unknown): Record<string, unknown>[] {
+  if (!raw || typeof raw !== "object") return [];
+  const rec = raw as Record<string, unknown>;
+  if (Array.isArray(rec.items)) return rec.items.filter((x) => x && typeof x === "object") as Record<string, unknown>[];
+  const nested = rec.result;
+  if (nested && typeof nested === "object" && Array.isArray((nested as { items?: unknown }).items)) {
+    return ((nested as { items: unknown[] }).items).filter((x) => x && typeof x === "object") as Record<string, unknown>[];
+  }
+  return [];
+}
+
+function discountLooksLikeReferral(item: Record<string, unknown>): boolean {
+  const name = String(item.name ?? "").toLowerCase();
+  if (name.includes("invite") && (name.includes("50") || name.includes("month"))) return true;
+  const meta = item.metadata;
+  if (meta && typeof meta === "object" && String((meta as { stomplab?: string }).stomplab ?? "") === "referral_month") {
+    return true;
+  }
+  return false;
+}
+
+let referralDiscountMemo = "";
+let referralDiscountInflight: Promise<string> | null = null;
+
+async function lookupOrCreateReferralDiscount(): Promise<string> {
+  const token = polarToken();
+  if (!token) return "";
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    Accept: "application/json",
+    "Content-Type": "application/json",
+  };
+  try {
+    const listed = await fetch(`${polarBase()}/v1/discounts/?limit=100`, { headers });
+    if (listed.ok) {
+      const json = await listed.json();
+      const hit = polarListDiscounts(json).find(discountLooksLikeReferral);
+      const id = String(hit?.id ?? "").trim();
+      if (id) return id;
+    }
+  } catch {
+    /* create below */
+  }
+
+  const monthly = polarProductId("month");
+  const base: Record<string, unknown> = {
+    name: REFERRAL_DISCOUNT_NAME,
+    duration: "once",
+    metadata: { stomplab: "referral_month" },
+  };
+  if (monthly) base.products = [monthly];
+  const bodies: Record<string, unknown>[] = [
+    { ...base, type: "percentage", basis_points: 5000 },
+    { ...base, type: "percentage", amount: 50 },
+    { ...base, type: "fixed", amount: 350, currency: "usd" },
+    { ...base, type: "fixed", amounts: { usd: 350 } },
+  ];
+  for (const body of bodies) {
+    try {
+      const res = await fetch(`${polarBase()}/v1/discounts/`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      const id = String(json.id ?? "").trim();
+      if (res.ok && id) return id;
+    } catch {
+      /* try next shape */
+    }
+  }
+  return "";
+}
+
+/** Polar discount id for the invite 50% month. Env, existing discount, or create. */
+export async function ensureReferralDiscountId(): Promise<string> {
+  const fromEnv = polarReferralDiscountId();
+  if (fromEnv) return fromEnv;
+  if (referralDiscountMemo) return referralDiscountMemo;
+  if (referralDiscountInflight) return referralDiscountInflight;
+  referralDiscountInflight = lookupOrCreateReferralDiscount()
+    .then((id) => {
+      if (id) referralDiscountMemo = id;
+      return id;
+    })
+    .finally(() => {
+      referralDiscountInflight = null;
+    });
+  return referralDiscountInflight;
+}
+
+/** Attach a duration=once discount to the next invoice. */
+export async function applyPolarSubscriptionDiscount(
+  subscriptionId: string,
+  discountId: string,
+): Promise<boolean> {
+  const token = polarToken();
+  const sub = subscriptionId.trim();
+  const disc = discountId.trim();
+  if (!token || !sub || !disc) return false;
+  try {
+    const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify({ discount_id: disc }),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+

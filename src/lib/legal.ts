@@ -67,8 +67,8 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     id: "referrals",
     title: "5. Invites",
     body: [
-      "You can invite a friend with a personal code. Each of you gets extra custom builds when the invite is used, up to a cap.",
-      "Invites only work on a new account, in the first 48 hours, before that account has researched a custom song. You cannot invite yourself, a second account on the same email, or recycle codes. We may void bonus builds that look like abuse.",
+      "You can invite a friend with a personal code. Each of you gets 3 extra custom builds when the invite is used, up to 15 friends. If you have an active subscription and that friend starts a monthly plan, you both get 50% off one month — their first monthly invoice and your next monthly invoice. Yearly plans stay full price. Polar is the merchant of record for those discounted invoices.",
+      "Invites only work on a new account, in the first 48 hours, before that account has researched a custom song. You cannot invite yourself, a second account on the same email, or recycle codes. We may void bonus builds or discounts that look like abuse.",
     ],
   },
   {

@@ -22,7 +22,9 @@ import {
   subscriptionStatusIsActive,
   waitForPolarCheckout,
   fetchPolarAdminStats,
+  ensureReferralDiscountId,
 } from "./polar";
+import { referredUserGetsMonthOff, giftReferrerMonthOff } from "./referral-subscribe";
 import { mailerConfigured } from "./mailer";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
@@ -503,6 +505,11 @@ export async function grantPaid(opts: {
     /* duplicate order is fine */
   }
   invalidatePlanCache(opts.userId);
+  try {
+    await giftReferrerMonthOff(opts.userId, interval);
+  } catch {
+    /* invite month-off is extra — never block a paid grant */
+  }
 }
 
 export async function grantPaidByEmail(email: string, order: ReturnType<typeof extractOrder>, raw: unknown) {
@@ -604,12 +611,24 @@ export const startCheckout = createServerFn({ method: "POST" })
       return { ok: false as const, error: "This account is already subscribed." };
     }
     const origin = await checkoutSuccessOrigin();
+    let discountId: string | undefined;
+    if (data.interval === "month") {
+      try {
+        if (await referredUserGetsMonthOff(context.userId)) {
+          const id = await ensureReferralDiscountId();
+          if (id) discountId = id;
+        }
+      } catch {
+        /* launch 20% still applies */
+      }
+    }
     return createPolarCheckout({
       email,
       userId: context.userId,
       interval: data.interval,
       successUrl: `${origin}/upgrade?checkout_id={CHECKOUT_ID}`,
       returnUrl: `${origin}/upgrade`,
+      discountId,
     });
   });
 

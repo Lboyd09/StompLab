@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, LAUNCH_DISCOUNT_PERCENT } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
@@ -174,6 +174,8 @@ describe("prices", () => {
     assert.equal(priceYearlyLaunchUsd(), 75);
     assert.notEqual(priceMonthlyLaunchUsd(), PRICE_MONTHLY_USD);
     assert.equal(LAUNCH_DISCOUNT_PERCENT, 20);
+    assert.equal(priceMonthlyReferralUsd(), 3.5);
+    assert.ok(priceMonthlyReferralUsd() < priceMonthlyLaunchUsd());
   });
   it("fingerprints plan fields used to skip redundant setState", () => {
     const a = assemblePlan({ userId: "u1", email: "a@x.com", paid: true, freeUsed: 1, monthUsed: 1 });

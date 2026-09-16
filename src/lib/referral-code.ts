@@ -1,5 +1,7 @@
-export const REFERRAL_BONUS = 1;
+export const REFERRAL_BONUS = 3;
 export const REFERRAL_CAP = 15;
+/** Paid invite → friend starts a monthly plan: one invoice at this percent off. */
+export const REFERRAL_SUBSCRIBE_PERCENT = 50;
 export const REFERRAL_STORAGE_KEY = "stomplab.ref";
 
 export function normalizeReferralCode(raw: string) {

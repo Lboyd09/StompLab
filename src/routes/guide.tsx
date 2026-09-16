@@ -101,9 +101,13 @@ function GuidePage() {
       <Section title="Invite a friend">
         <p>
           Every signed-in account gets a link. When a friend creates a <em>new</em> account with it
-          (first 48 hours, before they research a custom song), you both get an extra custom build.
+          (first 48 hours, before they research a custom song), you both get 3 extra custom builds.
           Cap 15 friends. The Lab, Account, Settings, and Upgrade all show the same invite. A link
           lives in the header too.
+        </p>
+        <p>
+          If you are subscribed and they start a monthly plan, their first month is 50% off. If you also
+          pay monthly, your next invoice is 50% off too. Yearly stays $75.
         </p>
       </Section>
 

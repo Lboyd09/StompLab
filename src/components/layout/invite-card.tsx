@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { REFERRAL_BONUS, REFERRAL_CAP } from "@/lib/referral-code";
+import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
 import { getMyReferral, redeemReferral } from "@/lib/referrals";
 import { usePlan } from "@/lib/use-plan";
 import { cn } from "@/lib/utils";
@@ -77,7 +77,7 @@ export function InviteCard({
     try {
       const res = await redeemReferral({ data: { code: raw } });
       if (res.ok) {
-        setNote(`Invite applied. You got ${res.bonus} extra custom build.`);
+        setNote(`Invite applied. You got ${res.bonus} extra custom build${res.bonus === 1 ? "" : "s"}.`);
         setRedeemInput("");
         await refresh();
       } else {
@@ -109,7 +109,11 @@ export function InviteCard({
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             Share a link. They create a new account — you both get {REFERRAL_BONUS} extra custom
-            build{REFERRAL_BONUS === 1 ? "" : "s"}. Cap {cap} friends.
+            builds. Cap {cap} friends.
+          </p>
+          <p className="text-sm leading-relaxed text-muted-foreground">
+            Already subscribed? Their first monthly invoice is {REFERRAL_SUBSCRIBE_PERCENT}% off. If you pay
+            monthly too, so is your next one. Yearly stays full price.
           </p>
         </div>
       </div>

@@ -16,11 +16,14 @@ import {
   PRICE_YEARLY_USD,
   LAUNCH_DISCOUNT_PERCENT,
   priceMonthlyLaunchUsd,
+  priceMonthlyReferralUsd,
   yearlySavingsUsd,
   formatUsd,
   buildsUsedCopy,
   type PlanInterval,
 } from "@/lib/plan";
+import { getReferralMonthOffer } from "@/lib/referrals";
+import { REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
 import { parseCheckoutId } from "@/lib/next-path";
 import { usePlan } from "@/lib/use-plan";
 import { LegalAgree } from "@/components/layout/legal-agree";
@@ -51,6 +54,20 @@ function UpgradePage() {
   const [agreed, setAgreed] = useState(false);
   const checkoutId = parseCheckoutId(search.checkout_id);
   const [confirming, setConfirming] = useState(Boolean(checkoutId));
+  const [monthOff, setMonthOff] = useState(false);
+
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    void getReferralMonthOffer()
+      .then((res) => {
+        if (!cancelled && res.ok) setMonthOff(res.eligible);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [user]);
 
   useEffect(() => {
     const id = checkoutId;
@@ -200,9 +217,22 @@ function UpgradePage() {
         </div>
 
         <p className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first month.</span>{" "}
-          Monthly pays {formatUsd(priceMonthlyLaunchUsd())} the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo.
-          Yearly is {formatUsd(PRICE_YEARLY_USD)} — that is the only yearly price, every year, until you cancel.
+          {monthOff ? (
+            <>
+              <span className="font-medium text-foreground">
+                Invite: {REFERRAL_SUBSCRIBE_PERCENT}% off your first month.
+              </span>{" "}
+              Monthly pays {formatUsd(priceMonthlyReferralUsd())} this month, then {formatUsd(PRICE_MONTHLY_USD)}
+              /mo. Your friend who invited you gets {REFERRAL_SUBSCRIBE_PERCENT}% off their next monthly invoice
+              too. Yearly is {formatUsd(PRICE_YEARLY_USD)} — no invite cut on the year plan.
+            </>
+          ) : (
+            <>
+              <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first month.</span>{" "}
+              Monthly pays {formatUsd(priceMonthlyLaunchUsd())} the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo.
+              Yearly is {formatUsd(PRICE_YEARLY_USD)} — that is the only yearly price, every year, until you cancel.
+            </>
+          )}
         </p>
 
         <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
@@ -215,12 +245,16 @@ function UpgradePage() {
         <div className="grid gap-4 md:grid-cols-2">
           <PlanCard
             label="Monthly"
-            price={priceMonthlyLaunchUsd()}
+            price={monthOff ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd()}
             period=" first month"
             compareAt={PRICE_MONTHLY_USD}
             renewNote={`Then ${formatUsd(PRICE_MONTHLY_USD)}/mo after the first month`}
-            badge={`${LAUNCH_DISCOUNT_PERCENT}% off first month`}
-            cta={`Subscribe — ${formatUsd(priceMonthlyLaunchUsd())} first month`}
+            badge={
+              monthOff
+                ? `Invite ${REFERRAL_SUBSCRIBE_PERCENT}% off first month`
+                : `${LAUNCH_DISCOUNT_PERCENT}% off first month`
+            }
+            cta={`Subscribe — ${formatUsd(monthOff ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd())} first month`}
             busy={busy === "month"}
             confirming={confirming}
             pending={isPending || !agreed}
