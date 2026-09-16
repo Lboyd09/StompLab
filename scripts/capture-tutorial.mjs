@@ -7,6 +7,7 @@ mkdirSync("/workspace/public/tutorial", { recursive: true });
 const browser = await chromium.launch({ args: ["--no-sandbox"] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 900 }, deviceScaleFactor: 1 });
 await page.addInitScript(() => {
+  localStorage.setItem("stomplab.tutorial.v15", "1");
   localStorage.setItem("stomplab.tutorial.v14", "1");
   localStorage.setItem("stomplab.tutorial.v13", "1");
   localStorage.setItem("stomplab.tutorial.v12", "1");
@@ -23,6 +24,7 @@ page.setDefaultTimeout(20000);
 async function dismissTour() {
   await page.evaluate(() => {
     try {
+      localStorage.setItem("stomplab.tutorial.v15", "1");
       localStorage.setItem("stomplab.tutorial.v14", "1");
       localStorage.setItem("stomplab.onboarded.v3", "1");
     } catch {
@@ -75,6 +77,7 @@ async function shot(sel, dest, maxHeight = 0) {
 const base = process.argv[2] || "http://127.0.0.1:8080";
 await page.goto(`${base}/`, { waitUntil: "networkidle" });
 await page.evaluate(() => {
+  localStorage.setItem("stomplab.tutorial.v15", "1");
   localStorage.setItem("stomplab.tutorial.v14", "1");
   localStorage.setItem("stomplab.onboarded.v3", "1");
 });

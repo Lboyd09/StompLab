@@ -4,6 +4,8 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { LegalFooter } from "@/components/layout/legal-footer";
 import { Mark } from "@/components/layout/mark";
+import { PageWash } from "@/components/layout/page-wash";
+import { InviteCard } from "@/components/layout/invite-card";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
@@ -176,17 +178,16 @@ function UpgradePage() {
   const saving = yearlySavingsUsd();
 
   return (
-    <main className="min-h-dvh bg-background px-4 py-10 text-foreground">
-      <div className="mx-auto w-full max-w-3xl space-y-8">
+    <main className="relative min-h-dvh overflow-x-clip bg-background px-4 py-10 text-foreground">
+      <PageWash />
+      <div className="relative z-10 mx-auto w-full max-w-3xl space-y-8">
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
           <Mark size="lg" />
           <div className="space-y-3">
             <Link to="/" className="inline-flex font-display text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
               Stomp Lab
             </Link>
-            <p className="text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
-              Research any song
-            </p>
+            <p className="sl-kicker">Research any song</p>
             <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
               Subscribe
             </h1>
@@ -251,6 +252,8 @@ function UpgradePage() {
           after Polar says it is active. Cancel any time from Account → Manage subscription; you keep the
           Lab until the period ends.
         </p>
+
+        <InviteCard />
 
         <p className="text-sm text-muted-foreground">
           Not ready?{" "}

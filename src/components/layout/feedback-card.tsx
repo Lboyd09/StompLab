@@ -30,7 +30,8 @@ export function FeedbackCard({ song = "" }: { song?: string }) {
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3 rounded-xl border border-border bg-card p-5">
+    <form onSubmit={(e) => void onSubmit(e)} className="space-y-3 rounded-2xl border border-border bg-card p-5">
+      <p className="sl-kicker">Notes</p>
       <h2 className="font-display text-lg font-semibold">Feedback</h2>
       <p className="text-sm text-muted-foreground">
         Too dark, wrong amp, a bug, a song we should add — send it. Every note goes into the Lab and

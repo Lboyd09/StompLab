@@ -7,6 +7,7 @@ import {
   Search,
   Settings,
   Sparkles,
+  UserPlus,
   Wrench,
   X,
 } from "lucide-react";
@@ -24,6 +25,7 @@ import { AuthSlot } from "./auth-slot";
 import { LegalFooter } from "./legal-footer";
 import { BrandLockup } from "./mark";
 import { Onboarding } from "./onboarding";
+import { PageWash } from "./page-wash";
 import { Tutorial } from "./tutorial";
 import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -191,8 +193,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const results = open && q.trim().length >= 2;
 
   return (
-    <div className="min-h-dvh overflow-x-clip bg-background text-foreground">
-      <header className="sticky top-0 z-40 border-b border-border bg-background/92 backdrop-blur-md">
+    <div className="relative min-h-dvh overflow-x-clip bg-background text-foreground">
+      <PageWash />
+      <header className="sticky top-0 z-40 bg-background/50 backdrop-blur-md">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex min-w-0 shrink-0 items-center" aria-label="Stomp Lab">
@@ -236,6 +239,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
 
             <div className="ml-auto flex items-center gap-2">
+              <Link
+                to="/account"
+                className="hidden h-10 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:text-pop sm:inline-flex"
+              >
+                <UserPlus className="size-3.5" />
+                Invite
+              </Link>
               <button
                 type="button"
                 className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
@@ -253,7 +263,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 to="/settings"
                 aria-label="Settings"
                 className={cn(
-                  "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card",
+                  "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                   pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -303,7 +313,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   type="button"
                   onClick={() => setInstrument(id)}
                   className={cn(
-                    "h-8 rounded-full px-3.5 text-xs font-medium capitalize",
+                    "h-8 rounded-full px-3.5 text-xs font-medium capitalize transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                     instrument === id ? "bg-primary text-primary-foreground" : "text-muted-foreground",
                   )}
                 >
@@ -338,6 +348,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     isActive(item.to)
                       ? "bg-card text-foreground"
                       : "text-muted-foreground hover:text-foreground",
+                    "transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                   )}
                 >
                   <item.icon className="size-3.5" />
@@ -347,9 +358,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           </div>
         </div>
+        <span className="sl-header-rule" aria-hidden />
       </header>
 
-      <main className="mx-auto max-w-6xl px-4 pb-24 pt-8 md:pb-16 md:pt-12">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-24 pt-8 md:pb-16 md:pt-12">
         {children}
         <LegalFooter className="mt-16 pb-4" />
       </main>
@@ -364,10 +376,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               key={item.to}
               to={item.to}
               className={cn(
-                "flex min-h-14 flex-col items-center justify-center gap-1 text-[10px]",
+                "relative flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                 pathname === item.to ? "text-primary" : "text-muted-foreground",
               )}
             >
+              {pathname === item.to ? (
+                <span className="absolute top-0 h-0.5 w-5 rounded-full bg-pop" aria-hidden />
+              ) : null}
               <item.icon className="size-4" />
               {item.label}
             </Link>

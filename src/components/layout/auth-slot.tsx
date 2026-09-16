@@ -10,7 +10,7 @@ export function AuthSlot() {
     return (
       <Link
         to="/login"
-        className="grid h-10 shrink-0 place-items-center rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground"
+        className="grid h-10 shrink-0 place-items-center rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
       >
         Sign in
       </Link>
@@ -21,7 +21,7 @@ export function AuthSlot() {
     <Link
       to="/account"
       aria-label="Account"
-      className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-card text-sm font-medium"
+      className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-card text-sm font-medium transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
     >
       {user.profileImageUrl ? (
         <img src={user.profileImageUrl} alt="" className="size-10 object-cover" />

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { replayTutorial } from "@/components/layout/tutorial";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
@@ -27,7 +28,7 @@ function Chip({
       type="button"
       onClick={onClick}
       className={cn(
-        "h-11 rounded-full px-4 text-sm font-medium",
+        "h-11 rounded-full px-4 text-sm font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
         active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-muted",
       )}
     >
@@ -106,12 +107,9 @@ function SettingsPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      <header className="space-y-2">
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Settings</h1>
-        <p className="text-sm text-muted-foreground">
-          Your {unitLabel} · {instrument}. Theme, unit, and how the replica feels.
-        </p>
-      </header>
+      <PageHeader kicker="The replica" title="Settings">
+        Your {unitLabel} · {instrument}. Theme, unit, and how the replica feels.
+      </PageHeader>
 
       <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Account</h2>
@@ -138,6 +136,9 @@ function SettingsPage() {
               <Button asChild variant="secondary">
                 <Link to="/account">Account</Link>
               </Button>
+              <Button asChild variant="outline">
+                <Link to="/account">Invite a friend</Link>
+              </Button>
               {!plan.paid ? (
                 <Button asChild>
                   <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
@@ -148,7 +149,8 @@ function SettingsPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Sign in for {FREE_BUILDS} free custom songs, then subscribe for any title.
+              Sign in for {FREE_BUILDS} free custom songs, then subscribe for any title. Signed-in
+              accounts get an invite link — a friend signs up, you both get a build.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button asChild>

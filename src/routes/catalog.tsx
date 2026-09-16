@@ -3,6 +3,7 @@ import { Loader2 } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
+import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -88,20 +89,16 @@ function CatalogPage() {
   return (
     <div className="space-y-6" data-tutorial="catalog">
       <UpgradeBanner plan={plan} pending={planPending} />
-      <header className="space-y-3">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">Every HX model</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">HX catalog</h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Browse every amp, cab, and effect — or type a pedal you own and we’ll show the Line 6 name.
-        </p>
-      </header>
+      <PageHeader kicker="Every HX model" title="HX catalog">
+        Browse every amp, cab, and effect — or type a pedal you own and we’ll show the Line 6 name.
+      </PageHeader>
 
       <div className="flex rounded-full bg-secondary p-1 w-fit">
         <button
           type="button"
           onClick={() => setSearch({ search: (p) => ({ ...p, tab: "browse" }) })}
           className={cn(
-            "h-8 rounded-full px-4 text-xs font-medium",
+            "h-8 rounded-full px-4 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
             tab === "browse" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
           )}
         >
@@ -111,7 +108,7 @@ function CatalogPage() {
           type="button"
           onClick={() => setSearch({ search: (p) => ({ ...p, tab: "find" }) })}
           className={cn(
-            "h-8 rounded-full px-4 text-xs font-medium",
+            "h-8 rounded-full px-4 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
             tab === "find" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
           )}
         >
@@ -227,13 +224,13 @@ function CatalogPage() {
             {models.length} {instrument} models
           </p>
 
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((m) => {
               const c = CATEGORY_MAP[m.category];
               return (
                 <article
                   key={m.id}
-                  className="rounded-xl border border-border bg-card p-4 shadow-[var(--shadow-border)]"
+                  className="sl-card rounded-xl border border-border bg-card p-4"
                 >
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full" style={{ background: c.lcd }} />
@@ -275,7 +272,7 @@ function CatChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium",
+        "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
         active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
       )}
     >

@@ -10,6 +10,7 @@ import { SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
+import { InviteCard } from "@/components/layout/invite-card";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
@@ -181,12 +182,9 @@ function Home() {
     <div className="space-y-10 md:space-y-14">
       {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
 
-      <section className="relative mx-auto max-w-3xl space-y-6 overflow-x-clip" data-tutorial="lab">
-        <div className="pointer-events-none absolute inset-x-0 -top-12 h-72 sl-hero-wash sm:-inset-x-8" aria-hidden />
+      <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
         <div className="relative space-y-5">
-          <p className="sl-enter sl-enter-1 font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
-            For Line 6
-          </p>
+          <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
           <h1 className="font-display text-[clamp(2.6rem,9vw,5rem)] font-semibold uppercase leading-[0.84] tracking-tight">
             <span className="sl-enter sl-enter-2 block">Type a song.</span>
             <span className="sl-enter sl-enter-3 mt-1 block text-primary">Get the tone.</span>
@@ -263,7 +261,7 @@ function Home() {
           ) : null}
         </form>
 
-        <div className="relative space-y-4">
+        <div className="relative space-y-4 sl-enter sl-enter-5">
           <SignalPath />
           <RigDisclaimer />
         </div>
@@ -272,12 +270,12 @@ function Home() {
       <section className="space-y-6" id="demos">
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
-            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.22em] text-pop">Always free</p>
+            <p className="sl-kicker">Always free</p>
             <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">Demos</h2>
           </div>
           <span className="text-xs text-muted-foreground">One tap. Download included.</span>
         </div>
-        <div className="grid gap-3 sm:grid-cols-3">
+        <div className="sl-stagger grid gap-3 sm:grid-cols-3">
           {demos.map((p) => (
             <button
               key={p.id}
@@ -304,6 +302,8 @@ function Home() {
         </div>
       </section>
 
+      <InviteCard />
+
       {!subscribed ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -327,14 +327,14 @@ function Home() {
         <section className="space-y-6">
           <div className="flex items-end justify-between gap-4">
             <div className="space-y-1">
-              <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Known rigs</p>
+              <p className="sl-kicker">Known rigs</p>
               <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">More songs</h2>
             </div>
             <span className="text-xs text-muted-foreground">
               {subscribed ? `${instrument} · replica` : "Subscribe to open"}
             </span>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((p) => {
               const locked = !subscribed;
               return (

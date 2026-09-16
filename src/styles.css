@@ -111,8 +111,22 @@ html.dark {
 
 .sl-hero-wash {
   background:
-    radial-gradient(ellipse 70% 55% at 12% -10%, color-mix(in oklab, var(--color-pop) 12%, transparent), transparent 62%),
-    radial-gradient(ellipse 55% 45% at 92% 0%, color-mix(in oklab, var(--color-primary) 10%, transparent), transparent 58%);
+    radial-gradient(ellipse 90% 110% at 0% -8%, color-mix(in oklab, var(--color-pop) 34%, transparent), transparent 68%),
+    radial-gradient(ellipse 90% 110% at 100% -8%, color-mix(in oklab, var(--color-primary) 30%, transparent), transparent 68%),
+    radial-gradient(ellipse 120% 80% at 50% -20%, color-mix(in oklab, var(--color-pop) 20%, transparent), transparent 74%),
+    linear-gradient(180deg, color-mix(in oklab, var(--color-pop) 16%, transparent), color-mix(in oklab, var(--color-primary) 8%, transparent) 28%, transparent 78%);
+}
+
+.sl-header-rule {
+  display: block;
+  height: 1px;
+  width: 100%;
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklab, var(--color-pop) 70%, transparent),
+    color-mix(in oklab, var(--color-primary) 55%, transparent),
+    color-mix(in oklab, var(--color-pop) 18%, transparent)
+  );
 }
 
 .sl-hero-rule {
@@ -121,6 +135,15 @@ html.dark {
   width: 4.5rem;
   border-radius: 999px;
   background: var(--color-pop);
+}
+
+.sl-kicker {
+  font-family: var(--font-mono);
+  font-size: 0.6875rem;
+  font-weight: 500;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--color-pop);
 }
 
 .sl-enter {
@@ -135,6 +158,20 @@ html.dark {
 .sl-enter-3 { animation-delay: 160ms; }
 .sl-enter-4 { animation-delay: 240ms; }
 .sl-enter-5 { animation-delay: 320ms; }
+.sl-enter-6 { animation-delay: 400ms; }
+
+.sl-stagger > * {
+  opacity: 0;
+  transform: translateY(10px);
+  filter: blur(4px);
+  animation: sl-enter var(--motion-enter) var(--ease-out) forwards;
+}
+.sl-stagger > *:nth-child(1) { animation-delay: 40ms; }
+.sl-stagger > *:nth-child(2) { animation-delay: 120ms; }
+.sl-stagger > *:nth-child(3) { animation-delay: 200ms; }
+.sl-stagger > *:nth-child(4) { animation-delay: 280ms; }
+.sl-stagger > *:nth-child(5) { animation-delay: 360ms; }
+.sl-stagger > *:nth-child(6) { animation-delay: 440ms; }
 
 @keyframes sl-enter {
   to {
@@ -144,16 +181,31 @@ html.dark {
   }
 }
 
+.sl-dialog-in {
+  animation: sl-enter var(--motion-fast) var(--ease-out);
+}
+
+.sl-backdrop-in {
+  animation: sl-fade var(--motion-fast) var(--ease-out);
+}
+
+@keyframes sl-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 .sl-card {
   transition:
     border-color var(--motion-fast) var(--ease-out),
-    transform var(--motion-fast) var(--ease-out);
+    transform var(--motion-fast) var(--ease-out),
+    box-shadow var(--motion-fast) var(--ease-out);
 }
 
 .sl-card:hover,
 .sl-card:focus-visible {
   border-color: color-mix(in oklab, var(--color-pop) 42%, var(--color-border));
   transform: translateY(-2px);
+  box-shadow: var(--shadow-sticker);
 }
 
 .sl-form-bar {
@@ -766,7 +818,10 @@ html.dark {
     transition-duration: 0.01ms !important;
     animation-duration: 0.01ms !important;
   }
-  .sl-enter {
+  .sl-enter,
+  .sl-stagger > *,
+  .sl-dialog-in,
+  .sl-backdrop-in {
     opacity: 1;
     transform: none;
     filter: none;
@@ -783,7 +838,10 @@ html[data-motion="reduce"] * {
   animation-duration: 0.01ms !important;
 }
 
-html[data-motion="reduce"] .sl-enter {
+html[data-motion="reduce"] .sl-enter,
+html[data-motion="reduce"] .sl-stagger > *,
+html[data-motion="reduce"] .sl-dialog-in,
+html[data-motion="reduce"] .sl-backdrop-in {
   opacity: 1;
   transform: none;
   filter: none;

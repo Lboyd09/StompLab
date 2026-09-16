@@ -6,6 +6,7 @@ import { GeminiHint } from "@/components/layout/gemini-hint";
 import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
+import { PageHeader } from "@/components/layout/page-header";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
@@ -138,16 +139,12 @@ function CreatePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-6" data-tutorial="create">
       <UpgradeBanner plan={plan} pending={isPending} />
-      <header className="space-y-2">
-        <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">Custom rig</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Describe a sound</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}
-          {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica.
-          If you want a record, use Research a song.
-        </p>
-        <RigDisclaimer />
-      </header>
+      <PageHeader kicker="Custom rig" title="Describe a sound">
+        Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}
+        {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica.
+        If you want a record, use Research a song.
+      </PageHeader>
+      <RigDisclaimer />
 
       {!plan.signedIn && !isPending ? (
         <p className="text-sm text-muted-foreground">
@@ -158,7 +155,8 @@ function CreatePage() {
         </p>
       ) : null}
 
-      <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
+      <form onSubmit={(e) => void onSubmit(e)} className="relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6">
+        <span className="sl-form-bar" aria-hidden />
         <Label htmlFor="desc">Sound, pedalboard, or amp</Label>
         <Textarea
           id="desc"
@@ -176,13 +174,13 @@ function CreatePage() {
       </form>
 
       <div className="space-y-2">
-        <p className="text-xs uppercase tracking-[0.16em] text-muted-foreground">Try one of these</p>
+        <p className="sl-kicker">Try one of these</p>
         {EXAMPLES.map((ex) => (
           <button
             key={ex}
             type="button"
             onClick={() => setDescription(ex)}
-            className="block w-full rounded-lg border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground hover:text-foreground"
+            className="sl-card block w-full rounded-xl border border-border bg-card px-4 py-3 text-left text-sm text-muted-foreground hover:text-foreground"
           >
             {ex}
           </button>

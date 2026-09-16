@@ -3,6 +3,7 @@ import { Trash2 } from "lucide-react";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
 import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/layout/page-header";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 
@@ -23,11 +24,10 @@ function HistoryPage() {
   if (!plan.signedIn) {
     return (
       <div className="mx-auto max-w-lg space-y-4 py-4">
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">History</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
+        <PageHeader kicker="Your builds" title="History">
           Sign in to keep the songs you research. Free accounts keep their 3 custom builds here. Demos
           never need an account.
-        </p>
+        </PageHeader>
         <Button asChild>
           <Link to="/login" search={{ next: "/history" }}>
             Sign in
@@ -39,21 +39,28 @@ function HistoryPage() {
 
   return (
     <div className="space-y-8">
-      <header className="space-y-2">
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">History</h1>
-        <p className="text-sm text-muted-foreground">
-          Songs you researched and sounds you built with your free or paid builds.
-        </p>
-      </header>
+      <PageHeader kicker="Your builds" title="History">
+        Songs you researched and sounds you built with your free or paid builds.
+      </PageHeader>
 
       {user.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          No researched presets yet. Build one from the Lab or Create page.
-        </p>
+        <div className="space-y-3 rounded-2xl border border-border bg-card p-6">
+          <p className="text-sm text-muted-foreground">
+            No researched presets yet. Build one from the Lab or Create page.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild>
+              <Link to="/">Type a song</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/create">Describe a sound</Link>
+            </Button>
+          </div>
+        </div>
       ) : (
         <ul className="space-y-2">
           {user.map((p) => (
-            <li key={p.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-4">
+            <li key={p.id} className="sl-card flex items-center gap-3 rounded-xl border border-border bg-card p-4">
               <Link to="/preset/$id" params={{ id: p.id }} className="min-w-0 flex-1">
                 <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                   {p.source} · {p.instrument} · {DEVICE_MAP[p.stompModel]?.short ?? p.stompModel}

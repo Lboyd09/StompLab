@@ -1,49 +1,27 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { PageHeader } from "@/components/layout/page-header";
+import { InviteCard } from "@/components/layout/invite-card";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
 import { openCustomerPortal } from "@/lib/billing";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
-import { getMyReferral, redeemReferral } from "@/lib/referrals";
-import { REFERRAL_BONUS } from "@/lib/referral-code";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
 
 function AccountPage() {
   const { user, isPending } = useCurrentUserState();
-  const { plan, isPending: planPending, refresh } = usePlan();
+  const { plan, isPending: planPending } = usePlan();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
-  const [inviteCode, setInviteCode] = useState("");
-  const [invited, setInvited] = useState(0);
-  const [inviteCap, setInviteCap] = useState(15);
-  const [redeemInput, setRedeemInput] = useState("");
-  const [inviteBusy, setInviteBusy] = useState(false);
-
-  useEffect(() => {
-    if (!user) return;
-    let cancelled = false;
-    void getMyReferral()
-      .then((res) => {
-        if (cancelled || !res.ok) return;
-        setInviteCode(res.code);
-        setInvited(res.invited);
-        setInviteCap(res.cap);
-      })
-      .catch(() => undefined);
-    return () => {
-      cancelled = true;
-    };
-  }, [user]);
 
   if (isPending || planPending) {
     return <p className="text-sm text-muted-foreground">Loading account…</p>;
@@ -118,15 +96,11 @@ function AccountPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
-      <header className="space-y-2">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Account</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">
-          {user.displayName || "Your Lab"}
-        </h1>
-        <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
-      </header>
+      <PageHeader kicker="Account" title={user.displayName || "Your Lab"}>
+        {user.primaryEmail}
+      </PageHeader>
 
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Plan</h2>
         {plan.admin ? (
           <p className="text-sm text-muted-foreground">
@@ -160,74 +134,9 @@ function AccountPage() {
         </p>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Invite a friend</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Share your code. When they create a new account, you each get {REFERRAL_BONUS} extra custom build
-          {REFERRAL_BONUS === 1 ? "" : "s"}. Cap {inviteCap} friends. Invites only work in their first 48 hours,
-          before they research a custom song.
-        </p>
-        {inviteCode ? (
-          <div className="flex flex-wrap items-center gap-2">
-            <code className="rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em]">{inviteCode}</code>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => {
-                const url = `${window.location.origin}/login?ref=${encodeURIComponent(inviteCode)}`;
-                void navigator.clipboard?.writeText(url).then(
-                  () => setMessage("Invite link copied."),
-                  () => setMessage(url),
-                );
-              }}
-            >
-              Copy invite link
-            </Button>
-          </div>
-        ) : (
-          <p className="text-sm text-muted-foreground">Invite codes need the database.</p>
-        )}
-        <p className="text-xs text-muted-foreground">
-          {invited} of {inviteCap} used.
-          {plan.bonusBuilds ? ` You have ${plan.bonusBuilds} bonus build${plan.bonusBuilds === 1 ? "" : "s"}.` : ""}
-        </p>
-        <form
-          className="flex flex-wrap gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            const code = redeemInput.trim();
-            if (code.length < 4) return;
-            setInviteBusy(true);
-            setError("");
-            setMessage("");
-            void redeemReferral({ data: { code } })
-              .then((res) => {
-                if (res.ok) {
-                  setMessage(`Invite applied. You got ${res.bonus} extra custom build.`);
-                  void refresh();
-                } else {
-                  setError(res.error);
-                }
-              })
-              .catch((err) => setError(err instanceof Error ? err.message : "Could not apply that invite."))
-              .finally(() => setInviteBusy(false));
-          }}
-        >
-          <Input
-            value={redeemInput}
-            onChange={(e) => setRedeemInput(e.target.value.toUpperCase())}
-            placeholder="Have a code?"
-            maxLength={12}
-            className="max-w-40"
-          />
-          <Button type="submit" variant="secondary" disabled={inviteBusy || redeemInput.trim().length < 4}>
-            {inviteBusy ? "Applying…" : "Apply code"}
-          </Button>
-        </form>
-      </section>
+      <InviteCard showRedeem />
 
-      <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Password</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
           We email a reset link to {user.primaryEmail || "your account"}. You cannot change the password from this

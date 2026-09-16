@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Trash2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { PaywallCard } from "@/components/layout/paywall-card";
+import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -74,19 +75,14 @@ function GearPage() {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <header className="space-y-2">
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Your locker</h1>
-        <p className="text-sm text-muted-foreground">
-          Add the guitars, basses, amps, and pedals you actually own. Song research will tell you
-          which piece to grab — and when to skip the Stomp amp and run four-cable method into a real
-          head.
-        </p>
+      <PageHeader kicker="What you own" title="Your locker">
+        Add the guitars, basses, amps, and pedals you actually own. Song research will tell you
+        which piece to grab — and when to skip the Stomp amp and run four-cable method into a real
+        head.
         {plan.canLockerSync ? (
-          <p className="text-xs text-muted-foreground">
-            {synced ? "Synced to your account." : "Syncing locker…"}
-          </p>
+          <p className="mt-2 text-xs">{synced ? "Synced to your account." : "Syncing locker…"}</p>
         ) : (
-          <p className="text-xs text-muted-foreground">
+          <p className="mt-2 text-xs">
             Saved on this device.{" "}
             <Link to="/upgrade" className="text-primary underline underline-offset-2">
               Subscribe
@@ -94,9 +90,10 @@ function GearPage() {
             to sync the locker across devices.
           </p>
         )}
-      </header>
+      </PageHeader>
 
-      <form onSubmit={onAdd} className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <form onSubmit={onAdd} className="relative space-y-3 overflow-hidden rounded-2xl border border-border bg-card p-5">
+        <span className="sl-form-bar" aria-hidden />
         <div className="flex flex-wrap gap-1.5">
           {KINDS.map((k) => (
             <button

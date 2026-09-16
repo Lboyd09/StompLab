@@ -1,44 +1,42 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { PageHeader } from "@/components/layout/page-header";
 
 export const Route = createFileRoute("/guide")({ component: GuidePage });
 
 function GuidePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-10">
-      <header className="space-y-3">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Tutorial</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">How to use Stomp Lab</h1>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          One idea: look up a song, see it on your unit, copy the file onto the hardware. You do not need
-          to learn HX Edit first.
-        </p>
-      </header>
+      <PageHeader kicker="How it works" title="How to use Stomp Lab">
+        One idea: look up a song, see it on your unit, copy the file onto the hardware. You do not need
+        to learn HX Edit first.
+      </PageHeader>
 
       <Section title="The 30-second path">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Pick Guitar or Bass, and your unit, in the header.</li>
           <li>Open a featured song, or type a title and build a preset.</li>
-          <li>Tap Snapshot or Stomp above the replica. Play the switches.</li>
+          <li>Tap Snapshot, Preset, or Stomp above the replica. Play the switches.</li>
           <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp. File → Import — don’t drag it.</li>
         </ol>
       </Section>
 
       <Section title="Snapshot, Stomp, Preset">
         <p>
-          <strong className="text-foreground">Snapshot</strong> is song sections. Front switches become
-          verse / chorus / solo. Most records live here.
+          <strong className="text-foreground">Snapshot</strong> is song sections. Verse, chorus, solo —
+          as many as your unit holds. HX Stomp has 3. XL, HX Effects, and POD Go have 4. Helix Floor and
+          LT have 8. We never write extras.
+        </p>
+        <p>
+          <strong className="text-foreground">Preset</strong> walks the bank — next song, same box. Same
+          mode the hardware uses when you aren’t inside a snapshot.
         </p>
         <p>
           <strong className="text-foreground">Stomp</strong> is pedals on a board. Each switch turns one
           effect on or off.
         </p>
         <p>
-          <strong className="text-foreground">Preset</strong> is walking banks, the way the hardware sits
-          when you aren't inside a song. You rarely need it here.
-        </p>
-        <p>
-          The replica is easier than the unit: the three pills above it change mode. On the hardware you
-          press PAGE (or MODE on XL) until the display says SNAP or STOMP.
+          The replica’s pills switch all three. Download writes the mode you have selected. On the
+          hardware, press PAGE (or MODE on XL) until the display says SNAP, PRESET, or STOMP.
         </p>
       </Section>
 
@@ -66,7 +64,7 @@ function GuidePage() {
         </p>
         <p>
           Reset to original puts a featured rig back to the recorded map. Download writes whichever mode
-          is selected — Snapshot or Stomp.
+          is selected — Snapshot, Preset, or Stomp.
         </p>
       </Section>
 
@@ -79,7 +77,7 @@ function GuidePage() {
           <li>
             File → Import. Pick the .hlx (Helix / HX) or .pgp (POD Go). Do not drag it onto a setlist.
           </li>
-          <li>Press PAGE on the unit until SNAP or STOMP matches what you downloaded.</li>
+          <li>Press PAGE on the unit until SNAP, PRESET, or STOMP matches what you downloaded.</li>
           <li>
             Play. Switch 1 is top-left. If a snapshot does nothing, you are still in Stomp mode — PAGE
             once more.
@@ -100,6 +98,15 @@ function GuidePage() {
         </p>
       </Section>
 
+      <Section title="Invite a friend">
+        <p>
+          Every signed-in account gets a link. When a friend creates a <em>new</em> account with it
+          (first 48 hours, before they research a custom song), you both get an extra custom build.
+          Cap 15 friends. The Lab, Account, Settings, and Upgrade all show the same invite. A link
+          lives in the header too.
+        </p>
+      </Section>
+
       <Section title="Wah">
         <p>
           A wah only goes in the Helix chain if you want the modeler to do it — expression pedal or a
@@ -111,8 +118,8 @@ function GuidePage() {
 
       <Section title="Name the snapshots">
         <p>
-          Before you download, rename the snapshots. Those names write onto the unit’s scribble strips
-          (FS1, FS2, FS3…). Intro and verse that share a chain stay one snapshot — we do not invent a
+          Before you download, rename the snapshots. Those names write onto the unit’s scribble strips.
+          Intro and verse that share a chain stay one snapshot — we do not invent a
           switch for a lyric section that sounds the same.
         </p>
       </Section>

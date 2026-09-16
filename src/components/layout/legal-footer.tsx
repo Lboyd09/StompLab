@@ -22,6 +22,9 @@ export function LegalFooter({ className, full }: { className?: string; full?: bo
         <Link to="/guide" hash="help" className="text-foreground/80 underline-offset-2 hover:underline">
           Help
         </Link>
+        <Link to="/account" className="text-foreground/80 underline-offset-2 hover:underline">
+          Invite a friend
+        </Link>
         <a href={`mailto:${PUBLIC_SUPPORT_EMAIL}`} className="text-foreground/80 underline-offset-2 hover:underline">
           {PUBLIC_SUPPORT_EMAIL}
         </a>

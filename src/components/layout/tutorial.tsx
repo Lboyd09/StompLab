@@ -1,7 +1,7 @@
 import { useNavigate, useRouterState } from "@tanstack/react-router";
 import { useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { STOMP_DEVICES } from "@/data/categories";
+import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
 import { FEATURED } from "@/data/featured";
 import type { StompModelId } from "@/data/types";
 import { overlayUserGear } from "@/lib/preset-schema";
@@ -12,15 +12,28 @@ import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 import { Mark } from "./mark";
 import { SignalPath } from "./signal-path";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v14";
+export const TUTORIAL_KEY = "stomplab.tutorial.v15";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
-type StepId = "what" | "rig" | "snaps" | "song" | "demo" | "home";
+type StepId = "what" | "rig" | "play" | "song" | "demo" | "home";
 
 const SPOTLIGHT: Partial<Record<StepId, string>> = {
   song: "#lab-form",
   demo: "#demos",
 };
+
+const PLAY_MODES = [
+  { n: "01", t: "Snapshot", h: "Song sections. Verse, chorus, solo — as many as your unit holds." },
+  { n: "02", t: "Preset", h: "Walk the bank. Next song, same box." },
+  { n: "03", t: "Stomp", h: "Pedals on and off, like a board." },
+] as const;
+
+const LAB_BITS = [
+  { t: "Lab", h: "Type a song. Get a file." },
+  { t: "Catalog", h: "Every HX amp, cab, and effect." },
+  { t: "Create", h: "Describe a sound that isn’t a record." },
+  { t: "Invite", h: "A friend signs up. You both get a build." },
+] as const;
 
 function detectDevice(): { mobile: boolean; ios: boolean; android: boolean } {
   if (typeof navigator === "undefined") return { mobile: false, ios: false, android: false };
@@ -84,24 +97,25 @@ export function Tutorial({
   const [step, setStep] = useState(0);
   const device = useMemo(() => detectDevice(), []);
   const finishRef = useRef<() => void>(() => undefined);
+  const unit = DEVICE_MAP[stompModel];
 
   const allSteps: { id: StepId; title: string; body: string; cta: string }[] = [
     {
       id: "what",
-      title: "This is Stomp Lab",
-      body: "You type a song you already play. We research how that guitar or bass was recorded and build a starting-point preset for your Line 6. You download a file. Then it lives on the hardware.",
+      title: "Type a song. Get a file.",
+      body: "Stomp Lab researches how the guitar or bass on a record was tracked, then builds a starting-point preset for your Line 6. You import the file. It lives on the hardware.",
       cta: "I have a Line 6",
     },
     {
       id: "rig",
       title: "Which box is yours?",
-      body: "Pick guitar or bass, then the unit on your board. Every file we make is for this one. You can change it later in the header.",
+      body: "Guitar or bass, then the unit on your board. Every file we write is for this one — snapshots, presets, and the footswitches it actually has. Change it later in the header.",
       cta: "That's my unit",
     },
     {
-      id: "snaps",
-      title: "Three switches. Three sounds.",
-      body: "A song is never one tone. Verse crunch stays on verse. The solo boost is its own switch. We never mash them together.",
+      id: "play",
+      title: "Snapshot, Preset, and Stomp",
+      body: `${unit?.name ?? "Your unit"} holds ${unit?.snapshots ?? 3} snapshots and ${unit?.presets ?? 126} presets. We never invent extras. Pick the mode on the replica, then download — the file matches.`,
       cta: "Show me where to type",
     },
     {
@@ -113,7 +127,7 @@ export function Tutorial({
     {
       id: "demo",
       title: "Or skip typing — tap a demo",
-      body: "Sandman, Teen Spirit, and Numb always work. No account. Open one to see the replica, twist knobs, then download.",
+      body: "Sandman, Teen Spirit, and Numb always work. No account. Open one, twist knobs, download. Catalog, Create, Gear, and Invite live in the nav when you’re ready.",
       cta: device.mobile ? "Next" : "Open Enter Sandman",
     },
     {
@@ -222,17 +236,20 @@ export function Tutorial({
   };
 
   const card = (
-    <div className="flex max-h-[min(88dvh,52rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
+    <div className="sl-dialog-in flex max-h-[min(88dvh,52rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-2xl">
       <div className="min-h-0 flex-1 overflow-y-auto p-5 pb-3">
         <div className="flex items-center gap-3">
           <Mark size="sm" />
-          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">
+          <p className="sl-kicker">
             {step + 1} / {steps.length}
           </p>
         </div>
         <div className="mt-3 flex items-center gap-1.5">
           {steps.map((s, i) => (
-            <span key={s.id} className={`h-1.5 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-secondary"}`} />
+            <span
+              key={s.id}
+              className={`h-1.5 flex-1 rounded-full transition-colors duration-[var(--motion-fast)] ease-[var(--ease-out)] ${i <= step ? "bg-primary" : "bg-secondary"}`}
+            />
           ))}
         </div>
         <h2 id="tutorial-title" className="mt-4 font-display text-2xl font-semibold tracking-tight sm:text-3xl">
@@ -243,6 +260,14 @@ export function Tutorial({
         {current.id === "what" ? (
           <div className="mt-5 space-y-4">
             <SignalPath />
+            <ul className="sl-stagger grid grid-cols-2 gap-2">
+              {LAB_BITS.map((bit) => (
+                <li key={bit.t} className="rounded-xl border border-border bg-secondary/60 px-3 py-3">
+                  <p className="font-display text-sm font-semibold uppercase tracking-tight">{bit.t}</p>
+                  <p className="mt-1 text-xs leading-snug text-muted-foreground">{bit.h}</p>
+                </li>
+              ))}
+            </ul>
             <p className="text-xs leading-relaxed text-muted-foreground">
               HX Stomp, XL, Helix Floor, LT, HX Effects, or POD Go. Computer: HX Edit or POD Go Edit → File → Import. Don’t drag the file.
             </p>
@@ -258,7 +283,7 @@ export function Tutorial({
                   type="button"
                   onClick={() => setInstrument(id)}
                   className={cn(
-                    "min-h-12 rounded-2xl border px-4 py-3 text-left font-display text-lg font-semibold uppercase tracking-tight",
+                    "min-h-12 rounded-2xl border px-4 py-3 text-left font-display text-lg font-semibold uppercase tracking-tight transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                     instrument === id
                       ? "border-primary bg-primary text-primary-foreground"
                       : "border-border bg-secondary text-foreground",
@@ -277,13 +302,13 @@ export function Tutorial({
                     type="button"
                     onClick={() => setStompModel(d.id as StompModelId)}
                     className={cn(
-                      "min-h-12 rounded-2xl border px-3 py-3 text-left",
+                      "min-h-12 rounded-2xl border px-3 py-3 text-left transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                       on ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card",
                     )}
                   >
                     <span className="block font-display text-sm font-semibold uppercase tracking-tight">{d.short}</span>
                     <span className={cn("mt-1 block text-[11px]", on ? "text-primary-foreground/80" : "text-muted-foreground")}>
-                      {d.name}
+                      {d.snapshots} snaps · {d.presets} presets
                     </span>
                   </button>
                 );
@@ -292,18 +317,20 @@ export function Tutorial({
           </div>
         ) : null}
 
-        {current.id === "snaps" ? (
-          <div className="mt-5 grid grid-cols-3 gap-2">
-            {[
-              { n: "01", t: "Verse" },
-              { n: "02", t: "Chorus" },
-              { n: "03", t: "Solo" },
-            ].map((s) => (
-              <div key={s.n} className="rounded-2xl border border-border bg-secondary px-3 py-4 text-center">
-                <p className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-pop">{s.n}</p>
-                <p className="mt-2 font-display text-sm font-semibold uppercase tracking-tight">{s.t}</p>
-              </div>
-            ))}
+        {current.id === "play" ? (
+          <div className="mt-5 space-y-3">
+            <ol className="sl-stagger grid gap-2 sm:grid-cols-3">
+              {PLAY_MODES.map((mode) => (
+                <li key={mode.n} className="rounded-2xl border border-border bg-secondary px-3 py-4">
+                  <p className="font-mono text-[10px] tabular-nums tracking-[0.18em] text-pop">{mode.n}</p>
+                  <p className="mt-2 font-display text-sm font-semibold uppercase tracking-tight">{mode.t}</p>
+                  <p className="mt-2 text-xs leading-snug text-muted-foreground">{mode.h}</p>
+                </li>
+              ))}
+            </ol>
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Stomp has 3 snapshots. XL, HX Effects, and POD Go have 4. Helix Floor and LT have 8. We write only what your box can use.
+            </p>
           </div>
         ) : null}
 
@@ -355,7 +382,7 @@ export function Tutorial({
 
   if (!spotlight) {
     return (
-      <div className="fixed inset-0 z-[60] flex items-end justify-center bg-background/96 p-3 backdrop-blur-sm sm:items-center sm:p-6">
+      <div className="sl-backdrop-in fixed inset-0 z-[60] flex items-end justify-center bg-background/96 p-3 backdrop-blur-sm sm:items-center sm:p-6">
         <div
           role="dialog"
           aria-modal="true"

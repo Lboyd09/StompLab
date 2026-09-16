@@ -12,7 +12,7 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
   return (
     <Link
       to="/upgrade"
-      className="flex flex-col items-stretch gap-3 rounded-2xl bg-primary px-5 py-5 text-primary-foreground transition-opacity hover:opacity-90 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
+      className="flex flex-col items-stretch gap-3 rounded-2xl bg-primary px-5 py-5 text-primary-foreground transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <span className="min-w-0">
         <span className="block font-display text-lg font-semibold uppercase leading-none tracking-tight">

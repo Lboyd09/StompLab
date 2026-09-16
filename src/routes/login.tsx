@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mark } from "@/components/layout/mark";
+import { PageWash } from "@/components/layout/page-wash";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
@@ -223,15 +224,16 @@ function LoginPage() {
   }
 
   return (
-    <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
-      <div className="w-full max-w-sm space-y-6">
+    <main className="relative grid min-h-dvh place-items-center overflow-x-clip bg-background px-4 py-10 text-foreground">
+      <PageWash />
+      <div className="relative z-10 w-full max-w-sm space-y-6">
         <div className="space-y-4">
           <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
             <Mark size="md" />
             <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
           </a>
           <div className="space-y-2">
-            <p className="font-mono text-[11px] font-medium uppercase tracking-[0.28em] text-pop">
+            <p className="sl-kicker">
               {mode === "in" ? "Welcome back" : mode === "up" ? "Join the Lab" : "Account"}
             </p>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
@@ -240,7 +242,9 @@ function LoginPage() {
             <p className="text-sm leading-relaxed text-muted-foreground">
               {mode === "reset"
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
-                : "Email and a password. Use the same address every time — a second account starts over."}
+                : mode === "up"
+                  ? "Email and a password. A friend’s invite code gives you both an extra custom build."
+                  : "Email and a password. Use the same address every time — a second account starts over."}
             </p>
           </div>
         </div>
@@ -300,7 +304,9 @@ function LoginPage() {
                   placeholder="From a friend"
                   maxLength={12}
                 />
-                <p className="text-xs text-muted-foreground">You and your friend each get an extra custom build.</p>
+                <p className="text-xs text-muted-foreground">
+                  Optional. You and your friend each get an extra custom build.
+                </p>
               </div>
             ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
