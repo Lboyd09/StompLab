@@ -193,7 +193,7 @@ describe("buildHlx Enter Sandman", () => {
     assert.ok(rectoKey);
     const drive = snap0.controllers?.dsp0?.[rectoKey!]?.Drive?.["@value"];
     assert.equal(typeof drive, "number");
-    assert.ok(Math.abs((drive as number) - 0.13) < 0.02);
+    assert.ok(Math.abs((drive as number) - 0.1) < 0.02);
   });
 
   it("a new snapshot knob turn still lands on the Recto controllers", () => {

@@ -25,7 +25,7 @@ import {
   ensureReferralDiscountId,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
-import { mailerConfigured } from "./mailer";
+import { mailerConfigured, mailerLastError } from "./mailer";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -900,7 +900,7 @@ export const adminMoneySetup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId, context.email);
-    return { ...polarSetup(), mail: mailerConfigured() };
+    return { ...polarSetup(), mail: mailerConfigured(), mailError: mailerLastError() };
   });
 
 export const adminDashboard = createServerFn({ method: "POST" })

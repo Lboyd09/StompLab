@@ -239,7 +239,13 @@ function LoginPage() {
           </a>
           <div className="space-y-2">
             <p className="sl-kicker">
-              {mode === "in" ? "Welcome back" : mode === "up" ? "Join the Lab" : "Account"}
+              {search.ref && mode === "up"
+                ? "Your friend invited you"
+                : mode === "in"
+                  ? "Welcome back"
+                  : mode === "up"
+                    ? "Join the Lab"
+                    : "Account"}
             </p>
             <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
               {mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}
@@ -248,7 +254,9 @@ function LoginPage() {
               {mode === "reset"
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
                 : mode === "up"
-                  ? "Email and a password. A friend’s invite code gives you both 3 extra custom builds."
+                  ? search.ref
+                    ? "This is Create account — not Sign in. You and your friend each get 3 extra custom builds after you join."
+                    : "Email and a password. A friend’s invite code gives you both 3 extra custom builds."
                   : "Email and a password. Use the same address every time — a second account starts over."}
             </p>
           </div>

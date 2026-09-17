@@ -78,11 +78,6 @@ html.dark {
     font-family: var(--font-sans);
     overscroll-behavior: none;
   }
-  button:not(:disabled),
-  [role="button"]:not(:disabled) {
-    cursor: pointer;
-  }
-}
   input,
   select,
   textarea {
@@ -244,7 +239,8 @@ html.dark {
 @media (prefers-reduced-motion: reduce) {
   .sl-enter,
   .sl-stagger > *,
-  .sl-btn-sheen::after {
+  .sl-btn-sheen::after,
+  .sl-menu {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

@@ -53,7 +53,7 @@ export const FEATURED: Preset[] = [
         enabledBlocks: ["b2", "b3", "b4", "b5"],
         notes: "Intro AND verse — they are the same recorded tone. DS-1 off, Small Clone on, Mesa graphic on. This snapshot has to shimmer, not crunch.",
         paramOverrides: {
-          b3: { Drive: 2.2, "Ch Vol": 5.2, Presence: 4.2, Treble: 6.0 },
+          b3: { Drive: 1.8, "Ch Vol": 5.2, Presence: 4.0, Treble: 6.0 },
         },
       },
       {
@@ -134,9 +134,9 @@ export const FEATURED: Preset[] = [
         name: "Intro",
         color: "#c5c9c2",
         enabledBlocks: ["b2", "b3"],
-        notes: "CLEAN intro. TS off, gate off, Mesa graphic off, Recto Drive 1.3. Almost a clean Recto — sweep your wah in front.",
+        notes: "CLEAN intro. TS off, gate off, Mesa graphic off, Recto Drive 1.0. Almost a clean Recto — sweep your wah in front.",
         paramOverrides: {
-          b2: { Drive: 1.3, "Ch Vol": 5.8, Presence: 3.2, Treble: 5.4 },
+          b2: { Drive: 1.0, "Ch Vol": 5.6, Presence: 3.0, Treble: 5.2 },
         },
       },
       {
@@ -219,7 +219,7 @@ export const FEATURED: Preset[] = [
         notes: "Muff off. Hiwatt almost clean, short echo. The vibrato is in your hands.",
         paramOverrides: {
           b2: { Mix: 1.6, Feedback: 2.4 },
-          b3: { Drive: 2.2, "Ch Vol": 5.6 },
+          b3: { Drive: 2.0, "Ch Vol": 5.6 },
         },
       },
       {

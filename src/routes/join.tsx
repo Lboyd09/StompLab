@@ -38,9 +38,9 @@ function JoinPage() {
     };
   }, [user, isPending, code]);
 
-  // Guests go straight to Create account — never Sign in.
+  // Guests go straight to Create account — never Sign in. replace so Back isn't stuck.
   if (!user) {
-    return <Navigate to="/login" search={{ mode: "up", ref: code || undefined, next: "/" }} />;
+    return <Navigate to="/login" search={{ mode: "up", ref: code || undefined, next: "/" }} replace />;
   }
 
   if (applied) return <Navigate to="/" />;

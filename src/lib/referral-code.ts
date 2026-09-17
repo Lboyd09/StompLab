@@ -24,7 +24,8 @@ export function canonicalEmail(email: string | null | undefined): string {
 
 export function invitePath(code: string) {
   const c = normalizeReferralCode(code);
-  return c ? `/join?ref=${encodeURIComponent(c)}` : "/join";
+  // Straight to Create account. /join still works for older links.
+  return c ? `/login?mode=up&ref=${encodeURIComponent(c)}` : "/login?mode=up";
 }
 
 export function inviteUrl(origin: string, code: string) {

@@ -14,6 +14,12 @@ export function mailerConfigured(): boolean {
   return Boolean(envFirst("RESEND_API_KEY"));
 }
 
+let lastMailError = "";
+
+export function mailerLastError(): string {
+  return lastMailError;
+}
+
 export function mailFrom(): string {
   const from = envFirst("MAIL_FROM", "EMAIL_FROM");
   if (from) return from;
@@ -36,6 +42,7 @@ export async function sendPasswordResetEmail(opts: { to: string; url: string }):
   const to = opts.to.trim().toLowerCase();
   if (!to.includes("@")) throw new Error("That email doesn't look right.");
   if (!mailerConfigured()) {
+    lastMailError = "RESEND_API_KEY is missing";
     throw new Error(
       `Password reset mail is not on yet. Email ${PUBLIC_SUPPORT_EMAIL} and we will reset you.`,
     );
@@ -71,7 +78,10 @@ export async function sendPasswordResetEmail(opts: { to: string; url: string }):
       },
       body: JSON.stringify({ from, to, subject, html, text }),
     });
-    if (res.ok) return;
+    if (res.ok) {
+      lastMailError = "";
+      return;
+    }
     const body = await res.json().catch(() => ({}));
     const msg =
       typeof body === "object" && body && "message" in body
@@ -83,5 +93,6 @@ export async function sendPasswordResetEmail(opts: { to: string; url: string }):
     }
     last = msg || last;
   }
+  lastMailError = last;
   throw new Error(last);
 }

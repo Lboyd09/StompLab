@@ -28,6 +28,7 @@ function AdminPage() {
     yearly: boolean;
     ready: boolean;
     mail?: boolean;
+    mailError?: string;
   } | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
@@ -274,6 +275,7 @@ function AdminPage() {
           <li>Monthly product ($6.99): {polar ? (polar.monthly ? "set" : "missing") : "checking…"}</li>
           <li>Yearly product ($75): {polar ? (polar.yearly ? "set" : "missing") : "checking…"}</li>
           <li>Password-reset mail: {polar ? (mailOn ? "set" : "missing") : "checking…"}</li>
+          {money?.mailError ? <li>Last mail error: {money.mailError}</li> : null}
         </ul>
         <p className="text-xs text-muted-foreground">
           {polar?.ready

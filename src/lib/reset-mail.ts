@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { auth } from "@/lib/auth/server";
-import { mailerConfigured, mailFrom } from "@/lib/mailer";
+import { mailerConfigured, mailFrom, mailerLastError } from "@/lib/mailer";
 import { PUBLIC_SUPPORT_EMAIL } from "@/lib/plan";
 import { publicOrigin } from "@/lib/site-origin";
 
@@ -9,6 +9,7 @@ export const resetMailStatus = createServerFn({ method: "GET" }).handler(async (
   configured: mailerConfigured(),
   from: mailerConfigured() ? mailFrom() : "",
   support: PUBLIC_SUPPORT_EMAIL,
+  lastError: mailerLastError(),
 }));
 
 export const requestResetMail = createServerFn({ method: "POST" })
