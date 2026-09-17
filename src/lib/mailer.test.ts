@@ -19,6 +19,7 @@ describe("mailer", () => {
     const prev = snap();
     try {
       for (const k of keys) delete process.env[k];
+      process.env.SMTP_URL = "smtp://x";
       assert.equal(mailerConfigured(), false);
     } finally {
       restore(prev);

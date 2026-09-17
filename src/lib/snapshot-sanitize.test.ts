@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Preset } from "../data/types.ts";
-import { sanitizeSnapshots } from "./snapshot-sanitize.ts";
+import { DEMO_IDS, FEATURED } from "../data/featured.ts";
+import { isAmpOrCab, sanitizeSnapshots } from "./snapshot-sanitize.ts";
 
 function preset(partial: Partial<Preset> = {}): Preset {
   return {
@@ -39,5 +40,20 @@ describe("sanitizeSnapshots", () => {
       assert.ok(snap.enabledBlocks.includes("cab"), snap.name);
     }
     assert.ok((out.snapshots[0].paramOverrides?.amp?.["Ch Vol"] ?? 0) >= 1.5);
+  });
+
+  it("keeps amp/cab on every demo snapshot", () => {
+    for (const id of DEMO_IDS) {
+      const src = FEATURED.find((p) => p.id === id);
+      assert.ok(src, id);
+      const out = sanitizeSnapshots(src);
+      const essentials = out.blocks.filter((b) => isAmpOrCab(b.modelId)).map((b) => b.id);
+      assert.ok(essentials.length, id);
+      for (const snap of out.snapshots) {
+        for (const eid of essentials) {
+          assert.ok(snap.enabledBlocks.includes(eid), `${id} ${snap.name} missing ${eid}`);
+        }
+      }
+    }
   });
 });

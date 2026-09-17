@@ -4,13 +4,13 @@ import { useEffect, useState } from "react";
 import { PaywallCard } from "@/components/layout/paywall-card";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { pullMyGear, pushMyGear } from "@/lib/billing";
 import { newId } from "@/lib/preset-utils";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
+import { GearPicker } from "@/components/layout/gear-picker";
 import type { UserGear } from "@/data/types";
 
 export const Route = createFileRoute("/gear")({ component: GearPage });
@@ -99,8 +99,11 @@ function GearPage() {
             <button
               key={k}
               type="button"
-              onClick={() => setKind(k)}
-              className={`h-8 rounded-full px-3 text-xs capitalize ${
+              onClick={() => {
+                setKind(k);
+                setName("");
+              }}
+              className={`h-11 min-w-11 rounded-full px-3 text-xs capitalize ${
                 kind === k ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground"
               }`}
             >
@@ -108,15 +111,7 @@ function GearPage() {
             </button>
           ))}
         </div>
-        <div className="space-y-1.5">
-          <Label htmlFor="gname">Name</Label>
-          <Input
-            id="gname"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="1962 Strat, Jazz Bass, AC30, real Tube Screamer…"
-          />
-        </div>
+        <GearPicker kind={kind} name={name} onName={setName} />
         <div className="space-y-1.5">
           <Label htmlFor="gnotes">Notes</Label>
           <Textarea

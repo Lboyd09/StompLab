@@ -14,12 +14,14 @@ import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
 import { captureReferralCode, peekReferralCode, clearReferralCode } from "@/lib/referral-code";
 import { redeemReferral } from "@/lib/referrals";
+import { requestResetMail } from "@/lib/reset-mail";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string; mode?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
     checkout_id: typeof s.checkout_id === "string" ? s.checkout_id : undefined,
     ref: typeof s.ref === "string" && s.ref.length ? s.ref : undefined,
+    mode: typeof s.mode === "string" ? s.mode : undefined,
   }),
   component: LoginPage,
 });
@@ -47,7 +49,11 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
 function LoginPage() {
   const search = Route.useSearch();
   const { user, isPending } = useCurrentUserState();
-  const [mode, setMode] = useState<"in" | "up" | "reset">("in");
+  const [mode, setMode] = useState<"in" | "up" | "reset">(() => {
+    if (search.mode === "reset") return "reset";
+    if (search.mode === "up" || search.ref) return "up";
+    return "in";
+  });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [name, setName] = useState("");
@@ -69,7 +75,9 @@ function LoginPage() {
     if (search.ref) captureReferralCode(search.ref);
     const existing = peekReferralCode();
     if (existing) setInvite(existing);
-  }, [search.ref]);
+    if (search.mode === "up" || search.ref || existing) setMode("up");
+    if (search.mode === "reset") setMode("reset");
+  }, [search.ref, search.mode]);
 
   async function waitForSession() {
     for (let i = 0; i < 12; i++) {
@@ -126,12 +134,9 @@ function LoginPage() {
     if (mode === "reset") {
       setBusy(true);
       try {
-        const { error: err } = await authClient.requestPasswordReset({
-          email: trimmed,
-          redirectTo: "/reset-password",
-        });
-        if (err) {
-          setError(err.message || "Could not send the reset email.");
+        const res = await requestResetMail({ data: { email: trimmed } });
+        if (!res.ok) {
+          setError(res.error);
           return;
         }
         rememberEmail(trimmed);

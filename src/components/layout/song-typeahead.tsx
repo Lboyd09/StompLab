@@ -24,6 +24,7 @@ export function SongTypeahead({
 }) {
   const [hits, setHits] = useState<SongHit[]>([]);
   const [open, setOpen] = useState(false);
+  const [hi, setHi] = useState(0);
   const box = useRef<HTMLDivElement>(null);
   const ignoreBlur = useRef(false);
   const picked = useRef("");
@@ -63,6 +64,7 @@ export function SongTypeahead({
           if (my !== gen.current || picked.current) return;
           setHits(rows);
           setOpen(true);
+          setHi(0);
         })
         .catch(() => {
           if (my !== gen.current) return;
@@ -92,6 +94,21 @@ export function SongTypeahead({
               if (!ignoreBlur.current) setOpen(false);
             }, 220);
           }}
+          onKeyDown={(e) => {
+            if (!open || !hits.length) return;
+            if (e.key === "ArrowDown") {
+              e.preventDefault();
+              setHi((i) => (i + 1) % hits.length);
+            } else if (e.key === "ArrowUp") {
+              e.preventDefault();
+              setHi((i) => (i - 1 + hits.length) % hits.length);
+            } else if (e.key === "Enter" && hits[hi]) {
+              e.preventDefault();
+              pick(hits[hi]);
+            } else if (e.key === "Escape") {
+              setOpen(false);
+            }
+          }}
           placeholder="Smells Like Teen Spirit"
           required
           autoComplete="off"
@@ -99,18 +116,25 @@ export function SongTypeahead({
         />
         {open && hits.length ? (
           <ul
-            className="absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card shadow-lg"
+            className="sl-menu absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
             onMouseDown={(e) => e.preventDefault()}
             onPointerDown={() => {
               ignoreBlur.current = true;
             }}
           >
-            {hits.map((h) => (
+            {hits.map((h, i) => (
               <li key={h.id}>
                 <button
                   type="button"
-                  className="flex w-full items-center gap-3 px-3 py-2.5 text-left hover:bg-secondary"
+                  className={`flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left ${
+                    i === hi ? "bg-secondary" : "hover:bg-secondary"
+                  }`}
                   onPointerDown={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    pick(h);
+                  }}
+                  onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
                     pick(h);

@@ -67,6 +67,10 @@ export async function referredUserGetsMonthOff(userId: string): Promise<boolean>
 /**
  * After a referred friend starts a monthly plan: 50% off the referrer's next
  * monthly invoice. Friend's first invoice is discounted at checkout.
+ *
+ * Polar applies subscription discounts to the *next* invoice — it will not
+ * re-bill the current period. If you are already paying monthly, this is
+ * 50% off next month, not a refund of this month.
  */
 export async function giftReferrerMonthOff(referredUserId: string, interval: string): Promise<void> {
   if (interval !== "month") return;
@@ -87,5 +91,38 @@ export async function giftReferrerMonthOff(referredUserId: string, interval: str
     `;
   } catch {
     /* column missing on a stale host — Polar already has the discount */
+  }
+}
+
+/** Referrer just subscribed monthly — apply any pending 50% from friends who already paid. */
+export async function giftReferrerPendingDiscounts(
+  referrerUserId: string,
+  interval: string,
+  subscriptionId: string,
+): Promise<void> {
+  if (interval !== "month" || !isRealPolarSubscriptionId(subscriptionId)) return;
+  try {
+    const sql = await getSql();
+    const pending = await sql<{ referred_user_id: string }>`
+      select rr.referred_user_id
+      from referral_redemptions rr
+      join entitlements e on e.user_id = rr.referred_user_id
+      where rr.referrer_user_id = ${referrerUserId}
+        and rr.subscribe_discount_at is null
+        and e.paid = true
+      limit 8
+    `;
+    if (!pending.length) return;
+    const discountId = await ensureReferralDiscountId();
+    if (!discountId) return;
+    const ok = await applyPolarSubscriptionDiscount(subscriptionId, discountId);
+    if (!ok) return;
+    await sql`
+      update referral_redemptions
+      set subscribe_discount_at = now()
+      where referrer_user_id = ${referrerUserId} and subscribe_discount_at is null
+    `;
+  } catch {
+    /* ignore — grant already succeeded */
   }
 }

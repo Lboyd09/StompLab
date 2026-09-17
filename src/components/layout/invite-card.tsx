@@ -5,7 +5,9 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
+import { copyText } from "@/lib/clipboard";
+import { inviteUrl, REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
+import { PRICE_YEARLY_USD } from "@/lib/plan";
 import { getMyReferral, redeemReferral } from "@/lib/referrals";
 import { usePlan } from "@/lib/use-plan";
 import { cn } from "@/lib/utils";
@@ -27,9 +29,11 @@ export function InviteCard({
   const [redeemInput, setRedeemInput] = useState("");
   const [busy, setBusy] = useState(false);
   const [note, setNote] = useState("");
+  const [origin, setOrigin] = useState("");
 
   useEffect(() => {
     setReady(true);
+    setOrigin(window.location.origin);
   }, []);
 
   useEffect(() => {
@@ -49,22 +53,17 @@ export function InviteCard({
   }, [user]);
 
   const showCode = ready && !isPending && Boolean(user);
-
-  function inviteUrl(value: string) {
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    return `${origin}/login?ref=${encodeURIComponent(value)}`;
-  }
+  const url = code && origin ? inviteUrl(origin, code) : "";
 
   async function copyLink() {
-    if (!code) return;
-    const url = inviteUrl(code);
-    try {
-      await navigator.clipboard.writeText(url);
+    if (!url) return;
+    const ok = await copyText(url);
+    if (ok) {
       setCopied(true);
-      toast.success("Invite link copied.");
+      toast.success("Invite link copied. They land on Create account.");
       window.setTimeout(() => setCopied(false), 1600);
-    } catch {
-      toast.message(url);
+    } else {
+      toast.message("Select the link and copy it (Ctrl+C / Cmd+C).");
     }
   }
 
@@ -93,7 +92,7 @@ export function InviteCard({
   return (
     <section
       className={cn(
-        "relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6",
+        "relative overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6 sl-card",
         className,
       )}
     >
@@ -108,12 +107,13 @@ export function InviteCard({
             Bring a friend
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Share a link. They create a new account — you both get {REFERRAL_BONUS} extra custom
-            builds. Cap {cap} friends.
+            Send the link. They create a <span className="text-foreground">new</span> account — you both get{" "}
+            {REFERRAL_BONUS} extra custom builds. Cap {cap} friends.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Already subscribed? Their first monthly invoice is {REFERRAL_SUBSCRIBE_PERCENT}% off. If you pay
-            monthly too, so is your next one. Yearly stays full price.
+            Already subscribed monthly? When they start a monthly plan, their first invoice is{" "}
+            {REFERRAL_SUBSCRIBE_PERCENT}% off — and your <span className="text-foreground">next</span> invoice is too.
+            Polar will not refund the month you already paid. Yearly stays ${PRICE_YEARLY_USD}.
           </p>
         </div>
       </div>
@@ -121,23 +121,37 @@ export function InviteCard({
       {!showCode ? (
         <div className="mt-5">
           <Button asChild>
-            <Link to="/login" search={{ next: "/account" }}>
-              Sign in for your invite link
+            <Link to="/login" search={{ next: "/account", mode: "up" }}>
+              Create an account for your invite link
             </Link>
           </Button>
         </div>
       ) : (
         <div className="mt-5 space-y-3">
           {code ? (
-            <div className="flex flex-wrap items-center gap-2">
-              <code className="rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em] text-foreground">
-                {code}
-              </code>
-              <Button type="button" variant="secondary" onClick={() => void copyLink()}>
-                {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
-                {copied ? "Copied" : "Copy invite link"}
-              </Button>
-            </div>
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <code className="rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em] text-foreground">
+                  {code}
+                </code>
+                <Button type="button" variant="secondary" onClick={() => void copyLink()}>
+                  {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
+                  {copied ? "Copied" : "Copy invite link"}
+                </Button>
+              </div>
+              {url ? (
+                <Input
+                  readOnly
+                  value={url}
+                  onFocus={(e) => e.currentTarget.select()}
+                  aria-label="Invite link"
+                  className="font-mono text-xs"
+                />
+              ) : null}
+              <p className="text-xs text-muted-foreground">
+                The link opens Create account — not Sign in. On Windows, click the box and Ctrl+C if Copy is blocked.
+              </p>
+            </>
           ) : (
             <p className="text-sm text-muted-foreground">Invite codes need the database.</p>
           )}

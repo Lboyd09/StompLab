@@ -18,6 +18,7 @@ import { Route as EquivalentsRouteImport } from './routes/equivalents'
 import { Route as GearRouteImport } from './routes/gear'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as HistoryRouteImport } from './routes/history'
+import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
@@ -73,6 +74,11 @@ const GuideRoute = GuideRouteImport.update({
 const HistoryRoute = HistoryRouteImport.update({
   id: '/history',
   path: '/history',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const JoinRoute = JoinRouteImport.update({
+  id: '/join',
+  path: '/join',
   getParentRoute: () => rootRouteImport,
 } as any)
 const LoginRoute = LoginRouteImport.update({
@@ -141,6 +147,7 @@ export interface FileRoutesByFullPath {
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -163,6 +170,7 @@ export interface FileRoutesByTo {
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -186,6 +194,7 @@ export interface FileRoutesById {
   '/gear': typeof GearRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
+  '/join': typeof JoinRoute
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
@@ -210,6 +219,7 @@ export interface FileRouteTypes {
     | '/gear'
     | '/guide'
     | '/history'
+    | '/join'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -232,6 +242,7 @@ export interface FileRouteTypes {
     | '/gear'
     | '/guide'
     | '/history'
+    | '/join'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -254,6 +265,7 @@ export interface FileRouteTypes {
     | '/gear'
     | '/guide'
     | '/history'
+    | '/join'
     | '/login'
     | '/privacy'
     | '/reset-password'
@@ -277,6 +289,7 @@ export interface RootRouteChildren {
   GearRoute: typeof GearRoute
   GuideRoute: typeof GuideRoute
   HistoryRoute: typeof HistoryRoute
+  JoinRoute: typeof JoinRoute
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
@@ -353,6 +366,13 @@ declare module '@tanstack/react-router' {
       path: '/history'
       fullPath: '/history'
       preLoaderRoute: typeof HistoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/join': {
+      id: '/join'
+      path: '/join'
+      fullPath: '/join'
+      preLoaderRoute: typeof JoinRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/login': {
@@ -445,6 +465,7 @@ const rootRouteChildren: RootRouteChildren = {
   GearRoute: GearRoute,
   GuideRoute: GuideRoute,
   HistoryRoute: HistoryRoute,
+  JoinRoute: JoinRoute,
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,

@@ -4,7 +4,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache, siblingUserIds } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { isAdminEmail, normalizeEmail } from "@/lib/plan";
-import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
+import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode, canonicalEmail } from "@/lib/referral-code";
 import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
 export { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
@@ -104,7 +104,7 @@ export const redeemReferral = createServerFn({ method: "POST" })
       if (ids.includes(referrerId)) return { ok: false, error: "You can't invite yourself." };
 
       const refEmail = await emailFor(referrerId, null);
-      if (refEmail && email && normalizeEmail(refEmail) === normalizeEmail(email)) {
+      if (refEmail && email && canonicalEmail(refEmail) === canonicalEmail(email)) {
         return { ok: false, error: "You can't invite yourself." };
       }
 

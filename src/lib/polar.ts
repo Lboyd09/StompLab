@@ -41,6 +41,7 @@ export function polarReferralDiscountId(): string {
 }
 
 export const REFERRAL_DISCOUNT_NAME = "Stomp Lab invite 50% month";
+export const REFERRAL_DISCOUNT_CODE = "FRIEND50";
 
 export function polarSetup() {
   const token = Boolean(polarToken());
@@ -769,6 +770,8 @@ function polarListDiscounts(raw: unknown): Record<string, unknown>[] {
 
 function discountLooksLikeReferral(item: Record<string, unknown>): boolean {
   const name = String(item.name ?? "").toLowerCase();
+  const code = String(item.code ?? "").toUpperCase();
+  if (code === REFERRAL_DISCOUNT_CODE) return true;
   if (name.includes("invite") && (name.includes("50") || name.includes("month"))) return true;
   const meta = item.metadata;
   if (meta && typeof meta === "object" && String((meta as { stomplab?: string }).stomplab ?? "") === "referral_month") {
@@ -804,6 +807,7 @@ async function lookupOrCreateReferralDiscount(): Promise<string> {
   const base: Record<string, unknown> = {
     name: REFERRAL_DISCOUNT_NAME,
     duration: "once",
+    code: REFERRAL_DISCOUNT_CODE,
     metadata: { stomplab: "referral_month" },
   };
   if (monthly) base.products = [monthly];
@@ -856,15 +860,55 @@ export async function applyPolarSubscriptionDiscount(
   const sub = subscriptionId.trim();
   const disc = discountId.trim();
   if (!token || !sub || !disc) return false;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  const bodies: Record<string, unknown>[] = [
+    { discount_id: disc },
+    { discount_id: disc, proration_behavior: "none" },
+    { discount_id: disc, proration_behavior: "next_period" },
+  ];
+  for (const body of bodies) {
+    try {
+      const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return true;
+    } catch {
+      /* try next shape */
+    }
+  }
+  return false;
+}
+
+/** Best-effort Polar cancel when someone deletes their Lab account. */
+export async function cancelPolarSubscription(subscriptionId: string): Promise<boolean> {
+  const token = polarToken();
+  const sub = subscriptionId.trim();
+  if (!token || !sub) return false;
+  const headers = {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
   try {
     const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
       method: "PATCH",
-      headers: {
-        Authorization: `Bearer ${token}`,
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      },
-      body: JSON.stringify({ discount_id: disc }),
+      headers,
+      body: JSON.stringify({ cancel_at_period_end: true }),
+    });
+    if (res.ok) return true;
+  } catch {
+    /* try revoke */
+  }
+  try {
+    const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}/revoke`, {
+      method: "POST",
+      headers,
     });
     return res.ok;
   } catch {

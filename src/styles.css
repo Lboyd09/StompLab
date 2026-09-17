@@ -78,6 +78,11 @@ html.dark {
     font-family: var(--font-sans);
     overscroll-behavior: none;
   }
+  button:not(:disabled),
+  [role="button"]:not(:disabled) {
+    cursor: pointer;
+  }
+}
   input,
   select,
   textarea {
@@ -214,6 +219,46 @@ html.dark {
   width: 100%;
   height: 3px;
   background: linear-gradient(90deg, var(--color-pop), var(--color-primary));
+}
+
+.sl-btn-sheen {
+  position: relative;
+  overflow: hidden;
+}
+.sl-btn-sheen::after {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  background: linear-gradient(90deg, transparent, color-mix(in oklab, white 28%, transparent), transparent);
+  transform: translateX(-120%);
+  animation: sl-sheen 4.8s var(--ease-out) infinite;
+  pointer-events: none;
+}
+
+@keyframes sl-sheen {
+  0%, 55% { transform: translateX(-120%); }
+  75%, 100% { transform: translateX(320%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sl-enter,
+  .sl-stagger > *,
+  .sl-btn-sheen::after {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+    filter: none !important;
+  }
+}
+
+.sl-menu {
+  animation: sl-menu-in 160ms var(--ease-out);
+  transform-origin: top center;
+}
+@keyframes sl-menu-in {
+  from { opacity: 0; transform: translateY(-6px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .hx-chassis {

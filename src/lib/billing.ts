@@ -24,7 +24,7 @@ import {
   fetchPolarAdminStats,
   ensureReferralDiscountId,
 } from "./polar";
-import { referredUserGetsMonthOff, giftReferrerMonthOff } from "./referral-subscribe";
+import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { mailerConfigured } from "./mailer";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
@@ -509,6 +509,11 @@ export async function grantPaid(opts: {
     await giftReferrerMonthOff(opts.userId, interval);
   } catch {
     /* invite month-off is extra — never block a paid grant */
+  }
+  try {
+    if (subId) await giftReferrerPendingDiscounts(opts.userId, interval, subId);
+  } catch {
+    /* same */
   }
 }
 

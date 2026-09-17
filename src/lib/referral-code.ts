@@ -8,6 +8,30 @@ export function normalizeReferralCode(raw: string) {
   return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
 }
 
+/** Gmail dots and +tags don't make a second person. */
+export function canonicalEmail(email: string | null | undefined): string {
+  const raw = (email ?? "").trim().toLowerCase();
+  const at = raw.lastIndexOf("@");
+  if (at < 1) return raw;
+  let local = raw.slice(0, at);
+  let domain = raw.slice(at + 1);
+  if (domain === "googlemail.com") domain = "gmail.com";
+  if (domain === "gmail.com") {
+    local = local.split("+")[0]?.replace(/\./g, "") ?? local;
+  }
+  return `${local}@${domain}`;
+}
+
+export function invitePath(code: string) {
+  const c = normalizeReferralCode(code);
+  return c ? `/join?ref=${encodeURIComponent(c)}` : "/join";
+}
+
+export function inviteUrl(origin: string, code: string) {
+  const base = origin.replace(/\/$/, "");
+  return `${base}${invitePath(code)}`;
+}
+
 export function captureReferralCode(raw?: string | null) {
   if (typeof window === "undefined") return;
   const code = normalizeReferralCode(raw ?? "");

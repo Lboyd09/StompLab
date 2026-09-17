@@ -1,10 +1,10 @@
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
-export const LEGAL_VERSION = "2026-09-16";
+export const LEGAL_VERSION = "2026-09-17";
 export const TERMS_PATH = "/terms";
 export const PRIVACY_PATH = "/privacy";
-export const LEGAL_EFFECTIVE = "September 16, 2026";
+export const LEGAL_EFFECTIVE = "September 17, 2026";
 
 export function legalAcceptKey() {
   return `stomplab.legal.${LEGAL_VERSION}`;
@@ -40,6 +40,7 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     body: [
       "You must be 13 or older. If you are under 18, a parent or guardian agrees to these terms.",
       "One email is one account. You are responsible for that password.",
+      "You can delete the account from Account. That erases your Lab data (presets, locker, invites, history). We ask Polar to cancel any subscription so you are not billed again. Cached song research that other people already used is not a personal record and may stay.",
       "We may close an account that abuses research, scrapes the catalog, or tries to game invites. Email " +
         PUBLIC_SUPPORT_EMAIL +
         " if you think that was a mistake.",
@@ -67,7 +68,7 @@ export const TERMS_SECTIONS: { id: string; title: string; body: string[] }[] = [
     id: "referrals",
     title: "5. Invites",
     body: [
-      "You can invite a friend with a personal code. Each of you gets 3 extra custom builds when the invite is used, up to 15 friends. If you have an active subscription and that friend starts a monthly plan, you both get 50% off one month — their first monthly invoice and your next monthly invoice. Yearly plans stay full price. Polar is the merchant of record for those discounted invoices.",
+      "If you have an active monthly subscription and that friend starts a monthly plan, Polar applies 50% off their first monthly invoice and 50% off your next monthly invoice. Polar does not refund a month you already paid. Yearly plans stay full price. Polar is the merchant of record for those discounted invoices.",
       "Invites only work on a new account, in the first 48 hours, before that account has researched a custom song. You cannot invite yourself, a second account on the same email, or recycle codes. We may void bonus builds or discounts that look like abuse.",
     ],
   },

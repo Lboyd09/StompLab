@@ -816,5 +816,29 @@ describe("silent snapshot fix", () => {
       }
     }
   });
+
+  it("keeps snapshot controllers on every demo snapshot so snap 2 is not silent", () => {
+    for (const id of DEMO_IDS) {
+      const hlx = buildHlx(featured(id));
+      const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+      const snap0 = tone.snapshot0 as {
+        controllers?: { dsp0?: Record<string, Record<string, { "@value": number | boolean }>> };
+      };
+      const base = snap0.controllers?.dsp0 ?? {};
+      for (let i = 1; i < 3; i++) {
+        const snap = tone[`snapshot${i}`] as typeof snap0;
+        const ctl = snap.controllers?.dsp0 ?? {};
+        for (const [blockKey, params] of Object.entries(base)) {
+          for (const name of Object.keys(params)) {
+            const v = ctl[blockKey]?.[name]?.["@value"];
+            assert.notEqual(v, undefined, `${id} snapshot${i} missing ${blockKey}.${name}`);
+            if (typeof v === "number" && /Level|ChVol|Output|Master|Volume/i.test(name)) {
+              assert.ok(v > 0.05, `${id} snapshot${i} ${blockKey}.${name}=${v}`);
+            }
+          }
+        }
+      }
+    }
+  });
 });
 

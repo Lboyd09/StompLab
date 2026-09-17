@@ -1,12 +1,16 @@
 import { createFileRoute, Link, Navigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { PageHeader } from "@/components/layout/page-header";
 import { InviteCard } from "@/components/layout/invite-card";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
 import { openCustomerPortal } from "@/lib/billing";
+import { requestResetMail } from "@/lib/reset-mail";
+import { deleteMyAccount } from "@/lib/account-delete";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
 import { usePlan } from "@/lib/use-plan";
@@ -20,6 +24,8 @@ function AccountPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
@@ -42,12 +48,9 @@ function AccountPage() {
     }
     setBusy(true);
     try {
-      const { error: err } = await authClient.requestPasswordReset({
-        email,
-        redirectTo: "/reset-password",
-      });
-      if (err) {
-        setError(err.message || "Could not send the reset email.");
+      const res = await requestResetMail({ data: { email } });
+      if (!res.ok) {
+        setError(res.error);
         return;
       }
       setMessage(`Check ${email} for a reset link. It expires in ${RESET_TOKEN_MINUTES} minutes.`);
@@ -183,6 +186,49 @@ function AccountPage() {
           </Link>
           .
         </p>
+      </section>
+
+      <section className="space-y-3 rounded-xl border border-destructive/30 bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Delete account</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          This erases your Lab account, presets, locker, invites, and build history. If you subscribe,
+          we ask Polar to cancel so you are not billed again. Type DELETE to confirm.
+        </p>
+        <div className="space-y-1.5">
+          <Label htmlFor="delete-confirm">Type DELETE</Label>
+          <Input
+            id="delete-confirm"
+            value={deleteConfirm}
+            onChange={(e) => setDeleteConfirm(e.target.value)}
+            autoComplete="off"
+            placeholder="DELETE"
+          />
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={deleteBusy || deleteConfirm !== "DELETE"}
+          onClick={() => {
+            setError("");
+            setMessage("");
+            setDeleteBusy(true);
+            void deleteMyAccount({ data: { confirm: "DELETE" } })
+              .then(async (res) => {
+                if (!res?.ok) {
+                  setError("Could not delete the account. Email support if it keeps happening.");
+                  return;
+                }
+                await signOut().catch(() => undefined);
+                window.location.assign("/");
+              })
+              .catch((err) => {
+                setError(err instanceof Error ? err.message : "Could not delete the account.");
+              })
+              .finally(() => setDeleteBusy(false));
+          }}
+        >
+          {deleteBusy ? "Deleting…" : "Delete my account"}
+        </Button>
       </section>
     </div>
   );

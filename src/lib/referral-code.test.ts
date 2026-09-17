@@ -1,6 +1,14 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { normalizeReferralCode, REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT } from "./referral-code.ts";
+import {
+  canonicalEmail,
+  invitePath,
+  inviteUrl,
+  normalizeReferralCode,
+  REFERRAL_BONUS,
+  REFERRAL_CAP,
+  REFERRAL_SUBSCRIBE_PERCENT,
+} from "./referral-code.ts";
 
 describe("referral codes", () => {
   it("normalizes and caps bonus math", () => {
@@ -9,5 +17,16 @@ describe("referral codes", () => {
     assert.equal(REFERRAL_BONUS, 3);
     assert.equal(REFERRAL_CAP, 15);
     assert.equal(REFERRAL_SUBSCRIBE_PERCENT, 50);
+  });
+
+  it("opens Create account, not Sign in", () => {
+    assert.equal(invitePath("ab12cd"), "/join?ref=AB12CD");
+    assert.equal(inviteUrl("https://stomplab.app", "ab12cd"), "https://stomplab.app/join?ref=AB12CD");
+  });
+
+  it("treats gmail aliases as the same person", () => {
+    assert.equal(canonicalEmail("Liam.Boyd+lab@gmail.com"), "liamboyd@gmail.com");
+    assert.equal(canonicalEmail("liamboyd@googlemail.com"), "liamboyd@gmail.com");
+    assert.equal(canonicalEmail("a@icloud.com"), "a@icloud.com");
   });
 });
