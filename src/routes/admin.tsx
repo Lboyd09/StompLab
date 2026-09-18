@@ -92,7 +92,7 @@ function AdminPage() {
     return (
       <div className="space-y-3">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
-        <h1 className="font-display text-2xl font-semibold uppercase">Admin</h1>
+        <h1 className="sl-hero-title text-3xl">Admin</h1>
         <p className="text-sm text-muted-foreground">
           Sign-in is taking longer than usual. This page still opens once the session lands — wait, or
           sign in again.
@@ -163,7 +163,7 @@ function AdminPage() {
     <div className="space-y-10">
       <header className="space-y-1">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Admin</h1>
+        <h1 className="sl-hero-title text-4xl">Admin</h1>
         <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
         <Button
           type="button"

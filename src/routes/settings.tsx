@@ -342,7 +342,7 @@ function SettingsPage() {
 
       {!plan.paid && !plan.admin && !accountPending ? (
         <section className="space-y-3 rounded-2xl bg-primary p-5 text-primary-foreground">
-          <h2 className="font-display text-lg font-semibold uppercase tracking-tight">Unlock every song</h2>
+          <h2 className="sl-hero-title text-2xl">Unlock every song</h2>
           <p className="text-sm text-primary-foreground/80">
             {FREE_BUILDS} custom builds after sign-in, then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
             {formatUsd(PRICE_YEARLY_USD)}/yr. Demos stay free.

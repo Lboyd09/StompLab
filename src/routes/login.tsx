@@ -257,13 +257,13 @@ function LoginPage() {
   }
 
   return (
-    <main className="relative grid min-h-dvh place-items-center overflow-x-clip bg-background px-4 py-10 text-foreground">
+    <main className="relative grid min-h-dvh place-items-center overflow-x-clip bg-background px-5 py-14 text-foreground">
       <PageWash />
-      <div className="relative z-10 w-full max-w-sm space-y-6">
+      <div className="relative z-10 w-full max-w-md space-y-8">
         <div className="space-y-4">
           <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
             <Mark size="md" />
-            <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
+            <span className="text-[15px] font-semibold tracking-[-0.02em]">Stomp Lab</span>
           </a>
           <div className="space-y-2">
             <p className="sl-kicker">
@@ -275,7 +275,7 @@ function LoginPage() {
                     ? "Join the Lab"
                     : "Account"}
             </p>
-            <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
+            <h1 className="sl-hero-title text-[clamp(2.6rem,8vw,3.6rem)]">
               {mode === "in" ? "Sign in" : mode === "up" ? "Create account" : "Reset password"}
             </h1>
             <p className="text-sm leading-relaxed text-muted-foreground">

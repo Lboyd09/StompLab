@@ -28,14 +28,12 @@ export function Mark({
   );
 }
 
-/** Header lockup — cream SL sticker plus Stomp Lab. The tile is the app icon. */
+/** Header lockup — cream SL sticker plus mixed-case wordmark. */
 export function BrandLockup({ className }: { className?: string }) {
   return (
-    <span className={cn("flex min-w-0 items-center gap-2", className)}>
+    <span className={cn("flex min-w-0 items-center gap-2.5", className)}>
       <Mark size="sm" />
-      <span className="truncate font-display text-sm font-semibold uppercase tracking-[0.16em] sm:text-base sm:tracking-[0.2em]">
-        Stomp Lab
-      </span>
+      <span className="truncate text-[15px] font-semibold tracking-[-0.02em] sm:text-base">Stomp Lab</span>
     </span>
   );
 }

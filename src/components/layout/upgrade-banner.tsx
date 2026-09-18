@@ -15,7 +15,7 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
       className="flex flex-col items-stretch gap-3 rounded-2xl bg-primary px-5 py-5 text-primary-foreground transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90 sm:flex-row sm:items-center sm:justify-between sm:gap-4"
     >
       <span className="min-w-0">
-        <span className="block font-display text-lg font-semibold uppercase leading-none tracking-tight">
+        <span className="block sl-hero-title text-2xl">
           Subscribe — {formatUsd(priceMonthlyLaunchUsd())} first month
         </span>
         <span className="mt-1.5 block text-sm text-primary-foreground/75">

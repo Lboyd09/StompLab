@@ -9,7 +9,7 @@ function TermsPage() {
     <div className="mx-auto max-w-2xl space-y-10 pb-16">
       <header className="space-y-3">
         <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">Stomp Lab</p>
-        <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">Terms of use</h1>
+        <h1 className="sl-hero-title text-[clamp(2.4rem,7vw,3.4rem)]">Terms of use</h1>
         <p className="text-sm text-muted-foreground">
           Version {LEGAL_VERSION}. Effective {LEGAL_EFFECTIVE}. Checking the box on sign-up or subscribe is your
           signature under the ESIGN Act.

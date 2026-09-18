@@ -298,7 +298,7 @@ function Home() {
         <div className="flex items-end justify-between gap-4">
           <div className="space-y-1">
             <p className="sl-kicker">Always free</p>
-            <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">Demos</h2>
+            <h2 className="sl-hero-title text-3xl">Demos</h2>
           </div>
           <span className="text-xs text-muted-foreground">One tap. Download included.</span>
         </div>
@@ -316,9 +316,7 @@ function Home() {
               className="sl-card group rounded-2xl border border-border bg-card p-6 text-left"
             >
               <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
-              <div className="mt-2 font-display text-2xl font-semibold uppercase leading-none tracking-tight">
-                {p.song}
-              </div>
+              <div className="mt-2 sl-hero-title text-2xl">{p.song}</div>
               <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
               <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
                 Open on Stomp
@@ -335,9 +333,7 @@ function Home() {
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
-            <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">
-              Type any song
-            </h2>
+            <h2 className="sl-hero-title text-3xl">Type any song</h2>
             <p className="max-w-md text-sm text-primary-foreground/80">
               The three demos are free. After that, {formatUsd(priceMonthlyLaunchUsd())} the first month — then{" "}
               {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. 50 custom builds a month.
@@ -355,7 +351,7 @@ function Home() {
           <div className="flex items-end justify-between gap-4">
             <div className="space-y-1">
               <p className="sl-kicker">Known rigs</p>
-              <h2 className="font-display text-3xl font-semibold uppercase leading-none tracking-tight">More songs</h2>
+              <h2 className="sl-hero-title text-3xl">More songs</h2>
             </div>
             <span className="text-xs text-muted-foreground">
               {subscribed ? `${instrument} · replica` : "Subscribe to open"}
@@ -378,9 +374,7 @@ function Home() {
                     <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
                     {locked ? <Lock className="size-3.5 text-muted-foreground" /> : null}
                   </div>
-                  <div className="mt-2 font-display text-xl font-semibold uppercase leading-none tracking-tight">
-                    {p.song}
-                  </div>
+                  <div className="mt-2 sl-hero-title text-xl">{p.song}</div>
                   <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
                   <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
                     {locked ? "Subscribe to open" : "View replica"}

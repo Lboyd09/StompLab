@@ -186,7 +186,7 @@ function UpgradePage() {
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
-          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">You're subscribed</h1>
+          <h1 className="sl-hero-title text-[clamp(2.4rem,7vw,3.2rem)]">You're subscribed</h1>
           <p className="text-sm text-muted-foreground">
             {buildsUsedCopy(plan)}
             {plan.planInterval ? ` ${plan.planInterval === "year" ? "Yearly" : "Monthly"} plan.` : ""}
@@ -204,9 +204,7 @@ function UpgradePage() {
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
-          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">
-            Admin — Polar is linked
-          </h1>
+          <h1 className="sl-hero-title text-[clamp(2.2rem,6vw,3rem)]">Admin — Polar is linked</h1>
           <p className="text-sm text-muted-foreground">
             This inbox already has a Polar subscription for testing. Cancel or manage it from Account.
           </p>
@@ -232,13 +230,11 @@ function UpgradePage() {
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
           <Mark size="lg" />
           <div className="space-y-3">
-            <Link to="/" className="inline-flex font-display text-sm font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+            <Link to="/" className="inline-flex text-sm font-semibold tracking-[-0.02em] text-muted-foreground">
               Stomp Lab
             </Link>
             <p className="sl-kicker">Research any song</p>
-            <h1 className="font-display text-6xl font-semibold uppercase leading-[0.86] tracking-tight md:text-7xl">
-              Subscribe
-            </h1>
+            <h1 className="sl-hero-title text-[clamp(2.8rem,8vw,4.4rem)]">Subscribe</h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
               Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
               Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.
@@ -390,7 +386,7 @@ function PlanCard({
           </span>
         ) : null}
       </div>
-      <p className="mt-3 font-display text-5xl font-semibold tabular-nums">
+      <p className="mt-3 sl-hero-title text-5xl tabular-nums">
         {formatUsd(price)}
         <span className="ml-1 text-base font-normal text-muted-foreground">{period}</span>
       </p>

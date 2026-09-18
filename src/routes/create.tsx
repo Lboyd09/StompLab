@@ -132,7 +132,7 @@ function CreatePage() {
   if (!plan.canCreate) {
     return (
       <div className="mx-auto max-w-lg space-y-3 py-8">
-        <h1 className="font-display text-3xl font-semibold uppercase tracking-tight">This month’s builds are used</h1>
+        <h1 className="sl-hero-title text-[clamp(2rem,6vw,2.8rem)]">This month’s builds are used</h1>
         <p className="text-sm text-muted-foreground">
           Your subscription stays active. Custom research opens again at the start of next month. Demos
           never count.

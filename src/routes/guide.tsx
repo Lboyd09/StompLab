@@ -102,7 +102,7 @@ function GuidePage() {
         <p>
           Every signed-in account gets a link. When a friend creates a <em>new</em> account with it
           (first 48 hours, before they research a custom song), you both get 3 extra custom builds.
-          Cap 15 friends. The Lab, Account, Settings, and Upgrade all show the same invite. A link
+          Cap 3 friends. The Lab, Account, Settings, and Upgrade all show the same invite. A link
           lives in the header too.
         </p>
         <p>
@@ -212,7 +212,7 @@ function GuidePage() {
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-      <h2 className="font-display text-lg font-semibold text-foreground">{title}</h2>
+      <h2 className="sl-hero-title text-2xl text-foreground">{title}</h2>
       {children}
     </section>
   );

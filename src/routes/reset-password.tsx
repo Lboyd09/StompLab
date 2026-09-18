@@ -67,12 +67,10 @@ function ResetPasswordPage() {
       <div className="w-full max-w-sm space-y-6">
         <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
           <Mark size="md" />
-          <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
+          <span className="text-[15px] font-semibold tracking-[-0.02em]">Stomp Lab</span>
         </a>
         <div className="space-y-2">
-          <h1 className="font-display text-5xl font-semibold uppercase leading-[0.88] tracking-tight">
-            New password
-          </h1>
+          <h1 className="sl-hero-title text-[clamp(2.4rem,8vw,3.4rem)]">New password</h1>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {done
               ? "Password updated. Sign in with the new one. Other devices were signed out."

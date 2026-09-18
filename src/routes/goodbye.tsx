@@ -53,7 +53,7 @@ function GoodbyePage() {
       <div className="relative z-10 w-full max-w-md space-y-6">
         <a href="/" className="inline-flex items-center gap-3" aria-label="Stomp Lab">
           <Mark size="md" />
-          <span className="font-display text-base font-semibold uppercase tracking-[0.2em]">Stomp Lab</span>
+          <span className="text-[15px] font-semibold tracking-[-0.02em]">Stomp Lab</span>
         </a>
         <p className="sl-kicker">Account</p>
         <h1 className="sl-hero-title text-4xl sm:text-5xl">

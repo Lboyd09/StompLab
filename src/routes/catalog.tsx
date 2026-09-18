@@ -230,7 +230,7 @@ function CatalogPage() {
               return (
                 <article
                   key={m.id}
-                  className="sl-card rounded-xl border border-border bg-card p-4"
+                  className="sl-card rounded-2xl border border-border bg-card p-5"
                 >
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full" style={{ background: c.lcd }} />

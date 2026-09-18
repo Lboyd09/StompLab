@@ -104,9 +104,7 @@ export function InviteCard({
         </span>
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="sl-kicker">Invite</p>
-          <h2 className="font-display text-2xl font-semibold uppercase leading-none tracking-tight">
-            Bring a friend
-          </h2>
+          <h2 className="sl-hero-title text-2xl">Bring a friend</h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             You both get {REFERRAL_BONUS} extra custom song builds when they create a{" "}
             <span className="text-foreground">new</span> account from your link. Cap is {cap} friends.
