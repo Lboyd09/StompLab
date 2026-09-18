@@ -175,7 +175,7 @@ export function Tutorial({
 
   return (
     <div
-      className="sl-tour fixed inset-0 z-[70] flex flex-col bg-background text-foreground"
+      className="sl-tour fixed inset-0 z-[80] flex flex-col bg-background text-foreground"
       role="dialog"
       aria-modal="true"
       aria-labelledby="tutorial-title"
@@ -189,7 +189,7 @@ export function Tutorial({
         </div>
         <button
           type="button"
-          className="min-h-11 text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+          className="min-h-11 shrink-0 whitespace-nowrap text-sm text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
           onClick={finish}
         >
           Skip

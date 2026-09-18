@@ -167,8 +167,10 @@ html.sl-touring body {
   overflow: hidden;
 }
 
-html.sl-touring nav[class*="fixed"] {
-  visibility: hidden;
+html.sl-touring header,
+html.sl-touring main,
+html.sl-touring nav {
+  visibility: hidden !important;
 }
 
 .sl-enter {
