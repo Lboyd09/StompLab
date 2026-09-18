@@ -146,6 +146,31 @@ html.dark {
   color: var(--color-pop);
 }
 
+.sl-hero-title {
+  font-family: var(--font-sans);
+  font-weight: 600;
+  letter-spacing: -0.045em;
+  line-height: 0.92;
+  text-wrap: balance;
+}
+
+.sl-tour {
+  background: var(--color-background);
+}
+
+.sl-tour-step {
+  animation: sl-enter 700ms var(--ease-out);
+}
+
+html.sl-touring,
+html.sl-touring body {
+  overflow: hidden;
+}
+
+html.sl-touring nav[class*="fixed"] {
+  visibility: hidden;
+}
+
 .sl-enter {
   opacity: 0;
   transform: translateY(12px);
@@ -240,7 +265,8 @@ html.dark {
   .sl-enter,
   .sl-stagger > *,
   .sl-btn-sheen::after,
-  .sl-menu {
+  .sl-menu,
+  .sl-tour-step {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;

@@ -1,4 +1,4 @@
-import { createFileRoute, Navigate } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,9 +12,10 @@ import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
-import { captureReferralCode, peekReferralCode, clearReferralCode } from "@/lib/referral-code";
+import { captureReferralCode, peekReferralCode, clearReferralCode, rememberInviteResult } from "@/lib/referral-code";
 import { redeemReferral } from "@/lib/referrals";
 import { requestResetMail } from "@/lib/reset-mail";
+import { checkEmailHold } from "@/lib/closed-accounts";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string; mode?: string } => ({
@@ -33,6 +34,9 @@ function friendlyAuthError(raw: string, mode: "in" | "up"): string {
   }
   if (m.includes("already exists") || m.includes("user already")) {
     return "That email already has an account. Sign in instead.";
+  }
+  if (m.includes("14-day") || m.includes("deleted account") || m.includes("hold after a delete")) {
+    return raw;
   }
   if (m.includes("invalid email or password") || m.includes("invalid password") || m.includes("credential")) {
     return "Email or password didn't match. Use the same email you signed up with — creating a second account starts over.";
@@ -96,15 +100,29 @@ function LoginPage() {
     }
   }
 
-  async function applyInviteIfAny() {
+  async function applyInviteIfAny(): Promise<void> {
     const code = invite.trim() || peekReferralCode();
     if (code.length < 4) return;
-    try {
-      await redeemReferral({ data: { code } });
-    } catch {
-      /* invite is optional — don't block sign-up */
+    let last = "Could not apply that invite.";
+    for (let i = 0; i < 5; i++) {
+      try {
+        const res = await redeemReferral({ data: { code } });
+        if (res.ok) {
+          rememberInviteResult({ ok: true, bonus: res.bonus });
+          clearReferralCode();
+          return;
+        }
+        last = res.error;
+        if (/already used|can't invite|maximum|48 hours|before you research|doesn't look right|no account uses/i.test(res.error)) {
+          rememberInviteResult({ ok: false, error: res.error });
+          return;
+        }
+      } catch (err) {
+        last = err instanceof Error ? err.message : last;
+      }
+      await new Promise((r) => window.setTimeout(r, 180 * (i + 1)));
     }
-    clearReferralCode();
+    rememberInviteResult({ ok: false, error: last });
   }
 
   async function goAfterAuth() {
@@ -115,8 +133,13 @@ function LoginPage() {
   }
 
   if (!isPending && user) {
-    if (checkoutId) return <Navigate to="/upgrade" search={{ checkout_id: checkoutId }} />;
-    return <Navigate to={next} />;
+    return (
+      <SignedInClaim
+        next={next}
+        checkoutId={checkoutId}
+        invite={invite || search.ref || peekReferralCode()}
+      />
+    );
   }
 
   async function onSubmit(e: React.FormEvent) {
@@ -162,6 +185,11 @@ function LoginPage() {
     }
     setBusy(true);
     try {
+      const hold = await checkEmailHold({ data: { email: trimmed } });
+      if (!hold.ok) {
+        setError(hold.error);
+        return;
+      }
       if (mode === "up") {
         const { error: err } = await authClient.signUp.email({
           email: trimmed,
@@ -255,8 +283,8 @@ function LoginPage() {
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
                 : mode === "up"
                   ? search.ref
-                    ? "This is Create account — not Sign in. You and your friend each get 3 extra custom builds after you join."
-                    : "Email and a password. A friend’s invite code gives you both 3 extra custom builds."
+                    ? "Your friend sent this link. Create a new account — you both get 3 extra custom builds. Then you're in."
+                    : "Email and a password. A friend’s invite code (optional) gives you both 3 extra custom builds."
                   : "Email and a password. Use the same address every time — a second account starts over."}
             </p>
           </div>
@@ -318,7 +346,7 @@ function LoginPage() {
                   maxLength={12}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional. You and your friend each get 3 extra custom builds.
+                  Optional. Paste the code or use your friend’s link. New account, first 48 hours, before you research a song. You both get 3 extra custom builds.
                 </p>
               </div>
             ) : null}
@@ -419,6 +447,66 @@ function LoginPage() {
           </a>
         </p>
       </div>
+    </main>
+  );
+}
+
+function SignedInClaim({
+  next,
+  checkoutId,
+  invite,
+}: {
+  next: string;
+  checkoutId?: string;
+  invite: string;
+}) {
+  useEffect(() => {
+    let cancelled = false;
+    async function run() {
+      const code = (invite || peekReferralCode()).trim();
+      if (code.length >= 4) {
+        let last = "";
+        for (let i = 0; i < 5; i++) {
+          try {
+            const res = await redeemReferral({ data: { code } });
+            if (cancelled) return;
+            if (res.ok) {
+              rememberInviteResult({ ok: true, bonus: res.bonus });
+              clearReferralCode();
+              break;
+            }
+            last = res.error;
+            if (/already used|can't invite|maximum|48 hours|before you research/i.test(res.error)) {
+              rememberInviteResult({ ok: false, error: res.error });
+              break;
+            }
+          } catch (err) {
+            last = err instanceof Error ? err.message : "Could not apply that invite.";
+          }
+          await new Promise((r) => window.setTimeout(r, 180 * (i + 1)));
+        }
+        if (last && !peekReferralCode()) {
+          /* already stored */
+        } else if (last) {
+          rememberInviteResult({ ok: false, error: last });
+        }
+      }
+      if (cancelled) return;
+      if (checkoutId) {
+        window.location.assign(`/upgrade?checkout_id=${encodeURIComponent(checkoutId)}`);
+        return;
+      }
+      window.location.assign(next || "/");
+    }
+    void run();
+    return () => {
+      cancelled = true;
+    };
+  }, [checkoutId, invite, next]);
+
+  return (
+    <main className="grid min-h-dvh place-items-center bg-background px-6 text-foreground">
+      <p className="text-sm text-muted-foreground">Applying your invite…</p>
     </main>
   );
 }

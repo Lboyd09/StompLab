@@ -8,11 +8,12 @@ import { InviteCard } from "@/components/layout/invite-card";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
-import { openCustomerPortal } from "@/lib/billing";
+import { openCustomerPortal, cancelMySubscription } from "@/lib/billing";
+import { requestAccountDelete } from "@/lib/account-delete";
+import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd, canceledCopy, subscriptionCanceled } from "@/lib/plan";
 import { requestResetMail } from "@/lib/reset-mail";
-import { deleteMyAccount } from "@/lib/account-delete";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd } from "@/lib/plan";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
+import { DELETE_HOLD_DAYS } from "@/lib/closed-accounts";
 import { usePlan } from "@/lib/use-plan";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
@@ -24,7 +25,9 @@ function AccountPage() {
   const [signingOut, setSigningOut] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
+  const [cancelBusy, setCancelBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteSent, setDeleteSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
@@ -97,6 +100,31 @@ function AccountPage() {
     }
   }
 
+  async function onCancelSubscription() {
+    setError("");
+    setMessage("");
+    setCancelBusy(true);
+    try {
+      const res = await cancelMySubscription();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      setMessage(
+        res.already
+          ? canceledCopy({ ...plan, currentPeriodEnd: res.periodEnd ?? plan.currentPeriodEnd, subscriptionStatus: "canceled" })
+          : `Canceled. You keep the Lab until ${res.periodEnd ? new Date(res.periodEnd).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }) : "the end of the period you already paid for"}. Polar will not charge again.`,
+      );
+      window.setTimeout(() => window.location.reload(), 600);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not cancel.");
+    } finally {
+      setCancelBusy(false);
+    }
+  }
+
+  const canceled = subscriptionCanceled(plan);
+
   return (
     <div className="mx-auto max-w-lg space-y-8">
       <PageHeader kicker="Account" title={user.displayName || "Your Lab"}>
@@ -105,9 +133,13 @@ function AccountPage() {
 
       <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Plan</h2>
+        {canceled ? (
+          <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-foreground">{canceledCopy(plan)}</p>
+        ) : null}
         {plan.admin ? (
           <p className="text-sm text-muted-foreground">
-            Admin — full Lab, no monthly build cap. Exact match: {user.primaryEmail}.
+            Admin test account — full Lab, no monthly build cap. Exact match: {user.primaryEmail}. Use Polar
+            below to test cancel and invites the same way a paying player would.
           </p>
         ) : plan.paid ? (
           <p className="text-sm text-muted-foreground">{buildsUsedCopy(plan)}</p>
@@ -122,10 +154,22 @@ function AccountPage() {
             </Button>
           </>
         )}
-        {plan.paid && !plan.admin ? (
-          <Button type="button" variant="secondary" disabled={portalBusy} onClick={() => void onManageSubscription()}>
-            {portalBusy ? "Opening Polar…" : "Manage subscription"}
+        {plan.admin && !plan.polarLinked ? (
+          <Button asChild variant="secondary">
+            <Link to="/upgrade">Subscribe with Polar (test cancel)</Link>
           </Button>
+        ) : null}
+        {plan.paid || plan.admin ? (
+          <div className="flex flex-wrap gap-3">
+            <Button type="button" variant="secondary" disabled={portalBusy} onClick={() => void onManageSubscription()}>
+              {portalBusy ? "Opening Polar…" : "Manage subscription"}
+            </Button>
+            {plan.polarLinked && !canceled ? (
+              <Button type="button" variant="outline" disabled={cancelBusy} onClick={() => void onCancelSubscription()}>
+                {cancelBusy ? "Canceling…" : "Cancel subscription"}
+              </Button>
+            ) : null}
+          </div>
         ) : null}
         {plan.admin ? (
           <Button asChild variant="secondary">
@@ -133,7 +177,8 @@ function AccountPage() {
           </Button>
         ) : null}
         <p className="text-xs text-muted-foreground">
-          Billing, card, and cancel live on Polar’s customer portal. Stomp Lab never sees your card.
+          Cancel here or on Polar’s customer portal. You keep paid access until the period you already paid for
+          ends. Stomp Lab never sees your card.
         </p>
       </section>
 
@@ -191,44 +236,54 @@ function AccountPage() {
       <section className="space-y-3 rounded-xl border border-destructive/30 bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Delete account</h2>
         <p className="text-sm leading-relaxed text-muted-foreground">
-          This erases your Lab account, presets, locker, invites, and build history. If you subscribe,
-          we ask Polar to cancel so you are not billed again. Type DELETE to confirm.
+          We email {user.primaryEmail || "this account"} a confirmation link first. After you click it, we keep
+          the records for {DELETE_HOLD_DAYS} days so this email cannot open a new free account, then we erase
+          them. Type DELETE, then send the email.
         </p>
-        <div className="space-y-1.5">
-          <Label htmlFor="delete-confirm">Type DELETE</Label>
-          <Input
-            id="delete-confirm"
-            value={deleteConfirm}
-            onChange={(e) => setDeleteConfirm(e.target.value)}
-            autoComplete="off"
-            placeholder="DELETE"
-          />
-        </div>
-        <Button
-          type="button"
-          variant="secondary"
-          disabled={deleteBusy || deleteConfirm !== "DELETE"}
-          onClick={() => {
-            setError("");
-            setMessage("");
-            setDeleteBusy(true);
-            void deleteMyAccount({ data: { confirm: "DELETE" } })
-              .then(async (res) => {
-                if (!res?.ok) {
-                  setError("Could not delete the account. Email support if it keeps happening.");
-                  return;
-                }
-                await signOut().catch(() => undefined);
-                window.location.assign("/");
-              })
-              .catch((err) => {
-                setError(err instanceof Error ? err.message : "Could not delete the account.");
-              })
-              .finally(() => setDeleteBusy(false));
-          }}
-        >
-          {deleteBusy ? "Deleting…" : "Delete my account"}
-        </Button>
+        {deleteSent ? (
+          <p className="text-sm text-muted-foreground">
+            Check {user.primaryEmail} and tap the confirm link. It expires in 24 hours. Nothing is deleted until
+            you confirm.
+          </p>
+        ) : (
+          <>
+            <div className="space-y-1.5">
+              <Label htmlFor="delete-confirm">Type DELETE</Label>
+              <Input
+                id="delete-confirm"
+                value={deleteConfirm}
+                onChange={(e) => setDeleteConfirm(e.target.value)}
+                autoComplete="off"
+                placeholder="DELETE"
+              />
+            </div>
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={deleteBusy || deleteConfirm !== "DELETE"}
+              onClick={() => {
+                setError("");
+                setMessage("");
+                setDeleteBusy(true);
+                void requestAccountDelete()
+                  .then((res) => {
+                    if (!res?.ok) {
+                      setError(res && "error" in res ? res.error : "Could not send the confirmation email.");
+                      return;
+                    }
+                    setDeleteSent(true);
+                    setMessage(`Check ${user.primaryEmail} to confirm. Nothing is deleted until you tap the link.`);
+                  })
+                  .catch((err) => {
+                    setError(err instanceof Error ? err.message : "Could not send the confirmation email.");
+                  })
+                  .finally(() => setDeleteBusy(false));
+              }}
+            >
+              {deleteBusy ? "Sending…" : "Email me a delete confirmation"}
+            </Button>
+          </>
+        )}
       </section>
     </div>
   );

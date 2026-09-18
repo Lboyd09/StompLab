@@ -1,7 +1,7 @@
 import { createFileRoute, Navigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { captureReferralCode, normalizeReferralCode, peekReferralCode } from "@/lib/referral-code";
+import { captureReferralCode, normalizeReferralCode, peekReferralCode, rememberInviteResult, clearReferralCode } from "@/lib/referral-code";
 import { redeemReferral } from "@/lib/referrals";
 
 export const Route = createFileRoute("/join")({
@@ -29,7 +29,22 @@ function JoinPage() {
     }
     let cancelled = false;
     void redeemReferral({ data: { code } })
-      .catch(() => undefined)
+      .then((res) => {
+        if (cancelled) return;
+        if (res.ok) {
+          rememberInviteResult({ ok: true, bonus: res.bonus });
+          clearReferralCode();
+        } else {
+          rememberInviteResult({ ok: false, error: res.error });
+        }
+      })
+      .catch((err) => {
+        if (cancelled) return;
+        rememberInviteResult({
+          ok: false,
+          error: err instanceof Error ? err.message : "Could not apply that invite.",
+        });
+      })
       .finally(() => {
         if (!cancelled) setApplied(true);
       });

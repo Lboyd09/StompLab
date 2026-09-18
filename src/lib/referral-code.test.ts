@@ -15,7 +15,7 @@ describe("referral codes", () => {
     assert.equal(normalizeReferralCode(" ab-cd_12 "), "ABCD12");
     assert.equal(normalizeReferralCode("too-long-to-keep-all-of-this").length, 12);
     assert.equal(REFERRAL_BONUS, 3);
-    assert.equal(REFERRAL_CAP, 15);
+    assert.equal(REFERRAL_CAP, 3);
     assert.equal(REFERRAL_SUBSCRIBE_PERCENT, 50);
   });
 

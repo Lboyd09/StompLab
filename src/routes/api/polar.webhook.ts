@@ -1,8 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { grantPaidByEmail, revokeSubscriptionByEmail } from "@/lib/billing";
+import { grantPaidByEmail, markSubscriptionCanceled, revokeSubscriptionByEmail } from "@/lib/billing";
 import {
   extractOrder,
   polarEventIsPaid,
+  polarEventIsSubscriptionCanceled,
   polarEventIsSubscriptionGrant,
   polarEventIsSubscriptionRevoke,
 } from "@/lib/polar";
@@ -28,6 +29,19 @@ export const Route = createFileRoute("/api/polar/webhook")({
             await revokeSubscriptionByEmail(order.email, order.subscriptionId, payload);
           } catch {
             return new Response("revoke failed", { status: 500 });
+          }
+          return new Response("ok");
+        }
+        if (polarEventIsSubscriptionCanceled(payload)) {
+          try {
+            await markSubscriptionCanceled({
+              email: order.email,
+              subscriptionId: order.subscriptionId,
+              periodEnd: order.currentPeriodEnd,
+              raw: payload,
+            });
+          } catch {
+            return new Response("cancel failed", { status: 500 });
           }
           return new Response("ok");
         }

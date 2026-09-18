@@ -1,8 +1,9 @@
 export const REFERRAL_BONUS = 3;
-export const REFERRAL_CAP = 15;
+export const REFERRAL_CAP = 3;
 /** Paid invite → friend starts a monthly plan: one invoice at this percent off. */
 export const REFERRAL_SUBSCRIBE_PERCENT = 50;
 export const REFERRAL_STORAGE_KEY = "stomplab.ref";
+export const INVITE_RESULT_KEY = "stomplab.invite.result";
 
 export function normalizeReferralCode(raw: string) {
   return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
@@ -59,5 +60,30 @@ export function clearReferralCode() {
     window.localStorage.removeItem(REFERRAL_STORAGE_KEY);
   } catch {
     /* ignore */
+  }
+}
+
+export type InviteClaim = { ok: true; bonus: number } | { ok: false; error: string };
+
+export function rememberInviteResult(result: InviteClaim) {
+  if (typeof window === "undefined") return;
+  try {
+    window.sessionStorage.setItem(INVITE_RESULT_KEY, JSON.stringify(result));
+  } catch {
+    /* ignore */
+  }
+}
+
+export function takeInviteResult(): InviteClaim | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.sessionStorage.getItem(INVITE_RESULT_KEY);
+    if (!raw) return null;
+    window.sessionStorage.removeItem(INVITE_RESULT_KEY);
+    const parsed = JSON.parse(raw) as InviteClaim;
+    if (!parsed || typeof parsed !== "object" || typeof parsed.ok !== "boolean") return null;
+    return parsed;
+  } catch {
+    return null;
   }
 }

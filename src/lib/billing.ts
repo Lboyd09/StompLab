@@ -23,6 +23,7 @@ import {
   waitForPolarCheckout,
   fetchPolarAdminStats,
   ensureReferralDiscountId,
+  cancelPolarAtPeriodEnd,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { mailerConfigured, mailerLastError } from "./mailer";
@@ -97,7 +98,7 @@ async function entitlementForIds(ids: string[], email: string | null): Promise<E
   const em = normalizeEmail(email);
   try {
     const rows = await sql.query<EntRow>(
-      `select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
+      `select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email, current_period_end
        from entitlements
        where user_id = any($1::text[]) ${em ? "or lower(email) = $2" : ""}
        order by paid desc, updated_at desc
@@ -139,6 +140,7 @@ type EntRow = {
   plan_interval?: string | null;
   subscription_status?: string | null;
   email?: string | null;
+  current_period_end?: Date | string | null;
 };
 
 const PLAN_TTL_MS = 120_000;
@@ -159,8 +161,11 @@ async function markAdminPaid(userId: string, email: string) {
       values (${userId}, ${email}, true, ${"admin"}, ${"active"}, now(), now())
       on conflict (user_id) do update set
         paid = true,
-        paid_source = 'admin',
-        subscription_status = 'active',
+        paid_source = case when entitlements.paid_source = 'polar' then entitlements.paid_source else 'admin' end,
+        subscription_status = case
+          when entitlements.subscription_status in ('canceled', 'revoked') then entitlements.subscription_status
+          else coalesce(nullif(entitlements.subscription_status, ''), 'active')
+        end,
         email = excluded.email,
         paid_at = coalesce(entitlements.paid_at, now()),
         updated_at = now()
@@ -300,18 +305,51 @@ async function bonusBuildsFor(ids: string[]): Promise<number> {
   }
 }
 
+function isoOrNull(value: Date | string | null | undefined): string | null {
+  if (!value) return null;
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.toISOString();
+}
+
 export async function loadPlan(userId: string, email: string | null): Promise<Plan> {
   const em = normalizeEmail(email);
   const cached = planCache.get(userId);
   if (cached && Date.now() - cached.at < PLAN_TTL_MS) return cached.plan;
 
   if (isAdminEmail(em || email)) {
+    let subscriptionStatus = "active";
+    let currentPeriodEnd: string | null = null;
+    let polarLinked = false;
+    let planInterval: PlanInterval | null = null;
+    let bonusBuilds = 0;
+    try {
+      const ids = await siblingUserIds(userId, em || email);
+      const ent = await entitlementForIds(ids, em || email);
+      const source = String(ent?.paid_source ?? "").trim().toLowerCase();
+      if (!(ent?.paid && (source === "admin" || source === "polar"))) {
+        await markAdminPaid(userId, em || email || "");
+      }
+      subscriptionStatus = String(ent?.subscription_status ?? "").trim() || "active";
+      currentPeriodEnd = isoOrNull(ent?.current_period_end);
+      polarLinked = Boolean(String(ent?.polar_subscription_id ?? "").trim());
+      const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
+      planInterval = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
+      bonusBuilds = await bonusBuildsFor(ids);
+    } catch {
+      /* admin still unlocks */
+    }
     const plan = assemblePlan({
       userId,
       email: em || email,
       paid: true,
       freeUsed: 0,
       monthUsed: 0,
+      planInterval,
+      subscriptionStatus,
+      bonusBuilds,
+      currentPeriodEnd,
+      polarLinked,
     });
     planCache.set(userId, { at: Date.now(), plan });
     return plan;
@@ -326,7 +364,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     } catch {
       try {
         const rows = await sql<EntRow>`
-          select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email
+          select paid, paid_source, polar_order_id, polar_subscription_id, polar_customer_id, plan_interval, subscription_status, email, current_period_end
           from entitlements where user_id = ${userId} limit 1
         `;
         ent = rows[0];
@@ -354,6 +392,7 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
     const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
     const bonusBuilds = await bonusBuildsFor(ids);
+    const polarLinked = Boolean(String(ent?.polar_subscription_id ?? "").trim());
     const plan = assemblePlan({
       userId,
       email: em || email,
@@ -363,6 +402,8 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
       planInterval,
       subscriptionStatus: String(ent?.subscription_status ?? ""),
       bonusBuilds,
+      currentPeriodEnd: isoOrNull(ent?.current_period_end),
+      polarLinked,
     });
     planCache.set(userId, { at: Date.now(), plan });
     return plan;
@@ -609,11 +650,11 @@ export const startCheckout = createServerFn({ method: "POST" })
       return { ok: false as const, error: "Your account needs an email before checkout." };
     }
     const plan = await loadPlan(context.userId, email);
-    if (plan.admin) {
-      return { ok: false as const, error: "Admin already has the full Lab — no Polar checkout." };
-    }
-    if (plan.paid) {
+    if (plan.paid && plan.polarLinked && !plan.admin) {
       return { ok: false as const, error: "This account is already subscribed." };
+    }
+    if (plan.admin && plan.polarLinked) {
+      return { ok: false as const, error: "This admin account already has a Polar subscription. Cancel it from Account to test again." };
     }
     const origin = await checkoutSuccessOrigin();
     let discountId: string | undefined;
@@ -699,9 +740,6 @@ export const openCustomerPortal = createServerFn({ method: "POST" })
   .handler(async ({ context }) => {
     const email = await emailFor(context.userId, context.email);
     if (!email) return { ok: false as const, error: "Your account needs an email." };
-    if (isAdminEmail(email)) {
-      return { ok: false as const, error: "Admin is not a Polar subscription." };
-    }
     const ids = await siblingUserIds(context.userId, email);
     const sql = await getSql();
     let customerId = "";
@@ -752,6 +790,118 @@ export const openCustomerPortal = createServerFn({ method: "POST" })
       }
     }
     return { ok: true as const, url: session.url };
+  });
+
+export async function markSubscriptionCanceled(opts: {
+  email: string;
+  subscriptionId: string;
+  periodEnd?: string;
+  raw: unknown;
+}) {
+  const sql = await getSql();
+  const em = normalizeEmail(opts.email);
+  const sub = opts.subscriptionId.trim();
+  const period = (opts.periodEnd ?? "").trim();
+  if (!em && !sub) return false;
+  try {
+    if (period) {
+      await sql.query(
+        `update entitlements
+         set subscription_status = 'canceled',
+             current_period_end = $1::timestamptz,
+             updated_at = now()
+         where ($2 <> '' and polar_subscription_id = $2) or ($3 <> '' and lower(email) = $3)`,
+        [period, sub, em],
+      );
+    } else {
+      await sql.query(
+        `update entitlements
+         set subscription_status = 'canceled', updated_at = now()
+         where ($1 <> '' and polar_subscription_id = $1) or ($2 <> '' and lower(email) = $2)`,
+        [sub, em],
+      );
+    }
+  } catch {
+    try {
+      await sql`
+        update entitlements
+        set subscription_status = 'canceled', updated_at = now()
+        where polar_subscription_id = ${sub} or lower(email) = ${em}
+      `;
+    } catch {
+      /* ignore */
+    }
+  }
+  invalidatePlanCache();
+  return true;
+}
+
+export const cancelMySubscription = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<
+    { ok: true; already: boolean; periodEnd: string | null } | { ok: false; error: string }
+  > => {
+    const email = await emailFor(context.userId, context.email);
+    const sql = await getSql();
+    let sub = "";
+    let status = "";
+    let periodEnd: string | null = null;
+    try {
+      const rows = await sql<{
+        polar_subscription_id: string | null;
+        subscription_status: string | null;
+        current_period_end: Date | string | null;
+      }>`
+        select polar_subscription_id, subscription_status, current_period_end
+        from entitlements
+        where user_id = ${context.userId}
+        limit 1
+      `;
+      sub = String(rows[0]?.polar_subscription_id ?? "").trim();
+      status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
+      periodEnd = isoOrNull(rows[0]?.current_period_end);
+    } catch {
+      try {
+        const rows = await sql<{ polar_subscription_id: string | null; subscription_status: string | null }>`
+          select polar_subscription_id, subscription_status from entitlements where user_id = ${context.userId} limit 1
+        `;
+        sub = String(rows[0]?.polar_subscription_id ?? "").trim();
+        status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
+      } catch {
+        sub = "";
+      }
+    }
+    if (!sub) {
+      if (isAdminEmail(email)) {
+        return {
+          ok: false,
+          error: "This admin grant isn't a Polar subscription. Open Upgrade, subscribe with Polar, then cancel from here to test the banner.",
+        };
+      }
+      return { ok: false, error: "No Polar subscription on this account." };
+    }
+    if (status === "canceled" || status === "cancelled") {
+      invalidatePlanCache(context.userId);
+      return { ok: true, already: true, periodEnd };
+    }
+    const ok = await cancelPolarAtPeriodEnd(sub);
+    if (!ok) {
+      return {
+        ok: false,
+        error: "Polar could not cancel yet. Use Manage subscription on Polar, or email support.",
+      };
+    }
+    try {
+      await sql`
+        update entitlements
+        set subscription_status = 'canceled', updated_at = now()
+        where user_id = ${context.userId}
+      `;
+    } catch {
+      /* webhook will catch up */
+    }
+    invalidatePlanCache(context.userId);
+    return { ok: true, already: false, periodEnd };
   });
 
 export async function recordBuild(userId: string, kind: string, song: string) {

@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { auth } from "@/lib/auth/server";
+import { emailHoldStatus } from "@/lib/closed-accounts";
 import { mailerConfigured, mailFrom, mailerLastError } from "@/lib/mailer";
 import { PUBLIC_SUPPORT_EMAIL } from "@/lib/plan";
 import { publicOrigin } from "@/lib/site-origin";
@@ -17,12 +18,8 @@ export const requestResetMail = createServerFn({ method: "POST" })
   .handler(async ({ data }): Promise<{ ok: true } | { ok: false; error: string }> => {
     const email = data.email.trim().toLowerCase();
     if (!email.includes("@")) return { ok: false, error: "That email doesn't look right." };
-    if (!mailerConfigured()) {
-      return {
-        ok: false,
-        error: `Reset mail isn't connected on this site yet. Email ${PUBLIC_SUPPORT_EMAIL} and we'll reset you.`,
-      };
-    }
+    const hold = await emailHoldStatus(email);
+    if (hold.blocked) return { ok: false, error: hold.message };
     const origin = await publicOrigin();
     const redirectTo = `${origin.replace(/\/$/, "")}/reset-password`;
     try {
@@ -40,7 +37,7 @@ export const requestResetMail = createServerFn({ method: "POST" })
       return { ok: true };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (/not on yet|mailer|resend|from-address|verified/i.test(msg)) {
+      if (/not on yet|mailer|resend|from-address|verified|isn't connected|api key/i.test(msg)) {
         return { ok: false, error: msg };
       }
       return { ok: false, error: `Could not send the reset email. Email ${PUBLIC_SUPPORT_EMAIL} if it keeps failing.` };

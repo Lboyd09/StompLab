@@ -16,6 +16,7 @@ import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as CreateRouteImport } from './routes/create'
 import { Route as EquivalentsRouteImport } from './routes/equivalents'
 import { Route as GearRouteImport } from './routes/gear'
+import { Route as GoodbyeRouteImport } from './routes/goodbye'
 import { Route as GuideRouteImport } from './routes/guide'
 import { Route as HistoryRouteImport } from './routes/history'
 import { Route as JoinRouteImport } from './routes/join'
@@ -64,6 +65,11 @@ const EquivalentsRoute = EquivalentsRouteImport.update({
 const GearRoute = GearRouteImport.update({
   id: '/gear',
   path: '/gear',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GoodbyeRoute = GoodbyeRouteImport.update({
+  id: '/goodbye',
+  path: '/goodbye',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GuideRoute = GuideRouteImport.update({
@@ -145,6 +151,7 @@ export interface FileRoutesByFullPath {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/goodbye': typeof GoodbyeRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/goodbye': typeof GoodbyeRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -192,6 +200,7 @@ export interface FileRoutesById {
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
+  '/goodbye': typeof GoodbyeRoute
   '/guide': typeof GuideRoute
   '/history': typeof HistoryRoute
   '/join': typeof JoinRoute
@@ -217,6 +226,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/goodbye'
     | '/guide'
     | '/history'
     | '/join'
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/goodbye'
     | '/guide'
     | '/history'
     | '/join'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/create'
     | '/equivalents'
     | '/gear'
+    | '/goodbye'
     | '/guide'
     | '/history'
     | '/join'
@@ -287,6 +299,7 @@ export interface RootRouteChildren {
   CreateRoute: typeof CreateRoute
   EquivalentsRoute: typeof EquivalentsRoute
   GearRoute: typeof GearRoute
+  GoodbyeRoute: typeof GoodbyeRoute
   GuideRoute: typeof GuideRoute
   HistoryRoute: typeof HistoryRoute
   JoinRoute: typeof JoinRoute
@@ -352,6 +365,13 @@ declare module '@tanstack/react-router' {
       path: '/gear'
       fullPath: '/gear'
       preLoaderRoute: typeof GearRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/goodbye': {
+      id: '/goodbye'
+      path: '/goodbye'
+      fullPath: '/goodbye'
+      preLoaderRoute: typeof GoodbyeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/guide': {
@@ -463,6 +483,7 @@ const rootRouteChildren: RootRouteChildren = {
   CreateRoute: CreateRoute,
   EquivalentsRoute: EquivalentsRoute,
   GearRoute: GearRoute,
+  GoodbyeRoute: GoodbyeRoute,
   GuideRoute: GuideRoute,
   HistoryRoute: HistoryRoute,
   JoinRoute: JoinRoute,

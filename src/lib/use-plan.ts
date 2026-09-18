@@ -23,6 +23,8 @@ function readStoredPlan(id: string | null): Plan | null {
     const parsed = JSON.parse(raw) as Plan;
     if (!parsed || parsed.userId !== id || !parsed.signedIn) return null;
     if (typeof parsed.bonusBuilds !== "number") parsed.bonusBuilds = 0;
+    if (typeof parsed.currentPeriodEnd === "undefined") parsed.currentPeriodEnd = null;
+    if (typeof parsed.polarLinked !== "boolean") parsed.polarLinked = false;
     return parsed;
   } catch {
     return null;

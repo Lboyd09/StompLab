@@ -3,7 +3,7 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache, siblingUserIds } from "@/lib/billing";
 import { getSql } from "@/lib/db";
-import { isAdminEmail, normalizeEmail } from "@/lib/plan";
+import { normalizeEmail } from "@/lib/plan";
 import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode, canonicalEmail } from "@/lib/referral-code";
 import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
@@ -21,6 +21,7 @@ function randomCode(len = 8) {
 
 async function ensureCode(userId: string): Promise<string> {
   const sql = await getSql();
+  await ensureReferralSchema(sql);
   const existing = await sql<{ code: string }>`select code from referrals where user_id = ${userId} limit 1`;
   if (existing[0]?.code) return existing[0].code;
   for (let i = 0; i < 8; i++) {
@@ -36,19 +37,34 @@ async function ensureCode(userId: string): Promise<string> {
   throw new Error("Could not make an invite code.");
 }
 
+async function ensureReferralSchema(sql: Awaited<ReturnType<typeof getSql>>) {
+  await sql.query(`alter table entitlements add column if not exists bonus_builds integer not null default 0`).catch(() => undefined);
+  await sql.query(`
+    create table if not exists referrals (
+      user_id text primary key,
+      code text not null unique,
+      created_at timestamptz not null default now()
+    )
+  `).catch(() => undefined);
+  await sql.query(`
+    create table if not exists referral_redemptions (
+      referred_user_id text primary key,
+      referrer_user_id text not null,
+      created_at timestamptz not null default now()
+    )
+  `).catch(() => undefined);
+}
+
 async function bumpBonus(userId: string, amount: number) {
   const sql = await getSql();
-  try {
-    await sql`
+  await ensureReferralSchema(sql);
+  await sql`
       insert into entitlements (user_id, email, bonus_builds, updated_at)
       values (${userId}, ${""}, ${amount}, now())
       on conflict (user_id) do update set
         bonus_builds = entitlements.bonus_builds + ${amount},
         updated_at = now()
     `;
-  } catch {
-    /* column missing on a stale host — skip the gift rather than crash signup */
-  }
 }
 
 export const getMyReferral = createServerFn({ method: "GET" })
@@ -86,10 +102,9 @@ export const redeemReferral = createServerFn({ method: "POST" })
     const code = normalizeReferralCode(data.code);
     if (code.length < 4) return { ok: false, error: "That invite code doesn't look right." };
     const email = await emailFor(context.userId, context.email);
-    if (isAdminEmail(email)) return { ok: false, error: "Admin accounts don't use invite codes." };
-
     try {
       const sql = await getSql();
+      await ensureReferralSchema(sql);
       const already = await sql<{ referrer_user_id: string }>`
         select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
       `;

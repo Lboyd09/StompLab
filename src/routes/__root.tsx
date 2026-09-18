@@ -18,7 +18,7 @@ export const Route = createRootRoute({
       { title: APP_NAME },
       {
         name: "description",
-        content: "Research any song. Get a Line 6 preset that sounds like the record.",
+        content: "Type a song. Get that guitar rig. Unofficial Line 6 presets from recorded guitar and bass tones.",
       },
       { name: "theme-color", content: "#0B0D12" },
       { name: "apple-mobile-web-app-title", content: "StompLab" },
@@ -111,7 +111,11 @@ function VisitBeacon() {
 
 function ShellSwitch() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const bare = pathname === "/login" || pathname === "/upgrade" || pathname === "/reset-password";
+  const bare =
+    pathname === "/login" ||
+    pathname === "/upgrade" ||
+    pathname === "/reset-password" ||
+    pathname === "/goodbye";
   if (bare) return <Outlet />;
   return (
     <AppShell>

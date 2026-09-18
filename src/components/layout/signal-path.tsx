@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils";
 const NODES = [
   { n: "01", title: "Type a song", hint: "Title and artist. That’s the whole brief." },
   { n: "02", title: "We research the record", hint: "Gear, knobs, and snapshots for your unit." },
-  { n: "03", title: "You import the file", hint: "HX Edit or POD Go Edit → File → Import." },
+  { n: "03", title: "Get that guitar rig", hint: "Import the .hlx / .pgp. It lives on the hardware." },
 ] as const;
 
 /** Same 01–02–03 as the Lab landing. */

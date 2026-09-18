@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
@@ -103,6 +103,26 @@ describe("assemblePlan", () => {
     assert.equal(plan.blockedReason, null);
     assert.match(buildsUsedCopy(plan), /unlimited/i);
     assert.equal(plan.canSharedLibrary, false);
+  });
+  it("keeps admin paid when Polar is canceled so the test account can see the banner", () => {
+    const plan = assemblePlan({
+      userId: "biz",
+      email: BUSINESS_EMAIL,
+      paid: true,
+      freeUsed: 0,
+      monthUsed: 0,
+      subscriptionStatus: "canceled",
+      currentPeriodEnd: "2026-10-18T00:00:00.000Z",
+      polarLinked: true,
+      planInterval: "month",
+    });
+    assert.equal(plan.admin, true);
+    assert.equal(plan.paid, true);
+    assert.equal(plan.canResearch, true);
+    assert.equal(subscriptionCanceled(plan), true);
+    assert.equal(plan.polarLinked, true);
+    assert.match(canceledCopy(plan), /Canceled/);
+    assert.match(canceledCopy(plan), /October/);
   });
   it("hides history until sign-in", () => {
     assert.equal(emptyPlan().canHistory, false);

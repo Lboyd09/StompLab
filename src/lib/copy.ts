@@ -1,5 +1,7 @@
 import { PUBLIC_SUPPORT_EMAIL } from "./plan";
 
+export const TAGLINE = "Type a song. Get that guitar rig.";
+
 export const RIG_DISCLAIMER =
   "These rigs are research and starting points — not a 100% copy of the record. Use them as a reference, then tweak on your unit.";
 
@@ -22,6 +24,6 @@ export const LEGAL_SHORT =
   "Not affiliated with Line 6. Unofficial research tool.";
 
 export const PRIVACY_SHORT =
-  "We store the email you sign in with, the presets you build, Polar’s payment ids, and an anonymized song cache so a researched song can be reused. We do not sell that. Polar is the merchant of record. Research calls go to Google Gemini.";
+  "We store the email you sign in with, the presets you build, Polar’s payment ids, and an anonymized song cache so a researched song can be reused. We do not sell that. Polar is the merchant of record. Research calls go to Google Gemini. Deleted accounts stay on a 14-day hold so the same email cannot farm free builds.";
 
 export const HELP_COPY = `Questions, billing, locked out, or a broken preset — email ${PUBLIC_SUPPORT_EMAIL}. We read it.`;

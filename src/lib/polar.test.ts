@@ -8,6 +8,7 @@ import {
   polarConfigured,
   polarEventIsPaid,
   polarEventIsSubscriptionGrant,
+  polarEventIsSubscriptionCanceled,
   polarEventIsSubscriptionRevoke,
   polarFriendlyError,
   polarPortalUrlFromPayload,
@@ -117,6 +118,21 @@ describe("extractOrder", () => {
     assert.equal(order.interval, "month");
     assert.equal(order.orderId, "");
   });
+  it("reads current_period_end on a canceled subscription", () => {
+    const order = extractOrder({
+      type: "subscription.canceled",
+      data: {
+        id: "sub_real_99999",
+        status: "canceled",
+        current_period_end: "2026-10-18T00:00:00Z",
+        cancel_at_period_end: true,
+        customer_email: "a@b.com",
+      },
+    });
+    assert.equal(order.subscriptionId, "sub_real_99999");
+    assert.equal(order.currentPeriodEnd, "2026-10-18T00:00:00Z");
+    assert.equal(order.cancelAtPeriodEnd, true);
+  });
   it("reads checkout.order_id on a succeeded checkout", () => {
     const order = extractOrder({
       type: "checkout.updated",
@@ -158,6 +174,17 @@ describe("purchaseLooksPaid", () => {
     assert.equal(
       polarEventIsSubscriptionGrant({ type: "subscription.canceled", data: { id: "sub_abc12345", status: "canceled" } }),
       false,
+    );
+    assert.equal(
+      polarEventIsSubscriptionCanceled({ type: "subscription.canceled", data: { id: "sub_abc12345", status: "canceled" } }),
+      true,
+    );
+    assert.equal(
+      polarEventIsSubscriptionCanceled({
+        type: "subscription.updated",
+        data: { id: "sub_abc12345", status: "active", cancel_at_period_end: true, current_period_end: "2026-10-01T00:00:00Z" },
+      }),
+      true,
     );
   });
   it("revokes on subscription.revoked", () => {

@@ -107,13 +107,13 @@ export function InviteCard({
             Bring a friend
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Send the link. They create a <span className="text-foreground">new</span> account — you both get{" "}
-            {REFERRAL_BONUS} extra custom builds. Cap {cap} friends.
+            Send the link. Your friend creates a <span className="text-foreground">new</span> account. You both
+            get {REFERRAL_BONUS} extra custom builds. You can invite {cap} friends.
           </p>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Already subscribed monthly? When they start a monthly plan, their first invoice is{" "}
-            {REFERRAL_SUBSCRIBE_PERCENT}% off — and your <span className="text-foreground">next</span> invoice is too.
-            Polar will not refund the month you already paid. Yearly stays ${PRICE_YEARLY_USD}.
+            If you pay monthly and they start monthly, Polar takes {REFERRAL_SUBSCRIBE_PERCENT}% off their first
+            invoice and {REFERRAL_SUBSCRIBE_PERCENT}% off your <span className="text-foreground">next</span>{" "}
+            invoice — not a refund of this month. Yearly stays ${PRICE_YEARLY_USD}.
           </p>
         </div>
       </div>

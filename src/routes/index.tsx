@@ -23,6 +23,7 @@ import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd, priceMonthlyLaunchUsd } from "@/lib/plan";
+import { takeInviteResult } from "@/lib/referral-code";
 
 export const Route = createFileRoute("/")({
   validateSearch: (s: Record<string, unknown>): { q?: string } => ({
@@ -57,6 +58,16 @@ function Home() {
   useEffect(() => {
     if (search.q) setSong(search.q);
   }, [search.q]);
+
+  useEffect(() => {
+    const hit = takeInviteResult();
+    if (!hit) return;
+    if (hit.ok) {
+      toast.success(`Invite applied. You got ${hit.bonus} extra custom builds.`);
+    } else if (hit.error) {
+      toast.message(hit.error);
+    }
+  }, []);
 
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
@@ -185,13 +196,14 @@ function Home() {
       <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
         <div className="relative space-y-5">
           <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
-          <h1 className="font-display text-[clamp(2.6rem,9vw,5rem)] font-semibold uppercase leading-[0.84] tracking-tight">
+          <h1 className="sl-hero-title text-[clamp(2.6rem,9vw,5.2rem)]">
             <span className="sl-enter sl-enter-2 block">Type a song.</span>
-            <span className="sl-enter sl-enter-3 mt-1 block text-primary">Get the tone.</span>
+            <span className="sl-enter sl-enter-3 mt-2 block text-primary">Get that guitar rig.</span>
           </h1>
           <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
-          <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground">
-            Stomp Lab is for players with a Line 6. You type a song. We research the recorded guitar or bass and build a preset for your {unit} — path, knobs, snapshots, and a file you import.
+          <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+            We research the recorded guitar or bass and build a preset for your {unit} — path, knobs, snapshots,
+            and a file you import.
           </p>
           {subscribed ? (
             <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">

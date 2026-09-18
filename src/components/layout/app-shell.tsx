@@ -195,7 +195,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="relative min-h-dvh overflow-x-clip bg-background text-foreground">
       <PageWash />
-      <header className="sticky top-0 z-40 bg-background/50 backdrop-blur-md">
+      <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
           <div className="flex items-center gap-3">
             <Link to="/" className="flex min-w-0 shrink-0 items-center" aria-label="Stomp Lab">

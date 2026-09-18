@@ -132,6 +132,8 @@ export type Plan = {
   canSharedLibrary: boolean;
   blockedReason: "signin" | "paywall" | "quota" | null;
   bonusBuilds: number;
+  currentPeriodEnd: string | null;
+  polarLinked: boolean;
 };
 
 export function planFingerprint(plan: Plan): string {
@@ -145,6 +147,8 @@ export function planFingerprint(plan: Plan): string {
     plan.subscriptionStatus,
     plan.blockedReason ?? "",
     String(plan.bonusBuilds),
+    plan.currentPeriodEnd ?? "",
+    plan.polarLinked ? "1" : "0",
   ].join("|");
 }
 
@@ -172,6 +176,8 @@ export function emptyPlan(): Plan {
     canSharedLibrary: false,
     blockedReason: "signin",
     bonusBuilds: 0,
+    currentPeriodEnd: null,
+    polarLinked: false,
   };
 }
 
@@ -184,6 +190,8 @@ export function assemblePlan(opts: {
   planInterval?: PlanInterval | null;
   subscriptionStatus?: string;
   bonusBuilds?: number;
+  currentPeriodEnd?: string | null;
+  polarLinked?: boolean;
 }): Plan {
   const month = yearMonth();
   const email = normalizeEmail(opts.email) || opts.email;
@@ -193,6 +201,9 @@ export function assemblePlan(opts: {
   const freeUsed = opts.freeUsed;
   const freeRemaining = Math.max(0, FREE_BUILDS + bonusBuilds - freeUsed);
   const monthUsed = opts.monthUsed;
+  const currentPeriodEnd = opts.currentPeriodEnd ?? null;
+  const polarLinked = Boolean(opts.polarLinked);
+  const subscriptionStatus = opts.subscriptionStatus ?? "";
   if (admin) {
     return {
       signedIn: true,
@@ -206,7 +217,7 @@ export function assemblePlan(opts: {
       monthLimit: 0,
       month,
       planInterval: opts.planInterval ?? null,
-      subscriptionStatus: opts.subscriptionStatus || "active",
+      subscriptionStatus: subscriptionStatus || "active",
       canResearch: true,
       canCreate: true,
       canHistory: true,
@@ -216,6 +227,8 @@ export function assemblePlan(opts: {
       canSharedLibrary: false,
       blockedReason: null,
       bonusBuilds,
+      currentPeriodEnd,
+      polarLinked,
     };
   }
   const monthLimit = paid ? PAID_MONTHLY_BUILDS + bonusBuilds : FREE_BUILDS + bonusBuilds;
@@ -232,7 +245,7 @@ export function assemblePlan(opts: {
     monthLimit,
     month,
     planInterval: paid ? (opts.planInterval ?? null) : null,
-    subscriptionStatus: opts.subscriptionStatus ?? "",
+    subscriptionStatus,
     canResearch: canBuild,
     canCreate: canBuild,
     canHistory: true,
@@ -242,11 +255,28 @@ export function assemblePlan(opts: {
     canSharedLibrary: false,
     blockedReason: canBuild ? null : paid ? "quota" : "paywall",
     bonusBuilds,
+    currentPeriodEnd,
+    polarLinked,
   };
 }
 
 export function yearlySavingsUsd() {
   return Math.round((PRICE_MONTHLY_USD * 12 - PRICE_YEARLY_USD) * 100) / 100;
+}
+
+export function subscriptionCanceled(plan: Plan): boolean {
+  return /canceled|cancelled/i.test(plan.subscriptionStatus);
+}
+
+export function formatPeriodEnd(iso: string | null | undefined): string {
+  if (!iso) return "the end of the period you already paid for";
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "the end of the period you already paid for";
+  return d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+}
+
+export function canceledCopy(plan: Plan): string {
+  return `Canceled. You keep the Lab until ${formatPeriodEnd(plan.currentPeriodEnd)}. Polar will not charge again.`;
 }
 
 export function buildsUsedCopy(plan: Plan): string {

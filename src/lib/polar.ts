@@ -304,6 +304,21 @@ export function polarEventIsSubscriptionGrant(payload: Record<string, unknown> |
   return false;
 }
 
+export function polarEventIsSubscriptionCanceled(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const type = polarEventType(payload);
+  if (type === "subscription.canceled" || type.endsWith("subscription.canceled")) return true;
+  if (type === "subscription.uncanceled" || type.endsWith("subscription.uncanceled")) return false;
+  const data = payloadData(payload);
+  const status = String(data.status ?? "").trim().toLowerCase();
+  const cancelAtEnd = data.cancel_at_period_end === true || data.cancelAtPeriodEnd === true;
+  if (type === "subscription.updated" || type.endsWith("subscription.updated")) {
+    if (status === "canceled" || status === "cancelled") return true;
+    if (cancelAtEnd && (status === "active" || status === "trialing" || status === "canceled")) return true;
+  }
+  return false;
+}
+
 export function polarEventIsSubscriptionRevoke(payload: Record<string, unknown> | null | undefined): boolean {
   if (!payload) return false;
   const type = polarEventType(payload);
@@ -742,6 +757,17 @@ export function extractOrder(payload: Record<string, unknown>) {
   const subStatus = String(data.status ?? nestedSub.status ?? "")
     .trim()
     .toLowerCase();
+  const periodEnd = String(
+    data.current_period_end ??
+      data.currentPeriodEnd ??
+      nestedSub.current_period_end ??
+      nestedSub.currentPeriodEnd ??
+      "",
+  ).trim();
+  const cancelAtPeriodEnd =
+    data.cancel_at_period_end === true ||
+    data.cancelAtPeriodEnd === true ||
+    nestedSub.cancel_at_period_end === true;
   return {
     email,
     userId,
@@ -752,6 +778,8 @@ export function extractOrder(payload: Record<string, unknown>) {
     customerId,
     interval,
     subStatus,
+    currentPeriodEnd: periodEnd,
+    cancelAtPeriodEnd,
     data,
     metadata,
   };
@@ -885,8 +913,8 @@ export async function applyPolarSubscriptionDiscount(
   return false;
 }
 
-/** Best-effort Polar cancel when someone deletes their Lab account. */
-export async function cancelPolarSubscription(subscriptionId: string): Promise<boolean> {
+/** Cancel at period end — user keeps access until Polar sends subscription.revoked. Never revoke immediately. */
+export async function cancelPolarAtPeriodEnd(subscriptionId: string): Promise<boolean> {
   const token = polarToken();
   const sub = subscriptionId.trim();
   if (!token || !sub) return false;
@@ -895,24 +923,27 @@ export async function cancelPolarSubscription(subscriptionId: string): Promise<b
     "Content-Type": "application/json",
     Accept: "application/json",
   };
-  try {
-    const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
-      method: "PATCH",
-      headers,
-      body: JSON.stringify({ cancel_at_period_end: true }),
-    });
-    if (res.ok) return true;
-  } catch {
-    /* try revoke */
+  const bodies: Record<string, unknown>[] = [
+    { cancel_at_period_end: true },
+    { cancelAtPeriodEnd: true },
+  ];
+  for (const body of bodies) {
+    try {
+      const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify(body),
+      });
+      if (res.ok) return true;
+    } catch {
+      /* try next shape */
+    }
   }
-  try {
-    const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}/revoke`, {
-      method: "POST",
-      headers,
-    });
-    return res.ok;
-  } catch {
-    return false;
-  }
+  return false;
+}
+
+/** Best-effort Polar cancel when someone deletes their Lab account. Period-end, not an immediate revoke. */
+export async function cancelPolarSubscription(subscriptionId: string): Promise<boolean> {
+  return cancelPolarAtPeriodEnd(subscriptionId);
 }
 
