@@ -84,9 +84,11 @@ export function savePresets(presets: Preset[], owner = "anon") {
   writeJson(presetsKey(owner), presets);
 }
 
+export const HISTORY_CAP = 400;
+
 export function upsertPreset(preset: Preset, owner = "anon"): Preset[] {
   const all = loadPresets(owner).filter((p) => p.id !== preset.id);
-  const next = [preset, ...all].slice(0, 60);
+  const next = [preset, ...all].slice(0, HISTORY_CAP);
   savePresets(next, owner);
   return next;
 }

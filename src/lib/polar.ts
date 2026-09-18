@@ -727,7 +727,9 @@ export function extractOrder(payload: Record<string, unknown>) {
     .toLowerCase();
   const userId = String(metadata.user_id ?? "").trim();
 
-  const dataOrderId = String(data.order_id ?? nestedOrder.id ?? "").trim();
+  const dataOrderId = String(
+    data.order_id ?? data.orderId ?? nestedOrder.id ?? "",
+  ).trim();
   const dataId = String(data.id ?? "").trim();
   const fromOrder = type.startsWith("order.");
   const fromCheckout = type.startsWith("checkout.");
@@ -739,20 +741,29 @@ export function extractOrder(payload: Record<string, unknown>) {
     orderId = isRealPolarOrderId(dataOrderId) ? dataOrderId : "";
   }
 
-  let checkoutId = String(data.checkout_id ?? nestedOrder.checkout_id ?? "").trim();
+  let checkoutId = String(
+    data.checkout_id ?? data.checkoutId ?? nestedOrder.checkout_id ?? nestedOrder.checkoutId ?? "",
+  ).trim();
   if (!checkoutId && fromCheckout) checkoutId = dataId;
   if (!checkoutId && !fromOrder && !fromCheckout && !fromSub) {
     checkoutId = dataId;
   }
 
   let subscriptionId = String(
-    data.subscription_id ?? nestedSub.id ?? nestedOrder.subscription_id ?? "",
+    data.subscription_id ??
+      data.subscriptionId ??
+      nestedSub.id ??
+      nestedOrder.subscription_id ??
+      nestedOrder.subscriptionId ??
+      "",
   ).trim();
   if (!subscriptionId && fromSub) subscriptionId = dataId;
   if (!isRealPolarSubscriptionId(subscriptionId)) subscriptionId = "";
 
   const amount = Number(data.amount ?? data.total_amount ?? data.net_amount ?? nestedOrder.amount ?? 0) || 0;
-  const customerId = String(data.customer_id ?? customer.id ?? nestedOrder.customer_id ?? "").trim();
+  const customerId = String(
+    data.customer_id ?? data.customerId ?? customer.id ?? nestedOrder.customer_id ?? nestedOrder.customerId ?? "",
+  ).trim();
   const interval = extractInterval(payload);
   const subStatus = String(data.status ?? nestedSub.status ?? "")
     .trim()
@@ -914,16 +925,19 @@ export async function applyPolarSubscriptionDiscount(
 }
 
 /** Cancel at period end — user keeps access until Polar sends subscription.revoked. Never revoke immediately. */
-export async function cancelPolarAtPeriodEnd(subscriptionId: string): Promise<boolean> {
+export async function cancelPolarAtPeriodEnd(
+  subscriptionId: string,
+): Promise<{ ok: boolean; periodEnd: string | null; already: boolean }> {
   const token = polarToken();
   const sub = subscriptionId.trim();
-  if (!token || !sub) return false;
+  if (!token || !sub) return { ok: false, periodEnd: null, already: false };
   const headers = {
     Authorization: `Bearer ${token}`,
     "Content-Type": "application/json",
     Accept: "application/json",
   };
   const bodies: Record<string, unknown>[] = [
+    { cancel_at_period_end: true, customer_cancellation_reason: "unused" },
     { cancel_at_period_end: true },
     { cancelAtPeriodEnd: true },
   ];
@@ -934,16 +948,81 @@ export async function cancelPolarAtPeriodEnd(subscriptionId: string): Promise<bo
         headers,
         body: JSON.stringify(body),
       });
-      if (res.ok) return true;
+      const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (res.ok) {
+        const periodEnd = String(json.current_period_end ?? json.currentPeriodEnd ?? "").trim() || null;
+        const already =
+          json.cancel_at_period_end === true ||
+          json.cancelAtPeriodEnd === true ||
+          /canceled|cancelled/i.test(String(json.status ?? ""));
+        return { ok: true, periodEnd, already };
+      }
     } catch {
       /* try next shape */
     }
   }
-  return false;
+  return { ok: false, periodEnd: null, already: false };
 }
 
 /** Best-effort Polar cancel when someone deletes their Lab account. Period-end, not an immediate revoke. */
 export async function cancelPolarSubscription(subscriptionId: string): Promise<boolean> {
-  return cancelPolarAtPeriodEnd(subscriptionId);
+  const res = await cancelPolarAtPeriodEnd(subscriptionId);
+  return res.ok;
+}
+
+export type PolarSubHit = {
+  id: string;
+  status: string;
+  periodEnd: string;
+  customerId: string;
+  cancelAtPeriodEnd: boolean;
+};
+
+/** Find an active Polar subscription for this Lab account. */
+export async function lookupPolarSubscription(opts: {
+  email?: string | null;
+  externalId?: string | null;
+  customerId?: string | null;
+}): Promise<PolarSubHit | null> {
+  const token = polarToken();
+  if (!token) return null;
+  const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
+  const queries: string[] = [];
+  const customerId = (opts.customerId ?? "").trim();
+  const ext = (opts.externalId ?? "").trim();
+  if (customerId) queries.push(`${polarBase()}/v1/subscriptions/?customer_id=${encodeURIComponent(customerId)}&limit=20`);
+  if (ext) {
+    queries.push(`${polarBase()}/v1/subscriptions/?external_customer_id=${encodeURIComponent(ext)}&limit=20`);
+    queries.push(`${polarBase()}/v1/subscriptions/?externalCustomerId=${encodeURIComponent(ext)}&limit=20`);
+  }
+  for (const url of queries) {
+    try {
+      const res = await fetch(url, { headers });
+      if (!res.ok) continue;
+      const json = await res.json();
+      const items = polarListItems(json);
+      const ranked = items
+        .map((item) => {
+          const id = String(item.id ?? "").trim();
+          const status = String(item.status ?? "").trim().toLowerCase();
+          return {
+            id,
+            status,
+            periodEnd: String(item.current_period_end ?? item.currentPeriodEnd ?? "").trim(),
+            customerId: String(item.customer_id ?? item.customerId ?? asRecord(item.customer).id ?? "").trim(),
+            cancelAtPeriodEnd: item.cancel_at_period_end === true || item.cancelAtPeriodEnd === true,
+          };
+        })
+        .filter((s) => isRealPolarSubscriptionId(s.id));
+      const hit =
+        ranked.find((s) => s.status === "active" || s.status === "trialing") ??
+        ranked.find((s) => s.status === "canceled" || s.status === "cancelled") ??
+        ranked[0];
+      if (hit) return hit;
+    } catch {
+      /* try next */
+    }
+  }
+  return null;
 }
 

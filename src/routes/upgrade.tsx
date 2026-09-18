@@ -21,6 +21,7 @@ import {
   formatUsd,
   buildsUsedCopy,
   type PlanInterval,
+  subscriptionCanceled,
 } from "@/lib/plan";
 import { getReferralMonthOffer } from "@/lib/referrals";
 import { REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
@@ -135,7 +136,12 @@ function UpgradePage() {
     setBusy(interval);
     try {
       const latest = await refresh();
-      if (latest.paid) {
+      const polarActive = latest.polarLinked && !subscriptionCanceled(latest);
+      if (latest.paid && polarActive && !latest.admin) {
+        return;
+      }
+      if (latest.admin && polarActive) {
+        setError("This admin account already has a Polar subscription. Cancel it from Account to test again.");
         return;
       }
       recordLegalAccept("subscribe");
@@ -174,12 +180,13 @@ function UpgradePage() {
     return <Navigate to="/login" search={{ next: "/upgrade", checkout_id: checkoutId }} />;
   }
 
-  if (plan.paid && !confirming && !checkoutId) {
+  const polarActive = plan.polarLinked && !subscriptionCanceled(plan);
+  if (plan.paid && polarActive && !plan.admin && !confirming && !checkoutId) {
     return (
       <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
-          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">{plan.admin ? "Admin — full Lab" : "You're subscribed"}</h1>
+          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">You're subscribed</h1>
           <p className="text-sm text-muted-foreground">
             {buildsUsedCopy(plan)}
             {plan.planInterval ? ` ${plan.planInterval === "year" ? "Yearly" : "Monthly"} plan.` : ""}
@@ -187,6 +194,30 @@ function UpgradePage() {
           <Button asChild>
             <Link to="/">Back to Lab</Link>
           </Button>
+        </div>
+      </main>
+    );
+  }
+
+  if (plan.admin && polarActive && !confirming && !checkoutId) {
+    return (
+      <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
+        <div className="w-full max-w-md space-y-4 text-center">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
+          <h1 className="font-display text-4xl font-semibold uppercase leading-[0.9] tracking-tight">
+            Admin — Polar is linked
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            This inbox already has a Polar subscription for testing. Cancel or manage it from Account.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button asChild>
+              <Link to="/account">Account</Link>
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/">Back to Lab</Link>
+            </Button>
+          </div>
         </div>
       </main>
     );

@@ -266,6 +266,21 @@ function Home() {
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
             {instrument} · {unit}. Change the unit in the header. Type two letters to pick the recording.
+            {gear.length ? (
+              <>
+                {" "}
+                Locker has {gear.length} piece{gear.length === 1 ? "" : "s"} — research will tell you which to grab.
+              </>
+            ) : (
+              <>
+                {" "}
+                Add what you own in{" "}
+                <Link to="/gear" className="text-primary underline underline-offset-2">
+                  Gear
+                </Link>{" "}
+                so the file names the models to use.
+              </>
+            )}
           </p>
           <GeminiHint plan={plan} pending={planPending} />
           {status && busy === false && !plan.canResearch ? (

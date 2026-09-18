@@ -144,6 +144,8 @@ export type OriginalGear = {
 export type GearRecommendation = {
   item: string;
   why: string;
+  kind?: "guitar" | "bass" | "amp" | "cab" | "pedal" | "pickup" | string;
+  fromLocker?: boolean;
 };
 
 export type Preset = {

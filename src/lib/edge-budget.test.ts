@@ -37,6 +37,8 @@ describe("isScannerPath", () => {
       "/apple-touch-icon.png",
       "/apple-touch-icon-precomposed.png",
       "/sl-touch.png",
+      "/sl-touch-v18.png",
+      "/sl-touch-v19.png",
       "/icon-180.png",
       "/icon-192.png",
       "/icon-512.png",

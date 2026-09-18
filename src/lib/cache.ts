@@ -40,8 +40,9 @@ export function soundCacheKey(
   instrument: string,
   stompModel: string,
   playbackTarget = "frfr",
+  playerName = "",
 ) {
-  return `sound|v8|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}`;
+  return `sound|v9|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}|${norm(playerName).slice(0, 60)}`;
 }
 
 export function eqCacheKey(query: string) {

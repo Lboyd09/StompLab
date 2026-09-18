@@ -247,7 +247,7 @@ export function assemblePlan(opts: {
     planInterval: paid ? (opts.planInterval ?? null) : null,
     subscriptionStatus,
     canResearch: canBuild,
-    canCreate: canBuild,
+    canCreate: paid && canBuild,
     canHistory: true,
     canGear: paid,
     canXlRegen: paid,

@@ -24,6 +24,7 @@ import {
   fetchPolarAdminStats,
   ensureReferralDiscountId,
   cancelPolarAtPeriodEnd,
+  lookupPolarSubscription,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { mailerConfigured, mailerLastError } from "./mailer";
@@ -332,7 +333,9 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
       }
       subscriptionStatus = String(ent?.subscription_status ?? "").trim() || "active";
       currentPeriodEnd = isoOrNull(ent?.current_period_end);
-      polarLinked = Boolean(String(ent?.polar_subscription_id ?? "").trim());
+      polarLinked = Boolean(
+        String(ent?.polar_subscription_id ?? "").trim() || String(ent?.polar_customer_id ?? "").trim(),
+      );
       const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
       planInterval = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
       bonusBuilds = await bonusBuildsFor(ids);
@@ -392,7 +395,9 @@ export async function loadPlan(userId: string, email: string | null): Promise<Pl
     const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
     const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
     const bonusBuilds = await bonusBuildsFor(ids);
-    const polarLinked = Boolean(String(ent?.polar_subscription_id ?? "").trim());
+    const polarLinked = Boolean(
+      String(ent?.polar_subscription_id ?? "").trim() || String(ent?.polar_customer_id ?? "").trim(),
+    );
     const plan = assemblePlan({
       userId,
       email: em || email,
@@ -703,10 +708,23 @@ export const confirmCheckout = createServerFn({ method: "POST" })
       };
     }
     const order = extractOrder(checkout);
-    if (!isRealPolarOrderId(order.orderId) && !isRealPolarSubscriptionId(order.subscriptionId)) {
+    const email = (await emailFor(context.userId, context.email)) ?? "";
+    let subscriptionId = order.subscriptionId;
+    let customerId = order.customerId;
+    if (!isRealPolarSubscriptionId(subscriptionId) || !customerId) {
+      const looked = await lookupPolarSubscription({
+        email,
+        externalId: context.userId,
+        customerId: customerId || undefined,
+      });
+      if (looked) {
+        if (!isRealPolarSubscriptionId(subscriptionId)) subscriptionId = looked.id;
+        if (!customerId) customerId = looked.customerId;
+      }
+    }
+    if (!isRealPolarOrderId(order.orderId) && !isRealPolarSubscriptionId(subscriptionId)) {
       return { ok: false as const, error: "Polar has not issued an order yet. Finish payment first." };
     }
-    const email = (await emailFor(context.userId, context.email)) ?? "";
     const metaUser = String(order.userId ?? "").trim();
     const ids = await siblingUserIds(context.userId, email);
     if (metaUser && metaUser !== context.userId && !ids.includes(metaUser)) {
@@ -725,9 +743,9 @@ export const confirmCheckout = createServerFn({ method: "POST" })
       orderId: order.orderId,
       checkoutId: data.checkoutId,
       amountCents: order.amount,
-      customerId: order.customerId,
+      customerId,
       raw: { type: "checkout.updated", ...checkout },
-      subscriptionId: order.subscriptionId,
+      subscriptionId,
       interval: order.interval,
       subscriptionStatus: "active",
     });
@@ -843,32 +861,79 @@ export const cancelMySubscription = createServerFn({ method: "POST" })
   > => {
     const email = await emailFor(context.userId, context.email);
     const sql = await getSql();
+    const ids = await siblingUserIds(context.userId, email);
     let sub = "";
     let status = "";
     let periodEnd: string | null = null;
+    let customerId = "";
     try {
-      const rows = await sql<{
+      const rows = await sql.query<{
         polar_subscription_id: string | null;
+        polar_customer_id: string | null;
         subscription_status: string | null;
         current_period_end: Date | string | null;
-      }>`
-        select polar_subscription_id, subscription_status, current_period_end
-        from entitlements
-        where user_id = ${context.userId}
-        limit 1
-      `;
-      sub = String(rows[0]?.polar_subscription_id ?? "").trim();
-      status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
-      periodEnd = isoOrNull(rows[0]?.current_period_end);
+      }>(
+        `select polar_subscription_id, polar_customer_id, subscription_status, current_period_end
+         from entitlements
+         where user_id = any($1::text[]) ${email ? "or lower(email) = $2" : ""}
+         order by updated_at desc
+         limit 8`,
+        email ? [ids, normalizeEmail(email)] : [ids],
+      );
+      const row =
+        rows.find((r) => String(r.polar_subscription_id ?? "").trim()) ??
+        rows.find((r) => String(r.polar_customer_id ?? "").trim()) ??
+        rows[0];
+      sub = String(row?.polar_subscription_id ?? "").trim();
+      customerId = String(row?.polar_customer_id ?? "").trim();
+      status = String(row?.subscription_status ?? "").trim().toLowerCase();
+      periodEnd = isoOrNull(row?.current_period_end);
     } catch {
       try {
-        const rows = await sql<{ polar_subscription_id: string | null; subscription_status: string | null }>`
-          select polar_subscription_id, subscription_status from entitlements where user_id = ${context.userId} limit 1
+        const rows = await sql<{
+          polar_subscription_id: string | null;
+          polar_customer_id: string | null;
+          subscription_status: string | null;
+        }>`
+          select polar_subscription_id, polar_customer_id, subscription_status
+          from entitlements where user_id = ${context.userId} limit 1
         `;
         sub = String(rows[0]?.polar_subscription_id ?? "").trim();
+        customerId = String(rows[0]?.polar_customer_id ?? "").trim();
         status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
       } catch {
         sub = "";
+      }
+    }
+    if (!sub) {
+      const looked = await lookupPolarSubscription({
+        email,
+        externalId: context.userId,
+        customerId: customerId || undefined,
+      });
+      if (looked) {
+        sub = looked.id;
+        periodEnd = looked.periodEnd || periodEnd;
+        status = looked.status || status;
+        if (looked.cancelAtPeriodEnd) {
+          await markSubscriptionCanceled({
+            email: email ?? "",
+            subscriptionId: sub,
+            periodEnd: looked.periodEnd,
+            raw: { type: "subscription.canceled", id: sub, status: "canceled", cancel_at_period_end: true },
+          });
+          invalidatePlanCache(context.userId);
+          return { ok: true, already: true, periodEnd: looked.periodEnd || periodEnd };
+        }
+        try {
+          await sql.query(
+            `update entitlements set polar_subscription_id = $1, polar_customer_id = coalesce(nullif($2, ''), polar_customer_id), updated_at = now()
+             where user_id = any($3::text[])`,
+            [sub, looked.customerId, ids],
+          );
+        } catch {
+          /* still cancel Polar */
+        }
       }
     }
     if (!sub) {
@@ -884,24 +949,43 @@ export const cancelMySubscription = createServerFn({ method: "POST" })
       invalidatePlanCache(context.userId);
       return { ok: true, already: true, periodEnd };
     }
-    const ok = await cancelPolarAtPeriodEnd(sub);
-    if (!ok) {
+    const cancelled = await cancelPolarAtPeriodEnd(sub);
+    if (!cancelled.ok) {
       return {
         ok: false,
         error: "Polar could not cancel yet. Use Manage subscription on Polar, or email support.",
       };
     }
+    const end = cancelled.periodEnd || periodEnd;
     try {
-      await sql`
-        update entitlements
-        set subscription_status = 'canceled', updated_at = now()
-        where user_id = ${context.userId}
-      `;
+      if (end) {
+        await sql.query(
+          `update entitlements
+           set subscription_status = 'canceled', current_period_end = $1::timestamptz, updated_at = now()
+           where user_id = any($2::text[]) or polar_subscription_id = $3`,
+          [end, ids, sub],
+        );
+      } else {
+        await sql.query(
+          `update entitlements
+           set subscription_status = 'canceled', updated_at = now()
+           where user_id = any($1::text[]) or polar_subscription_id = $2`,
+          [ids, sub],
+        );
+      }
     } catch {
-      /* webhook will catch up */
+      try {
+        await sql`
+          update entitlements
+          set subscription_status = 'canceled', updated_at = now()
+          where user_id = ${context.userId}
+        `;
+      } catch {
+        /* webhook will catch up */
+      }
     }
     invalidatePlanCache(context.userId);
-    return { ok: true, already: false, periodEnd };
+    return { ok: true, already: cancelled.already, periodEnd: end };
   });
 
 export async function recordBuild(userId: string, kind: string, song: string) {
@@ -1671,7 +1755,7 @@ export const pushMyPresets = createServerFn({ method: "POST" })
   .validator((input: unknown) =>
     z
       .object({
-        presets: z.array(z.unknown()).max(60),
+        presets: z.array(z.unknown()).max(400),
       })
       .parse(input),
   )

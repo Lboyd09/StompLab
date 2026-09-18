@@ -147,7 +147,7 @@ function AccountPage() {
           <>
             <p className="text-sm text-muted-foreground">
               Free plan. {plan.freeRemaining} of {FREE_BUILDS + plan.bonusBuilds} custom builds left. Three demos
-              always work. Catalog is open. Gear locker is paid.
+              always work. Catalog is open. Create and the gear locker are paid.
             </p>
             <Button asChild>
               <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
@@ -159,7 +159,7 @@ function AccountPage() {
             <Link to="/upgrade">Subscribe with Polar (test cancel)</Link>
           </Button>
         ) : null}
-        {plan.paid || plan.admin ? (
+        {plan.polarLinked || (plan.paid && !plan.admin) ? (
           <div className="flex flex-wrap gap-3">
             <Button type="button" variant="secondary" disabled={portalBusy} onClick={() => void onManageSubscription()}>
               {portalBusy ? "Opening Polar…" : "Manage subscription"}
@@ -176,6 +176,8 @@ function AccountPage() {
             <Link to="/admin">Admin dashboard</Link>
           </Button>
         ) : null}
+        {error ? <p className="text-sm text-destructive">{error}</p> : null}
+        {message ? <p className="text-sm text-muted-foreground">{message}</p> : null}
         <p className="text-xs text-muted-foreground">
           Cancel here or on Polar’s customer portal. You keep paid access until the period you already paid for
           ends. Stomp Lab never sees your card.

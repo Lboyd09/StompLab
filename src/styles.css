@@ -266,6 +266,7 @@ html.sl-touring nav {
 @media (prefers-reduced-motion: reduce) {
   .sl-enter,
   .sl-stagger > *,
+  .sl-tour-step,
   .sl-btn-sheen::after,
   .sl-menu,
   .sl-tour-step {

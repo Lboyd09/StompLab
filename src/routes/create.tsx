@@ -10,6 +10,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { DEVICE_MAP } from "@/data/categories";
@@ -38,6 +39,7 @@ function CreatePage() {
   const savePreset = useAppStore((s) => s.savePreset);
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
+  const [playerName, setPlayerName] = useState("");
   const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -67,6 +69,7 @@ function CreatePage() {
       const result = await createCustomSoundFn({
         data: {
           description: description.trim(),
+          playerName: playerName.trim(),
           instrument,
           stompModel,
           playbackTarget,
@@ -113,26 +116,31 @@ function CreatePage() {
     }
   }
 
-  if (!isPending && plan.signedIn && !plan.canCreate) {
-    if (plan.paid) {
-      return (
-        <div className="mx-auto max-w-lg space-y-3 py-8">
-          <h1 className="font-display text-3xl font-semibold uppercase tracking-tight">This month’s builds are used</h1>
-          <p className="text-sm text-muted-foreground">
-            Your subscription stays active. Custom research opens again at the start of next month. Demos
-            never count.
-          </p>
-          <Button asChild>
-            <Link to="/">Back to Lab</Link>
-          </Button>
-        </div>
-      );
-    }
+  if (isPending) {
+    return <p className="text-sm text-muted-foreground">Loading…</p>;
+  }
+
+  if (!plan.paid) {
     return (
       <PaywallCard
-        title="You've used the three free custom songs"
-        body="Unlock to describe any sound, keep history, and download every rig — not just the demos."
+        title="Create is in the full Lab"
+        body="Describe a custom sound, or optionally a player you want to sound like. Song research still uses your free builds. Create unlocks with a subscription."
       />
+    );
+  }
+
+  if (!plan.canCreate) {
+    return (
+      <div className="mx-auto max-w-lg space-y-3 py-8">
+        <h1 className="font-display text-3xl font-semibold uppercase tracking-tight">This month’s builds are used</h1>
+        <p className="text-sm text-muted-foreground">
+          Your subscription stays active. Custom research opens again at the start of next month. Demos
+          never count.
+        </p>
+        <Button asChild>
+          <Link to="/">Back to Lab</Link>
+        </Button>
+      </div>
     );
   }
 
@@ -142,18 +150,9 @@ function CreatePage() {
       <PageHeader kicker="Custom rig" title="Describe a sound">
         Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}
         {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica.
-        If you want a record, use Research a song.
+        If you want a record, use Research a song. Player name is optional.
       </PageHeader>
       <RigDisclaimer />
-
-      {!plan.signedIn && !isPending ? (
-        <p className="text-sm text-muted-foreground">
-          Sign in for {plan.freeRemaining} free custom builds.{" "}
-          <Link to="/login" search={{ next: "/create" }} className="text-primary underline underline-offset-2">
-            Sign in
-          </Link>
-        </p>
-      ) : null}
 
       <form onSubmit={(e) => void onSubmit(e)} className="relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6">
         <span className="sl-form-bar" aria-hidden />
@@ -164,6 +163,21 @@ function CreatePage() {
           onChange={(e) => setDescription(e.target.value)}
           placeholder="Dumble-ish overdrive into a Twin, with a slow Univibe and a short plate…"
         />
+        <div className="space-y-1.5">
+          <Label htmlFor="player">Sound like a player (optional)</Label>
+          <Input
+            id="player"
+            value={playerName}
+            onChange={(e) => setPlayerName(e.target.value)}
+            placeholder="e.g. David Gilmour — leave blank to invent a sound"
+            maxLength={80}
+            autoComplete="off"
+          />
+          <p className="text-xs text-muted-foreground">
+            Optional. If you type a name, we aim at their typical rig and attack — still a custom sound, not a
+            song replica.
+          </p>
+        </div>
         <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}

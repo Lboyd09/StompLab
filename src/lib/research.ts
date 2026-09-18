@@ -63,7 +63,7 @@ export function matchFeatured(
 
 function gearLine(gear: UserGear[]): string {
   if (!gear.length) return "";
-  return `\nPlayer owns (recommend these when they fit; do not invent extras): ${gear
+  return `\nPlayer locker — name these in recommendedGear when they fit, and tell the player which piece to grab: ${gear
     .map((g) => `${g.kind}: ${g.name}${g.notes ? ` (${g.notes})` : ""}`)
     .join("; ")}`;
 }
@@ -153,6 +153,7 @@ const CreateIn = z.object({
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
   guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
+  playerName: z.string().max(80).optional().default(""),
 });
 
 const EqIn = z.object({ query: z.string().min(2).max(120) });
@@ -346,9 +347,17 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<ResearchResult> => {
     const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
-    const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget);
+    const player = (data.playerName ?? "").trim();
+    const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget, player);
 
-    if (!plan.canCreate) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (!plan.canCreate) {
+      if (plan.blockedReason === "quota") return blocked("quota");
+      return {
+        ok: false,
+        reason: "paywall",
+        error: "Create is a subscriber feature. Song research still uses your free builds.",
+      };
+    }
     if (tooManyResearches(context.userId)) {
       return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
     }
@@ -376,7 +385,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
         omitWah: data.wahMode === "pedal",
       });
       const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
-      const prompt = `${customSoundInstructions(data.description, data.instrument, wah, parseGuitarRole(data.guitarRole))}
+      const prompt = `${customSoundInstructions(data.description, data.instrument, wah, parseGuitarRole(data.guitarRole), player)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):

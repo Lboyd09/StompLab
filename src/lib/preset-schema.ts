@@ -3,7 +3,7 @@ import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import { helixIdFor } from "@/data/helix-ids";
 import { PLAYBACK_MAP } from "@/data/playback";
-import type { PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
+import type { GearRecommendation, PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
 import { guitarRolePrompt, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { newId } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
@@ -94,6 +94,8 @@ export const PresetOut = z.object({
       z.object({
         item: z.string(),
         why: z.string().optional().default(""),
+        kind: z.string().optional(),
+        fromLocker: z.boolean().optional(),
       }),
     )
     .optional(),
@@ -256,29 +258,81 @@ export function toPreset(
 
 export function overlayUserGear(preset: Preset, gear: UserGear[]): Preset {
   if (!gear.length) return preset;
-  const recs = [...preset.recommendedGear];
-  const inst = gear.find((g) => g.kind === preset.instrument);
-  if (inst && !recs.some((r) => r.item === inst.name)) {
-    recs.unshift({
-      item: inst.name,
-      why: `Your ${inst.kind}${inst.notes ? ` — ${inst.notes}` : ""}. Use this for the part.`,
-    });
+  const recs: GearRecommendation[] = (preset.recommendedGear ?? []).map((r) => ({ ...r }));
+  const seen = new Set(recs.map((r) => gearKey(r.item)).filter(Boolean));
+
+  function add(item: string, why: string, kind?: GearRecommendation["kind"], fromLocker = true) {
+    const key = gearKey(item);
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    recs.push({ item, why, kind, fromLocker });
   }
-  const amp = gear.find((g) => g.kind === "amp");
-  if (amp && !recs.some((r) => r.item === amp.name)) {
-    recs.push({
-      item: amp.name,
-      why: "If you want a real power amp, 4-cable-method into this head and bypass the Stomp cab.",
-    });
+
+  for (const g of gear.filter((item) => item.kind === preset.instrument)) {
+    const match = preset.originalGear.find((o) => gearNamesMatch(o.name, g.name));
+    add(
+      g.name,
+      match
+        ? `Grab your ${g.name}${g.notes ? ` (${g.notes})` : ""}. Closest match to the ${match.name} on the record.`
+        : `Your ${g.kind}${g.notes ? ` — ${g.notes}` : ""}. Use this for the part.`,
+      g.kind,
+    );
   }
-  const pedal = gear.find((g) => g.kind === "pedal");
-  if (pedal && !recs.some((r) => r.item === pedal.name)) {
-    recs.push({
-      item: pedal.name,
-      why: "Park it in an FX Loop block if you prefer the real pedal over the HX model.",
-    });
+
+  for (const orig of preset.originalGear) {
+    const hit = gear.find((g) => gearNamesMatch(g.name, orig.name));
+    if (hit) {
+      add(
+        hit.name,
+        `Grab your ${hit.name}. The record used ${orig.name}${orig.notes ? ` — ${orig.notes}` : ""}.`,
+        hit.kind,
+      );
+    }
   }
-  return { ...preset, recommendedGear: recs };
+
+  for (const g of gear.filter((item) => item.kind === "amp")) {
+    add(
+      g.name,
+      "If you want a real power amp, 4-cable-method into this head and bypass the Stomp cab.",
+      "amp",
+    );
+  }
+  for (const g of gear.filter((item) => item.kind === "cab")) {
+    add(
+      g.name,
+      "Use this cab if you run 4CM or a real head. Otherwise the HX cab models the record.",
+      "cab",
+    );
+  }
+  for (const g of gear.filter((item) => item.kind === "pedal")) {
+    add(
+      g.name,
+      "Park it in an FX Loop block if you prefer the real pedal over the HX model.",
+      "pedal",
+    );
+  }
+  for (const g of gear.filter((item) => item.kind === "pickup")) {
+    add(g.name, "Your pickups — stay on this guitar if they fit the record.", "pickup");
+  }
+
+  recs.sort((a, b) => Number(Boolean(b.fromLocker)) - Number(Boolean(a.fromLocker)));
+  return { ...preset, recommendedGear: recs.slice(0, 16) };
+}
+
+function gearKey(name: string) {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+}
+
+export function gearNamesMatch(a: string, b: string) {
+  const aa = gearKey(a);
+  const bb = gearKey(b);
+  if (!aa || !bb) return false;
+  if (aa === bb) return true;
+  if (aa.includes(bb) || bb.includes(aa)) return true;
+  const aw = new Set(aa.split(" ").filter((w) => w.length > 2));
+  const bw = bb.split(" ").filter((w) => w.length > 2);
+  if (aw.size === 0 || bw.length === 0) return false;
+  return bw.filter((w) => aw.has(w)).length >= 2;
 }
 
 export function publicPreset(preset: Preset): Preset {
@@ -441,12 +495,18 @@ export function customSoundInstructions(
   instrument: "guitar" | "bass",
   wahLine?: string,
   guitarRole: GuitarRole = "both",
+  playerName?: string,
 ) {
+  const player = (playerName ?? "").trim();
+  const playerBlock = player
+    ? `Optional player to evoke (not a cover of a named song): ${player}. Capture their typical guitar, amp, gain structure, and attack. Still a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo.`
+    : `Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.`;
   return `CUSTOM SOUND (not a song). Instrument: ${instrument}.
 Player description:
 ${description.trim()}
 
-Invent a unique HX chain that delivers THAT description. Do not substitute a similar famous record. Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.
+Invent a unique HX chain that delivers THAT description. Do not substitute a similar famous record.
+${playerBlock}
 If the description is a feeling ("warm broken-up American clean") pick the closest catalog amp and set knobs — still original, not a named-song patch.
 Listener test: would a player who typed that sentence recognize this preset as what they asked for, not as a cover of a hit?
 Every snapshot's enabledModelIds MUST include the amp and the cab.

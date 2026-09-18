@@ -49,6 +49,7 @@ describe("assemblePlan", () => {
     assert.equal(plan.canGear, false);
     assert.equal(plan.canSharedLibrary, false);
     assert.equal(plan.canResearch, true);
+    assert.equal(plan.canCreate, false);
     assert.equal(plan.freeRemaining, 2);
   });
   it("does not unlock iCloud as admin even if paid is smuggled", () => {
@@ -151,10 +152,37 @@ describe("assemblePlan", () => {
       bonusBuilds: 3,
     });
     assert.equal(plan.canResearch, true);
+    assert.equal(plan.canCreate, false);
     assert.equal(plan.freeRemaining, 3);
     assert.equal(plan.monthLimit, 6);
     assert.equal(plan.bonusBuilds, 3);
     assert.match(buildsUsedCopy(plan), /3 of 6/);
+  });
+  it("keeps Create as a subscriber feature even with free builds left", () => {
+    const plan = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: false,
+      freeUsed: 0,
+      monthUsed: 0,
+    });
+    assert.equal(plan.canResearch, true);
+    assert.equal(plan.canCreate, false);
+    assert.equal(plan.canGear, false);
+    assert.equal(plan.paid, false);
+  });
+  it("blocks Create when a paid month is used up", () => {
+    const plan = assemblePlan({
+      userId: "u1",
+      email: "a@b.com",
+      paid: true,
+      freeUsed: 3,
+      monthUsed: 50,
+      planInterval: "month",
+    });
+    assert.equal(plan.canCreate, false);
+    assert.equal(plan.canResearch, false);
+    assert.equal(plan.blockedReason, "quota");
   });
   it("adds invite bonus builds on top of a paid month", () => {
     const plan = assemblePlan({
@@ -190,6 +218,7 @@ describe("assemblePlan", () => {
     assert.equal(monthly.monthLimit, 50);
     assert.equal(yearly.monthLimit, 50);
     assert.equal(monthly.canResearch, true);
+    assert.equal(monthly.canCreate, true);
     assert.equal(monthly.planInterval, "month");
     assert.equal(yearly.planInterval, "year");
   });

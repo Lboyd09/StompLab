@@ -99,6 +99,9 @@ describe("research prompt", () => {
     assert.match(brief, /CUSTOM SOUND/);
     assert.match(brief, /Klon into a Deluxe/);
     assert.match(brief, /not a song/);
+    const gilmour = customSoundInstructions("Klon into a Deluxe, slapback, Strat neck", "guitar", undefined, "both", "David Gilmour");
+    assert.match(gilmour, /David Gilmour/);
+    assert.match(gilmour, /Optional player/);
   });
 
   it("tells HX Effects it has no amp or cab", () => {

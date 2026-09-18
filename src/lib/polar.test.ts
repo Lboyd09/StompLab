@@ -146,6 +146,22 @@ describe("extractOrder", () => {
     assert.equal(order.orderId, "order_real_999");
     assert.equal(order.checkoutId, "checkout_abc12345");
   });
+  it("reads camelCase Polar ids on a succeeded checkout", () => {
+    const order = extractOrder({
+      type: "checkout.updated",
+      data: {
+        id: "checkout_abc12345",
+        orderId: "order_real_888",
+        subscriptionId: "sub_real_88888",
+        customerId: "cust_real_888",
+        status: "succeeded",
+        customer_email: "a@b.com",
+      },
+    });
+    assert.equal(order.orderId, "order_real_888");
+    assert.equal(order.subscriptionId, "sub_real_88888");
+    assert.equal(order.customerId, "cust_real_888");
+  });
 });
 
 describe("isRealPolarOrderId", () => {

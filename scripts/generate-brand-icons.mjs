@@ -128,6 +128,8 @@ writeFileSync(join(publicDir, "sl-icon-192.png"), sl192);
 writeFileSync(join(publicDir, "icon-180.png"), sl180);
 writeFileSync(join(publicDir, "sl-touch.png"), sl180);
 writeFileSync(join(publicDir, "sl-home-180.png"), sl180);
+writeFileSync(join(publicDir, "sl-touch-v18.png"), sl180);
+writeFileSync(join(publicDir, "sl-touch-v19.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-precomposed.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-180x180.png"), sl180);

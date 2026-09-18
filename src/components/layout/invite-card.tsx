@@ -54,6 +54,7 @@ export function InviteCard({
 
   const showCode = ready && !isPending && Boolean(user);
   const url = code && origin ? inviteUrl(origin, code) : "";
+  const remaining = Math.max(0, cap - invited);
 
   async function copyLink() {
     if (!url) return;
@@ -107,16 +108,36 @@ export function InviteCard({
             Bring a friend
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            Send the link. Your friend creates a <span className="text-foreground">new</span> account. You both
-            get {REFERRAL_BONUS} extra custom builds. You can invite {cap} friends.
-          </p>
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            If you pay monthly and they start monthly, Polar takes {REFERRAL_SUBSCRIBE_PERCENT}% off their first
-            invoice and {REFERRAL_SUBSCRIBE_PERCENT}% off your <span className="text-foreground">next</span>{" "}
-            invoice — not a refund of this month. Yearly stays ${PRICE_YEARLY_USD}.
+            You both get {REFERRAL_BONUS} extra custom song builds when they create a{" "}
+            <span className="text-foreground">new</span> account from your link. Cap is {cap} friends.
           </p>
         </div>
       </div>
+
+      <ol className="sl-stagger mt-6 space-y-4">
+        <li className="border-t border-border pt-4">
+          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">01</p>
+          <p className="mt-2 text-sm font-medium">Copy your link</p>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            It opens Create account — not Sign in. Existing accounts cannot use it.
+          </p>
+        </li>
+        <li className="border-t border-border pt-4">
+          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">02</p>
+          <p className="mt-2 text-sm font-medium">They sign up with that link</p>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            The extra {REFERRAL_BONUS} builds land on both accounts as soon as the new account is created.
+          </p>
+        </li>
+        <li className="border-t border-border pt-4">
+          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">03</p>
+          <p className="mt-2 text-sm font-medium">If they subscribe monthly, Polar takes {REFERRAL_SUBSCRIBE_PERCENT}% off</p>
+          <p className="mt-1 text-sm leading-snug text-muted-foreground">
+            Their first monthly invoice, and your next monthly invoice — not a refund of this month. Yearly stays $
+            {PRICE_YEARLY_USD}.
+          </p>
+        </li>
+      </ol>
 
       {!showCode ? (
         <div className="mt-5">
@@ -149,14 +170,14 @@ export function InviteCard({
                 />
               ) : null}
               <p className="text-xs text-muted-foreground">
-                The link opens Create account — not Sign in. On Windows, click the box and Ctrl+C if Copy is blocked.
+                The link opens Create account. On Windows, click the box and Ctrl+C if Copy is blocked.
               </p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Invite codes need the database.</p>
           )}
           <p className="text-xs text-muted-foreground">
-            {invited} of {cap} used.
+            {invited} of {cap} used.{remaining ? ` ${remaining} left.` : " Cap reached."}
             {plan.bonusBuilds
               ? ` You have ${plan.bonusBuilds} bonus build${plan.bonusBuilds === 1 ? "" : "s"}.`
               : ""}

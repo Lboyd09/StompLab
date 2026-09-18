@@ -150,7 +150,8 @@ function SettingsPage() {
           <>
             <p className="text-sm text-muted-foreground">
               Sign in for {FREE_BUILDS} free custom songs, then subscribe for any title. Signed-in
-              accounts get an invite link — a friend signs up, you both get a build.
+              accounts get an invite link — a friend creates a new account, you both get 3 extra custom
+              builds.
             </p>
             <div className="flex flex-wrap gap-2">
               <Button asChild>

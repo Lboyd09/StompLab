@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { GEAR_SUGGESTIONS, type GearSuggestion } from "@/data/gear-catalog";
+import { suggestionsFor, type GearSuggestion } from "@/data/gear-catalog";
 
 export function GearPicker({
   kind,
@@ -17,12 +17,7 @@ export function GearPicker({
   const box = useRef<HTMLDivElement>(null);
   const ignoreBlur = useRef(false);
 
-  const hits = useMemo(() => {
-    const needle = name.trim().toLowerCase();
-    const pool = GEAR_SUGGESTIONS.filter((g) => g.kind === kind);
-    if (!needle) return pool.slice(0, 8);
-    return pool.filter((g) => g.name.toLowerCase().includes(needle)).slice(0, 8);
-  }, [kind, name]);
+  const hits = useMemo(() => suggestionsFor(kind, name), [kind, name]);
 
   useEffect(() => {
     setHi(0);
@@ -97,7 +92,10 @@ export function GearPicker({
                   pick(g.name);
                 }}
               >
-                {g.name}
+                <span className="min-w-0">
+                  <span className="block truncate">{g.model}</span>
+                  <span className="block text-[11px] text-muted-foreground">{g.brand}</span>
+                </span>
               </button>
             </li>
           ))}

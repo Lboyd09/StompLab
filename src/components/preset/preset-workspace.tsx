@@ -434,14 +434,24 @@ export function PresetWorkspace({
         {preset.recommendedGear.length ? (
           <Card>
             <CardHeader>
-              <CardTitle>Use from your locker</CardTitle>
-              <CardDescription>Which of your guitars, basses, or amps to grab.</CardDescription>
+              <CardTitle>Grab this</CardTitle>
+              <CardDescription>
+                Models to use for this song — locker pieces first, then the rest of the brief.
+              </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {preset.recommendedGear.map((g) => (
-                <div key={g.item}>
-                  <div className="text-sm font-medium">{g.item}</div>
-                  <p className="text-xs text-muted-foreground">{g.why}</p>
+                <div key={g.item} className="rounded-xl border border-border bg-secondary/40 px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {g.fromLocker ? (
+                      <Badge variant="outline">Your locker</Badge>
+                    ) : null}
+                    {g.kind ? (
+                      <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</span>
+                    ) : null}
+                  </div>
+                  <div className="mt-1 text-sm font-medium">{g.item}</div>
+                  <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{g.why}</p>
                 </div>
               ))}
             </CardContent>
