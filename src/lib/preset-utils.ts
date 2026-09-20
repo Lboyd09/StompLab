@@ -214,7 +214,7 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
     if (!low.length && high.length) {
       fs = high.map((f) => ({ ...f, index: f.index - 3 }));
     } else {
-      fs = [...low, ...high.filter((h) => !low.some((l) => l.index === h.index - 3))];
+      fs = [...low, ...high.filter((h) => h.action !== "snapshot" || !low.some((l) => l.index === h.index - 3))];
     }
     for (let i = 0; i < Math.min(snapshots.length, Math.min(device.footswitches, 8)); i++) {
       const index = i + 1;
@@ -252,7 +252,7 @@ export function resolveNamedPreset(id: string, model: StompModelId, stored: Pres
   const fromStore =
     stored.find((p) => p.id === id) ??
     (featured ? stored.find((p) => featuredBaseId(p.id) === featured.id) : undefined);
-  const source = fromStore ?? featured;
+  const source = featured && featured.source === "featured" ? featured : fromStore ?? featured;
   if (!source) return null;
   return withStompModel({ ...source, createdAt: fromStore?.createdAt ?? Date.now() }, model);
 }

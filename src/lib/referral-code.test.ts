@@ -22,6 +22,12 @@ describe("referral codes", () => {
   it("opens Create account, not Sign in", () => {
     assert.equal(invitePath("ab12cd"), "/login?mode=up&ref=AB12CD");
     assert.equal(inviteUrl("https://stomplab.app", "ab12cd"), "https://stomplab.app/login?mode=up&ref=AB12CD");
+    assert.equal(invitePath("ab12cd", "half"), "/login?mode=up&ref=AB12CD&perk=half");
+    assert.equal(invitePath("ab12cd", "builds"), "/login?mode=up&ref=AB12CD&perk=builds");
+    assert.equal(
+      inviteUrl("https://stomplab.app", "ab12cd", "half"),
+      "https://stomplab.app/login?mode=up&ref=AB12CD&perk=half",
+    );
   });
 
   it("treats gmail aliases as the same person", () => {

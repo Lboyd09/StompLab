@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { copyText } from "@/lib/clipboard";
 import { inviteUrl, REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
-import { PRICE_YEARLY_USD } from "@/lib/plan";
+import { PRICE_YEARLY_USD, subscriptionCanceled } from "@/lib/plan";
 import { getMyReferral, redeemReferral } from "@/lib/referrals";
 import { usePlan } from "@/lib/use-plan";
 import { cn } from "@/lib/utils";
@@ -53,8 +53,9 @@ export function InviteCard({
   }, [user]);
 
   const showCode = ready && !isPending && Boolean(user);
-  const url = code && origin ? inviteUrl(origin, code) : "";
   const remaining = Math.max(0, cap - invited);
+  const paidInvite = plan.paid && !subscriptionCanceled(plan);
+  const url = code && origin ? inviteUrl(origin, code, paidInvite ? "half" : "builds") : "";
 
   async function copyLink() {
     if (!url) return;
@@ -104,10 +105,25 @@ export function InviteCard({
         </span>
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="sl-kicker">Invite</p>
-          <h2 className="sl-hero-title text-2xl">Bring a friend</h2>
+          <h2 className="sl-hero-title text-2xl">
+            {paidInvite ? "Invite — 50% off + 3 extra builds" : "Invite — 3 extra free builds"}
+          </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            You both get {REFERRAL_BONUS} extra custom song builds when they create a{" "}
-            <span className="text-foreground">new</span> account from your link. Cap is {cap} friends.
+            {paidInvite ? (
+              <>
+                Your friend creates a <span className="text-foreground">new</span> account from this link. You both get{" "}
+                {REFERRAL_BONUS} extra custom builds. Because you subscribe, their first monthly invoice is{" "}
+                {REFERRAL_SUBSCRIBE_PERCENT}% off — and your next monthly invoice is too. Yearly stays $
+                {PRICE_YEARLY_USD}. Cap is {cap} friends.
+              </>
+            ) : (
+              <>
+                Your friend creates a <span className="text-foreground">new</span> account from this link. You both get{" "}
+                {REFERRAL_BONUS} extra <span className="text-foreground">free custom builds</span> — that’s all this
+                invite does until you subscribe. Polar’s {REFERRAL_SUBSCRIBE_PERCENT}% off is only on a paid monthly
+                invite. Cap is {cap} friends.
+              </>
+            )}
           </p>
         </div>
       </div>
@@ -129,10 +145,21 @@ export function InviteCard({
         </li>
         <li className="border-t border-border pt-4">
           <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">03</p>
-          <p className="mt-2 text-sm font-medium">If they subscribe monthly, Polar takes {REFERRAL_SUBSCRIBE_PERCENT}% off</p>
+          <p className="mt-2 text-sm font-medium">
+            {paidInvite ? `If they start monthly, Polar takes ${REFERRAL_SUBSCRIBE_PERCENT}% off` : "Subscribe if you want to send 50% off"}
+          </p>
           <p className="mt-1 text-sm leading-snug text-muted-foreground">
-            Their first monthly invoice, and your next monthly invoice — not a refund of this month. Yearly stays $
-            {PRICE_YEARLY_USD}.
+            {paidInvite ? (
+              <>
+                Their first monthly invoice, and your next monthly invoice — not a refund of this month. Yearly stays $
+                {PRICE_YEARLY_USD}. Unsubscribing later does not take the extra builds back.
+              </>
+            ) : (
+              <>
+                Free accounts only pass extra builds. After you subscribe monthly, this same link also gives them{" "}
+                {REFERRAL_SUBSCRIBE_PERCENT}% off their first month.
+              </>
+            )}
           </p>
         </li>
       </ol>

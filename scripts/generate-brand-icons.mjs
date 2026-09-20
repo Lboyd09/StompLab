@@ -9,7 +9,7 @@
  * squircle mask and transparent icons look wrong there.
  */
 import { chromium } from "playwright";
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -130,6 +130,8 @@ writeFileSync(join(publicDir, "sl-touch.png"), sl180);
 writeFileSync(join(publicDir, "sl-home-180.png"), sl180);
 writeFileSync(join(publicDir, "sl-touch-v18.png"), sl180);
 writeFileSync(join(publicDir, "sl-touch-v19.png"), sl180);
+writeFileSync(join(publicDir, "sl-touch-v20.png"), sl180);
+writeFileSync(join(publicDir, "sl-touch-v21.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-precomposed.png"), sl180);
 writeFileSync(join(publicDir, "apple-touch-icon-180x180.png"), sl180);
@@ -140,6 +142,8 @@ writeFileSync(join(publicDir, "favicon-32.png"), sl32);
 writeFileSync(join(publicDir, "favicon-16.png"), sl16);
 writeFileSync(join(publicDir, "favicon.ico"), pngToIco(sl16, sl32));
 writeFileSync(join(publicDir, "og.jpg"), og);
+mkdirSync(join(publicDir, "__grok"), { recursive: true });
+writeFileSync(join(publicDir, "__grok", "icon-180.png"), sl180);
 
 await browser.close();
 console.log("wrote brand icons (22% cream SL; Chrome transparent, iOS opaque)");

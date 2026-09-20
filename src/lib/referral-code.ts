@@ -23,15 +23,18 @@ export function canonicalEmail(email: string | null | undefined): string {
   return `${local}@${domain}`;
 }
 
-export function invitePath(code: string) {
+export function invitePath(code: string, perk?: "half" | "builds") {
   const c = normalizeReferralCode(code);
   // Straight to Create account. /join still works for older links.
-  return c ? `/login?mode=up&ref=${encodeURIComponent(c)}` : "/login?mode=up";
+  const base = c ? `/login?mode=up&ref=${encodeURIComponent(c)}` : "/login?mode=up";
+  if (perk === "half") return `${base}&perk=half`;
+  if (perk === "builds") return `${base}&perk=builds`;
+  return base;
 }
 
-export function inviteUrl(origin: string, code: string) {
+export function inviteUrl(origin: string, code: string, perk?: "half" | "builds") {
   const base = origin.replace(/\/$/, "");
-  return `${base}${invitePath(code)}`;
+  return `${base}${invitePath(code, perk)}`;
 }
 
 export function captureReferralCode(raw?: string | null) {

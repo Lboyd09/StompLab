@@ -181,7 +181,7 @@ function CatalogPage() {
             </section>
           ) : eqQuery.trim().length >= 2 && !busy ? (
             <p className="text-sm text-muted-foreground">
-              No instant match. Hit Explain to research an equivalent.
+              No instant match. Hit Find it to research an equivalent.
             </p>
           ) : null}
         </div>
@@ -221,8 +221,24 @@ function CatalogPage() {
           ) : null}
 
           <p className="text-xs text-muted-foreground tabular-nums">
-            {models.length} {instrument} models
+            {models.length} {instrument} model{models.length === 1 ? "" : "s"}
+            {search.q.trim() ? ` matching “${search.q.trim()}”` : ""}
           </p>
+          {!models.length ? (
+            <p className="text-sm text-muted-foreground">
+              Nothing matches that filter.{" "}
+              <button
+                type="button"
+                className="text-primary underline underline-offset-2"
+                onClick={() => {
+                  setLocalQ("");
+                  void setSearch({ search: (p) => ({ ...p, q: "", cat: "" }) });
+                }}
+              >
+                Clear it
+              </button>
+            </p>
+          ) : null}
 
           <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {models.map((m) => {

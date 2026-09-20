@@ -20,6 +20,7 @@ function GoodbyePage() {
   const [state, setState] = useState<"idle" | "working" | "ok" | "err">(token ? "working" : "idle");
   const [error, setError] = useState("");
   const [until, setUntil] = useState("");
+  const [polarUrl, setPolarUrl] = useState("");
 
   useEffect(() => {
     if (!token) return;
@@ -34,6 +35,7 @@ function GoodbyePage() {
         }
         const d = new Date(res.recreateAfter);
         setUntil(d.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }));
+        if (res.polarPortalUrl) setPolarUrl(res.polarPortalUrl);
         await signOut().catch(() => undefined);
         setState("ok");
       })
@@ -46,6 +48,14 @@ function GoodbyePage() {
       cancelled = true;
     };
   }, [token]);
+
+  useEffect(() => {
+    if (state !== "ok" || !polarUrl) return;
+    const t = window.setTimeout(() => {
+      window.location.assign(polarUrl);
+    }, 2200);
+    return () => window.clearTimeout(t);
+  }, [state, polarUrl]);
 
   return (
     <main className="relative grid min-h-dvh place-items-center overflow-x-clip bg-background px-4 py-10 text-foreground">
@@ -63,10 +73,20 @@ function GoodbyePage() {
           <p className="text-sm leading-relaxed text-muted-foreground">One moment — we’re locking the account.</p>
         ) : null}
         {state === "ok" ? (
-          <p className="text-sm leading-relaxed text-muted-foreground">
-            You’re signed out. We keep the records for {DELETE_HOLD_DAYS} days so this email cannot open a new
-            free account. You can create a new one after {until}. Exported presets on your unit are yours.
-          </p>
+          <div className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+            <p>
+              You’re signed out. We keep the records for {DELETE_HOLD_DAYS} days so this email cannot open a new
+              free account. You can create a new one after {until}. Exported presets on your unit are yours.
+            </p>
+            {polarUrl ? (
+              <p className="rounded-xl border border-border bg-card p-4 text-foreground">
+                Next: Polar billing. Closing the Lab does not keep a Polar plan running — we’re opening Polar’s
+                cancel page. Unsubscribing from Polar by itself would have left this account open.
+              </p>
+            ) : (
+              <p>If you never subscribed, there is nothing else to cancel.</p>
+            )}
+          </div>
         ) : null}
         {state === "idle" ? (
           <p className="text-sm leading-relaxed text-muted-foreground">
@@ -75,9 +95,18 @@ function GoodbyePage() {
           </p>
         ) : null}
         {state === "err" ? <p className="text-sm text-destructive">{error}</p> : null}
-        <Button asChild>
-          <Link to="/">Back to the Lab</Link>
-        </Button>
+        <div className="flex flex-wrap gap-3">
+          {polarUrl ? (
+            <Button asChild>
+              <a href={polarUrl} rel="noreferrer">
+                Cancel Polar subscription
+              </a>
+            </Button>
+          ) : null}
+          <Button asChild variant={polarUrl ? "secondary" : "default"}>
+            <Link to="/">Back to the Lab</Link>
+          </Button>
+        </div>
       </div>
     </main>
   );

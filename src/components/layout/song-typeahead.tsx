@@ -110,7 +110,6 @@ export function SongTypeahead({
             }
           }}
           placeholder="Smells Like Teen Spirit"
-          required
           autoComplete="off"
           className="h-12"
         />

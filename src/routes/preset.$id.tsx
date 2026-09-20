@@ -57,10 +57,10 @@ function PresetPage() {
     }
   }, [preset, id, savePreset, navigate]);
 
-  if (!preset) {
+  if (!preset || !id) {
     return (
       <div className="space-y-3">
-        <h1 className="font-display text-2xl font-semibold">Preset not found</h1>
+        <h1 className="sl-hero-title text-3xl">Preset not found</h1>
         <p className="text-sm text-muted-foreground">It may have been cleared from this browser.</p>
         <Link to="/" className="text-sm underline">
           Back to Lab

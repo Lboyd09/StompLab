@@ -87,7 +87,11 @@ function Home() {
 
   async function onResearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!song.trim()) return;
+    if (!song.trim()) {
+      toast.error("Type a song title first.");
+      setStatus("Type a song title first.");
+      return;
+    }
     const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel);
     if (featuredHit) {
       const src = FEATURED.find(
@@ -143,24 +147,28 @@ function Home() {
           guitarRole: "both",
         },
       });
-      if (!result.ok) {
-        if (result.reason === "quota") {
-          toast.error(result.error);
+      if (!result || !result.ok) {
+        const fail = result && !result.ok
+          ? result
+          : { ok: false as const, error: "Research failed. Try a demo, then try that song again." };
+        if (fail.reason === "quota") {
+          toast.error(fail.error);
+          setStatus(fail.error);
           return;
         }
-        if (result.reason === "paywall") {
+        if (fail.reason === "paywall") {
           await navigate({ to: "/upgrade" });
           return;
         }
-        if (result.reason === "signin") {
+        if (fail.reason === "signin") {
           await navigate({ to: "/login", search: { next: "/" } });
           return;
         }
-        notifyResearchError(result, {
+        notifyResearchError(fail, {
           login: () => void navigate({ to: "/login" }),
           upgrade: () => void navigate({ to: "/upgrade" }),
         });
-        setStatus(result.error);
+        setStatus(fail.error);
         return;
       }
       savePreset(result.preset);
@@ -168,7 +176,10 @@ function Home() {
       await refresh();
       await navigate({ to: "/preset/$id", params: { id: result.preset.id } });
     } catch (err) {
-      const message = err instanceof Error ? err.message : "Research failed";
+      const message =
+        err instanceof Error && err.message.trim()
+          ? err.message
+          : "Could not research that song. Try a demo, then try again.";
       if (message === "Unauthorized") {
         await navigate({ to: "/login", search: { next: "/" } });
         return;
@@ -198,7 +209,9 @@ function Home() {
           <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
           <h1 className="sl-hero-title text-[clamp(2.6rem,9vw,5.2rem)]">
             <span className="sl-enter sl-enter-2 block">Type a song.</span>
-            <span className="sl-enter sl-enter-3 mt-2 block text-primary">Get that guitar rig.</span>
+            <span className="sl-enter sl-enter-3 mt-2 block text-primary">
+              Get that {instrument === "bass" ? "bass" : "guitar"} rig.
+            </span>
           </h1>
           <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
           <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
@@ -239,7 +252,7 @@ function Home() {
           </div>
         ) : null}
 
-        <form id="lab-form" onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6" data-tutorial="lab-form">
+        <form id="lab-form" noValidate onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6" data-tutorial="lab-form">
           <span className="sl-form-bar" aria-hidden />
           <SongTypeahead
             song={song}
@@ -283,7 +296,7 @@ function Home() {
             )}
           </p>
           <GeminiHint plan={plan} pending={planPending} />
-          {status && busy === false && !plan.canResearch ? (
+          {status && busy === false ? (
             <p className="text-sm text-destructive">{status}</p>
           ) : null}
         </form>

@@ -33,7 +33,13 @@ function AccountPage() {
   const [error, setError] = useState("");
 
   if (isPending || planPending) {
-    return <p className="text-sm text-muted-foreground">Loading account…</p>;
+    return (
+      <div className="mx-auto max-w-lg space-y-6">
+        <PageHeader kicker="Account" title="Your Lab">
+          Checking your account…
+        </PageHeader>
+      </div>
+    );
   }
   if (!user) {
     return <Navigate to="/login" search={{ next: "/account" }} />;
@@ -240,7 +246,9 @@ function AccountPage() {
         <p className="text-sm leading-relaxed text-muted-foreground">
           We email {user.primaryEmail || "this account"} a confirmation link first. After you click it, we keep
           the records for {DELETE_HOLD_DAYS} days so this email cannot open a new free account, then we erase
-          them. Type DELETE, then send the email.
+          them. If Polar still has a card on file, that confirm page sends you to Polar to cancel billing. Cancel
+          subscription above if you only want to stop Polar and keep this Lab account. Type DELETE, then send the
+          email.
         </p>
         {deleteSent ? (
           <p className="text-sm text-muted-foreground">

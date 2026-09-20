@@ -13,16 +13,18 @@ import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
 import { captureReferralCode, peekReferralCode, clearReferralCode, rememberInviteResult } from "@/lib/referral-code";
-import { redeemReferral } from "@/lib/referrals";
+import { redeemReferral, invitePerkForCode } from "@/lib/referrals";
 import { requestResetMail } from "@/lib/reset-mail";
 import { checkEmailHold } from "@/lib/closed-accounts";
+import { PRICE_YEARLY_USD } from "@/lib/plan";
 
 export const Route = createFileRoute("/login")({
-  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string; mode?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string; mode?: string; perk?: string } => ({
     next: typeof s.next === "string" && s.next.startsWith("/") ? s.next : undefined,
     checkout_id: typeof s.checkout_id === "string" ? s.checkout_id : undefined,
     ref: typeof s.ref === "string" && s.ref.length ? s.ref : undefined,
     mode: typeof s.mode === "string" ? s.mode : undefined,
+    perk: s.perk === "half" || s.perk === "builds" ? s.perk : undefined,
   }),
   component: LoginPage,
 });
@@ -66,6 +68,7 @@ function LoginPage() {
   const [agreed, setAgreed] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [invite, setInvite] = useState("");
+  const [paidInvite, setPaidInvite] = useState(search.perk === "half");
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
 
@@ -81,7 +84,17 @@ function LoginPage() {
     if (existing) setInvite(existing);
     if (search.mode === "up" || search.ref || existing) setMode("up");
     if (search.mode === "reset") setMode("reset");
-  }, [search.ref, search.mode]);
+    const code = search.ref || existing;
+    if (code && code.length >= 4) {
+      void invitePerkForCode({ data: { code } })
+        .then((res) => {
+          if (res.ok) setPaidInvite(res.paid);
+        })
+        .catch(() => undefined);
+    } else if (search.perk === "builds") {
+      setPaidInvite(false);
+    }
+  }, [search.ref, search.mode, search.perk]);
 
   async function waitForSession() {
     for (let i = 0; i < 12; i++) {
@@ -268,7 +281,9 @@ function LoginPage() {
           <div className="space-y-2">
             <p className="sl-kicker">
               {search.ref && mode === "up"
-                ? "Your friend invited you"
+                ? paidInvite
+                  ? "Paid invite — 50% off + 3 builds"
+                  : "Invite — 3 extra free builds"
                 : mode === "in"
                   ? "Welcome back"
                   : mode === "up"
@@ -283,7 +298,11 @@ function LoginPage() {
                 ? `We'll email a reset link to this address. It expires in ${RESET_TOKEN_MINUTES} minutes.`
                 : mode === "up"
                   ? search.ref
-                    ? "Your friend sent this link. Create a new account — you both get 3 extra custom builds. Then you're in."
+                    ? paidInvite
+                      ? "Your friend subscribes. Create a new account from this link — you both get 3 extra custom builds, and your first monthly invoice is 50% off. Yearly stays $" +
+                        PRICE_YEARLY_USD +
+                        ". Existing accounts cannot use this."
+                      : "Your friend is on the free plan. Create a new account from this link — you both get 3 extra custom builds. That’s all this invite does. Polar’s 50% off only comes from a paying friend’s invite."
                     : "Email and a password. A friend’s invite code (optional) gives you both 3 extra custom builds."
                   : "Email and a password. Use the same address every time — a second account starts over."}
             </p>

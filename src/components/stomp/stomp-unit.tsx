@@ -311,6 +311,7 @@ export function StompUnit({
   return (
     <div className="min-w-0 overflow-x-auto">
       <div className={cn("hx-chassis mx-auto w-full", chassisClass)}>
+        <div className="hx-sparkle" aria-hidden />
         <div className="hx-brand">
           <span className="hx-brand-mark">{brand.left}</span>
           <span className="hx-brand-mark">{brand.right}</span>
@@ -321,18 +322,15 @@ export function StompUnit({
             <div className="hx-xl-fs1">{renderSwitch(1)}</div>
             <div className="hx-xl-fs2">{renderSwitch(2)}</div>
             <div className="hx-xl-fs3">{renderSwitch(3)}</div>
+            <div className="hx-xl-mode">{renderSwitch(7)}</div>
             <div className="hx-xl-lcd">
               {lcd}
               {knobs}
             </div>
-            <div className="hx-xl-well">
-              {well}
-              <span className="hx-silk mt-2 block text-center">Vol · rear</span>
-            </div>
+            <div className="hx-xl-well">{well}</div>
             <div className="hx-xl-fs4">{renderSwitch(4)}</div>
             <div className="hx-xl-fs5">{renderSwitch(5)}</div>
             <div className="hx-xl-fs6">{renderSwitch(6)}</div>
-            <div className="hx-xl-mode">{renderSwitch(7)}</div>
             <div className="hx-xl-tap">{renderSwitch(8)}</div>
           </div>
         ) : layout === "floor" || layout === "lt" ? (
@@ -391,6 +389,9 @@ export function StompUnit({
               <Knob label="Volume" value={volume} onChange={setVolume} size="md" />
             </div>
             <div className="hx-stomp-knobs">{knobs}</div>
+            <p className="hx-stomp-silk hx-silk" aria-hidden>
+              Line 6 · HX Stomp
+            </p>
             <div className="hx-stomp-fs grid grid-cols-3 gap-3 sm:gap-5">
               {switches.map((index) => renderSwitch(index))}
             </div>
@@ -398,18 +399,18 @@ export function StompUnit({
         )}
         {xl ? (
           <p className="hx-silk mt-3 text-center">
-            Looking down · LCD at top · FS1 top-left · top 1–3 + MODE · bottom 4–6 + TAP
+            Looking down · FS1 top-left · top 1–3 + MODE · bottom 4–6 + TAP · LCD on the right
           </p>
         ) : layout === "podgo" ? (
-          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · FS8 is TAP / Tuner · EXP on the left</p>
+          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · FS8 TAP / Tuner · EXP on the right</p>
         ) : layout === "effects" ? (
           <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · scribble strips match HX Effects</p>
         ) : layout === "floor" || layout === "lt" ? (
           <p className="hx-silk mt-3 text-center">
-            Looking down · FS1 top-left · top 1–6 · bottom 7–12 · MODE / TAP on the left
+            Looking down · FS1 top-left · two rows of six · EXP on the right
           </p>
         ) : (
-          <p className="hx-silk mt-3 text-center">Switches 1–3 left to right · Volume on the right · you stand here</p>
+          <p className="hx-silk mt-3 text-center">LCD top-left · knobs under the screen · Volume on the right · FS 1–3</p>
         )}
       </div>
     </div>
@@ -448,6 +449,17 @@ function HelixBoard({
   return (
     <div className={cn("hx-helix-board", layout === "lt" && "hx-helix-board-lt")}>
       <div className="hx-helix-top">
+        <div className="hx-helix-presetcol">
+          <Knob label="Preset" value={volume} onChange={onVolume} size="sm" />
+          <div className="flex gap-2">
+            <button type="button" className="hx-hw-btn" onClick={onMode} aria-pressed={fsMode !== "stomp"}>
+              Mode
+            </button>
+            <button type="button" className="hx-hw-btn" onClick={onTap} aria-pressed={tuner}>
+              Tap
+            </button>
+          </div>
+        </div>
         <div className="hx-helix-lcd">{lcd}</div>
         <div className="hx-helix-controls">
           {knobs}
@@ -462,43 +474,22 @@ function HelixBoard({
           <ExpPedal label="EXP 1" />
         </div>
       </div>
-      <div className="hx-helix-fs">
-        <div className="hx-helix-modetap">
-          <Footswitch
-            index={0}
-            label="MODE"
-            color="#5a5e62"
-            lit={fsMode !== "stomp"}
-            showNumber={false}
-            onClick={onMode}
-          />
-          <Footswitch
-            index={0}
-            label="TAP"
-            sublabel="Tuner"
-            color="#e24a3a"
-            lit={tuner}
-            showNumber={false}
-            onClick={onTap}
-          />
+      <div className="hx-helix-grid">
+        <div className="hx-helix-row">
+          {top.map((index) => (
+            <div key={`t-${index}`} className="hx-helix-cell">
+              {scribble(index)}
+              {renderFs(index)}
+            </div>
+          ))}
         </div>
-        <div className="hx-helix-grid">
-          <div className="hx-helix-row">
-            {top.map((index) => (
-              <div key={`t-${index}`} className="hx-helix-cell">
-                {scribble(index)}
-                {renderFs(index)}
-              </div>
-            ))}
-          </div>
-          <div className="hx-helix-row">
-            {bottom.map((index) => (
-              <div key={`b-${index}`} className="hx-helix-cell">
-                {scribble(index)}
-                {renderFs(index)}
-              </div>
-            ))}
-          </div>
+        <div className="hx-helix-row">
+          {bottom.map((index) => (
+            <div key={`b-${index}`} className="hx-helix-cell">
+              {scribble(index)}
+              {renderFs(index)}
+            </div>
+          ))}
         </div>
       </div>
     </div>
@@ -564,9 +555,6 @@ function PodGoBoard({
 }) {
   return (
     <div className="hx-podgo-board">
-      <div className="hx-podgo-exp">
-        <ExpPedal label="EXP" tall />
-      </div>
       <div className="hx-podgo-main">
         <div className="hx-podgo-lcd">{lcd}</div>
         <div className="flex flex-wrap items-start justify-center gap-3">
@@ -577,6 +565,9 @@ function PodGoBoard({
           {[1, 2, 3, 4].map((index) => renderFs(index))}
           {[5, 6, 7, 8].map((index) => renderFs(index))}
         </div>
+      </div>
+      <div className="hx-podgo-exp">
+        <ExpPedal label="EXP" tall />
       </div>
     </div>
   );

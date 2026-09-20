@@ -133,7 +133,7 @@ const DeviceEnum = z.enum(STOMP_MODEL_IDS);
 const PlaybackEnum = z.enum(["frfr", "guitar-amp", "headphones", "pa", "monitors"]);
 
 const ResearchIn = z.object({
-  song: z.string().min(1).max(120),
+  song: z.string().min(1).max(200),
   artist: z.string().max(120).optional(),
   instrument: z.enum(["guitar", "bass"]),
   stompModel: DeviceEnum,

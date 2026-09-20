@@ -526,7 +526,8 @@ test("vercel hosts use baked site title and app icons", () => {
   );
   assert.equal(manifest.name, "Stomp Lab");
   assert.equal(manifest.short_name, "StompLab");
-  assert.equal(manifest.icons[0].src, "/sl-icon-192.png");
+  assert.equal(manifest.icons[0].src, "/sl-touch-v21.png");
+  assert.ok(manifest.icons.some((i) => i.src === "/sl-icon-192.png"));
 });
 
 test("install page uses site title on vercel hosts, not Grok App", () => {

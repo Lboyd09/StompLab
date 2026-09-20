@@ -1,8 +1,11 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { adminDashboard, adminDeleteCache, adminInspectCache, adminMoneySetup, probeResearchFn } from "@/lib/billing";
+import { adminCloseAccount } from "@/lib/account-delete";
 import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
@@ -35,6 +38,11 @@ function AdminPage() {
   const [probing, setProbing] = useState(false);
   const [gate, setGate] = useState<"wait" | "ok" | "no">("wait");
   const [authWaited, setAuthWaited] = useState(false);
+  const [closeEmail, setCloseEmail] = useState("");
+  const [closeTyped, setCloseTyped] = useState("");
+  const [closeConfirm, setCloseConfirm] = useState("");
+  const [closeBusy, setCloseBusy] = useState(false);
+  const [closeNote, setCloseNote] = useState("");
 
   useEffect(() => {
     const t = window.setTimeout(() => setAuthWaited(true), 3500);
@@ -86,7 +94,13 @@ function AdminPage() {
   const adminUser = isAdminEmail(user?.primaryEmail) || plan.admin;
 
   if (!user && isPending && !authWaited) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <div className="space-y-3">
+        <p className="sl-kicker">Hidden</p>
+        <h1 className="sl-hero-title text-4xl">Admin</h1>
+        <p className="text-sm text-muted-foreground">Checking your account…</p>
+      </div>
+    );
   }
   if (!user && isPending && authWaited) {
     return (
@@ -105,7 +119,13 @@ function AdminPage() {
   }
   if (!user) return <Navigate to="/login" search={{ next: "/admin" }} />;
   if (!adminUser && gate === "wait") {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return (
+      <div className="space-y-3">
+        <p className="sl-kicker">Hidden</p>
+        <h1 className="sl-hero-title text-4xl">Admin</h1>
+        <p className="text-sm text-muted-foreground">Checking your account…</p>
+      </div>
+    );
   }
   if (gate === "no" && !adminUser) {
     return (
@@ -449,6 +469,88 @@ function AdminPage() {
             <p className="text-sm text-muted-foreground">No cached rigs yet.</p>
           ) : null}
         </ul>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-destructive/40 bg-card p-5">
+        <h2 className="sl-hero-title text-2xl">Close a player’s account</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Same path as a confirmed delete: Polar cancels at period end, login is locked, 14-day hold so that
+          email cannot farm free builds. Type the email twice and DELETE. There is no undo for 14 days.
+        </p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setCloseNote("");
+            setCloseBusy(true);
+            void adminCloseAccount({
+              data: { email: closeEmail.trim(), typedEmail: closeTyped.trim(), confirm: "DELETE" },
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  setCloseNote(res.error);
+                  return;
+                }
+                const when = new Date(res.recreateAfter).toLocaleDateString("en-US", {
+                  month: "long",
+                  day: "numeric",
+                  year: "numeric",
+                });
+                setCloseNote(`Closed. They can create a new account after ${when}.`);
+                setCloseEmail("");
+                setCloseTyped("");
+                setCloseConfirm("");
+              })
+              .catch((err) => setCloseNote(err instanceof Error ? err.message : "Could not close that account."))
+              .finally(() => setCloseBusy(false));
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="close-email">Player email</Label>
+            <Input
+              id="close-email"
+              type="email"
+              autoComplete="off"
+              value={closeEmail}
+              onChange={(e) => setCloseEmail(e.target.value)}
+              placeholder="player@email.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="close-email-2">Type that email again</Label>
+            <Input
+              id="close-email-2"
+              type="email"
+              autoComplete="off"
+              value={closeTyped}
+              onChange={(e) => setCloseTyped(e.target.value)}
+              placeholder="player@email.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="close-delete">Type DELETE</Label>
+            <Input
+              id="close-delete"
+              autoComplete="off"
+              value={closeConfirm}
+              onChange={(e) => setCloseConfirm(e.target.value)}
+              placeholder="DELETE"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={
+              closeBusy ||
+              closeConfirm !== "DELETE" ||
+              !closeEmail.includes("@") ||
+              closeEmail.trim().toLowerCase() !== closeTyped.trim().toLowerCase()
+            }
+          >
+            {closeBusy ? "Closing…" : "Close this account"}
+          </Button>
+          {closeNote ? <p className="text-sm text-muted-foreground">{closeNote}</p> : null}
+        </form>
       </section>
     </div>
   );

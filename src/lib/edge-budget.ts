@@ -17,7 +17,12 @@ const APP_DOCUMENTS = new Set([
   "/account",
   "/admin",
   "/settings",
+  "/goodbye",
+  "/join",
+  "/terms",
+  "/privacy",
 ]);
+
 
 const SCANNER_PREFIXES = [
   "/wp-",
@@ -85,7 +90,7 @@ export function isScannerPath(pathname: string): boolean {
 export function isAppDocumentPath(pathname: string): boolean {
   const path = normalizePath(pathname);
   if (APP_DOCUMENTS.has(path)) return true;
-  if (path.startsWith("/preset/")) return true;
+  if (path === "/preset" || path.startsWith("/preset/")) return true;
   return false;
 }
 

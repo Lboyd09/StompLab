@@ -152,6 +152,7 @@ export function loadSettings(): Settings {
     ...DEFAULT_SETTINGS,
     ...raw,
     theme,
+    instrument: raw.instrument === "bass" ? "bass" : "guitar",
     stompModel: parseStompModelId(raw.stompModel, DEFAULT_SETTINGS.stompModel),
     wahMode: parseWahMode(raw.wahMode),
     wahModelId: parseWahModelId(raw.wahModelId),

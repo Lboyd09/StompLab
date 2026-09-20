@@ -148,6 +148,17 @@ export function extractJson(text: string): unknown {
 
 /** Never surface Zod dumps to the visitor. */
 export function parsePresetJson(json: unknown): PresetOutT {
+  if (json && typeof json === "object") {
+    const rec = json as Record<string, unknown>;
+    const code = String(rec.error ?? rec.reason ?? "");
+    if (
+      rec.unknown === true ||
+      rec.unknown_song === true ||
+      /unknown_song|not_a_song|no_song/i.test(code)
+    ) {
+      throw new Error("We couldn't find that song. Check the title and artist, or open a demo.");
+    }
+  }
   const result = PresetOut.safeParse(json);
   if (result.success) return result.data;
   throw new Error("We couldn't read that preset. Try that song again.");
@@ -432,6 +443,8 @@ export function songResearchInstructions(
   const who = billed ? `${title} by ${billed}` : title;
   return `Song: ${who}
 Instrument: ${instrument} as it was TRACKED on the record (not a cover, not a live-only tour).
+
+If you cannot identify a real commercially released recording matching this title with high confidence — gibberish, fake titles, or not a song — do NOT invent a preset. Reply only: {"error":"unknown_song","message":"not a real song"}.
 
 Fill originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
 If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.

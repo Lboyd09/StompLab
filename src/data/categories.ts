@@ -216,7 +216,7 @@ export const STOMP_DEVICES: StompDevice[] = [
     outputSend: "HelixStomp_AppDSPFlowOutputSend",
     notes: [
       "Same HX engine and 8-block / 1-DSP limit as HX Stomp.",
-      "Eight capacitive-touch footswitches: far row 4–6 (toward the LCD), closest row 1–3, plus dedicated MODE and TAP on the right.",
+      "Eight capacitive-touch footswitches: top row FS1–3 + MODE, bottom FS4–6 + TAP. LCD and knobs sit on the right.",
       "Four snapshots per preset — enough for verse / chorus / bridge / solo.",
       "6-switch looper maps across the extra switches.",
       "Same 320×240 LCD and three edit knobs as HX Stomp.",
@@ -241,7 +241,7 @@ export const STOMP_DEVICES: StompDevice[] = [
     notes: [
       "Dual-DSP Helix. We still write a single 8-block path so HX Edit will import.",
       "Device id 2162689. Import in HX Edit with Helix Floor connected or Helix Native in Floor mode.",
-      "Twelve numbered footswitches plus dedicated MODE and TAP. Two expression pedals. Scribble strips on every switch.",
+      "Twelve numbered footswitches in two rows of six. Scribble strips above each switch. Two expression pedals on the right. MODE is FS6, TAP is FS12.",
       "Eight snapshots. Extra switches stay empty for you to assign.",
     ],
   },
@@ -263,7 +263,7 @@ export const STOMP_DEVICES: StompDevice[] = [
     outputModel: "HD2_AppDSPFlowOutput",
     notes: [
       "Same HX models as Helix Floor. Device id 2162691.",
-      "Twelve numbered footswitches plus MODE and TAP. One expression pedal. No scribble strips.",
+      "Twelve numbered footswitches in two rows of six. One expression pedal on the right. No scribble strips.",
       "Single 8-block path in the .hlx so the file stays importable.",
     ],
   },

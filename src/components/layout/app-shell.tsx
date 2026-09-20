@@ -80,6 +80,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [hydrate]);
 
   useEffect(() => {
+    function onKey(e: KeyboardEvent) {
+      if (e.key !== "Escape") return;
+      setOpen(false);
+      setQ("");
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
+
+  useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       captureReferralCode(params.get("ref"));

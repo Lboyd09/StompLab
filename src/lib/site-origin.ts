@@ -83,20 +83,33 @@ export function configuredAuthOrigins(): string[] {
   });
 }
 
-const FALLBACK_ORIGIN = "https://stomplab.vercel.app";
+const FALLBACK_ORIGIN = "https://stomplab.app";
+
+function canonicalPublicOrigin(host: string): string | null {
+  const h = host.toLowerCase().replace(/:\d+$/, "");
+  if (h === "stomplab.app" || h === "www.stomplab.app") return "https://stomplab.app";
+  if (h === "stomplab.com" || h === "www.stomplab.com") return "https://stomplab.com";
+  return null;
+}
 
 export async function publicOrigin(): Promise<string> {
   try {
     const { getRequest } = await import("@tanstack/react-start/server");
     const req = getRequest();
     const host = hostFromRaw(req?.headers.get("x-forwarded-host") || req?.headers.get("host"));
-    if (isPublicHostname(host)) return `https://${host}`;
+    const canonical = canonicalPublicOrigin(host);
+    if (canonical) return canonical;
+    // Mailed links must hit the live Lab. Preview / Vercel hosts 404'd /goodbye.
+    if (isPublicHostname(host) && !host.endsWith(".vercel.app") && !host.endsWith(".grok-sandbox.com")) {
+      return `https://${host}`;
+    }
   } catch {
     /* preview / no request */
   }
   const fromEnv = env("APP_ORIGIN") || env("SITE_URL") || env("POLAR_SUCCESS_ORIGIN") || env("BETTER_AUTH_URL");
-  if (fromEnv?.startsWith("http")) return fromEnv.replace(/\/$/, "");
-  const vercel = env("VERCEL_PROJECT_PRODUCTION_URL") || env("VERCEL_URL");
-  if (vercel) return `https://${hostFromRaw(vercel)}`;
+  if (fromEnv?.startsWith("http")) {
+    const host = hostFromRaw(fromEnv);
+    return canonicalPublicOrigin(host) || fromEnv.replace(/\/$/, "");
+  }
   return FALLBACK_ORIGIN;
 }

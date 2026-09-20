@@ -82,6 +82,30 @@ export const getMyReferral = createServerFn({ method: "GET" })
     }
   });
 
+/** Public: does this invite currently include Polar 50% off? Paid referrer only. */
+export const invitePerkForCode = createServerFn({ method: "GET" })
+  .validator((input: unknown) => z.object({ code: z.string().min(4).max(12) }).parse(input))
+  .handler(async ({ data }): Promise<{ ok: true; paid: boolean; percent: number }> => {
+    const code = normalizeReferralCode(data.code);
+    if (code.length < 4) return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
+    try {
+      const sql = await getSql();
+      const rows = await sql<{ paid: boolean | null; plan_interval: string | null; subscription_status: string | null }>`
+        select e.paid, e.plan_interval, e.subscription_status
+        from referrals r
+        left join entitlements e on e.user_id = r.user_id
+        where r.code = ${code}
+        order by e.paid desc nulls last
+        limit 1
+      `;
+      const row = rows[0];
+      const paid = Boolean(row?.paid);
+      return { ok: true, paid, percent: REFERRAL_SUBSCRIBE_PERCENT };
+    } catch {
+      return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
+    }
+  });
+
 export const getReferralMonthOffer = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {

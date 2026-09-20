@@ -176,6 +176,18 @@ export function renderWebManifest(hostHeader, site = {}) {
       icons: customIcons
         ? [
             {
+              src: "/sl-touch-v21.png",
+              sizes: "180x180",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
+              src: "/apple-touch-icon.png",
+              sizes: "180x180",
+              type: "image/png",
+              purpose: "any",
+            },
+            {
               src: "/sl-icon-192.png",
               sizes: "192x192",
               type: "image/png",
@@ -185,7 +197,7 @@ export function renderWebManifest(hostHeader, site = {}) {
               src: "/sl-icon-512.png",
               sizes: "512x512",
               type: "image/png",
-              purpose: "any maskable",
+              purpose: "any",
             },
           ]
         : [
@@ -463,7 +475,9 @@ export function injectGrokPwaHead(html, ctx = {}) {
           !next.includes('href="/sl-touch.png"') &&
           !next.includes('href="/sl-home-180.png"') &&
           !next.includes('href="/sl-icon-192.png"') &&
-          !next.includes('href="/apple-touch-icon.png"')
+          !next.includes('href="/apple-touch-icon.png"') &&
+          !next.includes("href=\"/sl-touch-v21.png") &&
+          !next.includes("href=\"/sl-touch-v20.png")
         );
       }
       return !next.includes(`name="${key}"`);

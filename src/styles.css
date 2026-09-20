@@ -289,28 +289,49 @@ html.sl-touring nav {
 .hx-chassis {
   position: relative;
   background:
-    linear-gradient(180deg, #32373e 0%, #1a1d22 40%, #101214 100%);
-  border: 1px solid #4a5158;
-  border-radius: 14px;
+    radial-gradient(circle at 18% 12%, color-mix(in oklab, #fff 8%, transparent), transparent 28%),
+    linear-gradient(165deg, #2c3036 0%, #16181c 34%, #0c0d10 72%, #07080a 100%);
+  border: 1px solid #3a3e44;
+  border-radius: 6px;
   padding: 16px 16px 18px;
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent),
-    inset 0 -4px 0 color-mix(in oklab, #000 70%, transparent),
-    0 1px 0 #5a6168,
-    0 28px 48px -28px #000;
+    inset 0 1px 0 color-mix(in oklab, #fff 16%, transparent),
+    inset 0 -10px 16px color-mix(in oklab, #000 70%, transparent),
+    0 1px 0 #4a4e54,
+    0 32px 56px -30px #000;
   color: #c5c9c2;
+  overflow: hidden;
+}
+
+.hx-sparkle {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  background-image:
+    radial-gradient(circle at 12% 22%, color-mix(in oklab, #fff 18%, transparent) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 68% 40%, color-mix(in oklab, #fff 12%, transparent) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 40% 78%, color-mix(in oklab, #fff 10%, transparent) 0 1px, transparent 1.5px);
+  background-size: 42px 42px, 58px 58px, 36px 36px;
+  opacity: 0.22;
+}
+
+.hx-chassis > *:not(.hx-sparkle) {
+  position: relative;
+  z-index: 1;
 }
 
 .hx-chassis::before,
 .hx-chassis::after {
   content: "";
   position: absolute;
-  top: 11px;
-  width: 7px;
-  height: 7px;
+  top: 10px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 32%, #8a9096, #2c3036 68%);
-  box-shadow: inset 0 0 0 1px #1a1c20;
+  background: radial-gradient(circle at 32% 32%, #6a7076, #1a1c20 68%);
+  box-shadow: inset 0 0 0 1px #0a0b0d;
+  z-index: 1;
 }
 
 .hx-chassis::before {
@@ -322,33 +343,35 @@ html.sl-touring nav {
 }
 
 .hx-chassis-stomp {
-  max-width: 520px;
+  max-width: 560px;
+  border-radius: 6px;
 }
 
 .hx-chassis-xl {
-  max-width: 880px;
+  max-width: 980px;
+  border-radius: 6px;
 }
 
 .hx-chassis-floor {
-  max-width: 1080px;
+  max-width: 1120px;
   background:
-    linear-gradient(180deg, #2c3138 0%, #16191e 46%, #0c0d10 100%);
+    linear-gradient(180deg, #2a2e34 0%, #121416 48%, #08090b 100%);
 }
 
 .hx-chassis-lt {
-  max-width: 980px;
+  max-width: 1000px;
   background:
     linear-gradient(180deg, #1a1c20 0%, #101214 50%, #08090b 100%);
 }
 
 .hx-chassis-effects {
-  max-width: 760px;
+  max-width: 780px;
 }
 
 .hx-chassis-podgo {
-  max-width: 900px;
+  max-width: 920px;
   background:
-    linear-gradient(180deg, #3a3e44 0%, #1c1e22 48%, #121416 100%);
+    linear-gradient(180deg, #2c3036 0%, #16181c 48%, #0c0d10 100%);
 }
 
 .hx-lcd-wide {
@@ -364,9 +387,17 @@ html.sl-touring nav {
 
 .hx-helix-top {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr) auto;
+  grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.2fr) auto;
   gap: 14px;
   align-items: start;
+}
+
+.hx-helix-presetcol {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding-top: 8px;
 }
 
 .hx-helix-lcd {
@@ -386,21 +417,6 @@ html.sl-touring nav {
   gap: 10px;
   align-items: center;
   padding-top: 4px;
-}
-
-.hx-helix-fs {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 14px;
-  align-items: stretch;
-}
-
-.hx-helix-modetap {
-  display: grid;
-  grid-template-rows: 1fr 1fr;
-  gap: 14px;
-  align-items: end;
-  padding-bottom: 6px;
 }
 
 .hx-helix-grid {
@@ -521,21 +537,21 @@ html.sl-touring nav {
 
 .hx-scribble {
   width: 100%;
-  max-width: 72px;
-  height: 22px;
+  max-width: 84px;
+  height: 18px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  border-radius: 2px;
+  border-radius: 1px;
   border: 1px solid #000;
-  background: #0c1014;
+  background: #0a1010;
   padding: 0 4px;
   font-family: var(--font-mono);
   font-size: 8px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #d4b07a;
-  box-shadow: inset 0 0 0 1px #1a221c;
+  color: #d4e8c8;
+  box-shadow: inset 0 0 0 1px #1a2a1c;
 }
 
 .hx-scribble-on {
@@ -577,17 +593,6 @@ html.sl-touring nav {
 
   .hx-helix-pedals {
     flex-direction: row;
-  }
-
-  .hx-helix-fs {
-    grid-template-columns: 1fr;
-  }
-
-  .hx-helix-modetap {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: none;
-    justify-items: center;
-    gap: 24px;
   }
 
   .hx-helix-row {
@@ -644,7 +649,7 @@ html.sl-touring nav {
   grid-template-columns: minmax(0, 220px) auto auto;
   grid-template-areas:
     "lcd well vol"
-    "knobs well vol"
+    "knobs silk silk"
     "fs fs fs";
   gap: 12px 12px;
   align-items: start;
@@ -672,6 +677,14 @@ html.sl-touring nav {
 
 .hx-stomp-knobs {
   grid-area: knobs;
+}
+
+.hx-stomp-silk {
+  grid-area: silk;
+  align-self: center;
+  justify-self: end;
+  padding-right: 8px;
+  letter-spacing: 0.28em;
 }
 
 .hx-stomp-fs {
@@ -703,12 +716,11 @@ html.sl-touring nav {
 
 .hx-xl-board {
   display: grid;
-  grid-template-columns: repeat(3, minmax(56px, 1fr)) auto minmax(0, 1fr);
+  grid-template-columns: repeat(4, minmax(52px, 1fr)) minmax(0, 1.15fr) auto;
   grid-template-areas:
-    "lcd lcd lcd well well"
-    "fs1 fs2 fs3 mode ."
-    "fs4 fs5 fs6 tap .";
-  gap: 16px 10px;
+    "fs1 fs2 fs3 mode lcd well"
+    "fs4 fs5 fs6 tap  lcd well";
+  gap: 14px 10px;
   align-items: center;
   justify-items: center;
 }
@@ -765,16 +777,16 @@ html.sl-touring nav {
 
 .hx-knob {
   background:
-    radial-gradient(circle at 32% 28%, #5c6168, #1c1e22 58%, #0a0b0d);
+    radial-gradient(circle at 32% 26%, #e8eaee, #9aa0a8 38%, #3a3e44 68%, #121416);
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 22%, transparent),
+    inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent),
     0 0 0 2px #0a0b0d,
-    0 0 0 3px #3a3e44,
+    0 0 0 3px #5a5e64,
     0 3px 6px #000;
 }
 
 .hx-knob-tick {
-  background: #e8e6df;
+  background: #f4f6f8;
 }
 
 .hx-silk {
@@ -806,13 +818,16 @@ html.sl-touring nav {
 
 .hx-fs {
   background:
-    radial-gradient(circle at 40% 30%, #3a3d42, #16181c 70%);
+    radial-gradient(circle at 38% 28%, #5a5e64, #1c1e22 62%, #0a0b0d);
   border: 1px solid #2a2d32;
 }
 
 .hx-fs-cap {
-  width: 52px;
-  height: 52px;
+  width: 54px;
+  height: 54px;
+  box-shadow:
+    inset 0 2px 0 color-mix(in oklab, #fff 18%, transparent),
+    0 6px 0 #07080a;
 }
 
 @media (min-width: 768px) {
@@ -824,13 +839,12 @@ html.sl-touring nav {
 
 @media (max-width: 720px) {
   .hx-xl-board {
-    grid-template-columns: repeat(3, minmax(48px, 1fr));
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
     grid-template-areas:
-      "lcd lcd lcd"
-      "well well well"
-      "fs1 fs2 fs3"
-      "fs4 fs5 fs6"
-      "mode tap .";
+      "lcd lcd lcd lcd"
+      "well well well well"
+      "fs1 fs2 fs3 mode"
+      "fs4 fs5 fs6 tap";
     gap: 12px 8px;
   }
 
@@ -846,7 +860,7 @@ html.sl-touring nav {
     grid-template-areas:
       "lcd well"
       "knobs knobs"
-      "vol vol"
+      "vol silk"
       "fs fs";
   }
 

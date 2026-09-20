@@ -167,6 +167,9 @@ export async function requestDeleteHold(opts: {
   const html = `<p>You asked to delete your Stomp Lab account.</p>
 <p><a href="${link.replace(/"/g, "")}">Confirm account deletion</a></p>
 <p>This link expires in ${DELETE_CONFIRM_HOURS} hours. If you confirm, we keep the records for ${DELETE_HOLD_DAYS} days so this email cannot open a new free account, then we erase them.</p>
+<p>If the button does not open, paste this address into your browser:</p>
+<p style="word-break:break-all;font-family:ui-monospace,monospace;font-size:13px">${link.replace(/</g, "")}</p>
+<p>If you had a Polar subscription, the confirm page will send you to Polar to cancel billing. Canceling Polar by itself would leave the Lab account open.</p>
 <p>If you did not ask for this, ignore the email — nothing is deleted.</p>`;
   await sendLabEmail({ to: canon, subject, text, html });
   return { ok: true };
@@ -217,6 +220,39 @@ export async function confirmDeleteHold(token: string): Promise<{
   `;
   if (row.user_id) await disableLogin(sql, row.user_id);
   return { ok: true, email: row.email_canonical, recreateAfter: recreate.toISOString() };
+}
+
+/** Admin: hold + disable login without waiting for the confirmation email. */
+export async function forceCloseAccount(email: string): Promise<
+  { ok: true; email: string; userId: string | null; recreateAfter: string } | { ok: false; error: string }
+> {
+  const canon = canonicalEmail(email);
+  if (!canon.includes("@")) return { ok: false, error: "That email doesn't look right." };
+  const sql = await getSql();
+  await ensureClosedAccountsSchema(sql);
+  let userId: string | null = null;
+  try {
+    const users = await sql<{ id: string }>`
+      select id from "user" where lower(email) = ${email.trim().toLowerCase()} or lower(email) = ${canon} limit 1
+    `;
+    userId = users[0]?.id ?? null;
+  } catch {
+    userId = null;
+  }
+  if (!userId) return { ok: false, error: "No Lab account with that email." };
+  const recreate = new Date(Date.now() + DELETE_HOLD_DAYS * 24 * 60 * 60 * 1000);
+  await sql`
+    insert into closed_accounts (email_canonical, requested_at, confirmed_at, recreate_after, confirm_token, status, user_id)
+    values (${canon}, now(), now(), ${recreate.toISOString()}::timestamptz, null, ${"held"}, ${userId})
+    on conflict (email_canonical) do update set
+      confirmed_at = now(),
+      recreate_after = excluded.recreate_after,
+      confirm_token = null,
+      status = ${"held"},
+      user_id = excluded.user_id
+  `;
+  await disableLogin(sql, userId);
+  return { ok: true, email: canon, userId, recreateAfter: recreate.toISOString() };
 }
 
 export const checkEmailHold = createServerFn({ method: "POST" })
