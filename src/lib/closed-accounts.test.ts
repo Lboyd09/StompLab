@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { DELETE_HOLD_DAYS, DELETE_CONFIRM_HOURS } from "./closed-accounts.ts";
+import { DELETE_HOLD_DAYS, DELETE_CONFIRM_HOURS, adminWipeAccountNow } from "./closed-accounts.ts";
 import { canonicalEmail } from "./referral-code.ts";
 import { LEGAL_VERSION, LEGAL_EFFECTIVE, TERMS_SECTIONS, PRIVACY_SECTIONS } from "./legal.ts";
 import { TAGLINE } from "./copy.ts";
@@ -12,6 +12,10 @@ describe("closed account hold", () => {
   });
   it("canonicalizes gmail so plus aliases cannot skip the hold", () => {
     assert.equal(canonicalEmail("Liam.Boyd+lab@gmail.com"), "liamboyd@gmail.com");
+  });
+  it("exposes an immediate admin wipe that is not the 14-day hold", () => {
+    assert.equal(typeof adminWipeAccountNow, "function");
+    assert.equal(DELETE_HOLD_DAYS, 14);
   });
 });
 

@@ -1,9 +1,9 @@
-import { CATEGORIES, CATEGORY_MAP, DEFAULT_PARAMS, DEVICE_MAP } from "./categories";
-import { helixIdFor } from "./helix-ids";
+import { CATEGORIES, CATEGORY_MAP, DEFAULT_PARAMS, DEVICE_MAP, STOMP_DEVICES } from "./categories";
+import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids";
 import { AMP_MODELS } from "./models-amps";
 import { CAB_MODELS } from "./models-cabs";
 import { FX_MODELS } from "./models-fx";
-import type { CategoryId, EquivalentHit, HxModel, Instrument, StompModelId } from "./types";
+import type { CategoryId, EquivalentHit, HxModel, Instrument, StompDevice, StompModelId } from "./types";
 
 export const ALL_MODELS: HxModel[] = [...FX_MODELS, ...AMP_MODELS, ...CAB_MODELS];
 
@@ -58,6 +58,24 @@ export const PEDAL_ALIASES: Record<string, string[]> = {
   sdd3000: ["vintage-digital"],
   "dod 250": ["top-secret-od", "overdrive-legacy"],
   "od-250": ["top-secret-od", "overdrive-legacy"],
+  "fuzz face": ["arbitrator-fuzz"],
+  "big muff pi": ["bighorn-fuzz", "triangle-fuzz"],
+  "ram's head": ["bighorn-fuzz"],
+  "rams head": ["bighorn-fuzz"],
+  "green russian": ["bighorn-fuzz"],
+  "vox wah": ["uk-wah-846"],
+  v847: ["uk-wah-846"],
+  "v-847": ["uk-wah-846"],
+  "phase 90": ["script-mod-phase"],
+  "mxr phase 90": ["script-mod-phase"],
+  "carbon copy": ["analog-echo-legacy", "transistor-tape"],
+  "memory man deluxe": ["elephant-man"],
+  "holy grail": ["hot-springs", "plate"],
+  svt: ["ampeg-svt-nrm", "ampeg-svt-brt"],
+  "ampeg svt": ["ampeg-svt-nrm", "ampeg-svt-brt"],
+  "5150": ["pv-panama"],
+  6505: ["pv-panama"],
+  plexi: ["brit-p75-nrm", "brit-p75-brt", "brit-j45-nrm"],
 };
 
 function normAlias(q: string) {
@@ -70,6 +88,48 @@ export function lookupAliases(query: string): string[] {
   const dashed = q.replace(/\s+/g, "-");
   const squeezed = q.replace(/[\s-]+/g, "");
   return PEDAL_ALIASES[q] ?? PEDAL_ALIASES[dashed] ?? PEDAL_ALIASES[squeezed] ?? [];
+}
+
+const AMP_CAB_CATS = new Set<CategoryId>(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
+
+/** Whether this factory model is on a given Line 6 unit. */
+export function modelOnDevice(model: HxModel, deviceId: StompModelId): boolean {
+  const device = DEVICE_MAP[deviceId];
+  if (!device) return false;
+  if (!device.hasAmpCab && AMP_CAB_CATS.has(model.category)) return false;
+  const hid = HELIX_IDS[model.id] ?? "";
+  if (deviceId === "pod-go") {
+    if (hid.startsWith("L6SPB_")) return false;
+    if (UNEXPORTABLE_MODELS.has(model.id)) return false;
+  }
+  return true;
+}
+
+export function devicesForModel(model: HxModel): StompDevice[] {
+  return STOMP_DEVICES.filter((d) => modelOnDevice(model, d.id));
+}
+
+export function aliasesForModel(id: string): string[] {
+  const names: string[] = [];
+  const seen = new Set<string>();
+  for (const [alias, ids] of Object.entries(PEDAL_ALIASES)) {
+    if (!ids.includes(id) || seen.has(alias)) continue;
+    seen.add(alias);
+    names.push(alias);
+  }
+  return names.sort((a, b) => a.localeCompare(b));
+}
+
+export function catalogModels(opts?: {
+  query?: string;
+  instrument?: Instrument;
+  category?: CategoryId | "";
+  deviceId?: StompModelId | "";
+}): HxModel[] {
+  let models = searchModels(opts?.query ?? "", opts?.instrument);
+  if (opts?.category) models = models.filter((m) => m.category === opts.category);
+  if (opts?.deviceId) models = models.filter((m) => modelOnDevice(m, opts.deviceId as StompModelId));
+  return models;
 }
 
 export function modelsByCategory(id: CategoryId): HxModel[] {
@@ -173,6 +233,7 @@ export function compactCatalogForPrompt(
     let models = modelsByCategory(cat.id).filter((m) => {
       if (m.io === "legacy") return false;
       if (!helixIdFor(m.id)) return false;
+      if (deviceId === "pod-go" && String(HELIX_IDS[m.id] ?? "").startsWith("L6SPB_")) return false;
       if (!instrument || instrument === "both") return true;
       return m.instrument === "both" || m.instrument === instrument;
     });

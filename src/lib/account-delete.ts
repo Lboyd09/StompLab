@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache } from "@/lib/billing";
-import { confirmDeleteHold, forceCloseAccount, requestDeleteHold } from "@/lib/closed-accounts";
+import { adminWipeAccountNow, confirmDeleteHold, requestDeleteHold } from "@/lib/closed-accounts";
 import { getSql } from "@/lib/db";
 import { isAdminEmail, PUBLIC_SUPPORT_EMAIL } from "@/lib/plan";
 import { canonicalEmail } from "@/lib/referral-code";
@@ -63,9 +63,7 @@ async function cancelPolarForClosedEmail(email: string, userId?: string | null) 
     returnUrl: `${origin}/`,
   });
   let polarPortalUrl = portal.ok ? portal.url : "";
-  if (!polarPortalUrl) {
-    polarPortalUrl = (await polarPublicPortalUrl()) || "";
-  }
+  if (!polarPortalUrl) polarPortalUrl = await polarPublicPortalUrl();
   return { polarPortalUrl, hadPolar: Boolean(sub || customerId) };
 }
 
@@ -141,7 +139,7 @@ export const deleteMyAccount = createServerFn({ method: "POST" })
     }
   });
 
-/** Admin-only: close someone else's account. Requires typing DELETE. */
+/** Admin-only: erase someone else's account now. Requires typing DELETE. No 14-day hold. */
 export const adminCloseAccount = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) =>
@@ -153,9 +151,7 @@ export const adminCloseAccount = createServerFn({ method: "POST" })
       })
       .parse(input),
   )
-  .handler(async ({ context, data }): Promise<
-    { ok: true; recreateAfter: string; polarPortalUrl?: string } | { ok: false; error: string }
-  > => {
+  .handler(async ({ context, data }): Promise<{ ok: true; email: string } | { ok: false; error: string }> => {
     const admin = await emailFor(context.userId, context.email);
     if (!isAdminEmail(admin)) return { ok: false, error: "Not the admin inbox." };
     if (canonicalEmail(data.email) !== canonicalEmail(data.typedEmail)) {
@@ -165,18 +161,30 @@ export const adminCloseAccount = createServerFn({ method: "POST" })
       return { ok: false, error: "The admin inbox can't be closed from here." };
     }
     try {
-      const closed = await forceCloseAccount(data.email);
-      if (!closed.ok) return closed;
-      let polarPortalUrl = "";
+      let uid: string | undefined;
       try {
-        const polar = await cancelPolarForClosedEmail(closed.email, closed.userId);
-        polarPortalUrl = polar.polarPortalUrl;
-        if (closed.userId) invalidatePlanCache(closed.userId);
+        const sql = await getSql();
+        const rows = await sql<{ id: string }>`
+          select id from "user"
+          where lower(email) = ${data.email.trim().toLowerCase()}
+             or lower(email) = ${canonicalEmail(data.email)}
+          limit 1
+        `;
+        uid = rows[0]?.id;
       } catch {
-        /* hold is already in place */
+        /* lookup is best-effort */
       }
-      return { ok: true, recreateAfter: closed.recreateAfter, polarPortalUrl: polarPortalUrl || undefined };
+      try {
+        await cancelPolarForClosedEmail(data.email, uid);
+        if (uid) invalidatePlanCache(uid);
+      } catch {
+        /* Polar cancel is best-effort */
+      }
+      const closed = await adminWipeAccountNow(data.email);
+      if (!closed.ok) return closed;
+      if (closed.userId) invalidatePlanCache(closed.userId);
+      return { ok: true, email: closed.email };
     } catch (err) {
-      return { ok: false, error: err instanceof Error ? err.message : "Could not close that account." };
+      return { ok: false, error: err instanceof Error ? err.message : "Could not delete that account." };
     }
   });

@@ -1,5 +1,5 @@
 import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -29,9 +29,13 @@ function AdminPage() {
     token: boolean;
     monthly: boolean;
     yearly: boolean;
+    referral?: boolean;
+    webhook?: boolean;
     ready: boolean;
     mail?: boolean;
     mailError?: string;
+    research?: boolean;
+    amazon?: boolean;
   } | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
@@ -75,7 +79,7 @@ function AdminPage() {
         window.clearTimeout(statsTimeout);
         setGate("ok");
         setDash(d);
-        if (d.polar) setMoney({ ...d.polar, mail: d.mail });
+        if (d.polar) setMoney({ ...d.polar, mail: d.mail, amazon: d.amazonReady, research: d.research });
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
@@ -199,7 +203,7 @@ function AdminPage() {
             void adminDashboard()
               .then((d) => {
                 setDash(d);
-                if (d.polar) setMoney({ ...d.polar, mail: d.mail });
+                if (d.polar) setMoney({ ...d.polar, mail: d.mail, amazon: d.amazonReady, research: d.research });
                 if (d.dbError) setError(d.dbError);
               })
               .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
@@ -211,6 +215,86 @@ function AdminPage() {
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {!dash && !error ? <p className="text-sm text-muted-foreground">Loading stats…</p> : null}
+
+      <LaunchChecklist polar={polar} mailOn={mailOn} money={money} dash={dash} />
+
+      <section className="space-y-4 rounded-2xl border border-destructive/40 bg-card p-5">
+        <h2 className="sl-hero-title text-2xl">Erase a player’s account now</h2>
+        <p className="text-sm leading-relaxed text-muted-foreground">
+          Immediate wipe — Polar cancels, every Lab row for that email is deleted, no 14-day hold. They can
+          sign up again right away. Type the email twice and DELETE so this cannot be a misclick. There is
+          no undo.
+        </p>
+        <form
+          className="space-y-3"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setCloseNote("");
+            setCloseBusy(true);
+            void adminCloseAccount({
+              data: { email: closeEmail.trim(), typedEmail: closeTyped.trim(), confirm: "DELETE" },
+            })
+              .then((res) => {
+                if (!res.ok) {
+                  setCloseNote(res.error);
+                  return;
+                }
+                setCloseNote(`Erased ${res.email} immediately. Polar is cancelled. They can sign up again now.`);
+                setCloseEmail("");
+                setCloseTyped("");
+                setCloseConfirm("");
+              })
+              .catch((err) => setCloseNote(err instanceof Error ? err.message : "Could not delete that account."))
+              .finally(() => setCloseBusy(false));
+          }}
+        >
+          <div className="space-y-1.5">
+            <Label htmlFor="close-email">Player email</Label>
+            <Input
+              id="close-email"
+              type="email"
+              autoComplete="off"
+              value={closeEmail}
+              onChange={(e) => setCloseEmail(e.target.value)}
+              placeholder="player@email.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="close-email-2">Type that email again</Label>
+            <Input
+              id="close-email-2"
+              type="email"
+              autoComplete="off"
+              value={closeTyped}
+              onChange={(e) => setCloseTyped(e.target.value)}
+              placeholder="player@email.com"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="close-delete">Type DELETE</Label>
+            <Input
+              id="close-delete"
+              autoComplete="off"
+              value={closeConfirm}
+              onChange={(e) => setCloseConfirm(e.target.value)}
+              placeholder="DELETE"
+            />
+          </div>
+          <Button
+            type="submit"
+            variant="outline"
+            disabled={
+              closeBusy ||
+              closeConfirm !== "DELETE" ||
+              !closeEmail.includes("@") ||
+              closeEmail.trim().toLowerCase() !== closeTyped.trim().toLowerCase()
+            }
+          >
+            {closeBusy ? "Erasing…" : "Erase this account now"}
+          </Button>
+          {closeNote ? <p className="text-sm text-muted-foreground">{closeNote}</p> : null}
+        </form>
+      </section>
 
       {dash?.db ? (
         <section className="rounded-xl border border-border bg-card p-5">
@@ -294,7 +378,11 @@ function AdminPage() {
           <li>Polar token: {polar ? (polar.token ? "set" : "missing") : "checking…"}</li>
           <li>Monthly product ($6.99): {polar ? (polar.monthly ? "set" : "missing") : "checking…"}</li>
           <li>Yearly product ($75): {polar ? (polar.yearly ? "set" : "missing") : "checking…"}</li>
+          <li>Invite 50% (FRIEND50): {polar ? (polar.referral ? "set" : "missing") : "checking…"}</li>
+          <li>Polar webhook: {polar ? (polar.webhook ? "set" : "missing") : "checking…"}</li>
           <li>Password-reset mail: {polar ? (mailOn ? "set" : "missing") : "checking…"}</li>
+          <li>Research (Gemini 2.5 Flash): {money?.research != null ? (money.research ? "set" : "missing") : "checking…"}</li>
+          <li>Amazon tag (optional): {money?.amazon != null ? (money.amazon ? "set" : "off") : dash?.amazonReady ? "set" : "off"}</li>
           {money?.mailError ? <li>Last mail error: {money.mailError}</li> : null}
         </ul>
         <p className="text-xs text-muted-foreground">
@@ -308,27 +396,24 @@ function AdminPage() {
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
-        <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold">Top cached songs</h2>
+        <Fold title="Top cached songs" count={(dash?.stats?.topSongs ?? []).length} defaultOpen={false}>
           <Table
             cols={["Song", "Hits"]}
             rows={(dash?.stats?.topSongs ?? []).map((r) => [r.song, String(r.n)])}
           />
-        </div>
-        <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold">Units</h2>
+        </Fold>
+        <Fold title="Units" count={(dash?.stats?.deviceMix ?? []).length} defaultOpen>
           <Table
             cols={["Unit", "Rigs"]}
             rows={(dash?.stats?.deviceMix ?? []).map((r) => [r.stomp_model, String(r.n)])}
           />
-        </div>
-        <div className="space-y-3">
-          <h2 className="font-display text-lg font-semibold">Sign-ups by day</h2>
+        </Fold>
+        <Fold title="Sign-ups by day" count={(dash?.stats?.signupsByDay ?? []).length} defaultOpen={false}>
           <Table
             cols={["Day", "N"]}
             rows={(dash?.stats?.signupsByDay ?? []).map((r) => [r.day, String(r.n)])}
           />
-        </div>
+        </Fold>
       </section>
 
       <section className="space-y-3">
@@ -348,8 +433,7 @@ function AdminPage() {
         ) : null}
       </section>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Accounts</h2>
+      <Fold title="Accounts" count={(dash?.accounts ?? []).length} defaultOpen={(dash?.accounts ?? []).length <= 8}>
         <p className="text-sm text-muted-foreground">New sign-ups, plan, and how many custom builds they have used.</p>
         <Table
           cols={["When", "Email", "Name", "Paid", "Status", "Builds"]}
@@ -362,10 +446,9 @@ function AdminPage() {
             String(a.builds),
           ])}
         />
-      </section>
+      </Fold>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Purchases</h2>
+      <Fold title="Purchases" count={(dash?.purchases ?? []).length} defaultOpen={(dash?.purchases ?? []).length <= 8}>
         <Table
           cols={["When", "Email", "Order", "Cents"]}
           rows={(dash?.purchases ?? []).map((p) => [
@@ -375,26 +458,23 @@ function AdminPage() {
             String(p.amount_cents),
           ])}
         />
-      </section>
+      </Fold>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Builds</h2>
+      <Fold title="Builds" count={(dash?.usage ?? []).length} defaultOpen={(dash?.usage ?? []).length <= 8}>
         <Table
           cols={["User", "Email", "Month", "Count"]}
           rows={(dash?.usage ?? []).map((u) => [u.user_id.slice(0, 8), u.email, u.year_month, String(u.n)])}
         />
-      </section>
+      </Fold>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Failed researches</h2>
+      <Fold title="Failed researches" count={(dash?.failures ?? []).length} defaultOpen={(dash?.failures ?? []).length > 0 && (dash?.failures ?? []).length <= 8}>
         <Table
           cols={["When", "Song", "Artist", "Error"]}
           rows={(dash?.failures ?? []).map((f) => [f.created_at, f.song, f.artist, f.error])}
         />
-      </section>
+      </Fold>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Feedback</h2>
+      <Fold title="Feedback" count={(dash?.feedback ?? []).length} defaultOpen={(dash?.feedback ?? []).length > 0 && (dash?.feedback ?? []).length <= 6}>
         <p className="text-sm text-muted-foreground">
           Preset notes feed the next prompt. Do not retune songs one by one from this list.
         </p>
@@ -435,10 +515,9 @@ function AdminPage() {
             <p className="text-sm text-muted-foreground">None yet.</p>
           ) : null}
         </ul>
-      </section>
+      </Fold>
 
-      <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Shared cache</h2>
+      <Fold title="Shared cache" count={(dash?.cache ?? []).length} defaultOpen={(dash?.cache ?? []).length > 0 && (dash?.cache ?? []).length <= 8}>
         <p className="text-sm text-muted-foreground">
           Hidden from players. Open a song on the replica — same visual page players use.
         </p>
@@ -469,89 +548,7 @@ function AdminPage() {
             <p className="text-sm text-muted-foreground">No cached rigs yet.</p>
           ) : null}
         </ul>
-      </section>
-
-      <section className="space-y-4 rounded-2xl border border-destructive/40 bg-card p-5">
-        <h2 className="sl-hero-title text-2xl">Close a player’s account</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Same path as a confirmed delete: Polar cancels at period end, login is locked, 14-day hold so that
-          email cannot farm free builds. Type the email twice and DELETE. There is no undo for 14 days.
-        </p>
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setCloseNote("");
-            setCloseBusy(true);
-            void adminCloseAccount({
-              data: { email: closeEmail.trim(), typedEmail: closeTyped.trim(), confirm: "DELETE" },
-            })
-              .then((res) => {
-                if (!res.ok) {
-                  setCloseNote(res.error);
-                  return;
-                }
-                const when = new Date(res.recreateAfter).toLocaleDateString("en-US", {
-                  month: "long",
-                  day: "numeric",
-                  year: "numeric",
-                });
-                setCloseNote(`Closed. They can create a new account after ${when}.`);
-                setCloseEmail("");
-                setCloseTyped("");
-                setCloseConfirm("");
-              })
-              .catch((err) => setCloseNote(err instanceof Error ? err.message : "Could not close that account."))
-              .finally(() => setCloseBusy(false));
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="close-email">Player email</Label>
-            <Input
-              id="close-email"
-              type="email"
-              autoComplete="off"
-              value={closeEmail}
-              onChange={(e) => setCloseEmail(e.target.value)}
-              placeholder="player@email.com"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="close-email-2">Type that email again</Label>
-            <Input
-              id="close-email-2"
-              type="email"
-              autoComplete="off"
-              value={closeTyped}
-              onChange={(e) => setCloseTyped(e.target.value)}
-              placeholder="player@email.com"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="close-delete">Type DELETE</Label>
-            <Input
-              id="close-delete"
-              autoComplete="off"
-              value={closeConfirm}
-              onChange={(e) => setCloseConfirm(e.target.value)}
-              placeholder="DELETE"
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={
-              closeBusy ||
-              closeConfirm !== "DELETE" ||
-              !closeEmail.includes("@") ||
-              closeEmail.trim().toLowerCase() !== closeTyped.trim().toLowerCase()
-            }
-          >
-            {closeBusy ? "Closing…" : "Close this account"}
-          </Button>
-          {closeNote ? <p className="text-sm text-muted-foreground">{closeNote}</p> : null}
-        </form>
-      </section>
+      </Fold>
     </div>
   );
 }
@@ -593,5 +590,123 @@ function Stat({ label, value, hint }: { label: string; value: string; hint: stri
       <p className="mt-2 font-display text-3xl font-semibold tabular-nums">{value}</p>
       <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
     </div>
+  );
+}
+
+function Fold({
+  title,
+  count,
+  defaultOpen = false,
+  children,
+}: {
+  title: string;
+  count?: number;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <details
+      className="group rounded-xl border border-border bg-card"
+      open={open}
+      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
+    >
+      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-display text-lg font-semibold [&::-webkit-details-marker]:hidden">
+        <span>
+          {title}
+          {count != null ? (
+            <span className="ml-2 text-sm font-normal tabular-nums text-muted-foreground">{count}</span>
+          ) : null}
+        </span>
+        <span className="text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground group-open:hidden">
+          Show
+        </span>
+        <span className="hidden text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground group-open:inline">
+          Hide
+        </span>
+      </summary>
+      <div className="max-h-[28rem] space-y-3 overflow-y-auto border-t border-border px-4 py-4">{children}</div>
+    </details>
+  );
+}
+
+function LaunchChecklist({
+  polar,
+  mailOn,
+  money,
+  dash,
+}: {
+  polar: {
+    token: boolean;
+    monthly: boolean;
+    yearly: boolean;
+    referral?: boolean;
+    webhook?: boolean;
+    ready: boolean;
+  } | null;
+  mailOn: boolean | undefined;
+  money: { research?: boolean; amazon?: boolean; mailError?: string } | null;
+  dash: Dash | null;
+}) {
+  const rows: { label: string; ok: boolean | null; hint: string }[] = [
+    { label: "Polar token", ok: polar ? polar.token : null, hint: "POLAR_ACCESS_TOKEN on the host" },
+    { label: "Monthly $6.99", ok: polar ? polar.monthly : null, hint: "POLAR_PRODUCT_ID_MONTHLY" },
+    { label: "Yearly $75", ok: polar ? polar.yearly : null, hint: "POLAR_PRODUCT_ID_YEARLY" },
+    {
+      label: "Invite 50% (FRIEND50)",
+      ok: polar ? Boolean(polar.referral) : null,
+      hint: "POLAR_DISCOUNT_ID_REFERRAL — 50% off the next monthly invoice, not a refund",
+    },
+    {
+      label: "Polar webhook",
+      ok: polar ? Boolean(polar.webhook) : null,
+      hint: "POLAR_WEBHOOK_SECRET — paid unlocks fail without the Polar webhook on this host",
+    },
+    { label: "Resend mail", ok: polar ? Boolean(mailOn) : null, hint: "RESEND_API_KEY + MAIL_FROM on a verified domain" },
+    {
+      label: "Gemini 2.5 Flash",
+      ok: money?.research ?? null,
+      hint: "GEMINI_API_KEY (Google AI Studio). Use Ping research below to prove the key answers.",
+    },
+    {
+      label: "Postgres",
+      ok: dash ? dash.db.ok : null,
+      hint: "Database for accounts, cache, and locker sync",
+    },
+    {
+      label: "Amazon tag",
+      ok: money?.amazon ?? dash?.amazonReady ?? false,
+      hint: "Optional. Shop links stay off until VITE_AMAZON_ASSOCIATE_TAG is set.",
+    },
+  ];
+  const blockers = rows.filter((r) => r.ok === false && r.label !== "Amazon tag");
+  return (
+    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
+      <h2 className="font-display text-lg font-semibold">Before launch</h2>
+      <ul className="space-y-2 text-sm">
+        {rows.map((r) => (
+          <li key={r.label} className="flex flex-wrap items-baseline justify-between gap-2">
+            <span>
+              {r.ok === true ? "Ready" : r.ok === false ? "Missing" : "Checking"} · {r.label}
+            </span>
+            <span className="text-xs text-muted-foreground">{r.hint}</span>
+          </li>
+        ))}
+      </ul>
+      {blockers.length ? (
+        <p className="text-sm text-destructive">
+          {blockers.length} launch item{blockers.length === 1 ? "" : "s"} still missing. Checkout, mail, or research
+          will fail for real players until those are set on the host.
+        </p>
+      ) : polar?.ready && mailOn ? (
+        <p className="text-sm text-muted-foreground">
+          Money, mail, and Polar products look set. Ping research once before you send people here. Player delete is
+          still a 14-day hold; this page’s erase is immediate.
+        </p>
+      ) : (
+        <p className="text-sm text-muted-foreground">Finish Polar + Resend before opening paid checkout.</p>
+      )}
+      {money?.mailError ? <p className="text-xs text-destructive">Last mail error: {money.mailError}</p> : null}
+    </section>
   );
 }

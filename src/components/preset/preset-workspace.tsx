@@ -315,7 +315,7 @@ export function PresetWorkspace({
               )}
             </div>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:line-clamp-none line-clamp-3">{preset.summary}</p>
           {!canExportHlx(preset.stompModel) ? (
             <p className="text-sm text-muted-foreground">
               {device.name} does not export a preset file. The chain below is the map — copy it by hand.
@@ -328,8 +328,14 @@ export function PresetWorkspace({
           <RigDisclaimer />
         </header>
 
-        <div className="grid min-w-0 gap-8 xl:grid-cols-[minmax(280px,400px)_minmax(0,1fr)]">
-          <div className="order-2 space-y-5 xl:order-1">
+        <div
+          className={
+            device.layout === "stomp"
+              ? "grid min-w-0 gap-8 xl:grid-cols-[minmax(280px,400px)_minmax(0,1fr)]"
+              : "grid min-w-0 gap-8"
+          }
+        >
+          <div className={device.layout === "stomp" ? "space-y-5 xl:order-1" : "space-y-5"}>
             <FsAssignPanel
               preset={preset}
               fsIndex={assignFsIndex}
@@ -630,7 +636,13 @@ export function PresetWorkspace({
         ) : null}
           </div>
 
-          <div className="order-1 min-w-0 space-y-4 xl:order-2 xl:sticky xl:top-20 xl:self-start">
+          <div
+            className={
+              device.layout === "stomp"
+                ? "hx-replica-fit order-first min-w-0 space-y-4 xl:order-2"
+                : "hx-replica-fit order-first min-w-0 space-y-4"
+            }
+          >
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-full bg-secondary p-1">
                 {(

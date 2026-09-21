@@ -13,6 +13,8 @@ describe("isScannerPath", () => {
     for (const path of [
       "/",
       "/catalog",
+      "/catalog/deez-one-vintage",
+      "/catalog/scream-808",
       "/create",
       "/gear",
       "/guide",

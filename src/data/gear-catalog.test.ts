@@ -8,7 +8,7 @@ describe("gear catalog", () => {
     for (const k of ["guitar", "bass", "amp", "cab", "pedal", "pickup"] as const) {
       assert.ok(kinds.has(k), k);
     }
-    assert.ok(GEAR_SUGGESTIONS.length > 1800, `too small: ${GEAR_SUGGESTIONS.length}`);
+    assert.ok(GEAR_SUGGESTIONS.length > 2500, `too small: ${GEAR_SUGGESTIONS.length}`);
     assert.ok(brandsFor("guitar").includes("Fender"));
     assert.ok(brandsFor("guitar").includes("Gibson"));
     assert.ok(brandsFor("guitar").includes("Harley Benton"));

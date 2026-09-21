@@ -28,6 +28,8 @@ import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
 import { Route as ApiVisitRouteImport } from './routes/api/visit'
+import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
+import { Route as CatalogIdRouteImport } from './routes/catalog.$id'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiPolarWebhookRouteImport } from './routes/api/polar.webhook'
@@ -127,6 +129,16 @@ const ApiVisitRoute = ApiVisitRouteImport.update({
   path: '/api/visit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CatalogIndexRoute = CatalogIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CatalogRoute,
+} as any)
+const CatalogIdRoute = CatalogIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => CatalogRoute,
+} as any)
 const PresetIdRoute = PresetIdRouteImport.update({
   id: '/preset/$id',
   path: '/preset/$id',
@@ -147,7 +159,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/catalog': typeof CatalogRoute
+  '/catalog': typeof CatalogRouteWithChildren
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
@@ -163,7 +175,9 @@ export interface FileRoutesByFullPath {
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
+  '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
+  '/catalog/': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
@@ -171,7 +185,6 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/catalog': typeof CatalogRoute
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
@@ -187,7 +200,9 @@ export interface FileRoutesByTo {
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
+  '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
+  '/catalog': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
@@ -196,7 +211,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
   '/admin': typeof AdminRoute
-  '/catalog': typeof CatalogRoute
+  '/catalog': typeof CatalogRouteWithChildren
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
@@ -212,7 +227,9 @@ export interface FileRoutesById {
   '/upgrade': typeof UpgradeRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
+  '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
+  '/catalog/': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
 }
@@ -238,7 +255,9 @@ export interface FileRouteTypes {
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
+    | '/catalog/$id'
     | '/preset/$id'
+    | '/catalog/'
     | '/api/auth/$'
     | '/api/polar/webhook'
   fileRoutesByTo: FileRoutesByTo
@@ -246,7 +265,6 @@ export interface FileRouteTypes {
     | '/'
     | '/account'
     | '/admin'
-    | '/catalog'
     | '/create'
     | '/equivalents'
     | '/gear'
@@ -262,7 +280,9 @@ export interface FileRouteTypes {
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
+    | '/catalog/$id'
     | '/preset/$id'
+    | '/catalog'
     | '/api/auth/$'
     | '/api/polar/webhook'
   id:
@@ -286,7 +306,9 @@ export interface FileRouteTypes {
     | '/upgrade'
     | '/api/keepalive'
     | '/api/visit'
+    | '/catalog/$id'
     | '/preset/$id'
+    | '/catalog/'
     | '/api/auth/$'
     | '/api/polar/webhook'
   fileRoutesById: FileRoutesById
@@ -295,7 +317,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
   AdminRoute: typeof AdminRoute
-  CatalogRoute: typeof CatalogRoute
+  CatalogRoute: typeof CatalogRouteWithChildren
   CreateRoute: typeof CreateRoute
   EquivalentsRoute: typeof EquivalentsRoute
   GearRoute: typeof GearRoute
@@ -451,6 +473,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiVisitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/catalog/': {
+      id: '/catalog/'
+      path: '/'
+      fullPath: '/catalog/'
+      preLoaderRoute: typeof CatalogIndexRouteImport
+      parentRoute: typeof CatalogRoute
+    }
+    '/catalog/$id': {
+      id: '/catalog/$id'
+      path: '/$id'
+      fullPath: '/catalog/$id'
+      preLoaderRoute: typeof CatalogIdRouteImport
+      parentRoute: typeof CatalogRoute
+    }
     '/preset/$id': {
       id: '/preset/$id'
       path: '/preset/$id'
@@ -475,11 +511,24 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface CatalogRouteChildren {
+  CatalogIdRoute: typeof CatalogIdRoute
+  CatalogIndexRoute: typeof CatalogIndexRoute
+}
+
+const CatalogRouteChildren: CatalogRouteChildren = {
+  CatalogIdRoute: CatalogIdRoute,
+  CatalogIndexRoute: CatalogIndexRoute,
+}
+
+const CatalogRouteWithChildren =
+  CatalogRoute._addFileChildren(CatalogRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
   AdminRoute: AdminRoute,
-  CatalogRoute: CatalogRoute,
+  CatalogRoute: CatalogRouteWithChildren,
   CreateRoute: CreateRoute,
   EquivalentsRoute: EquivalentsRoute,
   GearRoute: GearRoute,

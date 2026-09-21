@@ -130,8 +130,9 @@ function GuidePage() {
 
       <Section title="Catalog">
         <p>
-          Every HX model, filtered by guitar or bass from the header. Find equivalent maps a real
-          pedal (TS808, Klon, SVT) to the Line 6 name.
+          Every factory Line 6 model, one page each, filtered by guitar or bass from the header and by
+          unit (HX Stomp, XL, Helix, LT, HX Effects, POD Go). Find equivalent maps a real pedal
+          (TS808, Klon, SVT) to the Line 6 name.
         </p>
       </Section>
 

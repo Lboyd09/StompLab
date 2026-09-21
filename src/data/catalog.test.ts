@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, findEquivalents, lookupAliases, searchModels } from "./catalog.ts";
+import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, catalogModels, devicesForModel, findEquivalents, lookupAliases, modelOnDevice, searchModels } from "./catalog.ts";
 import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
 import { systemForDevice, songResearchInstructions, systemForCustomSound, customSoundInstructions, jsonSchemaHint } from "../lib/preset-schema.ts";
@@ -157,6 +157,40 @@ describe("research prompt", () => {
     const prompt = systemForDevice("hx-stomp", "guitar");
     assert.match(prompt, /us-double-nrm/);
     assert.match(prompt, /NOT us-deluxe-nrm/);
+  });
+});
+
+describe("per-unit catalog", () => {
+  it("hides amps from HX Effects and poly pitch from POD Go", () => {
+    const recto = MODEL_MAP["cali-rectifire"];
+    const deez = MODEL_MAP["deez-one-vintage"];
+    const poly = MODEL_MAP["poly-pitch"] ?? MODEL_MAP["poly-wham"];
+    assert.ok(recto);
+    assert.ok(deez);
+    assert.equal(modelOnDevice(recto, "hx-effects"), false);
+    assert.equal(modelOnDevice(deez, "hx-effects"), true);
+    assert.equal(modelOnDevice(recto, "hx-stomp"), true);
+    assert.equal(modelOnDevice(deez, "pod-go"), true);
+    if (poly) {
+      assert.equal(modelOnDevice(poly, "pod-go"), false);
+      assert.equal(modelOnDevice(poly, "hx-stomp"), true);
+    }
+    const fxOnly = catalogModels({ deviceId: "hx-effects", instrument: "guitar" });
+    assert.ok(fxOnly.length > 40);
+    assert.ok(!fxOnly.some((m) => m.category === "amp-guitar" || m.category === "cab"));
+    assert.ok(fxOnly.some((m) => m.id === "deez-one-vintage"));
+    const units = devicesForModel(deez).map((d) => d.id);
+    assert.ok(units.includes("hx-stomp"));
+    assert.ok(units.includes("hx-effects"));
+    assert.ok(units.includes("pod-go"));
+    const ampUnits = devicesForModel(recto).map((d) => d.id);
+    assert.ok(!ampUnits.includes("hx-effects"));
+  });
+
+  it("omits L6SPB models from POD Go research prompts", () => {
+    const go = compactCatalogForPrompt("guitar", "pod-go");
+    assert.equal(/poly-pitch|poly-wham|acoustic-sim/.test(go), false);
+    assert.match(go, /deez-one-vintage/);
   });
 });
 

@@ -256,6 +256,9 @@ describe("polarSetup", () => {
     "POLAR_YEARLY_PRODUCT_ID",
     "POLAR_PRODUCT_MONTHLY",
     "POLAR_PRODUCT_YEARLY",
+    "POLAR_DISCOUNT_ID_REFERRAL",
+    "POLAR_REFERRAL_DISCOUNT_ID",
+    "POLAR_WEBHOOK_SECRET",
   ] as const;
 
   function snap() {
@@ -278,11 +281,16 @@ describe("polarSetup", () => {
       delete process.env.POLAR_PRODUCT_ID;
       delete process.env.POLAR_MONTHLY_PRODUCT_ID;
       delete process.env.POLAR_PRODUCT_MONTHLY;
+      delete process.env.POLAR_DISCOUNT_ID_REFERRAL;
+      delete process.env.POLAR_REFERRAL_DISCOUNT_ID;
+      delete process.env.POLAR_WEBHOOK_SECRET;
       process.env.POLAR_PRODUCT_ID_YEARLY = "prod_year";
       const s = polarSetup();
       assert.equal(s.token, true);
       assert.equal(s.monthly, false);
       assert.equal(s.yearly, true);
+      assert.equal(s.referral, false);
+      assert.equal(s.webhook, false);
       assert.equal(s.ready, true);
       assert.equal(polarConfigured(), true);
     } finally {

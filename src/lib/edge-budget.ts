@@ -91,6 +91,7 @@ export function isAppDocumentPath(pathname: string): boolean {
   const path = normalizePath(pathname);
   if (APP_DOCUMENTS.has(path)) return true;
   if (path === "/preset" || path.startsWith("/preset/")) return true;
+  if (path === "/catalog" || path.startsWith("/catalog/")) return true;
   return false;
 }
 

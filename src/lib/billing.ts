@@ -28,6 +28,7 @@ import {
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { mailerConfigured, mailerLastError } from "./mailer";
+import { geminiConfigured } from "./gemini";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -1134,7 +1135,13 @@ export const adminMoneySetup = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
     await assertAdmin(context.userId, context.email);
-    return { ...polarSetup(), mail: mailerConfigured(), mailError: mailerLastError() };
+    return {
+      ...polarSetup(),
+      mail: mailerConfigured(),
+      mailError: mailerLastError(),
+      research: geminiConfigured(),
+      amazon: Boolean((process.env.VITE_AMAZON_ASSOCIATE_TAG ?? "").trim()),
+    };
   });
 
 export const adminDashboard = createServerFn({ method: "POST" })
@@ -1196,7 +1203,8 @@ export const adminDashboard = createServerFn({ method: "POST" })
       polar: polarSetup(),
       polarReady: polarSetup().ready,
       mail: mailerConfigured(),
-      amazonReady: false,
+      amazonReady: Boolean((process.env.VITE_AMAZON_ASSOCIATE_TAG ?? "").trim()),
+      research: geminiConfigured(),
       stats: emptyAdminStats(),
       visits: { today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 },
       dbError: "",
@@ -1293,6 +1301,7 @@ async function loadAdminDashboard(empty: {
   polarReady: boolean;
   mail: boolean;
   amazonReady: boolean;
+  research: boolean;
   stats: AdminStats;
   visits: { today: number; d7: number; d30: number; unique_all: number; hits: number };
   dbError: string;
@@ -1672,7 +1681,8 @@ async function loadAdminDashboard(empty: {
       polar: polarSetup(),
       polarReady: polarSetup().ready,
       mail: mailerConfigured(),
-      amazonReady: false,
+      amazonReady: Boolean((process.env.VITE_AMAZON_ASSOCIATE_TAG ?? "").trim()),
+      research: geminiConfigured(),
       stats,
       visits,
       dbError,

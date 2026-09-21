@@ -47,9 +47,11 @@ export function polarSetup() {
   const token = Boolean(polarToken());
   const monthly = Boolean(polarProductId("month"));
   const yearly = Boolean(polarProductId("year"));
+  const referral = Boolean(polarReferralDiscountId());
+  const webhook = Boolean((process.env.POLAR_WEBHOOK_SECRET ?? "").trim());
   // Checkout needs the token and at least one product. Admin lists each so a
   // missing monthly id does not look like "products are gone."
-  return { token, monthly, yearly, ready: token && (monthly || yearly) };
+  return { token, monthly, yearly, referral, webhook, ready: token && (monthly || yearly) };
 }
 
 export function polarConfigured() {

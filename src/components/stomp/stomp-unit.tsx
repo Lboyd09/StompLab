@@ -309,7 +309,7 @@ export function StompUnit({
               : "hx-chassis-stomp";
 
   return (
-    <div className="min-w-0 overflow-x-auto">
+    <div className="hx-replica-scroll min-w-0">
       <div className={cn("hx-chassis mx-auto w-full", chassisClass)}>
         <div className="hx-sparkle" aria-hidden />
         <div className="hx-brand">
@@ -723,7 +723,7 @@ function Footswitch({
         {showNumber ? <span className="font-mono text-[10px] font-semibold text-zinc-300">{shown}</span> : null}
       </span>
       {label ? (
-        <span className="max-w-[4.5rem] truncate font-mono text-[9px] uppercase tracking-wider text-zinc-400">
+        <span className="max-w-[4.5rem] truncate whitespace-nowrap font-mono text-[9px] uppercase tracking-wider text-zinc-400">
           {label}
         </span>
       ) : null}

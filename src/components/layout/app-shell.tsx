@@ -237,7 +237,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();
-                    void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
+                    void navigate({ to: "/catalog/$id", params: { id: m.id } });
                   }}
                   onResearch={() => {
                     const song = q.trim();
@@ -303,7 +303,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();
-                    void navigate({ to: "/catalog", search: { q: m.name, cat: m.category, tab: "browse" } });
+                    void navigate({ to: "/catalog/$id", params: { id: m.id } });
                   }}
                   onResearch={() => {
                     const song = q.trim();

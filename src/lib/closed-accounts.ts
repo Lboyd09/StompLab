@@ -222,6 +222,33 @@ export async function confirmDeleteHold(token: string): Promise<{
   return { ok: true, email: row.email_canonical, recreateAfter: recreate.toISOString() };
 }
 
+/** Admin: erase the account now. No 14-day hold. They can sign up again immediately. */
+export async function adminWipeAccountNow(email: string): Promise<
+  { ok: true; email: string; userId: string } | { ok: false; error: string }
+> {
+  const canon = canonicalEmail(email);
+  if (!canon.includes("@")) return { ok: false, error: "That email doesn't look right." };
+  const sql = await getSql();
+  await ensureClosedAccountsSchema(sql);
+  let userId: string | null = null;
+  try {
+    const users = await sql<{ id: string }>`
+      select id from "user" where lower(email) = ${email.trim().toLowerCase()} or lower(email) = ${canon} limit 1
+    `;
+    userId = users[0]?.id ?? null;
+  } catch {
+    userId = null;
+  }
+  if (!userId) return { ok: false, error: "No Lab account with that email." };
+  await wipeUser(sql, userId);
+  try {
+    await sql`delete from closed_accounts where email_canonical = ${canon}`;
+  } catch {
+    /* ignore */
+  }
+  return { ok: true, email: canon, userId };
+}
+
 /** Admin: hold + disable login without waiting for the confirmation email. */
 export async function forceCloseAccount(email: string): Promise<
   { ok: true; email: string; userId: string | null; recreateAfter: string } | { ok: false; error: string }

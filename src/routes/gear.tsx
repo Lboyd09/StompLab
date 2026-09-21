@@ -169,21 +169,23 @@ function GearPage() {
               </div>
             ) : null}
             <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Browse a brand</p>
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {brands.map((b) => (
-                  <button
-                    key={b}
-                    type="button"
-                    onClick={() => setBrand(b)}
-                    className="sl-card min-h-14 rounded-xl border border-border bg-secondary/40 px-4 py-3 text-left text-sm font-medium"
-                  >
-                    {b}
-                    <span className="mt-1 block text-[11px] font-normal text-muted-foreground">
-                      {modelsFor(kind, b).length} models
-                    </span>
-                  </button>
-                ))}
+              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                Browse a brand · {brands.length}
+              </p>
+              <div className="max-h-44 overflow-y-auto rounded-xl border border-border bg-secondary/30 p-2">
+                <div className="flex flex-wrap gap-1.5">
+                  {brands.map((b) => (
+                    <button
+                      key={b}
+                      type="button"
+                      onClick={() => setBrand(b)}
+                      className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full bg-secondary px-3 text-xs font-medium"
+                    >
+                      <span className="truncate">{b}</span>
+                      <span className="tabular-nums text-muted-foreground">{modelsFor(kind, b).length}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>
