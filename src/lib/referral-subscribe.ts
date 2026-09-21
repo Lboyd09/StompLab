@@ -1,10 +1,13 @@
 import { getSql } from "@/lib/db";
+import { isAdminEmail } from "@/lib/plan";
 import {
   applyPolarSubscriptionDiscount,
   ensureReferralDiscountId,
   isRealPolarSubscriptionId,
+  lookupPolarSubscription,
   subscriptionStatusIsActive,
 } from "@/lib/polar";
+import { polarIntervalIsMonth, referrerCountsAsPaid, resolveMonthlySubId } from "@/lib/referral-rules";
 
 type RedemptionRow = {
   referrer_user_id: string;
@@ -26,6 +29,19 @@ async function redemptionFor(userId: string): Promise<RedemptionRow | null> {
   }
 }
 
+async function referrerEmail(referrerId: string, fallback: string | null): Promise<string | null> {
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ email: string | null }>(`select email from "user" where id = $1 limit 1`, [
+      referrerId,
+    ]);
+    const email = String(rows[0]?.email ?? "").trim();
+    return email || fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boolean; monthlySubId: string }> {
   try {
     const sql = await getSql();
@@ -34,29 +50,63 @@ async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boole
       plan_interval: string | null;
       polar_subscription_id: string | null;
       subscription_status: string | null;
+      email: string | null;
     }>`
-      select paid, plan_interval, polar_subscription_id, subscription_status
+      select paid, plan_interval, polar_subscription_id, subscription_status, email
       from entitlements
       where user_id = ${referrerId}
       order by paid desc, updated_at desc
       limit 1
     `;
     const row = rows[0];
-    if (!row?.paid) return { paid: false, monthlySubId: "" };
-    const interval = String(row.plan_interval ?? "").toLowerCase();
-    const status = String(row.subscription_status ?? "");
-    const sub = String(row.polar_subscription_id ?? "").trim();
-    const monthly =
-      interval === "month" &&
-      isRealPolarSubscriptionId(sub) &&
+    const email = await referrerEmail(referrerId, row?.email ?? null);
+    const paid = referrerCountsAsPaid({ paid: row?.paid, email });
+    if (!paid) return { paid: false, monthlySubId: "" };
+
+    const storedSub = String(row?.polar_subscription_id ?? "").trim();
+    const storedInterval = String(row?.plan_interval ?? "").trim();
+    const status = String(row?.subscription_status ?? "");
+    const storedOk =
+      polarIntervalIsMonth(storedInterval) &&
+      isRealPolarSubscriptionId(storedSub) &&
       (!status || subscriptionStatusIsActive(status));
-    return { paid: true, monthlySubId: monthly ? sub : "" };
+
+    let lookup: { id: string; interval?: string | null; status?: string | null } | null = null;
+    if (!storedOk) {
+      const hit = await lookupPolarSubscription({
+        email,
+        externalId: referrerId,
+      });
+      if (hit) lookup = { id: hit.id, interval: hit.interval, status: hit.status };
+    }
+
+    return {
+      paid: true,
+      monthlySubId: resolveMonthlySubId({
+        planInterval: row?.plan_interval,
+        polarSubscriptionId: row?.polar_subscription_id,
+        subscriptionStatus: row?.subscription_status,
+        lookup,
+      }),
+    };
   } catch {
+    try {
+      const email = await referrerEmail(referrerId, null);
+      if (isAdminEmail(email)) {
+        const hit = await lookupPolarSubscription({ email, externalId: referrerId });
+        const monthlySubId = resolveMonthlySubId({
+          lookup: hit ? { id: hit.id, interval: hit.interval, status: hit.status } : null,
+        });
+        return { paid: true, monthlySubId };
+      }
+    } catch {
+      /* ignore */
+    }
     return { paid: false, monthlySubId: "" };
   }
 }
 
-/** Friend used an invite AND the referrer is currently subscribed. */
+/** Friend used an invite AND the referrer is currently subscribed (or the admin inbox). */
 export async function referredUserGetsMonthOff(userId: string): Promise<boolean> {
   const row = await redemptionFor(userId);
   if (!row) return false;

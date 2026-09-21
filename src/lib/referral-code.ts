@@ -68,10 +68,32 @@ export function clearReferralCode() {
 
 export type InviteClaim = { ok: true; bonus: number } | { ok: false; error: string };
 
+export function isPermanentInviteError(error: string): boolean {
+  return /already used|can't invite|maximum|48 hours|before you research|doesn't look right|no account uses/i.test(
+    error,
+  );
+}
+
+/** A later "already used" from a double claim must not wipe a success toast. */
+export function mergeInviteResult(prev: InviteClaim | null, next: InviteClaim): InviteClaim {
+  if (prev?.ok && !next.ok) return prev;
+  return next;
+}
+
 export function rememberInviteResult(result: InviteClaim) {
   if (typeof window === "undefined") return;
   try {
-    window.sessionStorage.setItem(INVITE_RESULT_KEY, JSON.stringify(result));
+    const raw = window.sessionStorage.getItem(INVITE_RESULT_KEY);
+    let prev: InviteClaim | null = null;
+    if (raw) {
+      try {
+        const parsed = JSON.parse(raw) as InviteClaim;
+        if (parsed && typeof parsed === "object" && typeof parsed.ok === "boolean") prev = parsed;
+      } catch {
+        prev = null;
+      }
+    }
+    window.sessionStorage.setItem(INVITE_RESULT_KEY, JSON.stringify(mergeInviteResult(prev, result)));
   } catch {
     /* ignore */
   }

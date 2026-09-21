@@ -18,6 +18,7 @@ import {
   polarAdminStatsFromLists,
   polarDiscountId,
   polarReferralDiscountId,
+  polarSubHitFromItem,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -375,6 +376,27 @@ describe("polarDiscountId", () => {
     } finally {
       restore(prev);
     }
+  });
+});
+
+describe("polarSubHitFromItem", () => {
+  it("reads monthly vs yearly recurring_interval", () => {
+    const month = polarSubHitFromItem({
+      id: "sub_month_123",
+      status: "active",
+      current_period_end: "2026-10-20T00:00:00Z",
+      customer_id: "cus_1",
+      recurring_interval: "month",
+    });
+    assert.equal(month?.interval, "month");
+    assert.equal(month?.id, "sub_month_123");
+    const year = polarSubHitFromItem({
+      id: "sub_year_1234",
+      status: "active",
+      product: { recurring_interval: "year" },
+    });
+    assert.equal(year?.interval, "year");
+    assert.equal(polarSubHitFromItem({ id: "short" }), null);
   });
 });
 

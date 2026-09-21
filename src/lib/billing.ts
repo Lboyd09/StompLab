@@ -27,6 +27,7 @@ import {
   lookupPolarSubscription,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
+import { friendCheckoutGetsReferralDiscount } from "./referral-rules";
 import { mailerConfigured, mailerLastError } from "./mailer";
 import { geminiConfigured } from "./gemini";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
@@ -666,7 +667,7 @@ export const startCheckout = createServerFn({ method: "POST" })
     let discountId: string | undefined;
     if (data.interval === "month") {
       try {
-        if (await referredUserGetsMonthOff(context.userId)) {
+        if (friendCheckoutGetsReferralDiscount(data.interval, await referredUserGetsMonthOff(context.userId))) {
           const id = await ensureReferralDiscountId();
           if (id) discountId = id;
         }

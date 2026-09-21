@@ -34,5 +34,7 @@ describe("referral codes", () => {
     assert.equal(canonicalEmail("Liam.Boyd+lab@gmail.com"), "liamboyd@gmail.com");
     assert.equal(canonicalEmail("liamboyd@googlemail.com"), "liamboyd@gmail.com");
     assert.equal(canonicalEmail("a@icloud.com"), "a@icloud.com");
+    assert.equal(canonicalEmail("stomplab1+friend@gmail.com"), "stomplab1@gmail.com");
+    assert.equal(canonicalEmail("Stomp.Lab1@gmail.com"), "stomplab1@gmail.com");
   });
 });

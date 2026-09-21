@@ -701,7 +701,13 @@ export function extractInterval(payload: Record<string, unknown>): PlanInterval 
   if (fromMeta === "year" || fromMeta === "yearly") return "year";
   if (fromMeta === "month" || fromMeta === "monthly") return "month";
   const rec = String(
-    data.recurring_interval ?? data.recurringInterval ?? asRecord(data.product).recurring_interval ?? "",
+    data.recurring_interval ??
+      data.recurringInterval ??
+      asRecord(data.product).recurring_interval ??
+      asRecord(data.product).recurringInterval ??
+      asRecord(data.price).recurring_interval ??
+      asRecord(data.price).recurringInterval ??
+      "",
   )
     .trim()
     .toLowerCase();
@@ -978,7 +984,21 @@ export type PolarSubHit = {
   periodEnd: string;
   customerId: string;
   cancelAtPeriodEnd: boolean;
+  interval: string;
 };
+
+export function polarSubHitFromItem(item: Record<string, unknown>): PolarSubHit | null {
+  const id = String(item.id ?? "").trim();
+  if (!isRealPolarSubscriptionId(id)) return null;
+  return {
+    id,
+    status: String(item.status ?? "").trim().toLowerCase(),
+    periodEnd: String(item.current_period_end ?? item.currentPeriodEnd ?? "").trim(),
+    customerId: String(item.customer_id ?? item.customerId ?? asRecord(item.customer).id ?? "").trim(),
+    cancelAtPeriodEnd: item.cancel_at_period_end === true || item.cancelAtPeriodEnd === true,
+    interval: extractInterval(item),
+  };
+}
 
 /** Find an active Polar subscription for this Lab account. */
 export async function lookupPolarSubscription(opts: {
@@ -990,8 +1010,16 @@ export async function lookupPolarSubscription(opts: {
   if (!token) return null;
   const headers = { Authorization: `Bearer ${token}`, Accept: "application/json" };
   const queries: string[] = [];
-  const customerId = (opts.customerId ?? "").trim();
+  let customerId = (opts.customerId ?? "").trim();
   const ext = (opts.externalId ?? "").trim();
+  const em = (opts.email ?? "").trim();
+  if (!customerId && (em || ext)) {
+    try {
+      customerId = await lookupPolarCustomer({ email: em || null, externalId: ext || null });
+    } catch {
+      customerId = "";
+    }
+  }
   if (customerId) queries.push(`${polarBase()}/v1/subscriptions/?customer_id=${encodeURIComponent(customerId)}&limit=20`);
   if (ext) {
     queries.push(`${polarBase()}/v1/subscriptions/?external_customer_id=${encodeURIComponent(ext)}&limit=20`);
@@ -1003,19 +1031,7 @@ export async function lookupPolarSubscription(opts: {
       if (!res.ok) continue;
       const json = await res.json();
       const items = polarListItems(json);
-      const ranked = items
-        .map((item) => {
-          const id = String(item.id ?? "").trim();
-          const status = String(item.status ?? "").trim().toLowerCase();
-          return {
-            id,
-            status,
-            periodEnd: String(item.current_period_end ?? item.currentPeriodEnd ?? "").trim(),
-            customerId: String(item.customer_id ?? item.customerId ?? asRecord(item.customer).id ?? "").trim(),
-            cancelAtPeriodEnd: item.cancel_at_period_end === true || item.cancelAtPeriodEnd === true,
-          };
-        })
-        .filter((s) => isRealPolarSubscriptionId(s.id));
+      const ranked = items.map((item) => polarSubHitFromItem(item)).filter((s): s is PolarSubHit => Boolean(s));
       const hit =
         ranked.find((s) => s.status === "active" || s.status === "trialing") ??
         ranked.find((s) => s.status === "canceled" || s.status === "cancelled") ??

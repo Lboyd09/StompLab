@@ -3,8 +3,13 @@ import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache, siblingUserIds } from "@/lib/billing";
 import { getSql } from "@/lib/db";
-import { normalizeEmail } from "@/lib/plan";
-import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode, canonicalEmail } from "@/lib/referral-code";
+import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
+import {
+  USER_CREATED_AT_QUERY,
+  decideRedeem,
+  mapRedeemSqlError,
+  referrerCountsAsPaid,
+} from "@/lib/referral-rules";
 import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
 export { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
@@ -67,6 +72,19 @@ async function bumpBonus(userId: string, amount: number) {
     `;
 }
 
+async function undoBonus(userId: string, amount: number) {
+  try {
+    const sql = await getSql();
+    await sql`
+      update entitlements
+      set bonus_builds = greatest(0, entitlements.bonus_builds - ${amount}), updated_at = now()
+      where user_id = ${userId}
+    `;
+  } catch {
+    /* best-effort rollback */
+  }
+}
+
 export const getMyReferral = createServerFn({ method: "GET" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -82,24 +100,25 @@ export const getMyReferral = createServerFn({ method: "GET" })
     }
   });
 
-/** Public: does this invite currently include Polar 50% off? Paid referrer only. */
-export const invitePerkForCode = createServerFn({ method: "GET" })
+/** Public: does this invite currently include Polar 50% off? Paid or admin referrer. */
+export const invitePerkForCode = createServerFn({ method: "POST" })
   .validator((input: unknown) => z.object({ code: z.string().min(4).max(12) }).parse(input))
   .handler(async ({ data }): Promise<{ ok: true; paid: boolean; percent: number }> => {
     const code = normalizeReferralCode(data.code);
     if (code.length < 4) return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
     try {
       const sql = await getSql();
-      const rows = await sql<{ paid: boolean | null; plan_interval: string | null; subscription_status: string | null }>`
-        select e.paid, e.plan_interval, e.subscription_status
+      const rows = await sql<{ paid: boolean | null; email: string | null }>`
+        select e.paid, coalesce(u.email, e.email, '') as email
         from referrals r
         left join entitlements e on e.user_id = r.user_id
+        left join "user" u on u.id = r.user_id
         where r.code = ${code}
         order by e.paid desc nulls last
         limit 1
       `;
       const row = rows[0];
-      const paid = Boolean(row?.paid);
+      const paid = referrerCountsAsPaid({ paid: row?.paid, email: row?.email });
       return { ok: true, paid, percent: REFERRAL_SUBSCRIBE_PERCENT };
     } catch {
       return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
@@ -126,61 +145,86 @@ export const redeemReferral = createServerFn({ method: "POST" })
     const code = normalizeReferralCode(data.code);
     if (code.length < 4) return { ok: false, error: "That invite code doesn't look right." };
     const email = await emailFor(context.userId, context.email);
+    let referrerId = "";
     try {
       const sql = await getSql();
       await ensureReferralSchema(sql);
       const already = await sql<{ referrer_user_id: string }>`
         select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
       `;
-      if (already[0]) return { ok: false, error: "This account already used an invite." };
 
       const owner = await sql<{ user_id: string }>`select user_id from referrals where code = ${code} limit 1`;
-      const referrerId = owner[0]?.user_id;
-      if (!referrerId) return { ok: false, error: "No account uses that code." };
-      if (referrerId === context.userId) return { ok: false, error: "You can't invite yourself." };
+      referrerId = owner[0]?.user_id ?? "";
 
       const ids = await siblingUserIds(context.userId, email);
-      if (ids.includes(referrerId)) return { ok: false, error: "You can't invite yourself." };
+      const refEmail = referrerId ? await emailFor(referrerId, null) : null;
 
-      const refEmail = await emailFor(referrerId, null);
-      if (refEmail && email && canonicalEmail(refEmail) === canonicalEmail(email)) {
-        return { ok: false, error: "You can't invite yourself." };
-      }
-
-      const created = await sql<{ created_at: Date }>`
-        select created_at from "user" where id = ${context.userId} limit 1
-      `;
-      const born = created[0]?.created_at ? new Date(created[0].created_at).getTime() : 0;
-      if (born && Date.now() - born > 48 * 60 * 60 * 1000) {
-        return { ok: false, error: "Invites only work on a new account (first 48 hours)." };
+      let createdAt: unknown = null;
+      try {
+        const created = await sql.query<{ created_at: Date | string | null }>(USER_CREATED_AT_QUERY, [
+          context.userId,
+        ]);
+        createdAt = created[0]?.created_at ?? null;
+      } catch {
+        createdAt = null;
       }
 
       const builds = await sql<{ n: number }>`
         select count(*)::int as n from build_events where user_id = ${context.userId}
       `;
-      if (Number(builds[0]?.n ?? 0) > 0) {
-        return { ok: false, error: "Invites only work before you research a custom song." };
-      }
+      const used = referrerId
+        ? await sql<{ n: number }>`
+            select count(*)::int as n from referral_redemptions where referrer_user_id = ${referrerId}
+          `
+        : [{ n: 0 }];
 
-      const used = await sql<{ n: number }>`
-        select count(*)::int as n from referral_redemptions where referrer_user_id = ${referrerId}
-      `;
-      if (Number(used[0]?.n ?? 0) >= REFERRAL_CAP) {
-        return { ok: false, error: "That friend already invited the maximum number of people." };
-      }
+      const decision = decideRedeem({
+        code,
+        userId: context.userId,
+        email,
+        referrerId: referrerId || null,
+        referrerEmail: refEmail,
+        siblingIds: ids,
+        existingReferrerId: already[0]?.referrer_user_id ?? null,
+        createdAt,
+        customBuilds: Number(builds[0]?.n ?? 0),
+        referrerUsed: Number(used[0]?.n ?? 0),
+      });
+      if (!decision.ok) return decision;
+      if (decision.already) return { ok: true, bonus: REFERRAL_BONUS };
 
       await sql`
         insert into referral_redemptions (referred_user_id, referrer_user_id)
         values (${context.userId}, ${referrerId})
       `;
-      await bumpBonus(context.userId, REFERRAL_BONUS);
-      await bumpBonus(referrerId, REFERRAL_BONUS);
+      try {
+        await bumpBonus(context.userId, REFERRAL_BONUS);
+        await bumpBonus(referrerId, REFERRAL_BONUS);
+      } catch (err) {
+        await sql`delete from referral_redemptions where referred_user_id = ${context.userId}`.catch(() => undefined);
+        await undoBonus(context.userId, REFERRAL_BONUS);
+        await undoBonus(referrerId, REFERRAL_BONUS);
+        throw err;
+      }
       invalidatePlanCache(context.userId);
       invalidatePlanCache(referrerId);
       return { ok: true, bonus: REFERRAL_BONUS };
     } catch (err) {
       const msg = err instanceof Error ? err.message : "";
-      if (/unique|duplicate/i.test(msg)) return { ok: false, error: "This account already used an invite." };
+      if (/unique|duplicate/i.test(msg) && referrerId) {
+        try {
+          const sql = await getSql();
+          const row = await sql<{ referrer_user_id: string }>`
+            select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
+          `;
+          if (row[0]?.referrer_user_id === referrerId) return { ok: true, bonus: REFERRAL_BONUS };
+        } catch {
+          /* fall through */
+        }
+      }
+      const mapped = mapRedeemSqlError(msg);
+      if (mapped) return { ok: false, error: mapped };
+      console.error("[referrals] redeem failed", msg);
       return { ok: false, error: "Could not apply that invite. Try again in a minute." };
     }
   });

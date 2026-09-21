@@ -12,7 +12,7 @@ import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
-import { captureReferralCode, peekReferralCode, clearReferralCode, rememberInviteResult } from "@/lib/referral-code";
+import { captureReferralCode, peekReferralCode, clearReferralCode, rememberInviteResult, isPermanentInviteError } from "@/lib/referral-code";
 import { redeemReferral, invitePerkForCode } from "@/lib/referrals";
 import { requestResetMail } from "@/lib/reset-mail";
 import { checkEmailHold } from "@/lib/closed-accounts";
@@ -126,7 +126,7 @@ function LoginPage() {
           return;
         }
         last = res.error;
-        if (/already used|can't invite|maximum|48 hours|before you research|doesn't look right|no account uses/i.test(res.error)) {
+        if (isPermanentInviteError(res.error)) {
           rememberInviteResult({ ok: false, error: res.error });
           return;
         }
@@ -495,7 +495,7 @@ function SignedInClaim({
               break;
             }
             last = res.error;
-            if (/already used|can't invite|maximum|48 hours|before you research/i.test(res.error)) {
+            if (isPermanentInviteError(res.error)) {
               rememberInviteResult({ ok: false, error: res.error });
               break;
             }
