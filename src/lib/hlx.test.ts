@@ -5,7 +5,7 @@ import { DEMO_IDS, FEATURED } from "../data/featured.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor, isHxStompModelId } from "../data/helix-ids.ts";
 import { factoryParamsFor, FACTORY_HLX_PARAMS } from "../data/helix-params.ts";
 import type { Preset } from "../data/types.ts";
-import { buildHlx, canExportHlx, hlxFilename } from "./hlx.ts";
+import { buildHlx, canExportHlx, hlxFilename, inaudibleExport } from "./hlx.ts";
 import { canDownloadPreset, featuredBaseId, lcdScribbleIndices, resolveNamedPreset, visualToHardwareFs, withStompModel } from "./preset-utils.ts";
 
 function featured(id: string) {
@@ -59,14 +59,19 @@ describe("buildHlx Teen Spirit", () => {
   const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
   const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
 
-  it("emits factory Cali IV R1 + 70s Chorus + Deez One Vintage + 1960 T75 cab", () => {
-    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR1");
-    assert.equal(dsp0.block2["@type"], 3);
-    assert.equal(dsp0.block2["@cab"], "cab0");
-    assert.equal(dsp0.block2.Bright, true);
-    assert.equal(dsp0.block1["@model"], "HD2_Chorus70sChorus");
+  it("emits factory Cali IV R1 + 70s Chorus + Deez One Vintage + graphic before the cab", () => {
     assert.equal(dsp0.block0["@model"], "HD2_DistDeezOneVintage");
-    assert.equal(dsp0.cab0["@model"], "HD2_Cab4x121960T75");
+    assert.equal(dsp0.block1["@model"], "HD2_Chorus70sChorus");
+    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR1");
+    assert.equal(dsp0.block2["@type"], 1);
+    assert.equal(dsp0.block2["@cab"], undefined);
+    assert.equal(dsp0.block2.Bright, true);
+    assert.equal(dsp0.block3["@model"], "HD2_CaliQ");
+    assert.ok(Number(dsp0.block3["2200Hz"]) > 3, `2200Hz ${dsp0.block3["2200Hz"]} should be the icepick, not a flat 0–1 knob`);
+    assert.ok(Number(dsp0.block3["240Hz"]) < -1, `240Hz ${dsp0.block3["240Hz"]} should be a cut`);
+    assert.equal(dsp0.block3.Level, 0);
+    assert.equal(dsp0.block4["@model"], "HD2_Cab4x121960T75");
+    assert.equal(dsp0.block4["@type"], 4);
   });
 
   it("remaps 70s Chorus and Deez One to real param names", () => {
@@ -102,7 +107,7 @@ describe("buildHlx Teen Spirit", () => {
   it("uses snapshot mode globally and 1-based join position", () => {
     const global = tone.global as { "@pedalstate": number };
     assert.equal(global["@pedalstate"], 2);
-    assert.equal(dsp0.join["@position"], 4);
+    assert.equal(dsp0.join["@position"], 5);
     assert.equal(dsp0.block0["@no_snapshot_bypass"], false);
     assert.equal((hlx.data as { device: number }).device, 2162694);
     assert.equal(hlx.schema, "L6Preset");
@@ -803,7 +808,8 @@ describe("silent snapshot fix", () => {
               controllers?: { dsp0?: Record<string, Record<string, { "@value": number | boolean }>> };
             }
           | undefined;
-        if (!snap || snap["@valid"] === false) continue;
+        if (!snap) continue;
+        assert.equal(snap["@valid"], true, `${p.id} snapshot${i} is a blank slot`);
         const ctl = snap.controllers?.dsp0 ?? {};
         for (const [blockKey, params] of Object.entries(ctl)) {
           for (const [name, slot] of Object.entries(params)) {
@@ -837,6 +843,76 @@ describe("silent snapshot fix", () => {
             }
           }
         }
+      }
+    }
+  });
+
+  it("keeps every unit's extra snapshot slots from going blank", () => {
+    const models = ["hx-stomp", "hx-stomp-xl", "helix-floor", "helix-lt", "pod-go", "hx-effects"] as const;
+    for (const src of FEATURED) {
+      for (const model of models) {
+        if (!canExportHlx(model)) continue;
+        const hlx = buildHlx(withStompModel(src, model));
+        const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+        const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+        const ampKey = Object.entries(dsp0).find(([, b]) => /^HD2_Amp/.test(String(b["@model"] ?? "")))?.[0];
+        for (const key of Object.keys(tone).filter((k) => /^snapshot\d+$/.test(k))) {
+          const snap = tone[key] as {
+            "@valid": boolean;
+            "@name": string;
+            blocks: { dsp0: Record<string, boolean> };
+          };
+          assert.equal(snap["@valid"], true, `${src.id} ${model} ${key}`);
+          assert.ok(String(snap["@name"]).trim().length > 0, `${src.id} ${model} ${key}`);
+          if (ampKey) assert.equal(snap.blocks.dsp0[ampKey], true, `${src.id} ${model} ${key} amp`);
+        }
+      }
+    }
+  });
+});
+
+describe("audible demos", () => {
+  it("Enter Sandman rhythm and lead are gated but not silent", () => {
+    const hlx = buildHlx(featured("featured-sandman"));
+    const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+    const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
+    assert.equal(dsp0.block0["@model"], "HD2_DistScream808");
+    assert.equal(dsp0.block1["@model"], "HD2_GateHardGate");
+    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliRectifire");
+    assert.equal(dsp0.block2["@type"], 1);
+    assert.equal(dsp0.block2["@cab"], undefined);
+    assert.equal(dsp0.block3["@model"], "HD2_CaliQ");
+    assert.equal(dsp0.block4["@model"], "HD2_Cab4X12CaliV30");
+    assert.equal(dsp0.block4["@type"], 4);
+    const open = Number(dsp0.block1.OpenThreshold);
+    const close = Number(dsp0.block1.CloseThreshold);
+    assert.ok(open <= -45 && open >= -70, `OpenThreshold ${open}`);
+    assert.ok(close < open, `CloseThreshold ${close} vs ${open}`);
+    assert.equal(dsp0.block1.Level, 0);
+    assert.ok(Number(dsp0.block3["750Hz"]) < -2, "Mesa V scoop");
+    const intro = tone.snapshot0 as { blocks: { dsp0: Record<string, boolean> } };
+    const rhythm = tone.snapshot1 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
+    const lead = tone.snapshot2 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
+    assert.equal(intro.blocks.dsp0.block1, false);
+    assert.equal(intro.blocks.dsp0.block2, true);
+    assert.equal(intro.blocks.dsp0.block4, true);
+    assert.equal(rhythm["@valid"], true);
+    assert.equal(lead["@valid"], true);
+    assert.equal(rhythm.blocks.dsp0.block1, true);
+    assert.equal(lead.blocks.dsp0.block1, true);
+    assert.equal(rhythm.blocks.dsp0.block2, true);
+    assert.equal(lead.blocks.dsp0.block2, true);
+    assert.equal(rhythm.blocks.dsp0.block4, true);
+    assert.equal(lead.blocks.dsp0.block4, true);
+  });
+
+  it("every featured preset on every unit exports without a blank or muted snapshot", () => {
+    const models = ["hx-stomp", "hx-stomp-xl", "helix-floor", "helix-lt", "pod-go", "hx-effects"] as const;
+    for (const src of FEATURED) {
+      for (const model of models) {
+        if (!canExportHlx(model)) continue;
+        const reasons = inaudibleExport(withStompModel(src, model));
+        assert.deepEqual(reasons, [], `${src.id} ${model}: ${reasons.join("; ")}`);
       }
     }
   });

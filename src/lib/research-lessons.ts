@@ -18,8 +18,8 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Cab = a factory HD2 cab. Prefer the tracking/studio rig over a later tour rig.
 - Set every factory knob. Missing params become 5 and miss the record.
 - Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
-- GATE: only if the record is tight high-gain / palm-muted / documented as gated.
-- EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ).
+- GATE: only if the record is tight high-gain / palm-muted / documented as gated. The gate sits IN FRONT of the amp, never after the cab. Threshold stays at or under 4.2 — hotter than that closes on a chord and the snapshot goes silent. Hard Gate must store OpenThreshold and CloseThreshold in dB (about −80 to −28, Close ~8 dB lower, Level 0). A missing open threshold lands at 0 dB and the snapshot is blank.
+- EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ). A session graphic sits BETWEEN the amp and the cab (in the loop), never after the speaker.
 - WAH: do not put a wah block in the chain unless the wah instruction says the player wants Helix wah. A real wah lives in front of the unit.
 - Do not "fix" a previous song by name. Turn a miss into a general rule.
 - CLEAN OPENING: if the recorded intro/verse is clean, snapshot 1 MUST be clean — dirt pedals OFF, amp Drive 1.2–2.4, gate OFF. A dirty opening means you left a dirt pedal on or Drive ≥ 3.

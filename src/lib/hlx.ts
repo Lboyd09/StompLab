@@ -205,9 +205,19 @@ function exportableBlocks(preset: Preset): StompBlock[] {
     return true;
   });
   const max = device.hasAmpCab ? Math.min(MAX_PATH_BLOCKS, device.maxBlocks) : device.maxBlocks;
-  const cabs = device.hasAmpCab ? kept.filter((b) => MODEL_MAP[b.modelId]?.category === "cab") : [];
-  const others = kept.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab").slice(0, max);
-  return [...others, ...cabs.slice(0, 2)];
+  const limited: StompBlock[] = [];
+  for (const block of kept) {
+    if (limited.length >= max) break;
+    limited.push(block);
+  }
+  if (device.hasAmpCab) {
+    const cab = kept.find((b) => MODEL_MAP[b.modelId]?.category === "cab");
+    if (cab && !limited.some((b) => b.id === cab.id)) {
+      if (limited.length >= max) limited.pop();
+      limited.push(cab);
+    }
+  }
+  return limited.sort((a, b) => a.position - b.position);
 }
 
 function helixParamName(modelId: string, uiName: string): string {
@@ -315,6 +325,10 @@ function factoryDefault(name: string): number | boolean {
   if (name === "HighCut") return 20100;
   if (name === "Distance") return 1;
   if (name === "EarlyReflections") return 0;
+  // Hard Gate stores these in dB. 0.5 would be +0.5 dB — the gate never opens.
+  if (name === "OpenThreshold") return -48;
+  if (name === "CloseThreshold") return -58;
+  if (name === "HoldTime") return 0.06;
   if (name === "Level" || name === "Volume" || name === "Output" || name === "Master" || name === "ChVol" || name === "Boost") {
     return 0.5;
   }
@@ -337,6 +351,94 @@ function fillFactoryParams(
     out[name] = factoryDefault(name);
   }
   return out;
+}
+
+function ui10(raw: unknown, fallback = 5): number {
+  const n = typeof raw === "number" && Number.isFinite(raw) ? raw : fallback;
+  return Math.max(0, Math.min(10, n));
+}
+
+/** UI 5 is noon / 0 dB. Span is the factory max in one direction. */
+function bipolarDb(ui: number, span: number): number {
+  return Math.round((((ui - 5) / 5) * span) * 10) / 10;
+}
+
+/**
+ * UI 0–10 → dB, same curve the noise gate already uses.
+ * Clamped so a hot knob still opens on a picked note (−28), never 0 dB.
+ */
+function gateOpenDb(ui: number): number {
+  const db = -80 + (ui / 10) * 72;
+  return Math.round(Math.max(-90, Math.min(-28, db)) * 10) / 10;
+}
+
+/**
+ * Factory scales that are NOT 0–1. Writing the 0–1 guess mutes a Hard Gate
+ * (OpenThreshold 0.5 dB never opens) and flattens a Mesa graphic (0.65 ≠ +4 dB).
+ */
+function applyFactoryScales(block: StompBlock, out: Record<string, number | boolean>) {
+  if (block.modelId === "hard-gate") {
+    const open = gateOpenDb(ui10(block.params.Threshold, 3.2));
+    out.OpenThreshold = open;
+    out.CloseThreshold = Math.round(Math.max(-96, open - 8) * 10) / 10;
+    const decayUi = ui10(block.params.Decay, 2.7);
+    out.Decay = Math.round((0.05 + (decayUi / 10) * 3.5) * 1000) / 1000;
+    out.HoldTime = 0.06;
+    out.Level = 0;
+  }
+  if (block.modelId === "noise-gate") {
+    out.Level = 0;
+    if (typeof out.Threshold !== "number" || out.Threshold > -12) {
+      out.Threshold = gateOpenDb(ui10(block.params.Threshold, 4));
+    }
+  }
+  if (block.modelId === "horizon-gate") {
+    const sens = block.params.Sensitivity ?? block.params.Threshold;
+    out.Sensitivity = ui10(sens, 8) / 10;
+    out.Level = 0;
+    out.Mode = 1;
+    out["Gate Range"] = false;
+  }
+  if (block.modelId === "cali-q-graphic") {
+    const spans: Record<string, number> = {
+      "80Hz": 13,
+      "240Hz": 13,
+      "750Hz": 13,
+      "2200Hz": 9.5,
+      "6600Hz": 9.5,
+    };
+    for (const [name, span] of Object.entries(spans)) {
+      if (block.params[name] === undefined) continue;
+      out[name] = bipolarDb(ui10(block.params[name], 5), span);
+    }
+    out.Level = 0;
+  }
+  if (block.modelId === "10-band-graphic") {
+    const pairs: Array<[string, string]> = [
+      ["31Hz", "31p25Hz"],
+      ["62Hz", "62p5Hz"],
+      ["125Hz", "125Hz"],
+      ["250Hz", "250Hz"],
+      ["500Hz", "500Hz"],
+      ["1kHz", "1kHz"],
+      ["2kHz", "2kHz"],
+      ["4kHz", "4kHz"],
+      ["8kHz", "8kHz"],
+      ["16kHz", "16kHz"],
+    ];
+    for (const [ui, helix] of pairs) {
+      if (block.params[ui] === undefined) continue;
+      out[helix] = bipolarDb(ui10(block.params[ui], 5), 12);
+    }
+    out.Level = 0;
+  }
+  if (block.modelId === "simple-eq") {
+    if (block.params.Bass !== undefined) out.LowGain = bipolarDb(ui10(block.params.Bass, 5), 12);
+    if (block.params.Mid !== undefined) out.MidGain = bipolarDb(ui10(block.params.Mid, 5), 12);
+    if (block.params.Treble !== undefined) out.HighGain = bipolarDb(ui10(block.params.Treble, 5), 12);
+    out.Level = block.params.Level === undefined ? 0 : bipolarDb(ui10(block.params.Level, 5), 6);
+    out.MidFreq = typeof out.MidFreq === "number" ? out.MidFreq : 600;
+  }
 }
 
 function blockParams(block: StompBlock): Record<string, number | boolean> {
@@ -384,6 +486,7 @@ function blockParams(block: StompBlock): Record<string, number | boolean> {
     if (allowedHlx.has("Mode")) out.Mode = false;
     if (allowedHlx.has("Headroom")) out.Headroom = 0;
   }
+  applyFactoryScales(block, out);
   return fillFactoryParams(block.modelId, out);
 }
 
@@ -429,14 +532,30 @@ function usesSnapshotMode(preset: Preset): boolean {
   return snaps > 0 && snaps >= stomps;
 }
 
+function isAmpCategory(category: CategoryId | undefined): boolean {
+  return category === "amp-guitar" || category === "amp-bass";
+}
+
 function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
   const device = exportProfile(deviceId);
   const inputModel = device.inputModel ?? "HelixStomp_AppDSPFlowInput";
   const outputMain = device.outputModel ?? "HelixStomp_AppDSPFlowOutputMain";
   const outputSend = device.outputSend ?? outputMain;
-  const cabs = blocks.filter((b) => MODEL_MAP[b.modelId]?.category === "cab");
-  const others = blocks.filter((b) => MODEL_MAP[b.modelId]?.category !== "cab");
-  const hasCab = cabs.length > 0;
+
+  type PathSlot = { block: StompBlock; fusedCab?: StompBlock };
+  const path: PathSlot[] = [];
+  for (const block of blocks) {
+    const category = MODEL_MAP[block.modelId]?.category;
+    if (category === "cab") {
+      const prev = path[path.length - 1];
+      const prevCat = prev ? MODEL_MAP[prev.block.modelId]?.category : undefined;
+      if (prev && isAmpCategory(prevCat) && !prev.fusedCab) {
+        prev.fusedCab = block;
+        continue;
+      }
+    }
+    path.push({ block });
+  }
 
   const dsp: HlxJson = {
     inputA: {
@@ -467,7 +586,8 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
     },
   };
 
-  cabs.forEach((cab, i) => {
+  const fused = path.map((slot) => slot.fusedCab).filter((cab): cab is StompBlock => Boolean(cab));
+  fused.forEach((cab, i) => {
     const hid = helixIdFor(cab.modelId);
     if (!hid || !factoryParamsFor(hid)) return;
     dsp[`cab${i}`] = keepFactoryBlock(hid, {
@@ -478,17 +598,21 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
     });
   });
 
-  others.forEach((block, i) => {
-    const model = MODEL_MAP[block.modelId]!;
+  const others: StompBlock[] = [];
+  path.forEach((slot) => {
+    const block = slot.block;
+    const model = MODEL_MAP[block.modelId];
     const hid = helixIdFor(block.modelId);
-    if (!hid || !factoryParamsFor(hid)) return;
-    const isAmp = model.category === "amp-guitar" || model.category === "amp-bass";
+    if (!model || !hid || !factoryParamsFor(hid)) return;
+    const i = others.length;
+    const isAmp = isAmpCategory(model.category);
+    const fusedCab = Boolean(slot.fusedCab);
     const hlx: HlxJson = {
       "@model": hid,
       "@position": i,
       "@enabled": block.enabled,
       "@path": 0,
-      "@type": blockType(model.category, isAmp, hasCab),
+      "@type": blockType(model.category, isAmp, fusedCab),
       "@stereo": false,
       "@no_snapshot_bypass": false,
       ...blockParams(block),
@@ -498,9 +622,10 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
     }
     if (isAmp) {
       hlx["@bypassvolume"] = 1;
-      if (hasCab) hlx["@cab"] = "cab0";
+      if (fusedCab) hlx["@cab"] = "cab0";
     }
     dsp[`block${i}`] = keepFactoryBlock(hid, hlx);
+    others.push(block);
   });
 
   dsp.split = {
@@ -510,10 +635,14 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
     BalanceA: 0.5,
     BalanceB: 0.5,
   };
+  const pathLen = path.filter((slot) => {
+    const hid = helixIdFor(slot.block.modelId);
+    return Boolean(hid && factoryParamsFor(hid));
+  }).length;
   dsp.join = {
     "@model": "HD2_AppDSPFlowJoin",
     "@enabled": true,
-    "@position": others.length,
+    "@position": pathLen,
     Level: 0,
     "A Level": 0,
     "B Level": 0,
@@ -522,7 +651,7 @@ function buildDsp(blocks: StompBlock[], deviceId: StompModelId) {
     "B Polarity": false,
   };
 
-  return { dsp, others, cabs };
+  return { dsp, others, cabs: fused };
 }
 
 function snapshotBlockStates(
@@ -711,6 +840,26 @@ function buildFootswitch(preset: Preset, others: StompBlock[]) {
   return footswitch;
 }
 
+function fillSnapshotSlots(preset: Preset, max: number): Preset {
+  const donor = preset.snapshots[Math.min(1, preset.snapshots.length - 1)] ?? preset.snapshots[0];
+  if (!donor || preset.snapshots.length >= max) return preset;
+  const snapshots = [...preset.snapshots];
+  while (snapshots.length < max) {
+    const n = snapshots.length;
+    snapshots.push({
+      ...donor,
+      id: `${donor.id}-slot${n}`,
+      name: donor.name,
+      notes: donor.notes,
+      enabledBlocks: [...donor.enabledBlocks],
+      paramOverrides: donor.paramOverrides
+        ? Object.fromEntries(Object.entries(donor.paramOverrides).map(([id, params]) => [id, { ...params }]))
+        : undefined,
+    });
+  }
+  return { ...preset, snapshots };
+}
+
 function emptySnapshot(index: number, others: StompBlock[], tempo: number, hwIndex: number) {
   const blocks: Record<string, boolean> = { split: true };
   others.forEach((_, i) => {
@@ -738,6 +887,7 @@ function sanitizeLabel(s: string, max: number) {
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
   preset = sanitizeSnapshots(preset);
   const device = exportProfile(preset.stompModel);
+  preset = fillSnapshotSlots(preset, device.snapshots);
   const ext = exportExtension(preset.stompModel);
   if (!ext || !device.hlxDeviceId) {
     throw new Error(
@@ -808,6 +958,58 @@ export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson
     meta: { original: 0, pbn: 0, premium: 0 },
     schema: "L6Preset",
   };
+}
+
+/** What a player hears as a blank preset once the file is on the unit. */
+export function inaudibleExport(preset: Preset): string[] {
+  if (!canExportHlx(preset.stompModel)) return [];
+  let hlx: HlxJson;
+  try {
+    hlx = buildHlx(preset);
+  } catch (err) {
+    return [`export failed: ${err instanceof Error ? err.message : "unknown"}`];
+  }
+  const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
+  const dsp0 = (tone.dsp0 ?? {}) as Record<string, Record<string, unknown>>;
+  const reasons: string[] = [];
+  const blocks = Object.entries(dsp0).filter(([k]) => /^block\d+$/.test(k));
+  if (!blocks.length) reasons.push("path has no blocks");
+
+  for (const [key, block] of blocks) {
+    const model = String(block["@model"] ?? "");
+    if (model === "HD2_GateHardGate") {
+      const open = Number(block.OpenThreshold);
+      const close = Number(block.CloseThreshold);
+      const level = Number(block.Level);
+      if (!(open <= -24 && open >= -96)) reasons.push(`${key} hard gate OpenThreshold ${open} stays shut`);
+      if (!(close < open)) reasons.push(`${key} hard gate CloseThreshold ${close} is not below open`);
+      if (!(level >= -6)) reasons.push(`${key} hard gate Level ${level} is muted`);
+    }
+    if (model === "HD2_GateNoiseGate") {
+      const threshold = Number(block.Threshold);
+      const level = Number(block.Level);
+      if (!(threshold <= -18 && threshold >= -96)) reasons.push(`${key} noise gate Threshold ${threshold}`);
+      if (!(level >= -6)) reasons.push(`${key} noise gate Level ${level} is muted`);
+    }
+  }
+
+  const ampKey = blocks.find(([, b]) => String(b["@model"] ?? "").startsWith("HD2_Amp"))?.[0];
+  const cabKeys = blocks.filter(([, b]) => Number(b["@type"]) === 4).map(([k]) => k);
+  for (const snapKey of Object.keys(tone).filter((k) => /^snapshot\d+$/.test(k))) {
+    const snap = tone[snapKey] as {
+      "@valid"?: boolean;
+      "@name"?: string;
+      blocks?: { dsp0?: Record<string, boolean> };
+    };
+    if (snap["@valid"] !== true) reasons.push(`${snapKey} is a blank slot`);
+    if (!String(snap["@name"] ?? "").trim()) reasons.push(`${snapKey} has no name`);
+    const states = snap.blocks?.dsp0 ?? {};
+    if (ampKey && states[ampKey] === false) reasons.push(`${snapKey} amp is bypassed`);
+    for (const cab of cabKeys) {
+      if (states[cab] === false) reasons.push(`${snapKey} cab is bypassed`);
+    }
+  }
+  return reasons;
 }
 
 export function hlxFilename(preset: Preset): string {

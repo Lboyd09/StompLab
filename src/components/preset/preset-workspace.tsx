@@ -315,7 +315,7 @@ export function PresetWorkspace({
               )}
             </div>
           </div>
-          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground md:line-clamp-none line-clamp-3">{preset.summary}</p>
+          <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
           {!canExportHlx(preset.stompModel) ? (
             <p className="text-sm text-muted-foreground">
               {device.name} does not export a preset file. The chain below is the map — copy it by hand.

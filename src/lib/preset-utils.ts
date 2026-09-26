@@ -3,6 +3,7 @@ import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import type { CategoryId, FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
 import { STOMP_MODEL_IDS } from "@/data/types";
+import { sanitizeSnapshots } from "./snapshot-sanitize";
 
 export function blockModel(block: StompBlock) {
   return MODEL_MAP[block.modelId];
@@ -171,6 +172,7 @@ export function canDownloadPreset(
 }
 
 export function withStompModel(preset: Preset, model: StompModelId): Preset {
+  preset = sanitizeSnapshots(preset);
   const device = DEVICE_MAP[model] ?? DEVICE_MAP["hx-stomp"];
   const maxSnaps = device.snapshots;
   let blocks: StompBlock[] = preset.blocks;
@@ -188,13 +190,19 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
       })
       .map((b, i) => ({ ...b, position: i }))
       .slice(0, device.maxBlocks);
-    snapshots = snapshots.map((s) => ({
-      ...s,
-      enabledBlocks: s.enabledBlocks.filter((id) => kept.has(id)),
-      paramOverrides: s.paramOverrides
-        ? Object.fromEntries(Object.entries(s.paramOverrides).filter(([id]) => kept.has(id)))
-        : undefined,
-    }));
+    snapshots = snapshots.map((s) => {
+      const enabled = s.enabledBlocks.filter((id) => kept.has(id));
+      const audible = enabled.length
+        ? enabled
+        : blocks.filter((b) => !isGateBlock(b.modelId)).map((b) => b.id);
+      return {
+        ...s,
+        enabledBlocks: audible.length ? audible : blocks.map((b) => b.id),
+        paramOverrides: s.paramOverrides
+          ? Object.fromEntries(Object.entries(s.paramOverrides).filter(([id]) => kept.has(id)))
+          : undefined,
+      };
+    });
   } else if (blocks.length > device.maxBlocks) {
     blocks = blocks.slice(0, device.maxBlocks);
   }

@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Preset } from "../data/types.ts";
 import { DEMO_IDS, FEATURED } from "../data/featured.ts";
-import { isAmpOrCab, sanitizeSnapshots } from "./snapshot-sanitize.ts";
+import { isAmpOrCab, playableIssues, sanitizeSnapshots } from "./snapshot-sanitize.ts";
 
 function preset(partial: Partial<Preset> = {}): Preset {
   return {
@@ -40,6 +40,32 @@ describe("sanitizeSnapshots", () => {
       assert.ok(snap.enabledBlocks.includes("cab"), snap.name);
     }
     assert.ok((out.snapshots[0].paramOverrides?.amp?.["Ch Vol"] ?? 0) >= 1.5);
+  });
+
+  it("puts the gate in front of the amp and the session EQ before the cab", () => {
+    const teen = sanitizeSnapshots(FEATURED.find((p) => p.id === "featured-teen-spirit")!);
+    const teenIds = teen.blocks.map((b) => b.modelId);
+    assert.deepEqual(teenIds, [
+      "deez-one-vintage",
+      "70s-chorus",
+      "cali-iv-rhythm-1",
+      "cali-q-graphic",
+      "4x12-1960-t75",
+    ]);
+    const sand = sanitizeSnapshots(FEATURED.find((p) => p.id === "featured-sandman")!);
+    assert.deepEqual(
+      sand.blocks.map((b) => b.modelId),
+      ["scream-808", "hard-gate", "cali-rectifire", "cali-q-graphic", "4x12-cali-v30"],
+    );
+    const gate = sand.blocks.find((b) => b.modelId === "hard-gate");
+    assert.ok((gate?.params.Threshold ?? 10) <= 4.2);
+  });
+
+  it("has no blank or mismatched demo snapshot", () => {
+    for (const src of FEATURED) {
+      const issues = playableIssues(src);
+      assert.deepEqual(issues, [], `${src.id} ${issues.map((i) => `${i.snapshot}: ${i.reason}`).join("; ")}`);
+    }
   });
 
   it("keeps amp/cab on every demo snapshot", () => {

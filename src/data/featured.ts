@@ -42,8 +42,8 @@ export const FEATURED: Preset[] = [
       block("b1", "deez-one-vintage", { Drive: 7.0, Treble: 4.0, Output: 10.0 }, 0, false),
       block("b2", "70s-chorus", { Rate: 5.0, Depth: 8.0, Mix: 6.8, Tone: 5.4 }, 1),
       block("b3", "cali-iv-rhythm-1", { Drive: 2.0, Bass: 3.0, Mid: 8.0, Treble: 6.0, Presence: 4.2, Master: 5.0, "Ch Vol": 5.2, Sag: 3.2, Bright: 10 }, 2),
-      block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.0, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.4 }, 3),
-      block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 3.8, "750Hz": 5.0, "2200Hz": 7.2, "6600Hz": 6.4 }, 4),
+      block("b5", "cali-q-graphic", { "80Hz": 6.5, "240Hz": 3.8, "750Hz": 5.0, "2200Hz": 7.2, "6600Hz": 6.4 }, 3),
+      block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.0, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.4 }, 4),
     ],
     snapshots: [
       {
@@ -85,7 +85,7 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import the scribbles should say CLEAN / HELLO / CHORUS on FS1–FS3. That assignment is in the file.",
-      "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone) → Cali IV Rhythm 1 (Studio Pre clean channel) → 4x12 1960 T75 → Cali Q Graphic.",
+      "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone) → Cali IV Rhythm 1 (Studio Pre clean channel) → Cali Q Graphic (Mesa 5-band, in the loop) → 4x12 1960 T75. The graphic is before the speaker, not after it.",
       "Clean (FS1): DS-1 OFF, Clone ON, Cali IV Drive ~2.2. Covers the opening riff and the verses — they are the same recorded tone. If this snapshot crunches, you are on the wrong footswitch.",
       "Hello (FS2): DS-1 ON (Drive 7 / Tone 4 / Level 10), Clone ON. Use this for the watery hello AND the solo.",
       "Chorus (FS3): DS-1 ON, Clone OFF. Amp Drive stays low — the DS-1 is the dirty channel. EQ stays on.",
@@ -123,10 +123,10 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "scream-808", { Drive: 2.0, Treble: 5.5, Output: 8.0 }, 0, false),
-      block("b2", "cali-rectifire", { Drive: 1.3, Bass: 5.5, Mid: 4.2, Treble: 5.4, Presence: 3.2, Master: 5.5, "Ch Vol": 5.8, Sag: 3.4 }, 1),
-      block("b3", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 7.4, "Early Refl": 2.2 }, 2),
-      block("b4", "hard-gate", { Threshold: 5.4, Decay: 2.2 }, 3, false),
-      block("b5", "cali-q-graphic", { "80Hz": 7.0, "240Hz": 3.4, "750Hz": 2.6, "2200Hz": 6.4, "6600Hz": 5.8 }, 4, false),
+      block("b4", "hard-gate", { Threshold: 3.2, Decay: 2.8 }, 1, false),
+      block("b2", "cali-rectifire", { Drive: 1.3, Bass: 5.5, Mid: 4.2, Treble: 5.4, Presence: 3.2, Master: 5.5, "Ch Vol": 5.8, Sag: 3.4 }, 2),
+      block("b5", "cali-q-graphic", { "80Hz": 7.0, "240Hz": 3.4, "750Hz": 2.6, "2200Hz": 6.4, "6600Hz": 5.8 }, 3, false),
+      block("b3", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 7.4, "Early Refl": 2.2 }, 4),
     ],
     snapshots: [
       {
@@ -169,7 +169,7 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import: FS1–FS3 are INTRO / RHYTHM / LEAD. That assignment is in the file — you do not re-assign it on the unit.",
-      "Path: Scream 808 → Cali Rectifire → 4x12 Cali V30 → Hard Gate → Cali Q Graphic. No wah block.",
+      "Path: Scream 808 → Hard Gate → Cali Rectifire → Cali Q Graphic (Mesa 5-band, in the loop) → 4x12 Cali V30. No wah block. The gate is in front of the amp so a chord still speaks — it does not sit after the cab.",
       "Intro: TS OFF, gate OFF, EQ OFF, Drive 1.3. Sweep a real wah in front for Kirk's arpeggio. This snapshot has to be almost clean.",
       "Rhythm: TS ON (Drive 2 / Level 8), gate ON, Mesa graphic ON (deeper V), Recto Drive 3.6 — tight palm mutes, not a wall.",
       "Lead: same chain, Ch Vol 7.2 and Presence up. Do not add Drive.",
@@ -673,8 +673,8 @@ export const FEATURED: Preset[] = [
       block("b1", "deez-one-vintage", { Drive: 5.0, Treble: 5.2, Output: 5.8 }, 0, false),
       block("b2", "70s-chorus", { Rate: 3.2, Depth: 7.4, Mix: 6.2, Tone: 5.2 }, 1),
       block("b3", "cali-iv-rhythm-1", { Drive: 2.4, Bass: 5.0, Mid: 6.0, Treble: 5.6, Presence: 4.4, Master: 5.4, "Ch Vol": 5.6, Sag: 4.0, Bright: 8 }, 2),
-      block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.2, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.6 }, 3),
-      block("b5", "cali-q-graphic", { "80Hz": 6.0, "240Hz": 4.5, "750Hz": 5.0, "2200Hz": 6.5, "6600Hz": 5.8 }, 4),
+      block("b5", "cali-q-graphic", { "80Hz": 6.0, "240Hz": 4.5, "750Hz": 5.0, "2200Hz": 6.5, "6600Hz": 5.8 }, 3),
+      block("b4", "4x12-1960-t75", { Mic: 0, Distance: 2.2, "Low Cut": 2.2, "High Cut": 7.2, "Early Refl": 2.6 }, 4),
     ],
     snapshots: [
       {
@@ -704,7 +704,7 @@ export const FEATURED: Preset[] = [
     ],
     programming: [
       "SNAPSHOT MODE. After import: FS1–FS2 are VERSE / CHORUS. The solo is the chorus tone — we did not invent a third snapshot.",
-      "Path: Deez One Vintage (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 1 → 4x12 1960 T75 → Cali Q Graphic.",
+      "Path: Deez One Vintage (off in verse) → 70s Chorus (always on) → Cali IV Rhythm 1 → Cali Q Graphic (Mesa 5-band, in the loop) → 4x12 1960 T75. The graphic is before the speaker.",
       "70s Chorus Rate 3.2 Depth 7.4 Mix 6.2. Depth switch ON. Do not bypass it — the song disappears.",
     ],
     tips: [

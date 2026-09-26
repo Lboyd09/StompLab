@@ -30,8 +30,6 @@ export const Route = createRootRoute({
       { rel: "shortcut icon", href: `/favicon.ico?v=${ICON_V}` },
       { rel: "apple-touch-icon", href: `/sl-touch-v21.png?v=${ICON_V}` },
       { rel: "apple-touch-icon", sizes: "180x180", href: `/sl-touch-v21.png?v=${ICON_V}` },
-      { rel: "apple-touch-icon", href: "/apple-touch-icon.png" },
-      { rel: "apple-touch-icon", sizes: "180x180", href: "/__grok/icon-180.png" },
       { rel: "apple-touch-icon-precomposed", sizes: "180x180", href: `/sl-touch-v21.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "192x192", href: `/sl-icon-192.png?v=${ICON_V}` },
       { rel: "icon", type: "image/png", sizes: "512x512", href: `/sl-icon-512.png?v=${ICON_V}` },

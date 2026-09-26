@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -16,35 +17,33 @@ export function PresetFeedbackDialog({
   open: boolean;
   onClose: () => void;
 }) {
-  if (!open) return null;
-  return (
-    <div className="fixed inset-0 z-50 grid place-items-end bg-background/80 p-4 backdrop-blur-sm sm:place-items-center">
-      <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-lg">
-        <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">After you play it</p>
-        <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">How close was the preset?</h2>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          What you changed on the unit is the gold. Feedback improves the models and how close the next
-          preset gets to the record — it is not a one-off song fix.
-        </p>
-        <PresetFeedbackForm song={song} onDone={onClose} />
-        <button
-          type="button"
-          className="mt-3 text-xs text-muted-foreground underline-offset-2 hover:underline"
-          onClick={onClose}
-        >
-          Skip for now
-        </button>
+  if (!open || typeof document === "undefined") return null;
+  return createPortal(
+    <div className="fixed inset-0 z-[80] flex flex-col bg-background p-3 sm:bg-background/85 sm:p-6 sm:backdrop-blur-sm">
+      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden rounded-xl border border-border bg-card shadow-lg">
+        <div className="shrink-0 px-6 pt-6">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">After you play it</p>
+          <h2 className="mt-2 font-display text-2xl font-semibold tracking-tight">How close was the preset?</h2>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            What you changed on the unit is the gold. Feedback improves the models and how close the next
+            preset gets to the record — it is not a one-off song fix.
+          </p>
+        </div>
+        <PresetFeedbackForm song={song} onDone={onClose} pinActions />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
 export function PresetFeedbackForm({
   song,
   onDone,
+  pinActions = false,
 }: {
   song: string;
   onDone?: () => void;
+  pinActions?: boolean;
 }) {
   const { plan } = usePlan();
   const [rating, setRating] = useState<number | undefined>();
@@ -88,7 +87,11 @@ export function PresetFeedbackForm({
   }
 
   return (
-    <form onSubmit={(e) => void onSubmit(e)} className="mt-4 space-y-4">
+    <form
+      onSubmit={(e) => void onSubmit(e)}
+      className={pinActions ? "flex min-h-0 flex-1 flex-col" : "mt-4 space-y-4"}
+    >
+      <div className={pinActions ? "min-h-0 flex-1 space-y-4 overflow-y-auto overscroll-contain px-6 py-4" : "space-y-4"}>
       <div>
         <p className="text-xs font-medium text-foreground">How close to the record?</p>
         <div className="mt-2 flex gap-1.5">
@@ -127,8 +130,17 @@ export function PresetFeedbackForm({
         value={wantApp}
         onChange={setWantApp}
       />
+      </div>
+      <div
+        className={
+          pinActions
+            ? "shrink-0 space-y-3 border-t border-border px-6 py-4 pb-[max(1rem,env(safe-area-inset-bottom))]"
+            : "space-y-3"
+        }
+      >
       <Button
         type="submit"
+        className="w-full"
         disabled={
           busy ||
           (!rating &&
@@ -139,6 +151,16 @@ export function PresetFeedbackForm({
       >
         {busy ? "Sending…" : "Send preset notes"}
       </Button>
+      {onDone ? (
+        <button
+          type="button"
+          className="block w-full text-center text-xs text-muted-foreground underline-offset-2 hover:underline"
+          onClick={onDone}
+        >
+          Skip for now
+        </button>
+      ) : null}
+      </div>
     </form>
   );
 }
@@ -161,7 +183,7 @@ function Field({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="min-h-20"
+        className="min-h-16"
       />
     </label>
   );
