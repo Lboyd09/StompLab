@@ -7,6 +7,7 @@ import { PaywallCard } from "@/components/layout/paywall-card";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { PageHeader } from "@/components/layout/page-header";
+import { PartSelect } from "@/components/layout/part-select";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { Button } from "@/components/ui/button";
@@ -36,6 +37,8 @@ function CreatePage() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
+  const guitarRole = useAppStore((s) => s.guitarRole);
+  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const savePreset = useAppStore((s) => s.savePreset);
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
@@ -76,7 +79,7 @@ function CreatePage() {
           userGear: gear,
           wahMode,
           wahModelId,
-          guitarRole: "both",
+          guitarRole,
         },
       });
       if (!result.ok) {
@@ -179,6 +182,7 @@ function CreatePage() {
           </p>
         </div>
         <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+        {instrument === "guitar" ? <PartSelect value={guitarRole} onChange={setGuitarRole} /> : null}
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}

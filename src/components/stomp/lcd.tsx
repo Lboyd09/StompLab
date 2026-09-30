@@ -100,7 +100,7 @@ export function LcdScreen({
   return (
     <div
       className={cn(
-        "hx-lcd relative overflow-hidden",
+        "hx-lcd relative",
         (layout === "floor" || layout === "lt") && "hx-lcd-wide",
       )}
     >

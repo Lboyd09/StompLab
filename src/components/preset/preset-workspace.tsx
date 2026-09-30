@@ -12,10 +12,12 @@ import {
   isEqToggleBlock,
   isFeaturedKnownId,
   isGateBlock,
+  paramEntries,
   sortedBlocks,
   withSnapshot,
   withStompModel,
 } from "@/lib/preset-utils";
+import { isAmpOrCab } from "@/lib/snapshot-sanitize";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { Link } from "@tanstack/react-router";
@@ -92,9 +94,8 @@ export function PresetWorkspace({
 
   function changeParam(blockId: string, name: string, value: number) {
     const snap = preset.snapshots[activeSnapshot];
-    const already = Boolean(snap?.paramOverrides?.[blockId] && name in (snap.paramOverrides[blockId] ?? {}));
-    const writeSnap = Boolean(snap) && (fsMode === "snapshot" || already);
-    if (writeSnap && snap) {
+    if (snap) {
+      if (fsMode !== "snapshot") setFsMode("snapshot");
       onChange({
         ...preset,
         snapshots: preset.snapshots.map((s, i) =>
@@ -120,9 +121,16 @@ export function PresetWorkspace({
   }
 
   function toggleBlock(blockId: string) {
+    const block = preset.blocks.find((b) => b.id === blockId);
+    if (!block) return;
     const snap = preset.snapshots[activeSnapshot];
-    if (snap && fsMode === "snapshot") {
+    if (snap) {
       const on = snap.enabledBlocks.includes(blockId);
+      if (on && isAmpOrCab(block.modelId)) {
+        toast.message("Amp and cab stay on. Turning them off makes that snapshot silent.");
+        return;
+      }
+      if (fsMode !== "snapshot") setFsMode("snapshot");
       const enabledBlocks = on
         ? snap.enabledBlocks.filter((id) => id !== blockId)
         : [...snap.enabledBlocks, blockId];
@@ -130,6 +138,10 @@ export function PresetWorkspace({
         ...preset,
         snapshots: preset.snapshots.map((s, i) => (i === activeSnapshot ? { ...s, enabledBlocks } : s)),
       });
+      return;
+    }
+    if (block.enabled && isAmpOrCab(block.modelId)) {
+      toast.message("Amp and cab stay on. Turning them off makes the preset silent.");
       return;
     }
     onChange({
@@ -347,15 +359,40 @@ export function PresetWorkspace({
         <Card>
           <CardHeader>
             <CardTitle>Signal path</CardTitle>
-            <CardDescription>Tap a block on the screen or here. The three knobs edit the selected block.</CardDescription>
+            <CardDescription>
+              Pick a snapshot first. On and off, and every knob, apply to that snapshot only. Then download.
+            </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-2">
+          <CardContent className="space-y-3">
+            {preset.snapshots.length ? (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Snapshot to edit">
+                {preset.snapshots.map((s, i) => {
+                  const on = i === activeSnapshot;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        setActiveSnapshot(i);
+                        setFsMode("snapshot");
+                      }}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                        on ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"
+                      }`}
+                    >
+                      {s.name || `Snap ${i + 1}`}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
             {(() => {
               const gateBlock = displayed.blocks.find((b) => isGateBlock(b.modelId));
               const eqBlock = displayed.blocks.find((b) => isEqToggleBlock(b.modelId));
               if (!gateBlock && !eqBlock) return null;
               return (
-                <div className="mb-1 flex flex-wrap gap-2">
+                <div className="flex flex-wrap gap-2">
                   {gateBlock ? (
                     <button
                       type="button"
@@ -390,34 +427,78 @@ export function PresetWorkspace({
               if (!model) return null;
               const cat = CATEGORY_MAP[model.category];
               const selected = (selectedBlockId ?? preset.blocks[0]?.id) === b.id;
+              const locked = isAmpOrCab(b.modelId);
               return (
-                <button
+                <div
                   key={b.id}
-                  type="button"
-                  onClick={() => selectBlock(b.id)}
-                  className={`flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left ${
+                  className={`flex w-full items-start gap-2 rounded-lg px-2 py-2 ${
                     selected ? "bg-secondary" : "hover:bg-secondary/60"
-                  } ${b.enabled ? "" : "opacity-50"}`}
+                  } ${b.enabled ? "" : "opacity-60"}`}
                 >
-                  <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: cat.lcd }} />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] text-muted-foreground">{i + 1}</span>
-                      <span className="text-sm font-medium">{model.name}</span>
-                      <Badge variant="outline">{cat.short}</Badge>
-                      {!b.enabled ? <Badge variant="outline">off</Badge> : null}
+                  <button
+                    type="button"
+                    onClick={() => selectBlock(b.id)}
+                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                  >
+                    <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: cat.lcd }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="flex flex-wrap items-center gap-2">
+                        <span className="font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                        <span className="text-sm font-medium">{model.name}</span>
+                        <Badge variant="outline">{cat.short}</Badge>
+                        {!b.enabled ? <Badge variant="outline">off</Badge> : null}
+                      </span>
+                      <span className="mt-0.5 block text-xs text-muted-foreground">Based on {model.basedOn}</span>
                     </span>
-                    <span className="mt-0.5 block text-xs text-muted-foreground">Based on {model.basedOn}</span>
-                    <span className="mt-1 block font-mono text-[10px] text-muted-foreground">
-                      {Object.entries(b.params)
-                        .slice(0, 6)
-                        .map(([k, v]) => `${k} ${formatParam(v)}`)
-                        .join("  ·  ")}
-                    </span>
-                  </span>
-                </button>
+                  </button>
+                  <button
+                    type="button"
+                    aria-pressed={b.enabled}
+                    aria-label={`${b.enabled ? "Turn off" : "Turn on"} ${model.name} on this snapshot`}
+                    onClick={() => toggleBlock(b.id)}
+                    className={`mt-0.5 shrink-0 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.14em] ${
+                      b.enabled ? "border-foreground bg-foreground text-background" : "border-border"
+                    }`}
+                  >
+                    {locked && b.enabled ? "Stays on" : b.enabled ? "On" : "Off"}
+                  </button>
+                </div>
               );
             })}
+            {(() => {
+              const selectedId = selectedBlockId ?? preset.blocks[0]?.id;
+              const block = displayed.blocks.find((b) => b.id === selectedId);
+              const model = block ? blockModel(block) : undefined;
+              if (!block || !model) return null;
+              const snapName = preset.snapshots[activeSnapshot]?.name;
+              const knobs = paramEntries(block);
+              return (
+                <div className="space-y-3 rounded-xl border border-border p-3">
+                  <div>
+                    <p className="text-sm font-medium">{model.name}</p>
+                    <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                      {snapName ? `${snapName} · every knob` : "Every knob"} · 0 to 10
+                    </p>
+                  </div>
+                  {knobs.map((p) => (
+                    <label key={p.name} className="grid grid-cols-[5.5rem_minmax(0,1fr)_2.4rem] items-center gap-2 text-xs">
+                      <span className="truncate text-muted-foreground">{p.name}</span>
+                      <input
+                        type="range"
+                        min={0}
+                        max={10}
+                        step={0.1}
+                        value={Number.isFinite(p.value) ? p.value : 5}
+                        aria-label={`${model.name} ${p.name}`}
+                        onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
+                        className="w-full accent-foreground"
+                      />
+                      <span className="text-right font-mono tabular-nums">{formatParam(p.value)}</span>
+                    </label>
+                  ))}
+                </div>
+              );
+            })()}
           </CardContent>
         </Card>
 

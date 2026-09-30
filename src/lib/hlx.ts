@@ -375,10 +375,14 @@ function gateOpenDb(ui: number): number {
 /**
  * Factory scales that are NOT 0–1. Writing the 0–1 guess mutes a Hard Gate
  * (OpenThreshold 0.5 dB never opens) and flattens a Mesa graphic (0.65 ≠ +4 dB).
+ * Cab Level and gate Level are dB, and 0 dB is unity — not a linear mute.
  */
 function applyFactoryScales(block: StompBlock, out: Record<string, number | boolean>) {
+  const category = MODEL_MAP[block.modelId]?.category;
   if (block.modelId === "hard-gate") {
-    const open = gateOpenDb(ui10(block.params.Threshold, 3.2));
+    // Never tighter than about −62 dB. A hot UI knob used to land near 0 dB and the note never opened.
+    let open = gateOpenDb(ui10(block.params.Threshold, 2));
+    if (open > -55) open = -62;
     out.OpenThreshold = open;
     out.CloseThreshold = Math.round(Math.max(-96, open - 8) * 10) / 10;
     const decayUi = ui10(block.params.Decay, 2.7);
@@ -388,16 +392,25 @@ function applyFactoryScales(block: StompBlock, out: Record<string, number | bool
   }
   if (block.modelId === "noise-gate") {
     out.Level = 0;
-    if (typeof out.Threshold !== "number" || out.Threshold > -12) {
-      out.Threshold = gateOpenDb(ui10(block.params.Threshold, 4));
+    let threshold = gateOpenDb(ui10(block.params.Threshold, 2));
+    if (!(typeof out.Threshold === "number") || out.Threshold > -48 || threshold > -48) {
+      if (threshold > -48) threshold = -55;
+      out.Threshold = threshold;
     }
   }
   if (block.modelId === "horizon-gate") {
     const sens = block.params.Sensitivity ?? block.params.Threshold;
-    out.Sensitivity = ui10(sens, 8) / 10;
+    out.Sensitivity = Math.min(0.7, ui10(sens, 6) / 10);
     out.Level = 0;
     out.Mode = 1;
     out["Gate Range"] = false;
+  }
+  if (block.modelId === "volume-pedal") {
+    const pedal = typeof out.Pedal === "number" ? out.Pedal : 0.85;
+    out.Pedal = pedal < 0.15 ? 0.85 : pedal;
+  }
+  if (category === "cab") {
+    out.Level = 0;
   }
   if (block.modelId === "cali-q-graphic") {
     const spans: Record<string, number> = {
@@ -456,7 +469,8 @@ function blockParams(block: StompBlock): Record<string, number | boolean> {
     if (dropModel?.has(uiName)) continue;
     if (DROP_PARAMS.has(uiName) && !KEEP_MIX.has(category)) continue;
     if (allowedUi && !allowedUi.has(uiName) && !(uiName in (block.params ?? {}))) continue;
-    const raw = block.params[uiName] ?? 5;
+    const raw0 = block.params[uiName] ?? 5;
+    const raw = typeof raw0 === "number" ? clampUiLevel(uiName, raw0) : raw0;
     const value = toHlxValue(block.modelId, uiName, raw, category);
     if (!finiteHlx(value)) continue;
     const pname = helixParamName(block.modelId, uiName);
@@ -668,7 +682,7 @@ function snapshotBlockStates(
   return states;
 }
 
-const LEVEL_UI = new Set(["Ch Vol", "ChVol", "Output", "Level", "Master", "Volume", "Boost"]);
+const LEVEL_UI = new Set(["Ch Vol", "ChVol", "Output", "Level", "Master", "Volume", "Boost", "Gain"]);
 
 type AssignedSnapParam = {
   uiName: string;
@@ -686,7 +700,7 @@ function dropUiParam(modelId: string, uiName: string, category: CategoryId): boo
 
 function clampUiLevel(uiName: string, raw: number): number {
   if (!LEVEL_UI.has(uiName) && !LEVEL_UI.has(uiName.replace(/\s+/g, ""))) return raw;
-  return raw < 1.5 ? 1.5 : raw;
+  return raw < 3.2 ? 3.2 : raw;
 }
 
 /**

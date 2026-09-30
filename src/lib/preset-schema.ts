@@ -402,7 +402,7 @@ ${exportRule}
 This unit:
 - Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after originalGear is filled.
 - Every block must be on that recording. No spare chorus/hall/comp.
-- GATE: include noise-gate or hard-gate ONLY if the record is tight high-gain / palm-muted / documented as gated. Snapshots turn it ON for tight rhythm and OFF for clean intro / ambient parts. Spare FS (4+) = action "bypass" labeled GATE. Do not invent a gate on a clean, indie, or vintage record.
+- GATE: do not add noise-gate or hard-gate. A wrong threshold makes a snapshot silent. Tightness is the overdrive and the amp. Only add a gate if the player asked for one, Threshold at 2 or lower, in front of the amp, off on any clean snapshot.
 - EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5 and the preset sounds generic. Cab Mic = 0 (SM57) unless the session used something else — still a number, never a string.
 - EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
@@ -455,7 +455,7 @@ Solos: Ch Vol / Presence / a boost — not extra Drive.
 Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.
 Every snapshot's enabledModelIds MUST list the amp and the cab. Omitting them mutes the snapshot.
 ${guitarRolePrompt(parseGuitarRole(guitarRole), instrument)}
-If that session used a noise gate or a dedicated EQ, those blocks go in the chain with on/off via snapshots and spare FS. If it did not, leave them out.
+Do not add a noise gate or a dedicated EQ unless they asked or the session actually used one. A noise gate with the wrong threshold mutes a snapshot. Prefer no gate. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3 or higher. Volume pedal never at 0.
 ${wahLine ? `\n${wahLine}` : ""}`;
 }
 
@@ -487,7 +487,7 @@ Custom-sound rules:
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5.
 - ${ampRule}
 - GAIN: never dime Drive. Pedals ~noon (4.5–6.5). Amp Drive 1.5–3 clean, 3–5 crunch, 5–6.5 high-gain, metal 5–7.
-- GATE: include a gate only if they asked for tightness / metal chug / a gate. Spare FS = bypass GATE.
+- GATE: do not add a gate unless they asked for one. A wrong threshold makes a snapshot silent. If they asked, Threshold is 2 or lower and the clean snapshot bypasses it.
 - EQ: include simple-eq / parametric / cali-q-graphic only if they asked for a scoop, mid boost, or a graphic. Spare FS = bypass EQ. Do not add a spare EQ "just in case."
 - WAH: follow the wah instruction. Do not copy a famous wah intro.
 - Skip Poly Pitch/Wham/12-string/Trinity Chorus unless they asked.

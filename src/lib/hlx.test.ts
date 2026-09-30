@@ -89,18 +89,21 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block0.Mix, undefined);
   });
 
-  it("Clean snapshot is clone-only; Chorus snapshot bypasses the clone", () => {
+  it("Clean is dry, Verse is the DS-1, Hello is a light chorus", () => {
     const snap0 = tone.snapshot0 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap1 = tone.snapshot1 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap2 = tone.snapshot2 as { "@name": string; "@pedalstate": number; blocks: { dsp0: Record<string, boolean> } };
     assert.equal(snap0["@name"], "CLEAN");
     assert.equal(snap0.blocks.dsp0.block0, false);
-    assert.equal(snap0.blocks.dsp0.block1, true);
-    assert.equal(snap1["@name"], "HELLO");
+    assert.equal(snap0.blocks.dsp0.block1, false);
+    assert.equal(snap1["@name"], "VERSE");
     assert.equal(snap1.blocks.dsp0.block0, true);
-    assert.equal(snap1.blocks.dsp0.block1, true);
-    assert.equal(snap2["@name"], "CHORUS");
-    assert.equal(snap2.blocks.dsp0.block1, false);
+    assert.equal(snap1.blocks.dsp0.block1, false);
+    assert.equal(snap2["@name"], "HELLO");
+    assert.equal(snap2.blocks.dsp0.block0, false);
+    assert.equal(snap2.blocks.dsp0.block1, true);
+    assert.ok(Number(dsp0.block1.Mix) <= 0.4, `chorus Mix ${dsp0.block1.Mix} is still a wash`);
+    assert.ok(Number(dsp0.block1.ChorusIntensity) <= 0.4);
     assert.equal(snap2["@pedalstate"], 0);
   });
 
@@ -177,7 +180,7 @@ describe("buildHlx Enter Sandman", () => {
     assert.equal(snap0.blocks.dsp0[ts![0]], false);
   });
 
-  it("rhythm snapshot enables TS and gate", () => {
+  it("rhythm snapshot enables the TS and leaves the gate out", () => {
     const snap1 = tone.snapshot1 as {
       "@name": string;
       blocks: { dsp0: Record<string, boolean> };
@@ -187,7 +190,7 @@ describe("buildHlx Enter Sandman", () => {
     assert.equal(snap1["@name"], "RHYTHM");
     assert.ok(tsKey);
     assert.equal(snap1.blocks.dsp0[tsKey!], true);
-    if (gateKey) assert.equal(snap1.blocks.dsp0[gateKey], true);
+    assert.equal(gateKey, undefined);
   });
 
   it("writes snapshot Drive knobs onto the Recto controllers in the .hlx", () => {
@@ -198,7 +201,7 @@ describe("buildHlx Enter Sandman", () => {
     assert.ok(rectoKey);
     const drive = snap0.controllers?.dsp0?.[rectoKey!]?.Drive?.["@value"];
     assert.equal(typeof drive, "number");
-    assert.ok(Math.abs((drive as number) - 0.1) < 0.02);
+    assert.ok(Math.abs((drive as number) - 0.06) < 0.02);
   });
 
   it("a new snapshot knob turn still lands on the Recto controllers", () => {
@@ -270,7 +273,7 @@ describe("visual FS map", () => {
   it("puts Teen Spirit Clean first; three tones only — solo shares Hello", () => {
     const src = featured("featured-teen-spirit");
     assert.equal(src.snapshots[0]?.name, "Clean");
-    assert.equal(src.snapshots.map((s) => s.name).join("/"), "Clean/Hello/Chorus");
+    assert.equal(src.snapshots.map((s) => s.name).join("/"), "Clean/Verse/Hello");
     assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-1"), true);
     assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-2"), false);
     assert.equal(src.footswitches[0]?.action, "snapshot");
@@ -287,22 +290,17 @@ describe("visual FS map", () => {
     assert.ok((eq?.index ?? 0) >= 4);
   });
 
-  it("gives Sandman on/off GATE and EQ on spare XL switches, not on 3-switch Stomp", () => {
+  it("does not put a gate on Sandman; EQ still gets a spare XL switch", () => {
     const src = featured("featured-sandman");
-    assert.ok(src.blocks.some((b) => b.modelId === "hard-gate"));
+    assert.equal(src.blocks.some((b) => b.modelId === "hard-gate"), false);
     assert.ok(src.blocks.some((b) => b.modelId === "cali-q-graphic"));
     const xl = withStompModel(src, "hx-stomp-xl");
-    const gate = xl.footswitches.find((f) => f.label === "GATE");
+    assert.equal(xl.footswitches.some((f) => f.label === "GATE"), false);
     const eq = xl.footswitches.find((f) => f.label === "EQ");
-    assert.equal(gate?.action, "bypass");
     assert.equal(eq?.action, "bypass");
-    assert.ok((gate?.index ?? 0) >= 4);
     assert.ok((eq?.index ?? 0) >= 4);
     const stomp = withStompModel(src, "hx-stomp");
-    assert.equal(
-      stomp.footswitches.some((f) => f.label === "GATE" || f.label === "EQ"),
-      false,
-    );
+    assert.equal(stomp.footswitches.some((f) => f.label === "EQ"), false);
     const teen = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
     assert.equal(teen.footswitches.some((f) => f.label === "GATE"), false);
     assert.equal(teen.footswitches.some((f) => f.label === "EQ"), true);
@@ -872,38 +870,41 @@ describe("silent snapshot fix", () => {
 });
 
 describe("audible demos", () => {
-  it("Enter Sandman rhythm and lead are gated but not silent", () => {
+  it("Enter Sandman has no gate, a clean intro, and amp plus cab on every snapshot", () => {
     const hlx = buildHlx(featured("featured-sandman"));
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
     const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
     assert.equal(dsp0.block0["@model"], "HD2_DistScream808");
-    assert.equal(dsp0.block1["@model"], "HD2_GateHardGate");
-    assert.equal(dsp0.block2["@model"], "HD2_AmpCaliRectifire");
-    assert.equal(dsp0.block2["@type"], 1);
-    assert.equal(dsp0.block2["@cab"], undefined);
-    assert.equal(dsp0.block3["@model"], "HD2_CaliQ");
-    assert.equal(dsp0.block4["@model"], "HD2_Cab4X12CaliV30");
-    assert.equal(dsp0.block4["@type"], 4);
-    const open = Number(dsp0.block1.OpenThreshold);
-    const close = Number(dsp0.block1.CloseThreshold);
-    assert.ok(open <= -45 && open >= -70, `OpenThreshold ${open}`);
-    assert.ok(close < open, `CloseThreshold ${close} vs ${open}`);
-    assert.equal(dsp0.block1.Level, 0);
-    assert.ok(Number(dsp0.block3["750Hz"]) < -2, "Mesa V scoop");
+    assert.equal(dsp0.block1["@model"], "HD2_AmpCaliRectifire");
+    assert.equal(dsp0.block1["@type"], 1);
+    assert.equal(dsp0.block1["@cab"], undefined);
+    assert.equal(dsp0.block2["@model"], "HD2_CaliQ");
+    assert.equal(dsp0.block3["@model"], "HD2_Cab4X12CaliV30");
+    assert.equal(dsp0.block3["@type"], 4);
+    assert.equal(dsp0.block3.Level, 0);
+    assert.equal(
+      Object.values(dsp0).some((b) => String(b["@model"] ?? "").includes("Gate")),
+      false,
+    );
+    assert.ok(Number(dsp0.block2["750Hz"]) < -2, "Mesa V scoop");
     const intro = tone.snapshot0 as { blocks: { dsp0: Record<string, boolean> } };
     const rhythm = tone.snapshot1 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
     const lead = tone.snapshot2 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(intro.blocks.dsp0.block1, false);
-    assert.equal(intro.blocks.dsp0.block2, true);
-    assert.equal(intro.blocks.dsp0.block4, true);
+    assert.equal(intro.blocks.dsp0.block0, false);
+    assert.equal(intro.blocks.dsp0.block1, true);
+    assert.equal(intro.blocks.dsp0.block3, true);
     assert.equal(rhythm["@valid"], true);
     assert.equal(lead["@valid"], true);
+    assert.equal(rhythm.blocks.dsp0.block0, true);
+    assert.equal(lead.blocks.dsp0.block0, true);
     assert.equal(rhythm.blocks.dsp0.block1, true);
     assert.equal(lead.blocks.dsp0.block1, true);
-    assert.equal(rhythm.blocks.dsp0.block2, true);
-    assert.equal(lead.blocks.dsp0.block2, true);
-    assert.equal(rhythm.blocks.dsp0.block4, true);
-    assert.equal(lead.blocks.dsp0.block4, true);
+    assert.equal(rhythm.blocks.dsp0.block3, true);
+    assert.equal(lead.blocks.dsp0.block3, true);
+    const recto = dsp0.block1;
+    const introDrive = (tone.snapshot0 as { controllers?: { dsp0?: Record<string, Record<string, { "@value": number }>> } }).controllers?.dsp0?.block1?.Drive?.["@value"];
+    assert.ok(typeof introDrive === "number" && introDrive < 0.12, `intro Drive ${introDrive}`);
+    assert.ok((recto.Drive as number) <= 0.2);
   });
 
   it("every featured preset on every unit exports without a blank or muted snapshot", () => {

@@ -362,7 +362,8 @@ html.sl-touring nav {
 }
 
 .hx-chassis-xl {
-  max-width: 980px;
+  max-width: min(980px, 100%);
+  width: 100%;
   border-radius: 6px;
 }
 
@@ -389,8 +390,9 @@ html.sl-touring nav {
 }
 
 .hx-lcd-wide {
-  max-width: 320px;
-  aspect-ratio: 5 / 3;
+  max-width: 360px;
+  min-height: 180px;
+  aspect-ratio: auto;
 }
 
 .hx-helix-board {
@@ -622,17 +624,7 @@ html.sl-touring nav {
   }
 }
 
-@container replica (max-width: 720px) {
-  .hx-helix-top {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .hx-helix-pedals {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    justify-content: flex-end;
-  }
-
+@container replica (max-width: 960px) {
   .hx-xl-board {
     grid-template-columns: repeat(4, minmax(48px, 1fr));
     grid-template-areas:
@@ -646,6 +638,22 @@ html.sl-touring nav {
   .hx-xl-lcd,
   .hx-xl-well {
     justify-self: center;
+  }
+
+  .hx-xl-lcd,
+  .hx-xl-lcd .hx-lcd {
+    max-width: 260px;
+  }
+}
+@container replica (max-width: 720px) {
+  .hx-helix-top {
+    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
+  }
+
+  .hx-helix-pedals {
+    grid-column: 1 / -1;
+    flex-direction: row;
+    justify-content: flex-end;
   }
 }
 
@@ -822,7 +830,7 @@ html.sl-touring nav {
   grid-area: lcd;
   display: flex;
   min-width: 0;
-  max-width: 200px;
+  max-width: 240px;
   width: 100%;
   flex-direction: column;
   align-items: center;
@@ -839,12 +847,13 @@ html.sl-touring nav {
 .hx-lcd {
   background: #07090c;
   width: 100%;
-  max-width: 200px;
-  aspect-ratio: 5 / 4;
-  min-height: 0;
+  max-width: 220px;
+  min-height: 176px;
+  height: auto;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   border: 1px solid #000;
   border-radius: 2px;
   box-shadow:
@@ -918,6 +927,28 @@ html.sl-touring nav {
   .hx-fs-cap {
     width: 58px;
     height: 58px;
+  }
+}
+
+@media (max-width: 960px) {
+  .hx-xl-board {
+    grid-template-columns: repeat(4, minmax(48px, 1fr));
+    grid-template-areas:
+      "lcd lcd lcd lcd"
+      "well well well well"
+      "fs1 fs2 fs3 mode"
+      "fs4 fs5 fs6 tap";
+    gap: 12px 8px;
+  }
+
+  .hx-xl-lcd,
+  .hx-xl-well {
+    justify-self: center;
+  }
+
+  .hx-xl-lcd,
+  .hx-xl-lcd .hx-lcd {
+    max-width: 260px;
   }
 }
 

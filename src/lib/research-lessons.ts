@@ -18,7 +18,8 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Cab = a factory HD2 cab. Prefer the tracking/studio rig over a later tour rig.
 - Set every factory knob. Missing params become 5 and miss the record.
 - Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
-- GATE: only if the record is tight high-gain / palm-muted / documented as gated. The gate sits IN FRONT of the amp, never after the cab. Threshold stays at or under 4.2 — hotter than that closes on a chord and the snapshot goes silent. Hard Gate must store OpenThreshold and CloseThreshold in dB (about −80 to −28, Close ~8 dB lower, Level 0). A missing open threshold lands at 0 dB and the snapshot is blank.
+- GATE: do not add a noise gate or hard gate. A wrong threshold makes one snapshot silent on the unit, and a missing OpenThreshold lands at 0 dB so the gate never opens. Tightness comes from the overdrive and the amp. Only add a gate if the description explicitly asks for one, then Threshold must be 2 or lower, the gate sits IN FRONT of the amp, and the clean snapshot bypasses it. Level on a gate is 0 dB (unity), never a 0–1 mute.
+- LEVELS: Ch Vol, Output, Level, Master, and Boost stay at 3.2 or higher on every snapshot. A 0 recalls as mute. Volume pedal Position / Level stays off the heel (never 0). Amp and cab are ON in every snapshot.
 - EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ). A session graphic sits BETWEEN the amp and the cab (in the loop), never after the speaker.
 - WAH: do not put a wah block in the chain unless the wah instruction says the player wants Helix wah. A real wah lives in front of the unit.
 - Do not "fix" a previous song by name. Turn a miss into a general rule.
@@ -28,7 +29,7 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - VERSE CHORUS/MOD: if a chorus/vibe is the verse identity, it turns OFF for the dry anthem chorus (Small Clone pattern). Do not leave it on for the loud section unless the record did.
 - SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
 - SINGING FUZZ: Big Muff / Ram's Head used for a vocal lead needs Mid around 5–6, not a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
-- TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Gate ON for the chug snapshot only; OFF for clean/wah intros.
+- TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Do not add a gate block.
 - PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
 
 export function generalizeLesson(raw: string): string | null {

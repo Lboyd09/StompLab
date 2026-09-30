@@ -9,7 +9,7 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
-import { parseGuitarRole } from "./guitar-role";
+import { focusGuitarRole, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM } from "./gemini";
@@ -55,10 +55,14 @@ export function matchFeatured(
   artist: string | undefined,
   instrument: "guitar" | "bass",
   stompModel: StompModelId,
+  guitarRole: GuitarRole = "both",
 ): Preset | null {
   const hit = findFeaturedSource(song, artist, instrument);
   if (!hit) return null;
-  return withStompModel({ ...hit, id: newId("pst"), createdAt: Date.now() }, stompModel);
+  return withStompModel(
+    { ...focusGuitarRole(hit, guitarRole), id: newId("pst"), createdAt: Date.now() },
+    stompModel,
+  );
 }
 
 function gearLine(gear: UserGear[]): string {

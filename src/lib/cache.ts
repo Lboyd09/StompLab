@@ -6,6 +6,7 @@ import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, loadPlan } from "@/lib/billing";
 import { parseGuitarRole, type GuitarRole } from "@/lib/guitar-role";
+import { playableIssues, sanitizeSnapshots } from "@/lib/snapshot-sanitize";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -20,7 +21,7 @@ export function songCacheKey(
   wahMode = "pedal",
   guitarRole: GuitarRole | string = "both",
 ) {
-  return `song|v9|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
+  return `song|v10|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
 }
 
 /** Previous key — still looked up so older rows hit. */
@@ -42,7 +43,7 @@ export function soundCacheKey(
   playbackTarget = "frfr",
   playerName = "",
 ) {
-  return `sound|v9|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}|${norm(playerName).slice(0, 60)}`;
+  return `sound|v10|${norm(description).slice(0, 180)}|${instrument}|${stompModel}|${playbackTarget}|${norm(playerName).slice(0, 60)}`;
 }
 
 export function eqCacheKey(query: string) {
@@ -80,7 +81,9 @@ function playablePreset(raw: unknown): Preset | null {
   if (!raw || typeof raw !== "object") return null;
   const p = raw as Preset;
   if (!Array.isArray(p.blocks) || !p.blocks.length) return null;
-  return p;
+  const healed = sanitizeSnapshots(p);
+  if (playableIssues(healed).some((issue) => issue.reason !== "cab sits before the amp")) return null;
+  return healed;
 }
 
 /** Internal cache read — used by research so we never list a public library. */
@@ -111,8 +114,8 @@ export async function lookupCacheRaw(key: string) {
 }
 
 /**
- * Shared across accounts (rig_cache has no user_id). Exact key first, then
- * older v8 keys, then any row with the same song + instrument.
+ * Shared across accounts (rig_cache has no user_id). Exact v10 key first.
+ * Older keys are not reused — they shipped silent gates and the wrong part.
  */
 export async function lookupSongCache(opts: {
   song: string;
@@ -128,9 +131,7 @@ export async function lookupSongCache(opts: {
   const role = parseGuitarRole(opts.guitarRole);
   const keys = [
     songCacheKey(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah, role),
-    songCacheKeyV8(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah),
     songCacheKey(opts.song, "", opts.instrument, opts.stompModel, playback, wah, role),
-    songCacheKeyV8(opts.song, "", opts.instrument, opts.stompModel, playback, wah),
   ];
   const seen = new Set<string>();
   for (const key of keys) {
@@ -151,6 +152,7 @@ export async function lookupSongCache(opts: {
       where kind = 'song'
         and lower(trim(song)) = ${songN}
         and instrument = ${opts.instrument}
+        and cache_key like ${"song|v10|%|" + role}
       order by
         case when stomp_model = ${opts.stompModel} then 0 else 1 end,
         hit_count desc,

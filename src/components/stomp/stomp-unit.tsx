@@ -264,7 +264,7 @@ export function StompUnit({
       activeSnapshot={activeSnapshot}
       assignFsIndex={assignFsIndex}
       showDsp={showDsp}
-      onScribbleTap={onAssignFsIndex}
+      onScribbleTap={pressFs}
     />
   );
 

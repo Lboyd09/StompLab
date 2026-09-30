@@ -16,8 +16,8 @@ const LOOP_EQ = new Set(["cali-q-graphic", "10-band-graphic"]);
 /** A gate after the cab, or a hot threshold, mutes the whole snapshot. */
 const GATES = new Set(["hard-gate", "noise-gate", "horizon-gate"]);
 
-/** UI 0–10. Above this a Hard Gate closes on a real chord. */
-const MAX_GATE_THRESHOLD = 4.2;
+/** UI 0–10. Above this a Hard Gate closes on a real chord and the snapshot goes silent. */
+const MAX_GATE_THRESHOLD = 2.2;
 
 /** Volume knobs that mute the path if a snapshot controller drops them to 0. */
 const LEVEL_PARAMS = new Set([
@@ -28,10 +28,11 @@ const LEVEL_PARAMS = new Set([
   "Master",
   "Volume",
   "Boost",
+  "Gain",
 ]);
 
 /** UI 0–10. Below this the block is effectively off. */
-const MIN_LEVEL = 1.5;
+const MIN_LEVEL = 3.2;
 
 function categoryOf(modelId: string): CategoryId | undefined {
   return MODEL_MAP[modelId]?.category;
@@ -109,25 +110,31 @@ export function arrangeSignal(blocks: StompBlock[]): StompBlock[] {
   return reindex(body);
 }
 
-function clampLevelParams(params: Record<string, number> | undefined): Record<string, number> | undefined {
+function isLevelName(name: string): boolean {
+  return LEVEL_PARAMS.has(name) || LEVEL_PARAMS.has(name.replace(/\s+/g, ""));
+}
+
+function liftParams(modelId: string, params: Record<string, number> | undefined): Record<string, number> | undefined {
   if (!params) return params;
   const next = { ...params };
-  for (const [name, value] of Object.entries(next)) {
-    if (!LEVEL_PARAMS.has(name) && !LEVEL_PARAMS.has(name.replace(/\s+/g, ""))) continue;
-    if (typeof value !== "number" || !Number.isFinite(value)) continue;
-    if (value < MIN_LEVEL) next[name] = MIN_LEVEL;
+  if (modelId === "volume-pedal") {
+    for (const key of ["Level", "Position", "Pedal"] as const) {
+      if (typeof next[key] === "number" && next[key] < 1.5) next[key] = 8;
+    }
   }
-  if (typeof next.Threshold === "number" && next.Threshold > MAX_GATE_THRESHOLD) {
+  for (const [name, value] of Object.entries(next)) {
+    if (typeof value !== "number" || !Number.isFinite(value)) continue;
+    if (modelId === "volume-pedal" && (name === "Level" || name === "Position" || name === "Pedal")) continue;
+    if (isLevelName(name) && value < MIN_LEVEL) next[name] = MIN_LEVEL;
+  }
+  if (typeof next.Threshold === "number" && GATES.has(modelId) && next.Threshold > MAX_GATE_THRESHOLD) {
     next.Threshold = MAX_GATE_THRESHOLD;
   }
   return next;
 }
 
-function clampGateBlock(block: StompBlock): StompBlock {
-  if (!GATES.has(block.modelId)) return block;
-  const t = block.params.Threshold;
-  if (typeof t !== "number" || t <= MAX_GATE_THRESHOLD) return block;
-  return { ...block, params: { ...block.params, Threshold: MAX_GATE_THRESHOLD } };
+function liftBlock(block: StompBlock): StompBlock {
+  return { ...block, params: liftParams(block.modelId, block.params) ?? block.params };
 }
 
 /**
@@ -135,7 +142,7 @@ function clampGateBlock(block: StompBlock): StompBlock {
  * the speaker, or a snapshot controller with no @value (HX treats that as 0).
  */
 export function sanitizeSnapshots(preset: Preset): Preset {
-  const blocks = arrangeSignal(preset.blocks).map(clampGateBlock);
+  const blocks = arrangeSignal(preset.blocks).map(liftBlock);
   const known = new Set(blocks.map((b) => b.id));
   const essentials = essentialBlockIds(blocks);
   const fallback = blocks.filter((b) => b.enabled && !GATES.has(b.modelId)).map((b) => b.id);
@@ -147,10 +154,15 @@ export function sanitizeSnapshots(preset: Preset): Preset {
     for (const id of essentials) {
       if (!enabled.includes(id)) enabled.push(id);
     }
+    // A volume pedal parked at heel, or a gate, must not be the only thing "on"
+    // while the amp is bypassed — essentials already cover amp/cab.
     if (!enabled.length) enabled.push(...(fallback.length ? fallback : dry));
     const paramOverrides = snap.paramOverrides
       ? Object.fromEntries(
-          Object.entries(snap.paramOverrides).map(([id, params]) => [id, clampLevelParams(params) ?? {}]),
+          Object.entries(snap.paramOverrides).map(([id, params]) => {
+            const block = blocks.find((b) => b.id === id);
+            return [id, liftParams(block?.modelId ?? "", params) ?? {}];
+          }),
         )
       : undefined;
     return { ...snap, enabledBlocks: enabled, paramOverrides };
