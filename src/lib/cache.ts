@@ -21,7 +21,7 @@ export function songCacheKey(
   wahMode = "pedal",
   guitarRole: GuitarRole | string = "both",
 ) {
-  return `song|v10|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
+  return `song|v11|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
 }
 
 /** Previous key — still looked up so older rows hit. */

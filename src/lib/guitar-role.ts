@@ -1,3 +1,4 @@
+import type { GuitarArrangement } from "@/data/guitar-parts";
 import type { Preset } from "@/data/types";
 
 export const GUITAR_ROLE_IDS = ["rhythm", "lead", "both"] as const;
@@ -32,23 +33,35 @@ export function focusGuitarRole(preset: Preset, role: GuitarRole): Preset {
   };
 }
 
-/** Passed into Gemini. The Lab form sets this — default is both parts. */
-export function guitarRolePrompt(role: GuitarRole, instrument: "guitar" | "bass"): string {
+/**
+ * Gemini brief. Rhythm and lead are different guitarists, not a Drive nudge.
+ * "both" means one guitarist — do not invent a second part.
+ */
+export function guitarRolePrompt(
+  role: GuitarRole,
+  instrument: "guitar" | "bass",
+  arrangement: GuitarArrangement = "unknown",
+): string {
   if (instrument === "bass") {
-    return "Bass: treat groove vs featured line as separate snapshots when the recorded tone actually changes. Do not invent a guitar-style solo boost. Do not mash groove and featured line into one snapshot.";
+    return "Bass: one player. Snapshots are tone changes of that bass (finger vs pick, clean vs grind), not a guitar-style solo boost. Do not invent a second bassist.";
   }
-  if (role === "rhythm") {
-    return "The player chose RHYTHM only. Verse/chorus rhythm as tracked. Do not add a lead/solo snapshot, a solo boost, or extra delay Mix. Do not mix a lead tone into the rhythm chain.";
+  if (role === "rhythm" || (arrangement === "dual" && role !== "lead")) {
+    return [
+      "RHYTHM GUITARIST ONLY. Research THAT player's guitar, pickups, amp, channel, and pedals.",
+      "Do not research the lead guitarist. Do not return the lead chain with Drive or Ch Vol turned down.",
+      "No lead snapshot, no solo boost, no solo delay, no wah that belongs to the other player.",
+      "Example: Metallica rhythm is James's Explorer, Tube Screamer, and Recto chug — not Kirk's lead guitar.",
+      "One rig. Snapshots are tone changes of the rhythm part only (clean intro vs the riff).",
+    ].join(" ");
   }
   if (role === "lead") {
-    return "The player chose LEAD / solo only. The featured lead tone of the record. Do not add a chunky rhythm snapshot or a high-gain chug scene. Do not mix rhythm into the lead chain.";
+    return [
+      "LEAD GUITARIST ONLY. Research THAT player's guitar, pickups, amp, and pedals as a different rig.",
+      "Not the rhythm chain with Drive, Ch Vol, or Presence nudged. Different guitar if they played one. Different gain. Different effects (wah, boost, delay) if that player used them.",
+      "Do not include the rhythm chug, the rhythm guitarist's guitar, or a 'both parts' snapshot.",
+      "Example: Metallica lead is Kirk's guitar and lead tone, not James's scooped Recto with the volume up.",
+      "One rig for the lead part. If a song's 'lead' is just the rhythm tone played higher, say so and still build the lead player's chain, not a mash of both.",
+    ].join(" ");
   }
-  return [
-    "The player chose BOTH parts. Always split rhythm and lead into different snapshots in the same preset.",
-    "Snapshot 1 (and chorus if it is a different sound) is rhythm as tracked: dirt, amp, cab of the song's main guitar. No solo boost. No extra delay Mix.",
-    "A later snapshot is the lead/solo: boost and/or Ch Vol / Presence / delay Mix. Never the rhythm chain with more Drive.",
-    "NEVER combine rhythm crunch and lead boost in one snapshot. They share amp+cab; extra lead blocks turn on ONLY on the lead snapshot.",
-    "A solo, lead break, or signature trick that changes the tone MUST be its own snapshot.",
-    "enabledModelIds on every snapshot MUST include the amp and cab.",
-  ].join(" ");
+  return "One guitarist carries this song. Build that one rig. Do not invent a second guitarist, a lead snapshot, or a rhythm-plus-lead mash. Snapshots are tone changes of this part only (clean vs dirty), not two players.";
 }

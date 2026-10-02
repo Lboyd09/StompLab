@@ -30,6 +30,7 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
 - SINGING FUZZ: Big Muff / Ram's Head used for a vocal lead needs Mid around 5–6, not a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
 - TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Do not add a gate block.
+- RHYTHM vs LEAD: when the brief says rhythm only or lead only, that is a different guitarist. Research their guitar, amp, and pedals. Do not return the other part's chain with Drive or Ch Vol nudged. Do not put both guitarists in one preset. If the song is one guitarist, build that one rig and do not invent a second part.
 - PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
 
 export function generalizeLesson(raw: string): string | null {

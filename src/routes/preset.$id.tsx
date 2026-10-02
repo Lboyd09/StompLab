@@ -74,7 +74,7 @@ function PresetPage() {
       preset={preset}
       onChange={(next) => {
         wroteId.current = next.id;
-        savePreset(next);
+        savePreset({ ...next, userEdited: true });
       }}
     />
   );

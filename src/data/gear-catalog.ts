@@ -2667,10 +2667,94 @@ const LOCKER_MORE: readonly CatalogRow[] = [
   ["pickup", "Gibson", ["Burstbucker 1", "Burstbucker 2", "Burstbucker 3", "'57 Classic", "490R", "498T", "P-90 Soapbar"]],
 ];
 
+const LOCKER_LAUNCH: Array<[GearKind, string, string[]]> = [
+  ["guitar", "Charvel", ["San Dimas Style 1", "DK24", "Pro-Mod So-Cal", "Guthrie Govan Signature"]],
+  ["guitar", "Jackson", ["Soloist SL2", "Rhoads RR", "King V", "Dinky DK2"]],
+  ["guitar", "ESP", ["Eclipse", "Horizon", "Viper", "Arrow", "MH-1000"]],
+  ["guitar", "Music Man", ["JP6", "Majesty", "Axis", "StingRay Guitar", "Valentine"]],
+  ["guitar", "Suhr", ["Modern", "Classic S", "Alt T", "Standard", "Modern Satin"]],
+  ["guitar", "Tom Anderson", ["Drop Top", "Hollow T", "Crowdster"]],
+  ["guitar", "Reverend", ["Charger HB", "Double Agent", "Sensei", "Club King"]],
+  ["guitar", "Duesenberg", ["Starplayer TV", "Joe Walsh", "Paloma"]],
+  ["guitar", "Eastman", ["SB59/v", "T64/v", "Romeo"]],
+  ["guitar", "Yamaha", ["Revstar RSS20", "Pacifica Professional", "SA2200"]],
+  ["guitar", "Ibanez", ["AZ2402", "AZ2204", "JEM77", "RG550 Genesis", "S6570"]],
+  ["guitar", "Strandberg", ["Boden Original 6", "Boden Essential", "Salen Classic"]],
+  ["guitar", "Kiesel", ["Aries", "Delos", "Zeus", "Type-X"]],
+  ["guitar", "Solar", ["A2.6C", "S1.6", "T-Type"]],
+  ["guitar", "Schecter", ["Hellraiser C-1", "Solo-II", "Omen Extreme", "PT"]],
+  ["guitar", "Gibson", ["Explorer", "Flying V", "Firebird", "EDS-1275", "Moderne"]],
+  ["guitar", "Fender", ["Jaguar", "Mustang", "Duo-Sonic", "Meteora", "Lead II", "Starcaster"]],
+  ["guitar", "Rickenbacker", ["330", "360", "620", "4003S Bass"]],
+  ["guitar", "Gretsch", ["White Falcon", "Duo Jet", "Country Gentleman", "Jet Firebird"]],
+  ["guitar", "Danelectro", ["59", "DC", "Baritone"]],
+  ["guitar", "Guild", ["Starfire IV", "Polara", "S-100"]],
+  ["guitar", "Epiphone", ["Casino", "Sheraton", "Crestwood", "Explorer"]],
+  ["guitar", "PRS", ["McCarty 594", "Silver Sky", "DGT", "Special Semi-Hollow", "CE 24"]],
+  ["amp", "Friedman", ["BE-100", "Small Box", "Dirty Shirley 40", "Runt 50"]],
+  ["amp", "Bogner", ["Ecstasy 101B", "Uberschall", "Shiva"]],
+  ["amp", "Diezel", ["VH4", "Herbert", "Hagen"]],
+  ["amp", "Engl", ["Powerball II", "Savage 120", "Fireball 100"]],
+  ["amp", "Mesa/Boogie", ["Mark V", "Triple Crown", "JP-2C", "Fillmore 50", "California Tweed"]],
+  ["amp", "Marshall", ["JVM410H", "Silver Jubilee 2555", "Studio Vintage SV20", "Origin 20", "JTM45"]],
+  ["amp", "Orange", ["Rockerverb 50", "OR15", "AD30", "Thunderverb 200"]],
+  ["amp", "Vox", ["AC15C1", "AC30HW", "AC10"]],
+  ["amp", "Fender", ["Princeton Reverb", "Vibrolux Reverb", "Bassman", "Champ", "Blues Junior"]],
+  ["amp", "Hiwatt", ["DR103", "Custom 50", "Little Rig"]],
+  ["amp", "Soldano", ["SLO-100", "Astroverb", "Lucky 13"]],
+  ["amp", "Peavey", ["5150", "6505+", "Invective", "Classic 30"]],
+  ["amp", "EVH", ["5150 III 50W", "5150 Iconic", "5150 III EL34"]],
+  ["amp", "Hughes & Kettner", ["TriAmp MKII", "GrandMeister", "Tubemeister 18"]],
+  ["amp", "Two-Rock", ["Traditional Clean", "Classic Reverb", "Bloomfield Drive"]],
+  ["amp", "Dr. Z", ["Maz 38", "Route 66", "Z-28"]],
+  ["amp", "Bad Cat", ["Hot Cat 30", "Cub", "Black Cat"]],
+  ["amp", "Matchless", ["DC-30", "HC-30", "Independence"]],
+  ["amp", "Suhr", ["Badger 30", "PT100", "Hedgehog"]],
+  ["amp", "PRS", ["Archon 50", "Sonzera 20", "MT 15"]],
+  ["amp", "Revv", ["Generator 120", "Generator 100R", "D20"]],
+  ["amp", "Victory", ["Kraken", "Sheriff", "Duchess"]],
+  ["amp", "Laney", ["Ironheart", "AOR", "Lionheart"]],
+  ["amp", "Blackstar", ["HT-5", "HT Club 40", "Artisan 30"]],
+  ["amp", "Boss", ["Katana Artist", "Katana 100", "Katana Air"]],
+  ["cab", "Mesa/Boogie", ["Rectifier 4x12", "Traditional 4x12", "1x12 Thiele"]],
+  ["cab", "Marshall", ["1960A", "1960AV", "1936 2x12"]],
+  ["cab", "Orange", ["PPC412", "PPC212", "PPC112"]],
+  ["cab", "Friedman", ["4x12 Vintage", "2x12 Open Back"]],
+  ["cab", "EVH", ["5150 III 4x12", "5150 Iconic 2x12"]],
+  ["cab", "Hiwatt", ["SE4123", "SE212"]],
+  ["cab", "Fender", ["Deluxe Reverb 1x12", "Twin 2x12", "Bassman 4x10"]],
+  ["cab", "Vox", ["V212BN", "AC15 1x12"]],
+  ["pedal", "Friedman", ["BE-OD Deluxe", "Small Box Pedal", "Golden Pearl"]],
+  ["pedal", "Bogner", ["Ecstasy Red", "La Grange", "Harlow"]],
+  ["pedal", "Jackson Audio", ["Broken Arrow", "Bloom", "Golden Boy"]],
+  ["pedal", "Benson", ["Preamp", "Germanium Boost", "Florist"]],
+  ["pedal", "Hudson", ["Broadcast", "Dual Broadcast"]],
+  ["pedal", "Greer", ["Lightspeed", "Southland"]],
+  ["pedal", "Electronic Audio Experiments", ["Longsword", "Halberd", "Limelight"]],
+  ["pedal", "Fairfield Circuitry", ["Barbershop", "Unpleasant Surprise", "Shallow Water"]],
+  ["pedal", "Old Blood Noise", ["Excess", "Black Fountain", "Sunlight"]],
+  ["pedal", "Caroline", ["Shigeharu", "Wave Cannon", "Meteore"]],
+  ["pedal", "Drunk Beaver", ["Cold War Bat", "Distortion"]],
+  ["pedal", "ThorpyFX", ["The Dane", "Gunshot", "Fallout Cloud"]],
+  ["pedal", "Mythos", ["Herculean", "Argonaut", "Mjolnir"]],
+  ["pedal", "Spaceman", ["Atlas III", "Gemini IV", "Effects Explorer"]],
+  ["bass", "Music Man", ["StingRay Special", "Bongo", "Sterling"]],
+  ["bass", "Fender", ["Precision Bass", "Jazz Bass", "Mustang Bass", "Dimension Bass"]],
+  ["bass", "Gibson", ["Thunderbird", "EB-3", "Grabber"]],
+  ["bass", "Rickenbacker", ["4003", "4001", "4004"]],
+  ["bass", "Dingwall", ["NG3", "Combustion", "Super J"]],
+  ["bass", "Sandberg", ["California TM", "Forty Eight"]],
+  ["bass", "Sadowsky", ["MetroLine", "NYC"]],
+  ["bass", "Spector", ["NS-2", "Euro"]],
+  ["pickup", "Bare Knuckle", ["Black Hawk", "Cold Sweat", "Riff Raff", "Stormy Monday"]],
+  ["pickup", "Seymour Duncan", ["Custom Custom", "Phat Cat", "Little '59", "P-Rails", "Saturday Night Special"]],
+  ["pickup", "DiMarzio", ["Titan", "D Activator", "Transition", "Steve Morse"]],
+];
+
 function expand(): GearSuggestion[] {
   const out: GearSuggestion[] = [];
   const seen = new Set<string>();
-  for (const [kind, brand, models] of [...CATALOG, ...EXTRA, ...MORE, ...COMMON_PLUS, ...LOCKER_MORE]) {
+  for (const [kind, brand, models] of [...CATALOG, ...EXTRA, ...MORE, ...COMMON_PLUS, ...LOCKER_MORE, ...LOCKER_LAUNCH]) {
     for (const model of models) {
       const trimmed = model.trim();
       if (!trimmed) continue;
@@ -2721,7 +2805,7 @@ export function searchGear(q: string, kind?: GearKind): GearSuggestion[] {
   return GEAR_SUGGESTIONS.filter((g) => {
     if (kind && g.kind !== kind) return false;
     return g.name.toLowerCase().includes(needle) || g.brand.toLowerCase().includes(needle);
-  }).slice(0, 40);
+  }).slice(0, 80);
 }
 
 const POPULAR_NAMES: Record<GearKind, string[]> = {

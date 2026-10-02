@@ -4,6 +4,7 @@ import { DEVICE_MAP } from "@/data/categories";
 import { helixIdFor } from "@/data/helix-ids";
 import { PLAYBACK_MAP } from "@/data/playback";
 import type { GearRecommendation, PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
+import { guitarArrangement } from "@/data/guitar-parts";
 import { guitarRolePrompt, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { newId } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
@@ -454,7 +455,7 @@ If the session used a clean preamp as a pedal platform, pick the clean channel. 
 Solos: Ch Vol / Presence / a boost — not extra Drive.
 Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.
 Every snapshot's enabledModelIds MUST list the amp and the cab. Omitting them mutes the snapshot.
-${guitarRolePrompt(parseGuitarRole(guitarRole), instrument)}
+${guitarRolePrompt(parseGuitarRole(guitarRole), instrument, guitarArrangement(song, artist))}
 Do not add a noise gate or a dedicated EQ unless they asked or the session actually used one. A noise gate with the wrong threshold mutes a snapshot. Prefer no gate. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3 or higher. Volume pedal never at 0.
 ${wahLine ? `\n${wahLine}` : ""}`;
 }
@@ -514,6 +515,7 @@ export function customSoundInstructions(
   const playerBlock = player
     ? `Optional player to evoke (not a cover of a named song): ${player}. Capture their typical guitar, amp, gain structure, and attack. Still a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo.`
     : `Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.`;
+  const role = parseGuitarRole(guitarRole);
   return `CUSTOM SOUND (not a song). Instrument: ${instrument}.
 Player description:
 ${description.trim()}
@@ -523,6 +525,10 @@ ${playerBlock}
 If the description is a feeling ("warm broken-up American clean") pick the closest catalog amp and set knobs — still original, not a named-song patch.
 Listener test: would a player who typed that sentence recognize this preset as what they asked for, not as a cover of a hit?
 Every snapshot's enabledModelIds MUST include the amp and the cab.
-${guitarRolePrompt(parseGuitarRole(guitarRole), instrument)}
+${
+  role === "both"
+    ? "Build the one rig they described. Do not invent a second guitarist."
+    : guitarRolePrompt(role, instrument, "dual")
+}
 ${wahLine ? `\n${wahLine}` : ""}`;
 }

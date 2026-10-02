@@ -340,14 +340,8 @@ export function PresetWorkspace({
           <RigDisclaimer />
         </header>
 
-        <div
-          className={
-            device.layout === "stomp"
-              ? "grid min-w-0 gap-8 xl:grid-cols-[minmax(280px,400px)_minmax(0,1fr)]"
-              : "grid min-w-0 gap-8"
-          }
-        >
-          <div className={device.layout === "stomp" ? "space-y-5 xl:order-1" : "space-y-5"}>
+        <div className="flex min-w-0 flex-col gap-6">
+          <div className="order-2 grid gap-4 md:grid-cols-2">
             <FsAssignPanel
               preset={preset}
               fsIndex={assignFsIndex}
@@ -356,7 +350,7 @@ export function PresetWorkspace({
               onReset={original ? resetFeatured : undefined}
             />
 
-        <Card>
+        <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Signal path</CardTitle>
             <CardDescription>
@@ -480,6 +474,7 @@ export function PresetWorkspace({
                       {snapName ? `${snapName} · every knob` : "Every knob"} · 0 to 10
                     </p>
                   </div>
+                  <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
                   {knobs.map((p) => (
                     <label key={p.name} className="grid grid-cols-[5.5rem_minmax(0,1fr)_2.4rem] items-center gap-2 text-xs">
                       <span className="truncate text-muted-foreground">{p.name}</span>
@@ -496,6 +491,7 @@ export function PresetWorkspace({
                       <span className="text-right font-mono tabular-nums">{formatParam(p.value)}</span>
                     </label>
                   ))}
+                  </div>
                 </div>
               );
             })()}
@@ -717,13 +713,7 @@ export function PresetWorkspace({
         ) : null}
           </div>
 
-          <div
-            className={
-              device.layout === "stomp"
-                ? "hx-replica-fit order-first min-w-0 space-y-4 xl:order-2"
-                : "hx-replica-fit order-first min-w-0 space-y-4"
-            }
-          >
+          <div className="hx-replica-fit order-1 min-w-0 space-y-4">
             <div className="flex flex-wrap items-center gap-2">
               <div className="flex rounded-full bg-secondary p-1">
                 {(
@@ -780,6 +770,29 @@ export function PresetWorkspace({
                 onAssignFsIndex={setAssignFsIndex}
               />
             </div>
+            {preset.snapshots.length ? (
+              <div className="flex flex-wrap gap-2" role="group" aria-label="Recall a snapshot">
+                {preset.snapshots.map((s, i) => {
+                  const on = i === activeSnapshot;
+                  return (
+                    <button
+                      key={s.id}
+                      type="button"
+                      aria-pressed={on}
+                      onClick={() => {
+                        setActiveSnapshot(i);
+                        setFsMode("snapshot");
+                      }}
+                      className={`h-11 rounded-full border px-4 text-sm font-medium ${
+                        on ? "border-foreground bg-foreground text-background" : "border-border bg-card"
+                      }`}
+                    >
+                      {s.name || `Snap ${i + 1}`}
+                    </button>
+                  );
+                })}
+              </div>
+            ) : null}
           </div>
         </div>
       </div>

@@ -222,21 +222,15 @@ export const researchSongFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => ResearchIn.parse(input))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
+    const role = parseGuitarRole(data.guitarRole);
     const featuredSrc = findFeaturedSource(data.song, data.artist, data.instrument);
-    if (featuredSrc && isDemoId(featuredSrc.id)) {
-      const featured = withStompModel(
-        { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
-        data.stompModel,
-      );
-      return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
-    }
-
     const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
 
-    if (featuredSrc && plan.paid) {
+    const useLibrary = featuredSrc && (isDemoId(featuredSrc.id) ? !(plan.paid && role !== "both") : plan.paid && role === "both");
+    if (featuredSrc && useLibrary) {
       const featured = withStompModel(
-        { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
+        { ...focusGuitarRole(featuredSrc, role), id: newId("pst"), createdAt: Date.now() },
         data.stompModel,
       );
       return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };

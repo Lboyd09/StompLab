@@ -169,6 +169,8 @@ export type Preset = {
   /** How the .hlx should come up on the unit. Snapshot = verse/chorus, Stomp = effects on/off. */
   exportFsMode?: "stomp" | "snapshot";
   playbackTarget?: PlaybackTarget;
+  /** Player changed knobs or bypass. Wins over the featured catalog on the next open. */
+  userEdited?: boolean;
 };
 
 export type UserGear = {

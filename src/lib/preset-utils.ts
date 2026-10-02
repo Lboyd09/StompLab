@@ -260,7 +260,8 @@ export function resolveNamedPreset(id: string, model: StompModelId, stored: Pres
   const fromStore =
     stored.find((p) => p.id === id) ??
     (featured ? stored.find((p) => featuredBaseId(p.id) === featured.id) : undefined);
-  const source = featured && featured.source === "featured" ? featured : fromStore ?? featured;
+  const edited = fromStore?.userEdited ? fromStore : undefined;
+  const source = edited ?? (featured && featured.source === "featured" ? featured : fromStore ?? featured);
   if (!source) return null;
   return withStompModel({ ...source, createdAt: fromStore?.createdAt ?? Date.now() }, model);
 }

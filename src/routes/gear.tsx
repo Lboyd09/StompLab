@@ -172,8 +172,8 @@ function GearPage() {
               <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
                 Browse a brand · {brands.length}
               </p>
-              <div className="max-h-44 overflow-y-auto rounded-xl border border-border bg-secondary/30 p-2">
-                <div className="flex flex-wrap gap-1.5">
+              <div className="max-h-80 overflow-y-auto rounded-xl border border-border bg-secondary/30 p-2">
+                <div className="grid grid-cols-2 gap-1.5 sm:grid-cols-3">
                   {brands.map((b) => (
                     <button
                       key={b}

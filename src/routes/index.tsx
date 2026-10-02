@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { PartSelect } from "@/components/layout/part-select";
 import { PlaybackSelect } from "@/components/layout/playback-select";
-import { focusGuitarRole } from "@/lib/guitar-role";
+import { guitarArrangement } from "@/data/guitar-parts";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
@@ -81,10 +81,7 @@ function Home() {
       return;
     }
     const preset = applyWahPreference(
-      overlayUserGear(
-        withStompModel({ ...focusGuitarRole(src, guitarRole), createdAt: Date.now() }, stompModel),
-        gear,
-      ),
+      overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
       wahMode,
       wahModelId,
     );
@@ -99,7 +96,12 @@ function Home() {
       setStatus("Type a song title first.");
       return;
     }
-    const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel, guitarRole);
+    const arrangement = instrument === "guitar" ? guitarArrangement(song.trim(), artist.trim()) : "single";
+    const roleForBuild = arrangement === "dual" ? (guitarRole === "lead" ? "lead" : "rhythm") : "both";
+    const featuredHit =
+      arrangement === "dual" && subscribed
+        ? null
+        : matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel, roleForBuild);
     if (featuredHit) {
       const src = FEATURED.find(
         (p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song,
@@ -151,7 +153,7 @@ function Home() {
           userGear: gear,
           wahMode,
           wahModelId,
-          guitarRole,
+          guitarRole: roleForBuild,
         },
       });
       if (!result || !result.ok) {
@@ -274,7 +276,12 @@ function Home() {
             }}
           />
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-          {instrument === "guitar" ? <PartSelect value={guitarRole} onChange={setGuitarRole} /> : null}
+          {instrument === "guitar" && guitarArrangement(song, artist) === "dual" ? (
+            <PartSelect
+              value={guitarRole === "lead" ? "lead" : "rhythm"}
+              onChange={setGuitarRole}
+            />
+          ) : null}
           <div className="flex flex-wrap gap-3">
             <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
@@ -348,8 +355,6 @@ function Home() {
         </div>
       </section>
 
-      <InviteCard />
-
       {!subscribed ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -407,6 +412,8 @@ function Home() {
           </div>
         </section>
       ) : null}
+
+      <InviteCard />
 
       <div className="max-w-2xl">
         <FeedbackCard />
