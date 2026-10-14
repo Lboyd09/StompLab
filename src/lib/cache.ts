@@ -114,8 +114,8 @@ export async function lookupCacheRaw(key: string) {
 }
 
 /**
- * Shared across accounts (rig_cache has no user_id). Exact v10 key first.
- * Older keys are not reused — they shipped silent gates and the wrong part.
+ * Shared across accounts (rig_cache has no user_id). Exact v11 key first.
+ * The loose fallback only reuses the current key version for this unit.
  */
 export async function lookupSongCache(opts: {
   song: string;
@@ -152,7 +152,8 @@ export async function lookupSongCache(opts: {
       where kind = 'song'
         and lower(trim(song)) = ${songN}
         and instrument = ${opts.instrument}
-        and cache_key like ${"song|v10|%|" + role}
+        and cache_key like ${"song|v11|%|" + role}
+        and stomp_model = ${opts.stompModel}
       order by
         case when stomp_model = ${opts.stompModel} then 0 else 1 end,
         hit_count desc,

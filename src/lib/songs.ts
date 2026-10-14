@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { FEATURED } from "@/data/featured";
+import { rankSongHits } from "./song-check";
 
 export type SongHit = {
   id: string;
@@ -46,7 +47,7 @@ export const suggestSongsFn = createServerFn({ method: "GET" })
     const local = featuredHits(data.q, instrument);
     const seen = new Set(local.map((h) => `${h.song.toLowerCase()}|${h.artist.toLowerCase()}`));
     try {
-      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(data.q)}&entity=song&limit=8`;
+      const url = `https://itunes.apple.com/search?term=${encodeURIComponent(data.q)}&entity=song&limit=15`;
       const res = await fetch(url, {
         headers: { "User-Agent": "StompLab/1.0 (song suggest)" },
         signal: AbortSignal.timeout(4000),
@@ -77,7 +78,7 @@ export const suggestSongsFn = createServerFn({ method: "GET" })
           artwork: r.artworkUrl100 ? itunesArtwork(r.artworkUrl100) : "",
         });
       }
-      return [...local, ...remote].slice(0, 8);
+      return rankSongHits(data.q, [...local, ...remote]).slice(0, 8);
     } catch {
       return local.slice(0, 8);
     }

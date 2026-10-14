@@ -1,6 +1,6 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, stripSearchParams, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { PageHeader } from "@/components/layout/page-header";
@@ -26,8 +26,13 @@ export const Route = createFileRoute("/catalog/")({
     tab: s.tab === "find" ? "find" : "browse",
     unit: typeof s.unit === "string" && isStompModelId(s.unit) ? s.unit : "",
   }),
+  search: {
+    middlewares: [stripSearchParams({ q: "", cat: "", tab: "browse", unit: "" })],
+  },
   component: CatalogPage,
 });
+
+const PAGE_SIZE = 48;
 
 function CatalogPage() {
   const search = Route.useSearch();
@@ -41,6 +46,7 @@ function CatalogPage() {
   const [aiHits, setAiHits] = useState<{ modelId: string; closeness: string; how: string }[] | null>(
     null,
   );
+  const [page, setPage] = useState(1);
   const cat = (search.cat as CategoryId | "") || "";
   const tab = search.tab === "find" ? "find" : "browse";
   const unit = (search.unit as StompModelId | "") || "";
@@ -56,7 +62,21 @@ function CatalogPage() {
     [search.q, cat, unit, instrument],
   );
 
+  useEffect(() => {
+    setPage(1);
+  }, [search.q, cat, unit, instrument]);
+
+  const pageCount = Math.max(1, Math.ceil(models.length / PAGE_SIZE));
+  const safePage = Math.min(page, pageCount);
+  const pageStart = (safePage - 1) * PAGE_SIZE;
+  const pageModels = models.slice(pageStart, pageStart + PAGE_SIZE);
+  const showingFrom = models.length === 0 ? 0 : pageStart + 1;
+  const showingTo = Math.min(models.length, pageStart + PAGE_SIZE);
+
   const local = useMemo(() => findEquivalents(eqQuery, 8), [eqQuery]);
+  const researchHit = Boolean(aiHits && aiHits.length > 0);
+  const showNoMatch =
+    !busy && eqQuery.trim().length >= 2 && local.length === 0 && !researchHit;
 
   async function onAsk(e: React.FormEvent) {
     e.preventDefault();
@@ -144,7 +164,9 @@ function CatalogPage() {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Instant matches as you type. Sign in to have us explain the closest Line 6 model.
+              {plan.signedIn
+                ? "We'll explain the closest Line 6 model."
+                : "Sign in to have us explain the closest Line 6 model."}
             </p>
           </form>
 
@@ -167,7 +189,6 @@ function CatalogPage() {
                       <Badge>{h.closeness}</Badge>
                       <span className="text-xs text-muted-foreground">{CATEGORY_MAP[m.category].label}</span>
                     </div>
-                    <p className="mt-1 text-xs text-foreground/80">Based on {m.basedOn}</p>
                     <p className="mt-2 text-sm text-muted-foreground">{h.how}</p>
                   </article>
                 );
@@ -193,16 +214,17 @@ function CatalogPage() {
                       </Link>
                       <span className="font-mono text-[10px] text-muted-foreground">{h.score}</span>
                     </div>
-                    <p className="mt-1 text-xs">Based on {m.basedOn}</p>
                     <p className="mt-2 text-sm text-muted-foreground">{m.description}</p>
                     <p className="mt-2 text-xs text-muted-foreground">{h.reason}</p>
                   </article>
                 );
               })}
             </section>
-          ) : eqQuery.trim().length >= 2 && !busy ? (
+          ) : null}
+
+          {showNoMatch || (aiHits !== null && aiHits.length === 0 && !busy) ? (
             <p className="text-sm text-muted-foreground">
-              No instant match. Hit Find it to research an equivalent.
+              No Line 6 model matches that. Try the brand and model, or a closer name.
             </p>
           ) : null}
         </div>
@@ -259,11 +281,36 @@ function CatalogPage() {
             <p className="text-sm text-muted-foreground">{CATEGORY_MAP[cat as CategoryId].description}</p>
           ) : null}
 
-          <p className="text-xs tabular-nums text-muted-foreground">
-            {models.length} {instrument} model{models.length === 1 ? "" : "s"}
-            {unit ? ` on ${STOMP_DEVICES.find((d) => d.id === unit)?.name ?? unit}` : ""}
-            {search.q.trim() ? ` matching “${search.q.trim()}”` : ""}
-          </p>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <p className="text-xs tabular-nums text-muted-foreground">
+              {models.length
+                ? `Showing ${showingFrom}–${showingTo} of ${models.length}`
+                : "Showing 0–0 of 0"}{" "}
+              {instrument} model{models.length === 1 ? "" : "s"}
+              {unit ? ` on ${STOMP_DEVICES.find((d) => d.id === unit)?.name ?? unit}` : ""}
+              {search.q.trim() ? ` matching “${search.q.trim()}”` : ""}
+            </p>
+            {models.length ? (
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={safePage <= 1}
+                  onClick={() => setPage(Math.max(1, safePage - 1))}
+                >
+                  Previous
+                </Button>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={safePage >= pageCount}
+                  onClick={() => setPage(Math.min(pageCount, safePage + 1))}
+                >
+                  Next
+                </Button>
+              </div>
+            ) : null}
+          </div>
           {!models.length ? (
             <p className="text-sm text-muted-foreground">
               Nothing matches that filter.{" "}
@@ -281,7 +328,7 @@ function CatalogPage() {
           ) : null}
 
           <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {models.map((m) => {
+            {pageModels.map((m) => {
               const c = CATEGORY_MAP[m.category];
               return (
                 <Link

@@ -6,6 +6,7 @@ import { DEVICE_MAP } from "@/data/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
+import { FREE_BUILD_LINE } from "@/lib/copy";
 import { HISTORY_CAP } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -42,8 +43,7 @@ function HistoryPage() {
     return (
       <div className="mx-auto max-w-lg space-y-4 py-4">
         <PageHeader kicker="Your builds" title="History">
-          Sign in to keep the songs you research. Free accounts keep their custom song builds here. Demos
-          never need an account.
+          Sign in to keep builds on this device. {FREE_BUILD_LINE}
         </PageHeader>
         <Button asChild>
           <Link to="/login" search={{ next: "/history" }}>
@@ -57,8 +57,8 @@ function HistoryPage() {
   return (
     <div className="space-y-8 pb-16 md:pb-8">
       <PageHeader kicker="Your builds" title="History">
-        Every song you researched and every sound you built. Search the list — nothing drops off the
-        bottom of the page. This device keeps up to {HISTORY_CAP} presets.
+        History is local to this device (newest first, up to {HISTORY_CAP} presets, same song and unit kept
+        once). It does not sync across devices.
       </PageHeader>
 
       {user.length === 0 ? (

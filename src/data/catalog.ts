@@ -166,8 +166,10 @@ export function searchModels(query: string, instrument?: Instrument): HxModel[] 
   });
 }
 
-function scoreModel(model: HxModel, q: string, aliasIds: Set<string>): number {
-  if (aliasIds.has(model.id)) return aliasIds.size && [...aliasIds][0] === model.id ? 100 : 94;
+function scoreModel(model: HxModel, q: string, aliasList: readonly string[]): number {
+  const aliasIndex = aliasList.indexOf(model.id);
+  if (aliasIndex === 0) return 100;
+  if (aliasIndex > 0) return 94;
   const name = model.name.toLowerCase();
   const based = model.basedOn.toLowerCase();
   const tags = model.tags.map((t) => t.toLowerCase());
@@ -185,12 +187,13 @@ function scoreModel(model: HxModel, q: string, aliasIds: Set<string>): number {
 export function findEquivalents(query: string, limit = 8): EquivalentHit[] {
   const q = query.trim().toLowerCase();
   if (q.length < 2) return [];
-  const aliasIds = new Set(lookupAliases(q));
+  const aliasList = lookupAliases(q);
+  const aliasIds = new Set(aliasList);
   const scored = ALL_MODELS.map((m) => {
     const parts = q.split(/\s+/);
     const score = Math.max(
-      scoreModel(m, q, aliasIds),
-      ...parts.map((p) => (p.length > 2 ? scoreModel(m, p, aliasIds) * 0.7 : 0)),
+      scoreModel(m, q, aliasList),
+      ...parts.map((p) => (p.length > 2 ? scoreModel(m, p, aliasList) * 0.7 : 0)),
     );
     return { model: m, score };
   })
@@ -201,19 +204,30 @@ export function findEquivalents(query: string, limit = 8): EquivalentHit[] {
       if (aliasIds.size && !aliasIds.has(x.model.id) && x.score < 80) return false;
       return true;
     })
-    .sort((a, b) => b.score - a.score)
+    .sort((a, b) => {
+      const delta = b.score - a.score;
+      if (delta) return delta;
+      const ai = aliasList.indexOf(a.model.id);
+      const bi = aliasList.indexOf(b.model.id);
+      return (ai < 0 ? 999 : ai) - (bi < 0 ? 999 : bi);
+    })
     .slice(0, limit);
 
-  return scored.map(({ model, score }) => ({
-    modelId: model.id,
-    score: Math.round(score),
-    reason:
-      score >= 80
-        ? `Direct match for ${model.basedOn}`
-        : score >= 60
-          ? `Close model of ${model.basedOn}`
-          : `Related — ${model.basedOn}`,
-  }));
+  return scored.map(({ model, score }) => {
+    const rounded = Math.round(score);
+    return {
+      modelId: model.id,
+      score: rounded,
+      reason:
+        rounded >= 100
+          ? `Line 6 model: ${model.name}`
+          : rounded >= 80
+            ? `Direct match for ${model.name}`
+            : rounded >= 60
+              ? `Close model of ${model.name}`
+              : `Related — ${model.name}`,
+    };
+  });
 }
 
 export function compactCatalogForPrompt(

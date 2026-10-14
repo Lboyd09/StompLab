@@ -2,16 +2,14 @@ import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-ro
 import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { LegalFooter } from "@/components/layout/legal-footer";
 import { Mark } from "@/components/layout/mark";
 import { PageWash } from "@/components/layout/page-wash";
 import { InviteCard } from "@/components/layout/invite-card";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
 import {
-  FREE_BUILDS,
-  PAID_MONTHLY_BUILDS,
   PRICE_MONTHLY_USD,
   PRICE_YEARLY_USD,
   LAUNCH_DISCOUNT_PERCENT,
@@ -39,7 +37,7 @@ export const Route = createFileRoute("/upgrade")({
 
 const PERKS = [
   "Type any song. Get a .hlx HX Edit will import — or a .pgp for POD Go Edit.",
-  `${PAID_MONTHLY_BUILDS} custom builds every calendar month.`,
+  PAID_BUILD_LINE,
   "Create custom sounds. History. Extra snapshots. Gear locker sync.",
   "Every custom research counts as one build — demos stay free forever.",
   "Cancel any time. Access lasts until the period ends.",
@@ -170,9 +168,9 @@ function UpgradePage() {
 
   if (isPending || planPending) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
+      <div className="grid place-items-center py-8 text-foreground">
         <p className="text-sm text-muted-foreground">Checking your account…</p>
-      </main>
+      </div>
     );
   }
 
@@ -183,7 +181,7 @@ function UpgradePage() {
   const polarActive = plan.polarLinked && !subscriptionCanceled(plan);
   if (plan.paid && polarActive && !plan.admin && !confirming && !checkoutId) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
+      <div className="grid place-items-center py-8 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
           <h1 className="sl-hero-title text-[clamp(2.4rem,7vw,3.2rem)]">You're subscribed</h1>
@@ -195,13 +193,13 @@ function UpgradePage() {
             <Link to="/">Back to Lab</Link>
           </Button>
         </div>
-      </main>
+      </div>
     );
   }
 
   if (plan.admin && polarActive && !confirming && !checkoutId) {
     return (
-      <main className="grid min-h-dvh place-items-center bg-background px-4 py-10 text-foreground">
+      <div className="grid place-items-center py-8 text-foreground">
         <div className="w-full max-w-md space-y-4 text-center">
           <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
           <h1 className="sl-hero-title text-[clamp(2.2rem,6vw,3rem)]">Admin — Polar is linked</h1>
@@ -217,14 +215,14 @@ function UpgradePage() {
             </Button>
           </div>
         </div>
-      </main>
+      </div>
     );
   }
 
   const saving = yearlySavingsUsd();
 
   return (
-    <main className="relative min-h-dvh overflow-x-clip bg-background px-4 py-10 text-foreground">
+    <div className="relative overflow-x-clip">
       <PageWash />
       <div className="relative z-10 mx-auto w-full max-w-3xl space-y-8">
         <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
@@ -236,8 +234,7 @@ function UpgradePage() {
             <p className="sl-kicker">Research any song</p>
             <h1 className="sl-hero-title text-[clamp(2.8rem,8vw,4.4rem)]">Subscribe</h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Type any song after the three free builds are gone. {FREE_BUILDS} custom songs after sign-in.
-              Featured demos stay free. Monthly or yearly — same {PAID_MONTHLY_BUILDS} builds a month either way.
+              Type any song. {FREE_BUILD_LINE} {PAID_BUILD_LINE}
             </p>
             <RigDisclaimer />
           </div>
@@ -337,9 +334,8 @@ function UpgradePage() {
           — Sandman, Teen Spirit, Comfortably Numb. Always works.
         </p>
 
-        <LegalFooter full />
       </div>
-    </main>
+    </div>
   );
 }
 

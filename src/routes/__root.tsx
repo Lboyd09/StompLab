@@ -5,6 +5,8 @@ import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/react";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { isOwnerAccount } from "@/lib/plan";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
@@ -79,7 +81,12 @@ function HostedAnalytics() {
 
 /** One ping per browser per day. Bots that do not run JS are not counted. */
 function VisitBeacon() {
+  const { user, isPending } = useCurrentUserState();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   useEffect(() => {
+    if (isPending) return;
+    if (pathname.startsWith("/admin")) return;
+    if (isOwnerAccount(user?.primaryEmail)) return;
     try {
       const day = new Date().toISOString().slice(0, 10);
       const key = "stomplab.visit.day";
@@ -99,7 +106,7 @@ function VisitBeacon() {
     void fetch("/api/visit", { method: "POST", keepalive: true, credentials: "same-origin" }).catch(
       () => undefined,
     );
-  }, []);
+  }, [isPending, pathname, user?.primaryEmail]);
   return null;
 }
 
@@ -107,7 +114,6 @@ function ShellSwitch() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const bare =
     pathname === "/login" ||
-    pathname === "/upgrade" ||
     pathname === "/reset-password" ||
     pathname === "/goodbye";
   if (bare) return <Outlet />;

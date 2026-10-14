@@ -7,10 +7,10 @@ import { PageHeader } from "@/components/layout/page-header";
 import { InviteCard } from "@/components/layout/invite-card";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
+import { FORGOT_PASSWORD_COPY, FREE_BUILD_LINE } from "@/lib/copy";
 import { openCustomerPortal, cancelMySubscription } from "@/lib/billing";
 import { requestAccountDelete } from "@/lib/account-delete";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd, canceledCopy, subscriptionCanceled } from "@/lib/plan";
+import { PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd, canceledCopy, subscriptionCanceled } from "@/lib/plan";
 import { requestResetMail } from "@/lib/reset-mail";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
 import { DELETE_HOLD_DAYS } from "@/lib/closed-accounts";
@@ -143,24 +143,20 @@ function AccountPage() {
           <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-foreground">{canceledCopy(plan)}</p>
         ) : null}
         {plan.admin ? (
-          <p className="text-sm text-muted-foreground">
-            Admin test account — full Lab, no monthly build cap. Exact match: {user.primaryEmail}. Use Polar
-            below to test cancel and invites the same way a paying player would.
-          </p>
+          <p className="text-sm text-muted-foreground">This account has no monthly build cap.</p>
         ) : plan.paid ? (
           <p className="text-sm text-muted-foreground">{buildsUsedCopy(plan)}</p>
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Free plan. {plan.freeRemaining} of {FREE_BUILDS + plan.bonusBuilds} custom builds left. Three demos
-              always work. Catalog is open. Create and the gear locker are paid.
+              {FREE_BUILD_LINE} Catalog browse is free. Create and locker sync are paid.
             </p>
             <Button asChild>
               <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
             </Button>
           </>
         )}
-        {plan.admin && !plan.polarLinked ? (
+        {import.meta.env.DEV && plan.admin && !plan.polarLinked ? (
           <Button asChild variant="secondary">
             <Link to="/upgrade">Subscribe with Polar (test cancel)</Link>
           </Button>

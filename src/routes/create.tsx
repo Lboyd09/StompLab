@@ -9,6 +9,7 @@ import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { PageHeader } from "@/components/layout/page-header";
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
+import { FREE_BUILD_LINE } from "@/lib/copy";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -117,21 +118,23 @@ function CreatePage() {
   }
 
   if (isPending) {
-    return <p className="text-sm text-muted-foreground">Loading…</p>;
+    return <p className="pb-28 text-sm text-muted-foreground">Loading…</p>;
   }
 
   if (!plan.paid) {
     return (
-      <PaywallCard
-        title="Create is in the full Lab"
-        body="Describe a custom sound, or optionally a player you want to sound like. Song research still uses your free builds. Create unlocks with a subscription."
-      />
+      <div className="pb-28">
+        <PaywallCard
+          title="Create is in the full Lab"
+          body={`Create is paid. ${FREE_BUILD_LINE} Describe a custom sound, or optionally a player you want to sound like.`}
+        />
+      </div>
     );
   }
 
   if (!plan.canCreate) {
     return (
-      <div className="mx-auto max-w-lg space-y-3 py-8">
+      <div className="mx-auto max-w-lg space-y-3 pt-8 pb-28">
         <h1 className="sl-hero-title text-[clamp(2rem,6vw,2.8rem)]">This month’s builds are used</h1>
         <p className="text-sm text-muted-foreground">
           Your subscription stays active. Custom research opens again at the start of next month. Demos
@@ -145,12 +148,15 @@ function CreatePage() {
   }
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6" data-tutorial="create">
+    <div className="mx-auto max-w-2xl space-y-6 pb-28" data-tutorial="create">
       <UpgradeBanner plan={plan} pending={isPending} />
       <PageHeader kicker="Custom rig" title="Describe a sound">
         Pedalboard, amp stack, or a feeling — we invent a new path on your{" "}
-        {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica.
-        If you want a record, use Research a song. Player name is optional.
+        {DEVICE_MAP[stompModel]?.name ?? "HX Stomp"}. This is not a song replica. If you want a record, use{" "}
+        <Link to="/" className="text-primary underline underline-offset-2">
+          Research a song
+        </Link>
+        . Player name is optional.
       </PageHeader>
       <RigDisclaimer />
 

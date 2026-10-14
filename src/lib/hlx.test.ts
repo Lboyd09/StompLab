@@ -180,17 +180,20 @@ describe("buildHlx Enter Sandman", () => {
     assert.equal(snap0.blocks.dsp0[ts![0]], false);
   });
 
-  it("rhythm snapshot enables the TS and leaves the gate out", () => {
+  it("rhythm snapshot enables the TS and the noise gate; intro leaves the gate off", () => {
+    const snap0 = tone.snapshot0 as { blocks: { dsp0: Record<string, boolean> } };
     const snap1 = tone.snapshot1 as {
       "@name": string;
       blocks: { dsp0: Record<string, boolean> };
     };
     const tsKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_DistScream808")?.[0];
-    const gateKey = Object.entries(dsp0).find(([, b]) => String(b["@model"] ?? "").includes("Gate"))?.[0];
+    const gateKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_GateNoiseGate")?.[0];
     assert.equal(snap1["@name"], "RHYTHM");
     assert.ok(tsKey);
+    assert.ok(gateKey);
     assert.equal(snap1.blocks.dsp0[tsKey!], true);
-    assert.equal(gateKey, undefined);
+    assert.equal(snap1.blocks.dsp0[gateKey!], true);
+    assert.equal(snap0.blocks.dsp0[gateKey!], false);
   });
 
   it("writes snapshot Drive knobs onto the Recto controllers in the .hlx", () => {
@@ -290,12 +293,13 @@ describe("visual FS map", () => {
     assert.ok((eq?.index ?? 0) >= 4);
   });
 
-  it("does not put a gate on Sandman; EQ still gets a spare XL switch", () => {
+  it("puts the Sandman noise gate on a spare XL switch and still keeps EQ", () => {
     const src = featured("featured-sandman");
     assert.equal(src.blocks.some((b) => b.modelId === "hard-gate"), false);
+    assert.equal(src.blocks.some((b) => b.modelId === "noise-gate"), true);
     assert.ok(src.blocks.some((b) => b.modelId === "cali-q-graphic"));
     const xl = withStompModel(src, "hx-stomp-xl");
-    assert.equal(xl.footswitches.some((f) => f.label === "GATE"), false);
+    assert.equal(xl.footswitches.some((f) => f.label === "GATE"), true);
     const eq = xl.footswitches.find((f) => f.label === "EQ");
     assert.equal(eq?.action, "bypass");
     assert.ok((eq?.index ?? 0) >= 4);
@@ -870,41 +874,45 @@ describe("silent snapshot fix", () => {
 });
 
 describe("audible demos", () => {
-  it("Enter Sandman has no gate, a clean intro, and amp plus cab on every snapshot", () => {
+  it("Enter Sandman keeps a clean intro, a gated rhythm, and a boosted lead", () => {
     const hlx = buildHlx(featured("featured-sandman"));
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
     const dsp0 = tone.dsp0 as Record<string, Record<string, unknown>>;
-    assert.equal(dsp0.block0["@model"], "HD2_DistScream808");
-    assert.equal(dsp0.block1["@model"], "HD2_AmpCaliRectifire");
-    assert.equal(dsp0.block1["@type"], 1);
-    assert.equal(dsp0.block1["@cab"], undefined);
-    assert.equal(dsp0.block2["@model"], "HD2_CaliQ");
-    assert.equal(dsp0.block3["@model"], "HD2_Cab4X12CaliV30");
-    assert.equal(dsp0.block3["@type"], 4);
-    assert.equal(dsp0.block3.Level, 0);
-    assert.equal(
-      Object.values(dsp0).some((b) => String(b["@model"] ?? "").includes("Gate")),
-      false,
-    );
-    assert.ok(Number(dsp0.block2["750Hz"]) < -2, "Mesa V scoop");
+    const key = (model: string) => Object.entries(dsp0).find(([, b]) => b["@model"] === model)?.[0];
+    const ts = key("HD2_DistScream808");
+    const recto = key("HD2_AmpCaliRectifire");
+    const graphic = key("HD2_CaliQ");
+    const cab = key("HD2_Cab4X12CaliV30");
+    const gate = key("HD2_GateNoiseGate");
+    const boost = key("HD2_DistKinkyBoost");
+    const delay = key("HD2_DelaySimpleDelay");
+    assert.ok(ts && recto && graphic && cab && gate && boost && delay);
+    assert.equal(dsp0[recto!]["@type"], 1);
+    assert.equal(dsp0[cab!]["@type"], 4);
+    assert.ok(Number(dsp0[graphic!]["750Hz"]) < -2, "Mesa V scoop");
     const intro = tone.snapshot0 as { blocks: { dsp0: Record<string, boolean> } };
     const rhythm = tone.snapshot1 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
     const lead = tone.snapshot2 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(intro.blocks.dsp0.block0, false);
-    assert.equal(intro.blocks.dsp0.block1, true);
-    assert.equal(intro.blocks.dsp0.block3, true);
+    assert.equal(intro.blocks.dsp0[ts!], false);
+    assert.equal(intro.blocks.dsp0[gate!], false);
+    assert.equal(intro.blocks.dsp0[boost!], false);
+    assert.equal(intro.blocks.dsp0[recto!], true);
+    assert.equal(intro.blocks.dsp0[cab!], true);
     assert.equal(rhythm["@valid"], true);
     assert.equal(lead["@valid"], true);
-    assert.equal(rhythm.blocks.dsp0.block0, true);
-    assert.equal(lead.blocks.dsp0.block0, true);
-    assert.equal(rhythm.blocks.dsp0.block1, true);
-    assert.equal(lead.blocks.dsp0.block1, true);
-    assert.equal(rhythm.blocks.dsp0.block3, true);
-    assert.equal(lead.blocks.dsp0.block3, true);
-    const recto = dsp0.block1;
-    const introDrive = (tone.snapshot0 as { controllers?: { dsp0?: Record<string, Record<string, { "@value": number }>> } }).controllers?.dsp0?.block1?.Drive?.["@value"];
+    assert.equal(rhythm.blocks.dsp0[ts!], true);
+    assert.equal(rhythm.blocks.dsp0[gate!], true);
+    assert.equal(rhythm.blocks.dsp0[boost!], false);
+    assert.equal(lead.blocks.dsp0[boost!], true);
+    assert.equal(lead.blocks.dsp0[delay!], true);
+    assert.equal(lead.blocks.dsp0[graphic!], false);
+    assert.equal(rhythm.blocks.dsp0[recto!], true);
+    assert.equal(lead.blocks.dsp0[recto!], true);
+    assert.equal(rhythm.blocks.dsp0[cab!], true);
+    assert.equal(lead.blocks.dsp0[cab!], true);
+    const introDrive = (tone.snapshot0 as { controllers?: { dsp0?: Record<string, Record<string, { "@value": number }>> } }).controllers?.dsp0?.[recto!]?.Drive?.["@value"];
     assert.ok(typeof introDrive === "number" && introDrive < 0.12, `intro Drive ${introDrive}`);
-    assert.ok((recto.Drive as number) <= 0.2);
+    assert.ok((dsp0[recto!].Drive as number) <= 0.2);
   });
 
   it("every featured preset on every unit exports without a blank or muted snapshot", () => {

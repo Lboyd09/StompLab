@@ -29,8 +29,16 @@ function PrivacyPage() {
       <p className="text-sm text-muted-foreground">
         Full terms:{" "}
         <Link to="/terms" className="text-primary underline underline-offset-2">
-          /terms
+          Terms
         </Link>
+        . Payments follow{" "}
+        <a href="https://polar.sh/legal/terms" className="text-primary underline underline-offset-2">
+          Polar terms
+        </a>
+        . Research calls follow the{" "}
+        <a href="https://ai.google.dev/gemini-api/terms" className="text-primary underline underline-offset-2">
+          Gemini API terms
+        </a>
         . Questions:{" "}
         <a href={`mailto:${PUBLIC_SUPPORT_EMAIL}`} className="text-primary underline underline-offset-2">
           {PUBLIC_SUPPORT_EMAIL}

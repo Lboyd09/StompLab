@@ -21,7 +21,6 @@ export function InviteCard({
 }) {
   const { user, isPending } = useCurrentUserState();
   const { plan, refresh } = usePlan();
-  const [ready, setReady] = useState(false);
   const [code, setCode] = useState("");
   const [invited, setInvited] = useState(0);
   const [cap, setCap] = useState(REFERRAL_CAP);
@@ -32,7 +31,6 @@ export function InviteCard({
   const [origin, setOrigin] = useState("");
 
   useEffect(() => {
-    setReady(true);
     setOrigin(window.location.origin);
   }, []);
 
@@ -52,7 +50,8 @@ export function InviteCard({
     };
   }, [user]);
 
-  const showCode = ready && !isPending && Boolean(user);
+  const signedIn = Boolean(user);
+  const showCode = signedIn;
   const remaining = Math.max(0, cap - invited);
   const paidInvite = plan.paid && !subscriptionCanceled(plan);
   const url = code && origin ? inviteUrl(origin, code, paidInvite ? "half" : "builds") : "";
@@ -65,7 +64,7 @@ export function InviteCard({
       toast.success("Invite link copied. They land on Create account.");
       window.setTimeout(() => setCopied(false), 1600);
     } else {
-      toast.message("Select the link and copy it (Ctrl+C / Cmd+C).");
+      toast.message("Select the link and copy it.");
     }
   }
 
@@ -106,7 +105,7 @@ export function InviteCard({
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="sl-kicker">Invite</p>
           <h2 className="sl-hero-title text-2xl">
-            {paidInvite ? "Invite — 50% off + 3 extra builds" : "Invite — 3 extra free builds"}
+            {paidInvite ? "Invite — 50% off + 3 extra builds" : "Invite — 3 extra custom builds"}
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
             {paidInvite ? (
@@ -119,7 +118,7 @@ export function InviteCard({
             ) : (
               <>
                 Your friend creates a <span className="text-foreground">new</span> account from this link. You both get{" "}
-                {REFERRAL_BONUS} extra <span className="text-foreground">free custom builds</span> — that’s all this
+                {REFERRAL_BONUS} extra custom builds — that’s all this
                 invite does until you subscribe. Polar’s {REFERRAL_SUBSCRIBE_PERCENT}% off is only on a paid monthly
                 invite. Cap is {cap} friends.
               </>
@@ -164,7 +163,7 @@ export function InviteCard({
         </li>
       </ol>
 
-      {!showCode ? (
+      {isPending && !signedIn ? null : !showCode ? (
         <div className="mt-5">
           <Button asChild>
             <Link to="/login" search={{ next: "/account", mode: "up" }}>
@@ -173,14 +172,14 @@ export function InviteCard({
           </Button>
         </div>
       ) : (
-        <div className="mt-5 space-y-3">
+        <div className="mt-5 min-w-0 space-y-3">
           {code ? (
             <>
-              <div className="flex flex-wrap items-center gap-2">
-                <code className="rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em] text-foreground">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+                <code className="max-w-full overflow-x-auto rounded-lg bg-secondary px-3 py-2 font-mono text-sm tracking-[0.18em] text-foreground">
                   {code}
                 </code>
-                <Button type="button" variant="secondary" onClick={() => void copyLink()}>
+                <Button type="button" variant="secondary" onClick={() => void copyLink()} className="w-full sm:w-auto">
                   {copied ? <Check className="size-4" /> : <Copy className="size-4" />}
                   {copied ? "Copied" : "Copy invite link"}
                 </Button>
@@ -191,11 +190,11 @@ export function InviteCard({
                   value={url}
                   onFocus={(e) => e.currentTarget.select()}
                   aria-label="Invite link"
-                  className="font-mono text-xs"
+                  className="w-full min-w-0 font-mono text-xs"
                 />
               ) : null}
               <p className="text-xs text-muted-foreground">
-                The link opens Create account. On Windows, click the box and Ctrl+C if Copy is blocked.
+                The link opens Create account. If Copy is blocked, select the link and copy it.
               </p>
             </>
           ) : (

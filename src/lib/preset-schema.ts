@@ -352,12 +352,12 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":120,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":3.0,"Ch Vol":5.2}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
+  return `{"name":"<=18 chars","tempo":96,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":3.0,"Ch Vol":5.2}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"noise-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
 Params MUST be JSON numbers 0-10. Set EVERY factory knob. Cab Mic is 0 (SM57). Every snapshot's enabledModelIds MUST include the amp and the cab — omitting them mutes the path. Only snapshots that change the tone. If the record used a gate or dedicated EQ, include those blocks and spare FS bypass. Do not copy the example modelIds — pick from the catalog for THIS song.`;
 }
 
 export function jsonSchemaHintCustom() {
-  return `{"name":"<=18 chars","tempo":120,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":5.4}},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.6,"Ch Vol":6.4},"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"hard-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
+  return `{"name":"<=18 chars","tempo":96,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":5.4}},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.6,"Ch Vol":6.4},"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"noise-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
 Params MUST be JSON numbers 0-10. Set EVERY factory knob. Every snapshot's enabledModelIds MUST include the amp and the cab. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
 }
 
@@ -365,14 +365,14 @@ const STAND_INS = `HX stand-ins (use these ids, never invent):
 - BOSS DS-1 → deez-one-vintage (MIJ) or deez-one-mod (Keeley). NEVER stupor-od (that is the SD-1).
 - BOSS SD-1 → stupor-od.
 - Ibanez TS-9/TS808 tightener (Drive 1–2.5, Level 7–8) → scream-808.
-- EHX Small Clone / BOSS CE-1 → 70s-chorus.
+- EHX Small Clone / BOSS CE-1 → 70s-chorus. BOSS CE-2 → chorus.
 - ProCo RAT → vermin-dist. Klon → minotaur. Big Muff → bighorn-fuzz or triangle-fuzz.
 - Marshall Shredmaster → kwb. Silver Jubilee 2555 → placater-dirty.
 - Mesa Dual Rectifier → cali-rectifire. Mesa Studio Pre / Mark clean rhythm used as a pedal platform → cali-iv-rhythm-1. Mark IV crunch → cali-iv-rhythm-2. Mark IV lead → cali-iv-lead.
 - Fender Twin Reverb → us-double-nrm (NOT us-deluxe-nrm — Deluxe is a different amp).
 - Fender Deluxe Reverb → us-deluxe-nrm.
 - Marshall JCM-800 → brit-2203 or brit-2204. Plexi → brit-plexi-brt. Hiwatt DR-103 → whowatt-100.
-- Korg SDD-3000 → vintage-digital. Memory Man → elephant-man. Space Echo / Echorec → cosmos-echo. EP-3 → transistor-tape.
+- Korg SDD-3000 → vintage-digital. Memory Man → elephant-man. Space Echo / RE-201 → cosmos-echo. Binson Echorec → echo-platter-legacy. EP-3 → transistor-tape.
 - Cry Baby → teardrop-310. Vox V846 → uk-wah-846. Mu-Tron III → mutant-filter. Whammy → pitch-wham.
 - Mesa 5-band graphic → cali-q-graphic. Marshall 1960 G12T-75 → 4x12-1960-t75. Mesa V30 4x12 → 4x12-cali-v30.
 - Diezel VH4 → das-benzin-lead (lead) or das-benzin-mega (tight rhythm). SansAmp bass → zeroamp-bass-di.
@@ -403,13 +403,16 @@ ${exportRule}
 This unit:
 - Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after originalGear is filled.
 - Every block must be on that recording. No spare chorus/hall/comp.
-- GATE: do not add noise-gate or hard-gate. A wrong threshold makes a snapshot silent. Tightness is the overdrive and the amp. Only add a gate if the player asked for one, Threshold at 2 or lower, in front of the amp, off on any clean snapshot.
+- GATE: when the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp. Threshold 1.6–2.0, Decay about 2.4, Level 5. Bypass it on every clean or intro snapshot. Never add hard-gate. A hot threshold mutes the snapshot.
 - EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5 and the preset sounds generic. Cab Mic = 0 (SM57) unless the session used something else — still a number, never a string.
 - EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
 - GAIN: never dime Drive unless the session documented it. Distortion pedals ~noon (4.5–6.5) unless a published number exists (use that). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.2–2.4 clean intro, 3–4.5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. Tight chug = TS + moderate amp Drive (3–4.5), not a wall. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
 - CLEAN OPENING: snapshot 1 matches the recorded intro. Dirt off + Drive ≤ 2.4 when the intro is clean.
-- SOLOS: raise Ch Vol / Presence / a clean boost. Do not add Drive to "make a solo."
+- DELAY: tempo-sync by default (Scale 5, dotted eighth). Lead and solo delay Mix stays at or below 2.5 (25%) and Feedback at or below 3.5 (35%). Never set Time to 10.
+- SOLOS: about +3 dB via kinky-boost (Output about 7) enabled only on the lead snapshot, or a real output lift. Do not only nudge Ch Vol. Do not add Drive to "make a solo."
+- NAMES: snapshot and footswitch labels are 12 characters. Abbreviate (Rhy, Crnch, Chors). Never cut a word in half.
+- GEAR: BOSS CE-2 is chorus. BOSS CE-1 and EHX Small Clone are 70s-chorus. BOSS DS-1 is deez-one-vintage, never stupor-od. If a piece is not from a session credit, interview, or published rig, prefix its originalGear notes with "Likely —".
 - VERSE MOD: chorus/vibe that is the verse identity turns OFF for the dry anthem chorus unless the record left it on.
 - SATURATING ECHO: Echorec / tape / Memory Man tracked in front of dirt stays BEFORE the amp. Digital dotted-8th often after.
 - SINGING FUZZ: muff used as a vocal lead keeps Mid 5–6. Do not scoop it into a mid-horn and do not stack a TS unless the session did.
@@ -450,13 +453,17 @@ If you cannot identify a real commercially released recording matching this titl
 Fill originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
 If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.
 Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
-If the recorded opening is clean, snapshot 1 is clean — dirt pedals off, Drive 1.2–2.4, gate off.
+If the recorded opening is clean, snapshot 1 is clean — dirt pedals off, Drive 1.2–2.4, Master between 3.4 and 5.2, gate off.
 If the session used a clean preamp as a pedal platform, pick the clean channel. The pedal is the dirty channel.
-Solos: Ch Vol / Presence / a boost — not extra Drive.
-Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides for Drive / Ch Vol / Mix so they actually export.
+Solos and leads: enable kinky-boost (Output about 7, about +3 dB) on that snapshot only. Do not only nudge Ch Vol. Do not add Drive.
+Delays sync to tempo (Scale 5). Lead delay Mix ≤ 2.5 and Feedback ≤ 3.5. Never set Time to 10.
+Snapshot names are 12 characters. Abbreviate before you cut a word (Rhy not RHYTHM CRUNC).
+Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides so they actually export.
 Every snapshot's enabledModelIds MUST list the amp and the cab. Omitting them mutes the snapshot.
 ${guitarRolePrompt(parseGuitarRole(guitarRole), instrument, guitarArrangement(song, artist))}
-Do not add a noise gate or a dedicated EQ unless they asked or the session actually used one. A noise gate with the wrong threshold mutes a snapshot. Prefer no gate. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3 or higher. Volume pedal never at 0.
+When the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp (Threshold 1.6–2, off on clean snapshots). Never hard-gate. Add a dedicated EQ only if the session used one. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3 or higher. Volume pedal never at 0.
+If gear is not from a session credit or published rig, prefix that originalGear note with "Likely —".
+BOSS CE-2 → chorus. CE-1 and Small Clone → 70s-chorus.
 ${wahLine ? `\n${wahLine}` : ""}`;
 }
 
@@ -488,7 +495,7 @@ Custom-sound rules:
 - Set EVERY factory knob on every block to a 0–10 number. Omitting a param stores 5.
 - ${ampRule}
 - GAIN: never dime Drive. Pedals ~noon (4.5–6.5). Amp Drive 1.5–3 clean, 3–5 crunch, 5–6.5 high-gain, metal 5–7.
-- GATE: do not add a gate unless they asked for one. A wrong threshold makes a snapshot silent. If they asked, Threshold is 2 or lower and the clean snapshot bypasses it.
+- GATE: if the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp, Threshold 1.6–2, bypassed on clean snapshots. Never hard-gate. A hot threshold mutes the snapshot.
 - EQ: include simple-eq / parametric / cali-q-graphic only if they asked for a scoop, mid boost, or a graphic. Spare FS = bypass EQ. Do not add a spare EQ "just in case."
 - WAH: follow the wah instruction. Do not copy a famous wah intro.
 - Skip Poly Pitch/Wham/12-string/Trinity Chorus unless they asked.

@@ -63,6 +63,7 @@ export function PresetWorkspace({
   const setWahModelId = useAppStore((s) => s.setWahModelId);
   const { plan, isPending: planPending } = usePlan();
   const [copying, setCopying] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
   const [askFeedback, setAskFeedback] = useState(false);
   const device = deviceFor(preset);
@@ -304,9 +305,19 @@ export function PresetWorkspace({
                         ? `Download .${exportExt}`
                         : "Export unavailable"}
                     </Button>
-                    <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
-                      {copying ? "Copying" : "Copy JSON"}
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      aria-expanded={showAdvanced}
+                      onClick={() => setShowAdvanced((open) => !open)}
+                    >
+                      Advanced
                     </Button>
+                    {showAdvanced ? (
+                      <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
+                        {copying ? "Copying" : "Copy JSON"}
+                      </Button>
+                    ) : null}
                   </div>
                   <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                     {editor} · File · Import ·{" "}

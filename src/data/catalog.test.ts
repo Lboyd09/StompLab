@@ -22,6 +22,14 @@ describe("DS-1 catalog", () => {
     }
   });
 
+  it("scores an exact TS808 alias at 100 and names the Line 6 model", () => {
+    const hits = findEquivalents("TS808");
+    assert.equal(hits[0]?.modelId, "scream-808");
+    assert.equal(hits[0]?.score, 100);
+    assert.match(hits[0]?.reason ?? "", /Line 6 model:/);
+    assert.equal(findEquivalents("zzzxqvnotapedal").length, 0);
+  });
+
   it("maps SD-1 to Stupor OD", () => {
     assert.equal(findEquivalents("sd-1")[0]?.modelId, "stupor-od");
     assert.equal(searchModels("super overdrive")[0]?.id, "stupor-od");
@@ -84,7 +92,8 @@ describe("research prompt", () => {
     assert.match(brief, /album title, year, studio, producer/);
     assert.match(brief, /session credits/);
     assert.match(brief, /paramOverrides/);
-    assert.match(brief, /noise gate or a dedicated EQ/);
+    assert.match(brief, /noise-gate/);
+    assert.match(brief, /dedicated EQ/);
     assert.match(brief, /never a category/);
     assert.match(brief, /tone fingerprint/);
     assert.match(brief, /If the recorded opening is clean/);

@@ -46,6 +46,9 @@ export function friendlyResearchError(err: unknown): string {
   if (/self-signed|certificate|unable_to_verify|cert_|ssl alert|tls/i.test(lower)) {
     return "Could not reach research (secure connection failed). Try a demo, then try again in a minute.";
   }
+  if (/expected ','|expected ']'|unexpected token|position \d+|no json|syntaxerror|unterminated/i.test(lower)) {
+    return "We couldn't read that preset. Try that song again.";
+  }
   return msg || "Research failed";
 }
 
@@ -127,7 +130,12 @@ export function googleAnswerText(
     .join("");
 }
 
-async function googleGenerate(key: string, prompt: string, system = SYSTEM): Promise<string> {
+async function googleGenerate(
+  key: string,
+  prompt: string,
+  system = SYSTEM,
+  schema?: unknown,
+): Promise<string> {
   const url = `${GOOGLE_GENERATE}?key=${encodeURIComponent(key)}`;
   let payload: RequestInit = {
     method: "POST",
@@ -142,6 +150,7 @@ async function googleGenerate(key: string, prompt: string, system = SYSTEM): Pro
         temperature: 0.15,
         maxOutputTokens: 8192,
         responseMimeType: "application/json",
+        ...(schema ? { responseSchema: schema } : {}),
         thinkingConfig: { thinkingBudget: 4096 },
       },
     }),
@@ -166,7 +175,7 @@ async function googleGenerate(key: string, prompt: string, system = SYSTEM): Pro
       await new Promise((r) => setTimeout(r, 900));
       continue;
     }
-    if (res.status === 400 && attempt === 0 && /thinking/i.test(raw)) {
+    if (res.status === 400 && attempt === 0 && /thinking|schema|response_schema/i.test(raw)) {
       payload = {
         ...payload,
         body: JSON.stringify({
@@ -251,40 +260,120 @@ async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): 
   }
 }
 
-export async function geminiJson(prompt: string, opts?: { system?: string }): Promise<unknown> {
+export const PRESET_RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: {
+    name: { type: "STRING" },
+    tempo: { type: "NUMBER" },
+    summary: { type: "STRING" },
+    fingerprint: { type: "STRING" },
+    error: { type: "STRING" },
+    originalGear: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          role: { type: "STRING" },
+          name: { type: "STRING" },
+          notes: { type: "STRING" },
+        },
+      },
+    },
+    blocks: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          modelId: { type: "STRING" },
+          enabled: { type: "BOOLEAN" },
+          params: { type: "OBJECT" },
+        },
+        required: ["modelId"],
+      },
+    },
+    snapshots: { type: "ARRAY", items: { type: "OBJECT" } },
+    footswitches: { type: "ARRAY", items: { type: "OBJECT" } },
+    programming: { type: "ARRAY", items: { type: "STRING" } },
+    tips: { type: "ARRAY", items: { type: "STRING" } },
+  },
+  required: ["name", "tempo", "blocks"],
+};
+
+export const BPM_RESPONSE_SCHEMA = {
+  type: "OBJECT",
+  properties: { bpm: { type: "NUMBER" } },
+  required: ["bpm"],
+};
+
+export async function geminiJson(
+  prompt: string,
+  opts?: { system?: string; schema?: unknown },
+): Promise<unknown> {
   const { google, gateway } = collectResearchKeys();
   if (!google && !gateway) {
     throw new Error("Song research isn't configured on this copy yet. Try a featured demo, or try again later.");
   }
   const system = opts?.system ?? SYSTEM;
+  const schema = opts?.schema;
 
   const errors: string[] = [];
-  const tryGoogle = async () => {
+  const read = async (text: string, repair: () => Promise<string>): Promise<unknown | null> => {
+    try {
+      return extractJson(text);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "";
+      if (!/expected|json|position|unexpected|unterminated/i.test(msg)) {
+        errors.push(friendlyResearchError(err));
+        return null;
+      }
+      try {
+        return extractJson(await repair());
+      } catch (again) {
+        errors.push(friendlyResearchError(again));
+        return null;
+      }
+    }
+  };
+  const tryGoogle = async (userPrompt: string) => {
     if (!google) return null;
     try {
-      return extractJson(await googleGenerate(google, prompt, system));
+      const text = await googleGenerate(google, userPrompt, system, schema);
+      return await read(text, () =>
+        googleGenerate(
+          google,
+          `${userPrompt}\n\nThe previous answer was not valid JSON. Reply with one JSON object only.`,
+          system,
+          schema,
+        ),
+      );
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Google research failed.";
       if (err instanceof Error && err.name === "AbortError") throw new Error(BUSY);
-      errors.push(msg);
+      errors.push(friendlyResearchError(msg));
       return null;
     }
   };
-  const tryGateway = async () => {
+  const tryGateway = async (userPrompt: string) => {
     if (!gateway) return null;
     try {
-      return extractJson(await gatewayGenerate(gateway, prompt, system));
+      const text = await gatewayGenerate(gateway, userPrompt, system);
+      return await read(text, () =>
+        gatewayGenerate(
+          gateway,
+          `${userPrompt}\n\nThe previous answer was not valid JSON. Reply with one JSON object only.`,
+          system,
+        ),
+      );
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw new Error(BUSY);
-      errors.push(err instanceof Error ? err.message : "Gateway research failed.");
+      errors.push(friendlyResearchError(err));
       return null;
     }
   };
 
-  // Prefer the backend that matches the key the owner actually paid for.
-  const first = google ? await tryGoogle() : await tryGateway();
+  const first = google ? await tryGoogle(prompt) : await tryGateway(prompt);
   if (first) return first;
-  const second = google ? await tryGateway() : await tryGoogle();
+  const second = google ? await tryGateway(prompt) : await tryGoogle(prompt);
   if (second) return second;
   throw new Error(friendlyResearchError(errors[0] || BUSY));
 }

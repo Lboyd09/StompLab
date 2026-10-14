@@ -1,6 +1,30 @@
 import { MODEL_MAP } from "@/data/catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
 
+const ABBREV: [RegExp, string][] = [
+  [/\brhythm\b/i, "Rhy"],
+  [/\bcrunch\b/i, "Crnch"],
+  [/\bchorus\b/i, "Chors"],
+  [/\bbridge\b/i, "Brdg"],
+  [/\bdistortion\b/i, "Dist"],
+  [/\boverdrive\b/i, "OD"],
+  [/\bintroduction\b/i, "Intro"],
+];
+
+/** Helix snapshot names are 12 characters. Abbreviate before cutting a word in half. */
+export function fitSnapshotName(raw: string, max = 12): string {
+  let s = raw.replace(/[^\w\s+\-.'&]/g, " ").replace(/\s+/g, " ").trim();
+  if (!s) return "Snap";
+  if (s.length <= max) return s;
+  for (const [re, rep] of ABBREV) s = s.replace(re, rep);
+  if (s.length <= max) return s;
+  const words = s.split(" ");
+  while (words.length > 1 && words.join(" ").length > max) words.pop();
+  s = words.join(" ");
+  if (s.length <= max) return s;
+  return s.slice(0, max).replace(/[\s\-]+$/g, "") || "Snap";
+}
+
 const AMP_CAB: ReadonlySet<CategoryId> = new Set([
   "amp-guitar",
   "amp-bass",
@@ -165,7 +189,12 @@ export function sanitizeSnapshots(preset: Preset): Preset {
           }),
         )
       : undefined;
-    return { ...snap, enabledBlocks: enabled, paramOverrides };
+    return {
+      ...snap,
+      name: fitSnapshotName(snap.name),
+      enabledBlocks: enabled,
+      paramOverrides,
+    };
   });
 
   return { ...preset, blocks, snapshots };

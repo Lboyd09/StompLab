@@ -115,7 +115,7 @@ export function SongTypeahead({
         />
         {open && hits.length ? (
           <ul
-            className="sl-menu absolute z-30 mt-1 max-h-72 w-full overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
+            className="sl-menu mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
             onMouseDown={(e) => e.preventDefault()}
             onPointerDown={() => {
               ignoreBlur.current = true;

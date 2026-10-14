@@ -26,6 +26,8 @@ import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
+import { Route as AdminEraseRouteImport } from './routes/admin.erase'
+import { Route as AdminUsersRouteImport } from './routes/admin.users'
 import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
 import { Route as ApiVisitRouteImport } from './routes/api/visit'
 import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
@@ -119,6 +121,16 @@ const UpgradeRoute = UpgradeRouteImport.update({
   path: '/upgrade',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminEraseRoute = AdminEraseRouteImport.update({
+  id: '/erase',
+  path: '/erase',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminUsersRoute = AdminUsersRouteImport.update({
+  id: '/users',
+  path: '/users',
+  getParentRoute: () => AdminRoute,
+} as any)
 const ApiKeepaliveRoute = ApiKeepaliveRouteImport.update({
   id: '/api/keepalive',
   path: '/api/keepalive',
@@ -158,7 +170,7 @@ const ApiPolarWebhookRoute = ApiPolarWebhookRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
@@ -173,6 +185,8 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
+  '/admin/erase': typeof AdminEraseRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -184,7 +198,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
   '/gear': typeof GearRoute
@@ -198,6 +212,8 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
+  '/admin/erase': typeof AdminEraseRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -210,7 +226,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/account': typeof AccountRoute
-  '/admin': typeof AdminRoute
+  '/admin': typeof AdminRouteWithChildren
   '/catalog': typeof CatalogRouteWithChildren
   '/create': typeof CreateRoute
   '/equivalents': typeof EquivalentsRoute
@@ -225,6 +241,8 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
+  '/admin/erase': typeof AdminEraseRoute
+  '/admin/users': typeof AdminUsersRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -253,6 +271,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/terms'
     | '/upgrade'
+    | '/admin/erase'
+    | '/admin/users'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -278,6 +298,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/terms'
     | '/upgrade'
+    | '/admin/erase'
+    | '/admin/users'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -304,6 +326,8 @@ export interface FileRouteTypes {
     | '/settings'
     | '/terms'
     | '/upgrade'
+    | '/admin/erase'
+    | '/admin/users'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -316,7 +340,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AccountRoute: typeof AccountRoute
-  AdminRoute: typeof AdminRoute
+  AdminRoute: typeof AdminRouteWithChildren
   CatalogRoute: typeof CatalogRouteWithChildren
   CreateRoute: typeof CreateRoute
   EquivalentsRoute: typeof EquivalentsRoute
@@ -459,6 +483,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof UpgradeRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin/erase': {
+      id: '/admin/erase'
+      path: '/erase'
+      fullPath: '/admin/erase'
+      preLoaderRoute: typeof AdminEraseRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/users': {
+      id: '/admin/users'
+      path: '/users'
+      fullPath: '/admin/users'
+      preLoaderRoute: typeof AdminUsersRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/api/keepalive': {
       id: '/api/keepalive'
       path: '/api/keepalive'
@@ -511,6 +549,18 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AdminRouteChildren {
+  AdminEraseRoute: typeof AdminEraseRoute
+  AdminUsersRoute: typeof AdminUsersRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminEraseRoute: AdminEraseRoute,
+  AdminUsersRoute: AdminUsersRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 interface CatalogRouteChildren {
   CatalogIdRoute: typeof CatalogIdRoute
   CatalogIndexRoute: typeof CatalogIndexRoute
@@ -527,7 +577,7 @@ const CatalogRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AccountRoute: AccountRoute,
-  AdminRoute: AdminRoute,
+  AdminRoute: AdminRouteWithChildren,
   CatalogRoute: CatalogRouteWithChildren,
   CreateRoute: CreateRoute,
   EquivalentsRoute: EquivalentsRoute,

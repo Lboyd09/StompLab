@@ -371,7 +371,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <span className="sl-header-rule" aria-hidden />
       </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-32 pt-10 md:pb-20 md:pt-16">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-10 md:pb-20 md:pt-16">
         {children}
         <LegalFooter className="mt-16 pb-4" />
       </main>

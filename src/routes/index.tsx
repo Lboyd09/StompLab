@@ -25,6 +25,7 @@ import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd, priceMonthlyLaunchUsd } from "@/lib/plan";
+import { looksLikeRealSong } from "@/lib/song-check";
 import { takeInviteResult } from "@/lib/referral-code";
 
 export const Route = createFileRoute("/")({
@@ -48,6 +49,7 @@ function Home() {
   const { plan, refresh, isPending: planPending } = usePlan();
   const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
+  const [picked, setPicked] = useState(false);
   const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
@@ -267,11 +269,18 @@ function Home() {
             song={song}
             artist={artist}
             instrument={instrument}
-            onSong={setSong}
-            onArtist={setArtist}
+            onSong={(value) => {
+              setSong(value);
+              setPicked(false);
+            }}
+            onArtist={(value) => {
+              setArtist(value);
+              setPicked(false);
+            }}
             onPick={(hit) => {
               setSong(hit.song);
               setArtist(hit.artist);
+              setPicked(true);
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
@@ -283,7 +292,12 @@ function Home() {
             />
           ) : null}
           <div className="flex flex-wrap gap-3">
-            <Button type="submit" size="lg" disabled={busy || planPending} className="w-full sm:w-auto sm:px-8">
+            <Button
+              type="submit"
+              size="lg"
+              disabled={busy || (planPending && !plan.signedIn) || (!picked && !looksLikeRealSong(song, artist))}
+              className="w-full sm:w-auto sm:px-8"
+            >
               {busy ? <Loader2 className="size-4 animate-spin" /> : null}
               {busy ? "Researching" : "Build this preset"}
             </Button>

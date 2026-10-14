@@ -2751,18 +2751,26 @@ const LOCKER_LAUNCH: Array<[GearKind, string, string[]]> = [
   ["pickup", "DiMarzio", ["Titan", "D Activator", "Transition", "Steve Morse"]],
 ];
 
+function canonicalBrand(brand: string): string {
+  const b = brand.trim().replace(/\s+/g, " ");
+  if (b === "LTD" || b === "ESP LTD") return "ESP";
+  if (b === "Sterling") return "Sterling by Music Man";
+  if (b === "Tom Anderson") return "Anderson";
+  return b;
+}
+
 function expand(): GearSuggestion[] {
   const out: GearSuggestion[] = [];
   const seen = new Set<string>();
   for (const [kind, brand, models] of [...CATALOG, ...EXTRA, ...MORE, ...COMMON_PLUS, ...LOCKER_MORE, ...LOCKER_LAUNCH]) {
+    const canon = canonicalBrand(brand);
     for (const model of models) {
-      const trimmed = model.trim();
+      const trimmed = model.trim().replace(/\s+/g, " ");
       if (!trimmed) continue;
-      const name = `${brand} ${trimmed}`;
-      const key = `${kind}|${name}`;
+      const key = `${kind}|${canon.toLowerCase()}|${trimmed.toLowerCase()}`;
       if (seen.has(key)) continue;
       seen.add(key);
-      out.push({ kind, brand, model: trimmed, name });
+      out.push({ kind, brand: canon, model: trimmed, name: `${canon} ${trimmed}` });
     }
   }
   return out;

@@ -56,9 +56,21 @@ describe("sanitizeSnapshots", () => {
     const sand = sanitizeSnapshots(FEATURED.find((p) => p.id === "featured-sandman")!);
     assert.deepEqual(
       sand.blocks.map((b) => b.modelId),
-      ["scream-808", "cali-rectifire", "cali-q-graphic", "4x12-cali-v30"],
+      ["scream-808", "kinky-boost", "noise-gate", "cali-rectifire", "cali-q-graphic", "4x12-cali-v30", "simple-delay"],
     );
     assert.equal(sand.blocks.some((b) => b.modelId === "hard-gate"), false);
+    const intro = sand.snapshots.find((s) => s.name === "Intro");
+    const rhythm = sand.snapshots.find((s) => s.name === "Rhythm");
+    const lead = sand.snapshots.find((s) => s.name === "Lead");
+    const gate = sand.blocks.find((b) => b.modelId === "noise-gate");
+    const boost = sand.blocks.find((b) => b.modelId === "kinky-boost");
+    const delay = sand.blocks.find((b) => b.modelId === "simple-delay");
+    assert.ok(gate && boost && delay && intro && rhythm && lead);
+    assert.equal(intro.enabledBlocks.includes(gate.id), false);
+    assert.equal(rhythm.enabledBlocks.includes(gate.id), true);
+    assert.equal(rhythm.enabledBlocks.includes(boost.id), false);
+    assert.equal(lead.enabledBlocks.includes(boost.id), true);
+    assert.equal(lead.enabledBlocks.includes(delay.id), true);
   });
 
   it("has no blank or mismatched demo snapshot", () => {

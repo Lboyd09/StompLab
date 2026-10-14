@@ -12,7 +12,9 @@ import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCache
 import { focusGuitarRole, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
-import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM } from "./gemini";
+import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
+import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
+import { finishTone } from "./tone-finish";
 import {
   GearSchema,
   jsonSchemaHint,
@@ -173,7 +175,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
   return {
     ok: false,
     reason: "paywall",
-    error: "0 free songs left. Unlock StompLab to research any song.",
+    error: "0 free custom builds left. Subscribe for 50 custom builds a month. Demos stay free.",
   };
 }
 
@@ -188,7 +190,10 @@ async function runGeminiPreset(opts: {
   artist?: string;
   userGear: UserGear[];
 }): Promise<Preset> {
-  const json = await geminiJson(opts.prompt, opts.system ? { system: opts.system } : undefined);
+  const json = await geminiJson(opts.prompt, {
+    ...(opts.system ? { system: opts.system } : {}),
+    schema: PRESET_RESPONSE_SCHEMA,
+  });
   const parsed = parsePresetJson(json);
   return overlayUserGear(
     toPreset(parsed, {
@@ -208,14 +213,32 @@ function finishPreset(
   gear: UserGear[],
   wahMode: string | undefined,
   wahModelId: string | undefined,
+  bpm?: number | null,
 ): Preset {
   return sanitizeSnapshots(
-    applyWahPreference(
-      overlayUserGear(preset, gear),
-      parseWahMode(wahMode),
-      parseWahModelId(wahModelId),
+    finishTone(
+      applyWahPreference(
+        overlayUserGear(preset, gear),
+        parseWahMode(wahMode),
+        parseWahModelId(wahModelId),
+      ),
+      bpm,
     ),
   );
+}
+
+async function lookupBpm(song: string, artist: string, album: string): Promise<number | null> {
+  try {
+    const json = (await geminiJson(
+      `Studio tempo in BPM for the original recording of "${song}" by ${artist}${album ? ` on ${album}` : ""}. Reply {"bpm": <integer>}. Use the album tempo, not a live version. If you are not sure, reply {"bpm": 0}. Never answer 120 unless the song is actually about 120.`,
+      { system: "Reply with one JSON object and nothing else.", schema: BPM_RESPONSE_SCHEMA },
+    )) as { bpm?: number };
+    const bpm = Number(json?.bpm);
+    if (!Number.isFinite(bpm) || bpm < 40 || bpm > 240) return null;
+    return Math.round(bpm);
+  } catch {
+    return null;
+  }
 }
 
 export const researchSongFn = createServerFn({ method: "POST" })
@@ -236,9 +259,19 @@ export const researchSongFn = createServerFn({ method: "POST" })
       return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
     }
 
+    if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (tooManyResearches(context.userId)) {
+      return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
+    }
+
+    const confirmed = await confirmReleasedSong(data.song, data.artist);
+    if (!confirmed) {
+      return { ok: false, error: SONG_NOT_FOUND };
+    }
+    const bpm = await lookupBpm(confirmed.song, confirmed.artist, confirmed.album);
     const key = songCacheKey(
-      data.song,
-      data.artist,
+      confirmed.song,
+      confirmed.artist,
       data.instrument,
       data.stompModel,
       data.playbackTarget,
@@ -246,15 +279,10 @@ export const researchSongFn = createServerFn({ method: "POST" })
       data.guitarRole,
     );
 
-    if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
-    if (tooManyResearches(context.userId)) {
-      return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
-    }
-
     try {
       const cached = await lookupSongCache({
-        song: data.song,
-        artist: data.artist,
+        song: confirmed.song,
+        artist: confirmed.artist,
         instrument: data.instrument,
         stompModel: data.stompModel,
         playbackTarget: data.playbackTarget,
@@ -267,11 +295,11 @@ export const researchSongFn = createServerFn({ method: "POST" })
           data.stompModel,
         );
         try {
-          await recordBuild(context.userId, "song", data.song.trim());
+          await recordBuild(context.userId, "song", confirmed.song);
         } catch {
           /* ignore */
         }
-        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "cache" };
+        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId, bpm), source: "cache" };
       }
     } catch {
       /* miss */
@@ -285,7 +313,10 @@ export const researchSongFn = createServerFn({ method: "POST" })
       const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
       const prompt = `${lessons}
 
-${songResearchInstructions(data.song, data.artist, data.instrument, wah, parseGuitarRole(data.guitarRole))}
+Confirmed recording: "${confirmed.song}" by ${confirmed.artist}${confirmed.album ? `, album ${confirmed.album}` : ""}.
+${bpm ? `Studio tempo is ${bpm} BPM. Set the preset tempo to ${bpm}.` : "Set tempo to the recording's real BPM. Do not use 120 unless the song is actually about 120."}
+
+${songResearchInstructions(confirmed.song, confirmed.artist, data.instrument, wah, parseGuitarRole(data.guitarRole))}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
@@ -301,21 +332,21 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         instrument: data.instrument,
         stompModel: data.stompModel,
         source: "song",
-        song: data.song,
-        artist: data.artist,
+        song: confirmed.song,
+        artist: confirmed.artist,
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
       try {
-        await recordBuild(context.userId, "song", data.song.trim());
+        await recordBuild(context.userId, "song", confirmed.song);
       } catch {
         /* count is not worth losing the preset */
       }
       try {
         await persistSongCache({
           key,
-          song: data.song.trim(),
-          artist: (data.artist ?? "").trim(),
+          song: confirmed.song,
+          artist: confirmed.artist,
           instrument: data.instrument,
           stompModel: data.stompModel,
           preset: publicPreset(preset),
@@ -323,7 +354,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       } catch {
         /* cache miss next time is fine */
       }
-      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
+      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId, bpm), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
@@ -540,7 +571,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       } catch {
         /* ignore */
       }
-      return { ok: true, preset, source: "gemini" };
+      return { ok: true, preset: sanitizeSnapshots(finishTone(preset)), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {

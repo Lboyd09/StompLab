@@ -1338,9 +1338,9 @@ async function loadAdminDashboard(empty: {
       source: ping.source,
       pingMs: ping.pingMs,
       error: ping.error,
-      host: ping.host,
-      mode: ping.mode,
-      rewritten: ping.rewritten,
+      host: "",
+      mode: "",
+      rewritten: false,
     };
     if (!ping.ok) {
       const polarLive = await fetchPolarAdminStats(ownerEmails());
@@ -1627,13 +1627,18 @@ async function loadAdminDashboard(empty: {
       hits: Number(visitsRow?.hits ?? 0),
     };
     const emailById = new Map(accounts.map((a) => [a.id, a.email]));
-    const buildsByUser = new Map<string, number>();
-      for (const u of usage) {
-        if (!u.email) u.email = emailById.get(u.user_id) ?? "";
-        buildsByUser.set(u.user_id, (buildsByUser.get(u.user_id) ?? 0) + (Number(u.n) || 0));
+    const month = yearMonth();
+    const buildsThisMonth = new Map<string, number>();
+    for (const u of usage) {
+      if (!u.email) u.email = emailById.get(u.user_id) ?? "";
+      if (u.year_month === month) {
+        buildsThisMonth.set(u.user_id, (buildsThisMonth.get(u.user_id) ?? 0) + (Number(u.n) || 0));
       }
-    accounts = accounts.map((a) => ({ ...a, builds: buildsByUser.get(a.id) ?? a.builds }));
+    }
     const ownerIds = new Set(accounts.filter((a) => isOwnerAccount(a.email)).map((a) => a.id));
+    accounts = accounts
+      .filter((a) => !isOwnerAccount(a.email))
+      .map((a) => ({ ...a, builds: buildsThisMonth.get(a.id) ?? 0 }));
     const hiddenMail = new Set(owners);
     purchases = purchases.filter((p) => {
       if (hideOwnerRow(p.email, p.user_id, ownerIds)) return false;
@@ -1664,6 +1669,16 @@ async function loadAdminDashboard(empty: {
       subscribedCount,
       userCount,
     });
+    try {
+      const todayRows = await sql<{ n: number }>`
+        select count(*)::int as n
+        from build_events
+        where created_at >= date_trunc('day', now())
+      `;
+      stats.buildsToday = Number(todayRows[0]?.n ?? 0);
+    } catch {
+      stats.buildsToday = 0;
+    }
     const dbError = queryErrors.length
       ? `${queryErrors.length} admin quer${queryErrors.length === 1 ? "y" : "ies"} failed. Counts below use what did return.`
       : "";

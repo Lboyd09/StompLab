@@ -76,8 +76,8 @@ function gearKey(owner: string) {
 
 export function loadPresets(owner = "anon"): Preset[] {
   const scoped = readJson<Preset[]>(presetsKey(owner), []);
-  if (scoped.length) return scoped;
-  return [];
+  if (!scoped.length) return [];
+  return dedupeHistory(scoped);
 }
 
 export function savePresets(presets: Preset[], owner = "anon") {
@@ -86,9 +86,40 @@ export function savePresets(presets: Preset[], owner = "anon") {
 
 export const HISTORY_CAP = 400;
 
+function historyNorm(raw: string | undefined): string {
+  return (raw ?? "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+/** Same song on the same unit, or the same custom name on the same unit, is one row. */
+export function historyKey(preset: Preset): string {
+  const song = historyNorm(preset.song);
+  if (preset.source === "custom" || !song) {
+    return `custom|${preset.stompModel}|${historyNorm(preset.name)}`;
+  }
+  return `song|${preset.stompModel}|${song}|${historyNorm(preset.artist)}`;
+}
+
+export function dedupeHistory(presets: Preset[]): Preset[] {
+  const sorted = [...presets].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const seen = new Set<string>();
+  const out: Preset[] = [];
+  for (const preset of sorted) {
+    const key = historyKey(preset);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(preset);
+  }
+  return out.slice(0, HISTORY_CAP);
+}
+
 export function upsertPreset(preset: Preset, owner = "anon"): Preset[] {
-  const all = loadPresets(owner).filter((p) => p.id !== preset.id);
-  const next = [preset, ...all].slice(0, HISTORY_CAP);
+  const key = historyKey(preset);
+  const all = loadPresets(owner).filter((p) => p.id !== preset.id && historyKey(p) !== key);
+  const next = dedupeHistory([preset, ...all]);
   savePresets(next, owner);
   return next;
 }

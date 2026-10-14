@@ -104,12 +104,12 @@ export function LcdScreen({
         (layout === "floor" || layout === "lt") && "hx-lcd-wide",
       )}
     >
-      <div className="flex items-center justify-between gap-2 px-2 pt-1.5">
-        <div className="flex min-w-0 items-center gap-1.5">
-          <span className="rounded-[2px] bg-zinc-100 px-1 py-[1px] font-mono text-[10px] font-semibold text-zinc-900">
+      <div className="flex items-center justify-between gap-1 overflow-hidden px-2 pt-1.5">
+        <div className="flex min-w-0 flex-1 items-center gap-1">
+          <span className="shrink-0 rounded-[2px] bg-zinc-100 px-1 py-[1px] font-mono text-[10px] font-semibold text-zinc-900">
             01A
           </span>
-          <span className="truncate font-medium text-[11px] tracking-wide">{preset.name}</span>
+          <span className="min-w-0 flex-1 truncate font-medium text-[11px] tracking-wide">{preset.name}</span>
         </div>
         <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] text-zinc-400">
           <span className="uppercase tracking-wider text-zinc-500">

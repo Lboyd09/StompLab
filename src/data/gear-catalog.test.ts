@@ -19,6 +19,18 @@ describe("gear catalog", () => {
     assert.ok(modelsFor("guitar", "Fender").some((g) => /Stratocaster/.test(g.model)));
     assert.ok(suggestionsFor("amp", "rectifier").some((g) => /Rectifier/.test(g.name)));
     assert.ok(searchGear("big muff", "pedal").length >= 1);
+    assert.equal(brandsFor("guitar").includes("LTD"), false);
+    assert.equal(brandsFor("guitar").includes("ESP LTD"), false);
+    assert.ok(brandsFor("guitar").includes("ESP"));
+    assert.equal(brandsFor("guitar").includes("Sterling"), false);
+    assert.ok(brandsFor("guitar").includes("Sterling by Music Man"));
+    assert.equal(brandsFor("guitar").includes("Tom Anderson"), false);
+    assert.ok(brandsFor("guitar").includes("Anderson"));
+    const les = GEAR_SUGGESTIONS.filter(
+      (g) => g.kind === "guitar" && g.brand === "Gibson" && g.model === "Les Paul Standard",
+    );
+    assert.equal(les.length, 1);
+    assert.ok(popularFor("guitar").some((g) => g.name === "ESP LTD EC-1000"));
   });
   it("lists popular one-tap models that exist in the catalog", () => {
     const guitars = popularFor("guitar");

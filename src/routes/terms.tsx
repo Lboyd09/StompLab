@@ -41,8 +41,16 @@ function TermsPage() {
       <p className="text-sm text-muted-foreground">
         Privacy is separate —{" "}
         <Link to="/privacy" className="text-primary underline underline-offset-2">
-          /privacy
+          Privacy
         </Link>
+        . Payments follow{" "}
+        <a href="https://polar.sh/legal/terms" className="text-primary underline underline-offset-2">
+          Polar terms
+        </a>
+        . Research calls follow the{" "}
+        <a href="https://ai.google.dev/gemini-api/terms" className="text-primary underline underline-offset-2">
+          Gemini API terms
+        </a>
         . Help:{" "}
         <a href={`mailto:${PUBLIC_SUPPORT_EMAIL}`} className="text-primary underline underline-offset-2">
           {PUBLIC_SUPPORT_EMAIL}

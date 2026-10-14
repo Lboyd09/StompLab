@@ -1,4 +1,5 @@
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PAID_MONTHLY_BUILDS, FREE_BUILDS, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, PUBLIC_SUPPORT_EMAIL, formatUsd, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd } from "./plan";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "./copy";
 
 /** Bump this when the agreement text changes. Clickwrap stores the version. */
 export const LEGAL_VERSION = "2026-09-18";
@@ -166,7 +167,7 @@ export const SUBSCRIPTION_SECTIONS: { id: string; title: string; body: string[] 
     id: "price",
     title: "Subscription, price, and renewal",
     body: [
-      `Paid Lab is ${formatUsd(PRICE_MONTHLY_USD)} per month or ${formatUsd(PRICE_YEARLY_USD)} per year. Both plans include ${PAID_MONTHLY_BUILDS} custom builds each calendar month. Featured demos stay free. After you sign in, you get ${FREE_BUILDS} custom songs before you have to subscribe.`,
+      `Paid Lab is ${formatUsd(PRICE_MONTHLY_USD)} per month or ${formatUsd(PRICE_YEARLY_USD)} per year. ${PAID_BUILD_LINE} ${FREE_BUILD_LINE}`,
       `Launch: the first monthly invoice is ${LAUNCH_DISCOUNT_PERCENT}% off — ${formatUsd(priceMonthlyLaunchUsd())} the first month, then ${formatUsd(PRICE_MONTHLY_USD)}/month. Yearly is ${formatUsd(PRICE_YEARLY_USD)} every year — no launch discount on the year plan. Polar charges until you cancel. The monthly discount is once; it does not repeat at renewal.`,
       "Polar (merchant of record) charges your card. Stomp Lab never sees the card number.",
       "This is an automatic-renewal subscription. Unless you cancel, Polar will charge the same plan again at the then-current price when the period ends — monthly plans every month, yearly plans every year.",

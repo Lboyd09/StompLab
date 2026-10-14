@@ -30,6 +30,7 @@ function GearPage() {
   const [notes, setNotes] = useState("");
   const [synced, setSynced] = useState(false);
   const [showCustom, setShowCustom] = useState(false);
+  const [shown, setShown] = useState(40);
 
   useEffect(() => {
     if (!plan.canLockerSync) return;
@@ -43,6 +44,10 @@ function GearPage() {
       .catch(() => undefined);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan.canLockerSync]);
+
+  useEffect(() => {
+    setShown(40);
+  }, [kind, brand, q]);
 
   const popular = useMemo(() => popularFor(kind), [kind]);
   const brands = useMemo(() => brandsFor(kind), [kind]);
@@ -108,14 +113,16 @@ function GearPage() {
         Browse a brand, tap a model, done. Song research then tells you which piece to grab — guitar, amp,
         cab, or a real pedal in the loop.
         {plan.canLockerSync ? (
-          <p className="mt-2 text-xs">{synced ? "Synced to your account." : "Syncing locker…"}</p>
+          <p className="mt-2 text-xs">
+            {synced ? "Saved on this device and synced to your account." : "Saved on this device. Syncing to your account…"}
+          </p>
         ) : (
           <p className="mt-2 text-xs">
             Saved on this device.{" "}
             <Link to="/upgrade" className="text-primary underline underline-offset-2">
               Subscribe
             </Link>{" "}
-            to sync the locker across devices.
+            to sync.
           </p>
         )}
       </PageHeader>
@@ -203,8 +210,8 @@ function GearPage() {
                 </button>
               </div>
             ) : null}
-            <ul className="max-h-[28rem] space-y-1 overflow-y-auto pr-1">
-              {hits.map((g) => (
+            <ul className="space-y-1 pr-1">
+              {hits.slice(0, shown).map((g) => (
                 <CatalogRow
                   key={g.name}
                   item={g}
@@ -216,6 +223,11 @@ function GearPage() {
                 <li className="py-6 text-sm text-muted-foreground">No catalog match. Add a custom name below.</li>
               ) : null}
             </ul>
+            {hits.length > shown ? (
+              <Button type="button" variant="secondary" onClick={() => setShown((n) => n + 40)}>
+                Show more
+              </Button>
+            ) : null}
           </div>
         )}
 

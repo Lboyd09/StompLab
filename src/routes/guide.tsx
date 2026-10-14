@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/page-header";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
 
 export const Route = createFileRoute("/guide")({ component: GuidePage });
 
@@ -11,7 +12,7 @@ function GuidePage() {
         to learn HX Edit first.
       </PageHeader>
 
-      <Section title="The 30-second path">
+      <Section title="Quick start">
         <ol className="list-decimal space-y-2 pl-5">
           <li>Pick Guitar or Bass, and your unit, in the header.</li>
           <li>Open a featured song, or type a title and build a preset.</li>
@@ -88,9 +89,8 @@ function GuidePage() {
       <Section title="Research and builds">
         <p>
           Featured demos (Sandman, Teen Spirit, Comfortably Numb) never need an account and always
-          download. Sign in for three free custom songs. After that, subscribe monthly or yearly.
-          Opens any song, Create, History, and Gear. Each custom research counts toward your 50
-          builds this month — demos never do.
+          download. {FREE_BUILD_LINE} After that, subscribe monthly or yearly.
+          Opens any song, Create, History, and Gear. {PAID_BUILD_LINE} Each custom research counts — demos never do.
         </p>
         <p>
           Add guitars and amps in Gear first. Research will mention what to grab from your locker. Paid

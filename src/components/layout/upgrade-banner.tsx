@@ -1,4 +1,5 @@
 import { Link } from "@tanstack/react-router";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, priceMonthlyLaunchUsd, formatUsd, type Plan } from "@/lib/plan";
 
 export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
@@ -6,9 +7,9 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
   const left = plan.signedIn ? plan.freeRemaining : FREE_BUILDS;
   const lead = plan.signedIn
     ? left > 0
-      ? `${left} free custom song${left === 1 ? "" : "s"} left`
-      : "Free builds are used up"
-    : `${FREE_BUILDS} free custom songs after you sign in`;
+      ? `${left} free custom build${left === 1 ? "" : "s"} left`
+      : "You've used your 3 free custom builds"
+    : FREE_BUILD_LINE;
   return (
     <Link
       to="/upgrade"
@@ -19,7 +20,8 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
           Subscribe — {formatUsd(priceMonthlyLaunchUsd())} first month
         </span>
         <span className="mt-1.5 block text-sm text-primary-foreground/75">
-          {lead}. Then {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr · 50 songs a month.
+          {plan.signedIn ? `${lead}. ` : `${lead} `}
+          Then {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr · {PAID_BUILD_LINE}
         </span>
       </span>
       <span className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground px-6 text-sm font-semibold text-primary sm:px-6">

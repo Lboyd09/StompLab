@@ -1,11 +1,8 @@
-import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, Navigate, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { adminDashboard, adminDeleteCache, adminInspectCache, adminMoneySetup, probeResearchFn } from "@/lib/billing";
-import { adminCloseAccount } from "@/lib/account-delete";
+import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn } from "@/lib/billing";
 import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
@@ -19,34 +16,24 @@ type Dash = Awaited<ReturnType<typeof adminDashboard>>;
 type Probe = Awaited<ReturnType<typeof probeResearchFn>>;
 
 function AdminPage() {
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
+  if (pathname !== "/admin") return <Outlet />;
+  return <AdminDashboard />;
+}
+
+function AdminDashboard() {
   const { user, isPending } = useCurrentUserState();
   const { plan } = usePlan();
   const navigate = useNavigate();
   const savePreset = useAppStore((s) => s.savePreset);
   const setStompModel = useAppStore((s) => s.setStompModel);
   const [dash, setDash] = useState<Dash | null>(null);
-  const [money, setMoney] = useState<{
-    token: boolean;
-    monthly: boolean;
-    yearly: boolean;
-    referral?: boolean;
-    webhook?: boolean;
-    ready: boolean;
-    mail?: boolean;
-    mailError?: string;
-    research?: boolean;
-    amazon?: boolean;
-  } | null>(null);
   const [error, setError] = useState("");
   const [probe, setProbe] = useState<Probe | null>(null);
   const [probing, setProbing] = useState(false);
   const [gate, setGate] = useState<"wait" | "ok" | "no">("wait");
   const [authWaited, setAuthWaited] = useState(false);
-  const [closeEmail, setCloseEmail] = useState("");
-  const [closeTyped, setCloseTyped] = useState("");
-  const [closeConfirm, setCloseConfirm] = useState("");
-  const [closeBusy, setCloseBusy] = useState(false);
-  const [closeNote, setCloseNote] = useState("");
+  const [accountPage, setAccountPage] = useState(0);
 
   useEffect(() => {
     const t = window.setTimeout(() => setAuthWaited(true), 3500);
@@ -58,28 +45,15 @@ function AdminPage() {
     let cancelled = false;
     const statsTimeout = window.setTimeout(() => {
       if (!cancelled) {
-        setError((e) => e || "Stats timed out. Money setup does not need the database — refresh stats.");
+        setError((e) => e || "Stats timed out. Refresh to try again.");
       }
     }, 8000);
-    void adminMoneySetup()
-      .then((p) => {
-        if (!cancelled) {
-          setMoney(p);
-          setGate("ok");
-        }
-      })
-      .catch((err) => {
-        if (cancelled) return;
-        const msg = err instanceof Error ? err.message : "";
-        if (/unauthorized/i.test(msg)) setGate("no");
-      });
     void adminDashboard()
       .then((d) => {
         if (cancelled) return;
         window.clearTimeout(statsTimeout);
         setGate("ok");
         setDash(d);
-        if (d.polar) setMoney({ ...d.polar, mail: d.mail, amazon: d.amazonReady, research: d.research });
         if (d.dbError) setError(d.dbError);
       })
       .catch((err) => {
@@ -164,157 +138,64 @@ function AdminPage() {
     await navigate({ to: "/preset/$id", params: { id: playable.id } });
   }
 
-  const polar = money ?? dash?.polar ?? null;
-  const mailOn = money?.mail ?? dash?.mail;
-
   async function onProbe() {
     setProbing(true);
     try {
-      setProbe(await probeResearchFn());
-    } catch (err) {
-      setProbe({
-        configured: false,
-        google: "error",
-        gateway: "error",
-        detail: err instanceof Error ? err.message : "Probe failed",
-      });
+      const result = await probeResearchFn();
+      setProbe(result);
+    } catch {
+      setProbe(null);
+      setError("Research did not answer.");
     } finally {
       setProbing(false);
     }
   }
+
+  const accounts = dash?.accounts ?? [];
+  const pageSize = 10;
+  const pageCount = Math.max(1, Math.ceil(accounts.length / pageSize));
+  const safePage = Math.min(accountPage, pageCount - 1);
+  const accountRows = accounts.slice(safePage * pageSize, safePage * pageSize + pageSize);
 
   return (
     <div className="space-y-10">
       <header className="space-y-1">
         <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Hidden</p>
         <h1 className="sl-hero-title text-4xl">Admin</h1>
-        <p className="text-sm text-muted-foreground">{user.primaryEmail}</p>
-        <Button
-          type="button"
-          variant="secondary"
-          size="sm"
-          className="mt-3"
-          onClick={() => {
-            setError("");
-            setDash(null);
-            void adminMoneySetup()
-              .then(setMoney)
-              .catch(() => undefined);
-            void adminDashboard()
-              .then((d) => {
-                setDash(d);
-                if (d.polar) setMoney({ ...d.polar, mail: d.mail, amazon: d.amazonReady, research: d.research });
-                if (d.dbError) setError(d.dbError);
-              })
-              .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
-          }}
-        >
-          Refresh stats
-        </Button>
+        <p className="text-sm text-muted-foreground">{maskEmail(user.primaryEmail)}</p>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <Button
+            type="button"
+            variant="secondary"
+            size="sm"
+            onClick={() => {
+              setError("");
+              setDash(null);
+              void adminDashboard()
+                .then((d) => {
+                  setDash(d);
+                  if (d.dbError) setError(d.dbError);
+                })
+                .catch((err) => setError(err instanceof Error ? err.message : "Could not load admin."));
+            }}
+          >
+            Refresh stats
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <Link to="/admin/erase">Erase a player</Link>
+          </Button>
+        </div>
       </header>
 
       {error ? <p className="text-sm text-destructive">{error}</p> : null}
       {!dash && !error ? <p className="text-sm text-muted-foreground">Loading stats…</p> : null}
 
-      <LaunchChecklist polar={polar} mailOn={mailOn} money={money} dash={dash} />
-
-      <section className="space-y-4 rounded-2xl border border-destructive/40 bg-card p-5">
-        <h2 className="sl-hero-title text-2xl">Erase a player’s account now</h2>
-        <p className="text-sm leading-relaxed text-muted-foreground">
-          Immediate wipe — Polar cancels, every Lab row for that email is deleted, no 14-day hold. They can
-          sign up again right away. Type the email twice and DELETE so this cannot be a misclick. There is
-          no undo.
-        </p>
-        <form
-          className="space-y-3"
-          onSubmit={(e) => {
-            e.preventDefault();
-            setCloseNote("");
-            setCloseBusy(true);
-            void adminCloseAccount({
-              data: { email: closeEmail.trim(), typedEmail: closeTyped.trim(), confirm: "DELETE" },
-            })
-              .then((res) => {
-                if (!res.ok) {
-                  setCloseNote(res.error);
-                  return;
-                }
-                setCloseNote(`Erased ${res.email} immediately. Polar is cancelled. They can sign up again now.`);
-                setCloseEmail("");
-                setCloseTyped("");
-                setCloseConfirm("");
-              })
-              .catch((err) => setCloseNote(err instanceof Error ? err.message : "Could not delete that account."))
-              .finally(() => setCloseBusy(false));
-          }}
-        >
-          <div className="space-y-1.5">
-            <Label htmlFor="close-email">Player email</Label>
-            <Input
-              id="close-email"
-              type="email"
-              autoComplete="off"
-              value={closeEmail}
-              onChange={(e) => setCloseEmail(e.target.value)}
-              placeholder="player@email.com"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="close-email-2">Type that email again</Label>
-            <Input
-              id="close-email-2"
-              type="email"
-              autoComplete="off"
-              value={closeTyped}
-              onChange={(e) => setCloseTyped(e.target.value)}
-              placeholder="player@email.com"
-            />
-          </div>
-          <div className="space-y-1.5">
-            <Label htmlFor="close-delete">Type DELETE</Label>
-            <Input
-              id="close-delete"
-              autoComplete="off"
-              value={closeConfirm}
-              onChange={(e) => setCloseConfirm(e.target.value)}
-              placeholder="DELETE"
-            />
-          </div>
-          <Button
-            type="submit"
-            variant="outline"
-            disabled={
-              closeBusy ||
-              closeConfirm !== "DELETE" ||
-              !closeEmail.includes("@") ||
-              closeEmail.trim().toLowerCase() !== closeTyped.trim().toLowerCase()
-            }
-          >
-            {closeBusy ? "Erasing…" : "Erase this account now"}
-          </Button>
-          {closeNote ? <p className="text-sm text-muted-foreground">{closeNote}</p> : null}
-        </form>
-      </section>
-
       {dash?.db ? (
         <section className="rounded-xl border border-border bg-card p-5">
           <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">Database</p>
           <p className="mt-2 font-display text-3xl font-semibold">{dash.db.ok ? "Connected" : "Down"}</p>
-          <p className="mt-1 text-xs text-muted-foreground">
-            {dash.db.source}
-            {dash.db.mode ? ` · ${dash.db.mode}` : ""}
-            {dash.db.host ? ` · ${dash.db.host}` : ""}
-            {` · ${dash.db.pingMs} ms`}
-            {dash.db.rewritten ? " · transaction pooler" : ""}
-          </p>
-          {dash.db.error ? <p className="mt-2 text-sm text-destructive">{dash.db.error}</p> : null}
-          {(dash.queryErrors ?? []).length ? (
-            <ul className="mt-3 space-y-1 text-xs text-muted-foreground">
-              {dash.queryErrors.slice(0, 8).map((q) => (
-                <li key={q}>{q}</li>
-              ))}
-            </ul>
-          ) : null}
+          <p className="mt-1 text-xs text-muted-foreground">{dash.db.pingMs} ms</p>
+          {dash.db.error ? <p className="mt-2 text-sm text-destructive">The database did not answer.</p> : null}
         </section>
       ) : null}
 
@@ -322,77 +203,54 @@ function AdminPage() {
         <Stat
           label="Visitors today"
           value={String(dash?.visits?.today ?? "—")}
-          hint="Unique browsers. Scanners are not counted."
+          hint="Unique browsers today. Your visits and /admin are not counted."
         />
         <Stat
           label="Visitors (7d)"
           value={String(dash?.visits?.d7 ?? "—")}
-          hint={`${dash?.visits?.d30 ?? 0} in the last 30 days`}
+          hint="Unique browsers in the last 7 days."
         />
         <Stat
           label="Visitors (30d)"
-          value={String(dash?.visits?.unique_all ?? "—")}
-          hint="Unique browsers in the last 30 days. Scanners are not counted."
+          value={String(dash?.visits?.d30 ?? "—")}
+          hint="Unique browsers in the last 30 days."
         />
-        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Every account except yours" />
+        <Stat label="Signed up" value={String(dash?.userCount ?? "—")} hint="Player accounts. Your inbox is not included." />
         <Stat
           label="Subscribed"
           value={String(dash?.subscribedCount ?? "—")}
-          hint="Polar-paid customers only — your admin grant and Polar tests are excluded"
+          hint="Paying players only. Test grants are not included."
         />
         <Stat
           label="Subscription revenue"
           value={dash ? formatUsd((dash.revenueCents ?? 0) / 100) : "—"}
-          hint="Customer Polar orders only. Tests, unmatched Polar rows, and your inboxes never show. $0 until someone else pays."
+          hint="Customer orders only. Test checkouts are not included."
         />
         <Stat
           label="Sign-ups (7d)"
           value={String(dash?.stats?.signups7d ?? "—")}
-          hint={`${dash?.stats?.signups30d ?? 0} in the last 30 days`}
+          hint={`${dash?.stats?.signups30d ?? 0} in the last 30 days. Same player list, shorter window.`}
         />
         <Stat
           label="Builds this month"
           value={String(dash?.stats?.buildsMonth ?? "—")}
-          hint={`${dash?.stats?.buildsToday ?? 0} today`}
+          hint={`${dash?.stats?.buildsToday ?? 0} today. This calendar month on the server. Not the History list on a phone.`}
         />
         <Stat
           label="Conversion"
           value={dash ? `${dash.stats?.conversionPct ?? 0}%` : "—"}
-          hint={`${dash?.stats?.freeUsers ?? 0} free · ${dash?.stats?.revoked ?? 0} revoked`}
+          hint={`${dash?.stats?.freeUsers ?? 0} free · ${dash?.stats?.revoked ?? 0} revoked. Signed-up vs subscribed.`}
         />
         <Stat
           label="Est. MRR"
           value={dash ? formatUsd((dash.stats?.mrrCents ?? 0) / 100) : "—"}
-          hint={`${formatUsd((dash?.stats?.arrCents ?? 0) / 100)} ARR · avg ${dash?.stats?.avgBuildsPaid ?? 0} builds / paid`}
+          hint={`${formatUsd((dash?.stats?.arrCents ?? 0) / 100)} ARR · avg ${dash?.stats?.avgBuildsPaid ?? 0} builds this month / paid`}
         />
         <Stat
           label="Cache"
           value={String(dash?.stats?.cacheRows ?? "—")}
-          hint={`${dash?.stats?.cacheHits ?? 0} hits · ${dash?.stats?.failures7d ?? 0} research failures (7d)`}
+          hint={`${dash?.stats?.cacheHits ?? 0} hits · ${dash?.stats?.failures7d ?? 0} research failures in 7 days`}
         />
-      </section>
-
-      <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Money setup</h2>
-        <ul className="space-y-1 text-sm">
-          <li>Polar token: {polar ? (polar.token ? "set" : "missing") : "checking…"}</li>
-          <li>Monthly product ($6.99): {polar ? (polar.monthly ? "set" : "missing") : "checking…"}</li>
-          <li>Yearly product ($75): {polar ? (polar.yearly ? "set" : "missing") : "checking…"}</li>
-          <li>Invite 50% (FRIEND50): {polar ? (polar.referral ? "set" : "missing") : "checking…"}</li>
-          <li>Polar webhook: {polar ? (polar.webhook ? "set" : "missing") : "checking…"}</li>
-          <li>Password-reset mail: {polar ? (mailOn ? "set" : "missing") : "checking…"}</li>
-          <li>Research (Gemini 2.5 Flash): {money?.research != null ? (money.research ? "set" : "missing") : "checking…"}</li>
-          <li>Amazon tag (optional): {money?.amazon != null ? (money.amazon ? "set" : "off") : dash?.amazonReady ? "set" : "off"}</li>
-          {money?.mailError ? <li>Last mail error: {money.mailError}</li> : null}
-        </ul>
-        <p className="text-xs text-muted-foreground">
-          {polar?.ready
-            ? "Checkout can run. Polar keeps the product names — this only checks that the token and at least one product id are on the host."
-            : polar
-              ? "Need POLAR_ACCESS_TOKEN plus POLAR_PRODUCT_ID_MONTHLY and/or POLAR_PRODUCT_ID_YEARLY. Checkout stays closed until the token and one product id are set."
-              : "Money setup does not wait on Postgres."}{" "}
-          Password resets need RESEND_API_KEY (and MAIL_FROM on a verified domain) on the host.
-        </p>
       </section>
 
       <section className="grid gap-6 lg:grid-cols-3">
@@ -417,43 +275,60 @@ function AdminPage() {
       </section>
 
       <section className="space-y-3">
-        <h2 className="font-display text-lg font-semibold">Research backend</h2>
-        <p className="text-sm text-muted-foreground">
-          Checks Google AI Studio and the research gateway. Never prints the key.
-        </p>
+        <h2 className="font-display text-lg font-semibold">Research</h2>
+        <p className="text-sm text-muted-foreground">Checks that research answers. The key is not shown.</p>
         <Button type="button" variant="secondary" disabled={probing} onClick={() => void onProbe()}>
           {probing ? "Checking…" : "Ping research"}
         </Button>
         {probe ? (
-          <ul className="space-y-1 text-sm">
-            <li>Google: {probe.google}</li>
-            <li>Gateway: {probe.gateway}</li>
-            <li className="text-muted-foreground">{probe.detail}</li>
-          </ul>
+          <p className="text-sm text-muted-foreground">
+            {probe.configured ? "Research answered." : "Research did not answer."}
+          </p>
         ) : null}
       </section>
 
-      <Fold title="Accounts" count={(dash?.accounts ?? []).length} defaultOpen={(dash?.accounts ?? []).length <= 8}>
-        <p className="text-sm text-muted-foreground">New sign-ups, plan, and how many custom builds they have used.</p>
+      <Fold title="Accounts" count={accounts.length} defaultOpen={accounts.length > 0 && accounts.length <= 8}>
+        <p className="text-sm text-muted-foreground">
+          Player accounts only. Builds on this row are this calendar month. {pageSize} per page.
+        </p>
         <Table
           cols={["When", "Email", "Name", "Paid", "Status", "Builds"]}
-          rows={(dash?.accounts ?? []).map((a) => [
-            a.created_at,
-            a.email,
+          rows={accountRows.map((a) => [
+            localWhen(a.created_at),
+            maskEmail(a.email),
             a.name,
             a.paid ? "yes" : "no",
             a.subscription_status || a.plan_interval || "free",
             String(a.builds),
           ])}
         />
+        {pageCount > 1 ? (
+          <div className="flex items-center justify-between gap-3 text-sm">
+            <Button type="button" variant="secondary" size="sm" disabled={safePage <= 0} onClick={() => setAccountPage(safePage - 1)}>
+              Previous
+            </Button>
+            <span className="tabular-nums text-muted-foreground">
+              {safePage + 1} / {pageCount}
+            </span>
+            <Button
+              type="button"
+              variant="secondary"
+              size="sm"
+              disabled={safePage >= pageCount - 1}
+              onClick={() => setAccountPage(safePage + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        ) : null}
       </Fold>
 
       <Fold title="Purchases" count={(dash?.purchases ?? []).length} defaultOpen={(dash?.purchases ?? []).length <= 8}>
         <Table
           cols={["When", "Email", "Order", "Cents"]}
           rows={(dash?.purchases ?? []).map((p) => [
-            p.created_at,
-            p.email,
+            localWhen(p.created_at),
+            maskEmail(p.email),
             p.polar_order_id || p.polar_checkout_id,
             String(p.amount_cents),
           ])}
@@ -461,16 +336,19 @@ function AdminPage() {
       </Fold>
 
       <Fold title="Builds" count={(dash?.usage ?? []).length} defaultOpen={(dash?.usage ?? []).length <= 8}>
+        <p className="text-sm text-muted-foreground">
+          One row per player per month, about the last 100 days. This is not the History list on a device.
+        </p>
         <Table
           cols={["User", "Email", "Month", "Count"]}
-          rows={(dash?.usage ?? []).map((u) => [u.user_id.slice(0, 8), u.email, u.year_month, String(u.n)])}
+          rows={(dash?.usage ?? []).map((u) => [u.user_id.slice(0, 8), maskEmail(u.email), u.year_month, String(u.n)])}
         />
       </Fold>
 
       <Fold title="Failed researches" count={(dash?.failures ?? []).length} defaultOpen={(dash?.failures ?? []).length > 0 && (dash?.failures ?? []).length <= 8}>
         <Table
           cols={["When", "Song", "Artist", "Error"]}
-          rows={(dash?.failures ?? []).map((f) => [f.created_at, f.song, f.artist, f.error])}
+          rows={(dash?.failures ?? []).map((f) => [localWhen(f.created_at), f.song, f.artist, f.error])}
         />
       </Fold>
 
@@ -482,7 +360,7 @@ function AdminPage() {
           {(dash?.feedback ?? []).map((f, i) => (
             <li key={`${f.created_at}-${i}`} className="rounded-lg border border-border bg-card p-4 text-sm">
               <div className="flex flex-wrap items-baseline justify-between gap-2">
-                <span className="font-medium">{f.email || "anon"}</span>
+                <span className="font-medium">{maskEmail(f.email) || "anon"}</span>
                 <span className="text-xs text-muted-foreground">
                   {f.kind}
                   {f.song ? ` · ${f.song}` : ""}
@@ -508,7 +386,7 @@ function AdminPage() {
                   {f.want_app}
                 </p>
               ) : null}
-              <p className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">{f.created_at}</p>
+              <p className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">{localWhen(f.created_at)}</p>
             </li>
           ))}
           {dash && dash.feedback.length === 0 ? (
@@ -606,107 +484,37 @@ function Fold({
 }) {
   const [open, setOpen] = useState(defaultOpen);
   return (
-    <details
-      className="group rounded-xl border border-border bg-card"
-      open={open}
-      onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}
-    >
-      <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-3 px-4 py-3 font-display text-lg font-semibold [&::-webkit-details-marker]:hidden">
+    <section className="rounded-xl border border-border bg-card">
+      <button
+        type="button"
+        className="flex min-h-11 w-full cursor-pointer items-center justify-between gap-3 px-4 py-3 text-left font-display text-lg font-semibold"
+        aria-expanded={open}
+        onClick={() => setOpen((value) => !value)}
+      >
         <span>
           {title}
           {count != null ? (
             <span className="ml-2 text-sm font-normal tabular-nums text-muted-foreground">{count}</span>
           ) : null}
         </span>
-        <span className="text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground group-open:hidden">
-          Show
+        <span className="text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground">
+          {open ? "Hide" : "Show"}
         </span>
-        <span className="hidden text-[10px] font-normal uppercase tracking-[0.16em] text-muted-foreground group-open:inline">
-          Hide
-        </span>
-      </summary>
-      <div className="max-h-[28rem] space-y-3 overflow-y-auto border-t border-border px-4 py-4">{children}</div>
-    </details>
+      </button>
+      {open ? <div className="max-h-[28rem] space-y-3 overflow-y-auto border-t border-border px-4 py-4">{children}</div> : null}
+    </section>
   );
 }
 
-function LaunchChecklist({
-  polar,
-  mailOn,
-  money,
-  dash,
-}: {
-  polar: {
-    token: boolean;
-    monthly: boolean;
-    yearly: boolean;
-    referral?: boolean;
-    webhook?: boolean;
-    ready: boolean;
-  } | null;
-  mailOn: boolean | undefined;
-  money: { research?: boolean; amazon?: boolean; mailError?: string } | null;
-  dash: Dash | null;
-}) {
-  const rows: { label: string; ok: boolean | null; hint: string }[] = [
-    { label: "Polar token", ok: polar ? polar.token : null, hint: "POLAR_ACCESS_TOKEN on the host" },
-    { label: "Monthly $6.99", ok: polar ? polar.monthly : null, hint: "POLAR_PRODUCT_ID_MONTHLY" },
-    { label: "Yearly $75", ok: polar ? polar.yearly : null, hint: "POLAR_PRODUCT_ID_YEARLY" },
-    {
-      label: "Invite 50% (FRIEND50)",
-      ok: polar ? Boolean(polar.referral) : null,
-      hint: "POLAR_DISCOUNT_ID_REFERRAL — 50% off the next monthly invoice, not a refund",
-    },
-    {
-      label: "Polar webhook",
-      ok: polar ? Boolean(polar.webhook) : null,
-      hint: "POLAR_WEBHOOK_SECRET — paid unlocks fail without the Polar webhook on this host",
-    },
-    { label: "Resend mail", ok: polar ? Boolean(mailOn) : null, hint: "RESEND_API_KEY + MAIL_FROM on a verified domain" },
-    {
-      label: "Gemini 2.5 Flash",
-      ok: money?.research ?? null,
-      hint: "GEMINI_API_KEY (Google AI Studio). Use Ping research below to prove the key answers.",
-    },
-    {
-      label: "Postgres",
-      ok: dash ? dash.db.ok : null,
-      hint: "Database for accounts, cache, and locker sync",
-    },
-    {
-      label: "Amazon tag",
-      ok: money?.amazon ?? dash?.amazonReady ?? false,
-      hint: "Optional. Shop links stay off until VITE_AMAZON_ASSOCIATE_TAG is set.",
-    },
-  ];
-  const blockers = rows.filter((r) => r.ok === false && r.label !== "Amazon tag");
-  return (
-    <section className="space-y-3 rounded-xl border border-border bg-card p-5">
-      <h2 className="font-display text-lg font-semibold">Before launch</h2>
-      <ul className="space-y-2 text-sm">
-        {rows.map((r) => (
-          <li key={r.label} className="flex flex-wrap items-baseline justify-between gap-2">
-            <span>
-              {r.ok === true ? "Ready" : r.ok === false ? "Missing" : "Checking"} · {r.label}
-            </span>
-            <span className="text-xs text-muted-foreground">{r.hint}</span>
-          </li>
-        ))}
-      </ul>
-      {blockers.length ? (
-        <p className="text-sm text-destructive">
-          {blockers.length} launch item{blockers.length === 1 ? "" : "s"} still missing. Checkout, mail, or research
-          will fail for real players until those are set on the host.
-        </p>
-      ) : polar?.ready && mailOn ? (
-        <p className="text-sm text-muted-foreground">
-          Money, mail, and Polar products look set. Ping research once before you send people here. Player delete is
-          still a 14-day hold; this page’s erase is immediate.
-        </p>
-      ) : (
-        <p className="text-sm text-muted-foreground">Finish Polar + Resend before opening paid checkout.</p>
-      )}
-      {money?.mailError ? <p className="text-xs text-destructive">Last mail error: {money.mailError}</p> : null}
-    </section>
-  );
+function maskEmail(email: string | null | undefined): string {
+  const raw = (email ?? "").trim();
+  const at = raw.indexOf("@");
+  if (at < 1) return raw ? "—" : "—";
+  return `${raw.slice(0, 1)}***@${raw.slice(at + 1)}`;
+}
+
+function localWhen(raw: string): string {
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return raw;
+  return date.toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
 }

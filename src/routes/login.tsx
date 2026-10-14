@@ -7,7 +7,7 @@ import { Mark } from "@/components/layout/mark";
 import { PageWash } from "@/components/layout/page-wash";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { FORGOT_PASSWORD_COPY } from "@/lib/copy";
+import { FORGOT_PASSWORD_COPY, FREE_BUILD_LINE } from "@/lib/copy";
 import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "@/lib/password-policy";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
@@ -460,7 +460,7 @@ function LoginPage() {
         </div>
 
         <p className="text-xs text-muted-foreground">
-          Three custom songs are free after you sign in. Featured demos never need an account.{" "}
+          {FREE_BUILD_LINE}{" "}
           <a href="/" className="text-primary underline underline-offset-2">
             Back to Lab
           </a>

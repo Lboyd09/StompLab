@@ -123,7 +123,7 @@ function usePlanState(): PlanState {
     void refresh();
   }, [authPending, userId, refresh]);
 
-  return { plan, isPending: authPending || !ready, refresh };
+  return { plan, isPending: authPending || (!ready && !plan.signedIn), refresh };
 }
 
 export function PlanProvider({ children }: { children: ReactNode }) {

@@ -1,11 +1,13 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import { replayTutorial } from "@/components/layout/tutorial";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -26,7 +28,10 @@ function Chip({
   return (
     <button
       type="button"
-      onClick={onClick}
+      onClick={() => {
+        onClick();
+        toast.success("Saved");
+      }}
       className={cn(
         "h-11 rounded-full px-4 text-sm font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
         active ? "bg-primary text-primary-foreground" : "bg-secondary text-secondary-foreground hover:bg-muted",
@@ -58,7 +63,10 @@ function ToggleRow({
         type="checkbox"
         className="mt-1 size-5 shrink-0 accent-primary"
         checked={checked}
-        onChange={(e) => onChange(e.target.checked)}
+        onChange={(e) => {
+          onChange(e.target.checked);
+          toast.success("Saved");
+        }}
       />
     </label>
   );
@@ -128,7 +136,7 @@ function SettingsPage() {
                 </span>
               ) : (
                 <span className="text-sm text-muted-foreground">
-                  {plan.freeRemaining} free song{plan.freeRemaining === 1 ? "" : "s"} left
+                  {plan.freeRemaining} free custom build{plan.freeRemaining === 1 ? "" : "s"} left
                 </span>
               )}
             </div>
@@ -149,7 +157,7 @@ function SettingsPage() {
         ) : (
           <>
             <p className="text-sm text-muted-foreground">
-              Sign in for {FREE_BUILDS} free custom songs, then subscribe for any title. Signed-in
+              {FREE_BUILD_LINE} Then subscribe for any title. Signed-in
               accounts get an invite link — a friend creates a new account, you both get 3 extra custom
               builds.
             </p>
@@ -209,7 +217,10 @@ function SettingsPage() {
               <button
                 key={d.id}
                 type="button"
-                onClick={() => setStompModel(d.id)}
+                onClick={() => {
+                  setStompModel(d.id);
+                  toast.success("Saved");
+                }}
                 className={cn(
                   "h-12 rounded-xl px-3 text-left text-sm font-medium",
                   stompModel === d.id
@@ -289,7 +300,18 @@ function SettingsPage() {
           Default after you build. If you already own a wah, leave it on Pedal — it stays in front of the
           unit.
         </p>
-        <WahSelect mode={wahMode} modelId={wahModelId} onMode={setWahMode} onModel={setWahModelId} />
+        <WahSelect
+          mode={wahMode}
+          modelId={wahModelId}
+          onMode={(mode) => {
+            setWahMode(mode);
+            toast.success("Saved");
+          }}
+          onModel={(id) => {
+            setWahModelId(id);
+            toast.success("Saved");
+          }}
+        />
       </section>
 
       <section id="troubleshoot" className="space-y-4 rounded-2xl border border-border bg-card p-5">
@@ -344,8 +366,8 @@ function SettingsPage() {
         <section className="space-y-3 rounded-2xl bg-primary p-5 text-primary-foreground">
           <h2 className="sl-hero-title text-2xl">Unlock every song</h2>
           <p className="text-sm text-primary-foreground/80">
-            {FREE_BUILDS} custom builds after sign-in, then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
-            {formatUsd(PRICE_YEARLY_USD)}/yr. Demos stay free.
+            {FREE_BUILD_LINE} Then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
+            {formatUsd(PRICE_YEARLY_USD)}/yr. {PAID_BUILD_LINE}
           </p>
           <Button asChild variant="secondary">
             <Link to="/upgrade">Subscribe</Link>
