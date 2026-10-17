@@ -48,6 +48,9 @@ export interface Sql {
   ): Promise<T[]>;
 }
 
+/** Run `fn` inside one database transaction. Rolls back when `fn` throws. */
+export type SqlTx = <T>(fn: (sql: Sql) => Promise<T>) => Promise<T>;
+
 /**
  * Init state lives on globalThis as promises: dev HMR creates new instances of
  * this module, and two instances racing module-level state would open a second
@@ -100,10 +103,17 @@ function createPostgresSql(): Promise<Sql> {
   globalRef.__pgSqlPromise__ ??= (async () => {
     const { getAppPool } = await import("./pg-pool");
     const pool = getAppPool(databaseUrl!);
-    return toSql(async <T>(text: string, params: unknown[]) => {
+    const sql = toSql(async <T>(text: string, params: unknown[]) => {
       const res = await pool.query(text, params);
       return res.rows as T[];
     });
+    // Idempotent DDL for the security migrations, so a host that never ran
+    // `npm run db:migrate` still has the columns the quota and webhook code needs.
+    const { ensureSecuritySchema } = await import("./schema-ensure");
+    await ensureSecuritySchema(sql).catch((err) => {
+      console.error("[db] schema ensure failed", err instanceof Error ? err.message : err);
+    });
+    return sql;
   })().catch((err) => {
     globalRef.__pgSqlPromise__ = undefined;
     throw err;
@@ -188,6 +198,65 @@ async function createSql(): Promise<Sql> {
   return createPgliteSql();
 }
 
+let testTx: SqlTx | null = null;
+let testSql: Sql | null = null;
+
+/** Tests only: point `getSql()` / `withTransaction()` at an in-process database. */
+export function useTestDatabase(sql: Sql, tx: SqlTx): void {
+  testSql = sql;
+  testTx = tx;
+}
+
+async function postgresTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  const { getAppPool } = await import("./pg-pool");
+  const pool = getAppPool(databaseUrl!);
+  const client = await pool.connect();
+  try {
+    await client.query("begin");
+    const sql = toSql(async <R>(text: string, params: unknown[]) => {
+      const res = await client.query(text, params);
+      return res.rows as R[];
+    });
+    const out = await fn(sql);
+    await client.query("commit");
+    return out;
+  } catch (err) {
+    await client.query("rollback").catch(() => undefined);
+    throw err;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * One real transaction on Postgres or PGLite. Use it with
+ * `select pg_advisory_xact_lock(...)` to serialize read-then-write sequences
+ * (build quota, referral cap). Backends with no database (preview skip) run `fn`
+ * against the empty client, so callers must treat an unreadable count as an error.
+ */
+export async function withTransaction<T>(fn: (sql: Sql) => Promise<T>): Promise<T> {
+  if (testTx) return testTx(fn);
+  await getSql();
+  if (dbSource === "postgres") return postgresTransaction(fn);
+  if (
+    process.env.VERCEL_ENV === "preview" ||
+    process.env.NODE_ENV === "production" ||
+    process.env.VERCEL
+  ) {
+    return fn(toSql(async () => []));
+  }
+  const pg = await globalRef.__pgliteInstance__;
+  if (!pg) throw new Error("PGLite instance failed to initialize");
+  return pg.transaction(async (tx) =>
+    fn(
+      toSql(async <R>(text: string, params: unknown[]) => {
+        const result = await tx.query<R>(text, params);
+        return result.rows;
+      }),
+    ),
+  );
+}
+
 /**
  * Get the shared, **server-only** SQL client. Hosted Postgres when
  * `DATABASE_URL` is set, otherwise the local PGLite fallback. Memoized — safe
@@ -195,6 +264,7 @@ async function createSql(): Promise<Sql> {
  * client, which made Admin look like it had zero users).
  */
 export function getSql(): Promise<Sql> {
+  if (testSql) return Promise.resolve(testSql);
   sqlPromise ??= createSql().catch((err) => {
     sqlPromise = null;
     console.error("[db] getSql failed", err instanceof Error ? err.message : err);
@@ -316,7 +386,9 @@ if (
   typeof window === "undefined" &&
   dbSource === "pglite" &&
   process.env.NODE_ENV !== "production" &&
-  !process.env.VERCEL
+  !process.env.VERCEL &&
+  // `node --test` workers set this; they bring their own in-process database.
+  !process.env.NODE_TEST_CONTEXT
 ) {
   globalBoot.__pgBootstrapPromise__ ??= ensureDbReady().catch((err) => {
     globalBoot.__pgBootstrapPromise__ = undefined;

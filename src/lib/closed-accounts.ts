@@ -2,6 +2,8 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { getSql } from "@/lib/db";
 import { sendLabEmail } from "@/lib/mailer";
+import { cancelPolarSubscription } from "@/lib/polar";
+import { rateLimited, currentClientIp } from "@/lib/rate-limit";
 import { PUBLIC_SUPPORT_EMAIL } from "@/lib/plan";
 import { canonicalEmail } from "@/lib/referral-code";
 import { publicOrigin } from "@/lib/site-origin";
@@ -80,18 +82,75 @@ function holdMessage(recreateAfter: Date): string {
   return `This email is on a 14-day hold after a delete. You can create a new account after ${when}.`;
 }
 
+/** Subscription states that can no longer charge the player. */
+const SUBSCRIPTION_ENDED = new Set(["canceled", "cancelled", "revoked", "refunded", "expired", "incomplete_expired"]);
+
+export type PurgeResult = { wiped: number; skipped: number; dropped: number };
+
+/**
+ * Erase accounts whose 14-day hold is over.
+ *
+ * Only confirmed holds ('held') are erased. A 'pending_email' row is a delete
+ * request nobody confirmed: the account is still live, so only the stale request
+ * row goes. An account that still has a billing subscription is erased only after
+ * that subscription is canceled; if it cannot be canceled the account is kept and
+ * the next run tries again.
+ */
+export async function purgeExpiredWith(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  deps: { cancelSubscription: (subscriptionId: string) => Promise<boolean> },
+): Promise<PurgeResult> {
+  const result: PurgeResult = { wiped: 0, skipped: 0, dropped: 0 };
+  const stale = await sql<{ email_canonical: string }>`
+    delete from closed_accounts
+    where recreate_after <= now() and status = 'pending_email'
+    returning email_canonical
+  `;
+  result.dropped = stale.length;
+  const due = await sql<{ email_canonical: string; user_id: string | null }>`
+    select email_canonical, user_id from closed_accounts
+    where recreate_after <= now() and status = 'held'
+  `;
+  for (const row of due) {
+    if (row.user_id) {
+      const subs = await sql.query<{ polar_subscription_id: string | null; subscription_status: string | null }>(
+        `select polar_subscription_id, subscription_status from entitlements
+         where user_id = $1 and coalesce(polar_subscription_id, '') <> ''`,
+        [row.user_id],
+      );
+      let blocked = false;
+      for (const sub of subs) {
+        const id = String(sub.polar_subscription_id ?? "").trim();
+        const status = String(sub.subscription_status ?? "").trim().toLowerCase();
+        if (!id || SUBSCRIPTION_ENDED.has(status)) continue;
+        let canceled = false;
+        try {
+          canceled = await deps.cancelSubscription(id);
+        } catch {
+          canceled = false;
+        }
+        if (!canceled) {
+          console.error("[closed-accounts] kept an account: its subscription could not be canceled", row.user_id);
+          blocked = true;
+        }
+      }
+      if (blocked) {
+        result.skipped += 1;
+        continue;
+      }
+      await wipeUser(sql, row.user_id);
+    }
+    await sql`delete from closed_accounts where email_canonical = ${row.email_canonical}`;
+    result.wiped += 1;
+  }
+  return result;
+}
+
 export async function purgeExpiredClosedAccounts(): Promise<void> {
   try {
     const sql = await getSql();
     await ensureClosedAccountsSchema(sql);
-    const due = await sql<{ email_canonical: string; user_id: string | null }>`
-      select email_canonical, user_id from closed_accounts
-      where recreate_after <= now() and status in ('held', 'pending_email')
-    `;
-    for (const row of due) {
-      if (row.user_id) await wipeUser(sql, row.user_id);
-      await sql`delete from closed_accounts where email_canonical = ${row.email_canonical}`;
-    }
+    await purgeExpiredWith(sql, { cancelSubscription: cancelPolarSubscription });
   } catch {
     /* preview / missing table */
   }
@@ -136,6 +195,16 @@ export async function requestDeleteHold(opts: {
 }): Promise<{ ok: true } | { ok: false; error: string }> {
   const canon = canonicalEmail(opts.email);
   if (!canon.includes("@")) return { ok: false, error: "This account has no email to confirm with." };
+  // Each request sends mail, so it is limited like a password reset: 3 per
+  // 15 minutes for an address and 5 per account, 10 for a network address.
+  const ip = await currentClientIp();
+  if (
+    (await rateLimited(getSql, `delete:email:${canon}`, 3, 15 * 60)) ||
+    (await rateLimited(getSql, `delete:user:${opts.userId}`, 5, 15 * 60)) ||
+    (await rateLimited(getSql, `delete:ip:${ip}`, 10, 15 * 60))
+  ) {
+    return { ok: false, error: "We just sent a confirmation email. Check your inbox, or try again in a few minutes." };
+  }
   const sql = await getSql();
   await ensureClosedAccountsSchema(sql);
   const token = newToken();

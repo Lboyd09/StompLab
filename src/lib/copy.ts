@@ -4,6 +4,8 @@ export const TAGLINE = "Type a song. Get that guitar rig.";
 
 export const FREE_BUILD_LINE = "3 free custom builds after you sign in. Demos stay free.";
 export const PAID_BUILD_LINE = "50 custom builds a month.";
+/** Shown when a custom build or an invite needs a confirmed email. */
+export const VERIFY_EMAIL_LINE = "Check your email to confirm your account, then build.";
 
 export const RIG_DISCLAIMER =
   "These rigs are research and starting points — not a 100% copy of the record. Use them as a reference, then tweak on your unit.";

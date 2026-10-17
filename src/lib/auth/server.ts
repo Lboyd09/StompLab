@@ -37,7 +37,7 @@ import { randomBytes } from "node:crypto";
 import { ensureDbReady, getPglite } from "../db";
 import { getAppPool } from "../pg-pool";
 import { emailAndPasswordEnabled } from "./email-password";
-import { sendPasswordResetEmail } from "../mailer";
+import { sendPasswordResetEmail, sendVerificationEmailMessage } from "../mailer";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "../password-policy";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { GROK_PROVIDERS } from "./providers";
@@ -46,7 +46,7 @@ import {
   GROK_ISSUER_DEFAULT,
   PREVIEW_ALLOWED_HOSTS,
   PREVIEW_CLIENT_ID,
-  PREVIEW_CLIENT_SECRET,
+  previewClientSecret,
 } from "./preview";
 import { configuredAuthHosts, isLoopbackHost, isPublicHostname } from "../site-origin";
 
@@ -77,16 +77,19 @@ const env = (key: string): string | undefined => {
 // provisions auth; set it to "false" to force auth off everywhere (dev user).
 const authDisabled = env("VITE_AUTH_ENABLED") === "false";
 
-// Broker federation creds: the deployer injects a per-app client when deployed;
-// otherwise fall back to the shared live-preview client, which the broker accepts
-// for any `*.grok-sandbox.com` callback (see `./preview`).
+// Broker federation creds. They count only when set explicitly: a per-app client
+// the deployer injects, or the shared preview client with a secret the preview
+// sets itself (see `./preview`). Nothing is baked into the repo, so a plain
+// deploy has no federated providers and signs in with email/password.
 const grokIssuer = env("GROK_AUTH_ISSUER") ?? GROK_ISSUER_DEFAULT;
-const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? PREVIEW_CLIENT_ID;
-const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? PREVIEW_CLIENT_SECRET;
+const grokClientId = env("GROK_AUTH_CLIENT_ID") ?? (previewClientSecret() ? PREVIEW_CLIENT_ID : undefined);
+const grokClientSecret = env("GROK_AUTH_CLIENT_SECRET") ?? (previewClientSecret() || undefined);
 
-/** True when federated sign-in is active (real auth is enforced). */
-export const authConfigured =
-  !authDisabled && Boolean(grokClientId && grokClientSecret);
+/** True only when the broker providers are explicitly configured. */
+export const oauthConfigured = !authDisabled && Boolean(grokClientId && grokClientSecret);
+
+/** True when sign-in is active (real auth is enforced): email/password or the broker. */
+export const authConfigured = !authDisabled && (emailAndPasswordEnabled || oauthConfigured);
 
 // This app's own Better Auth origin. When deployed the deployer injects the
 // public URL. In the sandbox live preview there's no fixed URL (each preview gets
@@ -211,7 +214,7 @@ export const SESSION_TOKEN_COOKIE = "__Host-grok-auth.session_token";
 
 // Built separately so the `betterAuth({...})` call stays easy to edit without
 // breaking brackets (models often trip on the conditional plugin spread).
-const grokOAuthPlugin = authConfigured
+const grokOAuthPlugin = oauthConfigured
   ? genericOAuth({
       config: GROK_PROVIDERS.map(({ providerId, idp }) => ({
         providerId,
@@ -255,6 +258,7 @@ export const auth = betterAuth({
       "/reset-password": { window: 60, max: 5 },
       "/sign-in/email": { window: 60, max: 8 },
       "/sign-up/email": { window: 60, max: 5 },
+      "/send-verification-email": { window: 60 * 15, max: 3 },
     },
   },
 
@@ -288,6 +292,26 @@ export const auth = betterAuth({
     cookieCache: { enabled: true, maxAge: 5 * 60 },
     freshAge: 60 * 10,
   },
+
+  // A confirmation email goes out on sign-up. Sign-in is NOT blocked on it: custom
+  // builds and invite redemption wait for a confirmed email instead (see research.ts).
+  // A failed send never fails the sign-up.
+  ...(emailAndPasswordEnabled
+    ? {
+        emailVerification: {
+          sendOnSignUp: true,
+          autoSignInAfterVerification: true,
+          expiresIn: 60 * 60 * 24,
+          sendVerificationEmail: async ({ user, url }: { user: { email: string }; url: string }) => {
+            try {
+              await sendVerificationEmailMessage({ to: user.email, url });
+            } catch (err) {
+              console.error("[auth] verification email failed", err instanceof Error ? err.message : err);
+            }
+          },
+        },
+      }
+    : {}),
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled

@@ -2,7 +2,7 @@ import { createFileRoute, Link, Navigate, Outlet, useNavigate, useRouterState } 
 import { useEffect, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { adminDashboard, adminDeleteCache, adminInspectCache, probeResearchFn } from "@/lib/billing";
+import { adminDashboard, adminDeleteCache, adminInspectCache, adminReviewFeedback, probeResearchFn } from "@/lib/billing";
 import { formatUsd } from "@/lib/plan";
 import { parseStompModelId } from "@/data/types";
 import type { Preset } from "@/data/types";
@@ -120,6 +120,27 @@ function AdminDashboard() {
     await adminDeleteCache({ data: { key } });
     const next = await adminDashboard();
     setDash(next);
+  }
+
+  async function onReviewFeedback(id: number, approve: boolean) {
+    try {
+      await adminReviewFeedback({ data: { id, approve } });
+      const stamp = new Date().toISOString();
+      setDash((d) =>
+        d
+          ? {
+              ...d,
+              feedback: d.feedback.map((f) =>
+                f.id === id
+                  ? { ...f, approved_at: approve ? stamp : null, rejected_at: approve ? null : stamp }
+                  : f,
+              ),
+            }
+          : d,
+      );
+    } catch {
+      setError("Could not save that review. Try again.");
+    }
   }
 
   async function onOpenReplica(key: string) {
@@ -354,7 +375,8 @@ function AdminDashboard() {
 
       <Fold title="Feedback" count={(dash?.feedback ?? []).length} defaultOpen={(dash?.feedback ?? []).length > 0 && (dash?.feedback ?? []).length <= 6}>
         <p className="text-sm text-muted-foreground">
-          Preset notes feed the next prompt. Do not retune songs one by one from this list.
+          Only approved notes feed the next prompt. Approve what is general and true to the record; reject the rest.
+          Do not retune songs one by one from this list.
         </p>
         <ul className="space-y-3">
           {(dash?.feedback ?? []).map((f, i) => (
@@ -387,6 +409,31 @@ function AdminDashboard() {
                 </p>
               ) : null}
               <p className="mt-2 text-[10px] uppercase tracking-wider text-muted-foreground">{localWhen(f.created_at)}</p>
+              {f.id > 0 ? (
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-muted-foreground">
+                    {f.approved_at ? "Approved" : f.rejected_at ? "Rejected" : "Waiting"}
+                  </span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant={f.approved_at ? "secondary" : "outline"}
+                    disabled={Boolean(f.approved_at)}
+                    onClick={() => void onReviewFeedback(f.id, true)}
+                  >
+                    Approve
+                  </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    disabled={Boolean(f.rejected_at)}
+                    onClick={() => void onReviewFeedback(f.id, false)}
+                  >
+                    Reject
+                  </Button>
+                </div>
+              ) : null}
             </li>
           ))}
           {dash && dash.feedback.length === 0 ? (

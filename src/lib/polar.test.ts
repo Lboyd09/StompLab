@@ -231,18 +231,25 @@ describe("polarPortalUrlFromPayload", () => {
 });
 
 describe("polarFriendlyError", () => {
-  it("maps 401/Unauthorized to Polar key copy, not a raw Unauthorized", () => {
-    const msg = polarFriendlyError(401, "Unauthorized");
-    assert.match(msg, /Polar rejected the checkout key/);
-    assert.equal(/unauthorized/i.test(msg), false);
-  });
-  it("maps missing product ids", () => {
-    assert.match(polarFriendlyError(422, "Product not found"), /does not recognize this product/);
-    assert.match(polarFriendlyError(404, ""), /does not recognize this product/);
-  });
-  it("maps a rejected Polar return URL to domain copy", () => {
-    assert.match(polarFriendlyError(422, "Invalid success_url"), /real domain/);
-    assert.match(polarFriendlyError(422, "customer email is required"), /needs the email/);
+  it("never shows env names, the raw Polar detail, or Unauthorized to a player", () => {
+    const quiet = console.error;
+    console.error = () => undefined;
+    try {
+      for (const [status, detail] of [
+        [401, "Unauthorized"],
+        [422, "Product not found"],
+        [404, ""],
+        [422, "Invalid success_url"],
+        [500, "boom POLAR_ACCESS_TOKEN"],
+      ] as const) {
+        const msg = polarFriendlyError(status, detail);
+        assert.equal(msg, "Checkout isn't available right now. Try again in a minute.");
+        assert.equal(/POLAR_|unauthorized|success_url|product/i.test(msg), false);
+      }
+      assert.match(polarFriendlyError(422, "customer email is required"), /needs the email/);
+    } finally {
+      console.error = quiet;
+    }
   });
 });
 
