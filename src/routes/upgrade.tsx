@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Mark } from "@/components/layout/mark";
-import { PageWash } from "@/components/layout/page-wash";
 import { InviteCard } from "@/components/layout/invite-card";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { PAID_BUILD_LINE } from "@/lib/copy";
@@ -226,7 +225,6 @@ function UpgradePage() {
 
   return (
     <div className="relative overflow-x-clip">
-      <PageWash />
       <div className="relative z-10 mx-auto w-full max-w-xl space-y-6">
         <div className="flex flex-col items-start gap-5">
           <Mark size="lg" />
@@ -260,7 +258,7 @@ function UpgradePage() {
           <div>
             <p className="sl-hero-title text-5xl tabular-nums">
               {interval === "month" ? formatUsd(firstMonth) : formatUsd(PRICE_YEARLY_USD)}
-              <span className="ml-1 text-base font-normal text-muted-foreground">
+              <span className="ml-1 text-base font-normal tracking-normal text-muted-foreground">
                 {interval === "month" ? " first month" : "/yr"}
               </span>
             </p>
