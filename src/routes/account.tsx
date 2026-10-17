@@ -15,6 +15,7 @@ import { requestResetMail } from "@/lib/reset-mail";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
 import { DELETE_HOLD_DAYS } from "@/lib/closed-accounts";
 import { usePlan } from "@/lib/use-plan";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export const Route = createFileRoute("/account")({ component: AccountPage });
 
@@ -35,9 +36,11 @@ function AccountPage() {
   if (isPending || planPending) {
     return (
       <div className="mx-auto max-w-lg space-y-6">
-        <PageHeader kicker="Account" title="Your Lab">
-          Checking your account…
-        </PageHeader>
+        <PageHeader kicker="Account" title="Your Lab" />
+        <div className="space-y-3" aria-busy="true" aria-label="Loading">
+          <Skeleton className="h-5 w-48" />
+          <Skeleton className="h-32 w-full rounded-2xl" />
+        </div>
       </div>
     );
   }

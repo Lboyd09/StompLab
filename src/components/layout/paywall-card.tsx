@@ -1,8 +1,15 @@
 import { Link } from "@tanstack/react-router";
 import { Button } from "@/components/ui/button";
-import { PAID_MONTHLY_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, formatUsd } from "@/lib/plan";
+import { DEVICE_MAP } from "@/data/categories";
+import { PAID_BUILD_LINE } from "@/lib/copy";
+import { useAppStore } from "@/store/app-store";
+import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, LAUNCH_DISCOUNT_PERCENT, priceMonthlyLaunchUsd, formatUsd } from "@/lib/plan";
 
 export function PaywallCard({ title, body }: { title: string; body: string }) {
+  const stompModel = useAppStore((s) => s.stompModel);
+  const device = DEVICE_MAP[stompModel];
+  const ext = device?.exportFormat === "pgp" ? "pgp" : "hlx";
+  const editor = ext === "pgp" ? "POD Go Edit" : "HX Edit";
   return (
     <div className="mx-auto max-w-lg space-y-8 py-6">
       <div className="space-y-3">
@@ -22,19 +29,21 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
           {formatUsd(PRICE_YEARLY_USD)} — no discount on the year plan.
         </p>
         <ul className="space-y-2 text-sm text-muted-foreground">
-          <li>Type a song. Get that guitar rig — a .hlx HX Edit can import.</li>
+          <li>
+            Type a song. Get that guitar rig — a .{ext} that {editor} can import for your {device?.name ?? "unit"}.
+          </li>
           <li>History of the songs you built. Gear locker and extra snapshots after subscribe.</li>
-          <li>{PAID_MONTHLY_BUILDS} custom builds a month. The three demos stay free.</li>
+          <li>{PAID_BUILD_LINE} The three demos stay free.</li>
         </ul>
         <Button asChild className="w-full">
-          <Link to="/upgrade">See monthly and yearly</Link>
+          <Link to="/upgrade">Subscribe</Link>
         </Button>
       </div>
       <p className="text-sm text-muted-foreground">
         Not ready?{" "}
-        <a href="/" className="text-primary underline underline-offset-2">
+        <Link to="/" className="text-primary underline underline-offset-2">
           Play Sandman, Teen Spirit, or Comfortably Numb
-        </a>
+        </Link>
         .
       </p>
     </div>

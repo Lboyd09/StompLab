@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -461,9 +461,9 @@ function LoginPage() {
 
         <p className="text-xs text-muted-foreground">
           {FREE_BUILD_LINE}{" "}
-          <a href="/" className="text-primary underline underline-offset-2">
+          <Link to="/" className="text-primary underline underline-offset-2">
             Back to Lab
-          </a>
+          </Link>
         </p>
       </div>
     </main>

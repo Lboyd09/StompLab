@@ -127,7 +127,7 @@ function CatalogPage() {
           type="button"
           onClick={() => setSearch({ search: (p) => ({ ...p, tab: "browse" }) })}
           className={cn(
-            "h-8 rounded-full px-4 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+            "h-11 rounded-full px-4 text-sm font-medium md:h-9 md:text-xs transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
             tab === "browse" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
           )}
         >
@@ -137,7 +137,7 @@ function CatalogPage() {
           type="button"
           onClick={() => setSearch({ search: (p) => ({ ...p, tab: "find" }) })}
           className={cn(
-            "h-8 rounded-full px-4 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+            "h-11 rounded-full px-4 text-sm font-medium md:h-9 md:text-xs transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
             tab === "find" ? "bg-primary text-primary-foreground" : "text-muted-foreground",
           )}
         >
@@ -339,7 +339,7 @@ function CatalogPage() {
                 >
                   <div className="flex items-center gap-2">
                     <span className="size-2 rounded-full" style={{ background: c.lcd }} />
-                    <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+                    <span className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                       {c.label}
                     </span>
                     {m.io === "legacy" ? <Badge variant="outline">Legacy</Badge> : null}
@@ -377,7 +377,7 @@ function CatChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "flex h-9 shrink-0 items-center gap-1.5 rounded-full px-3 text-xs font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+        "flex h-11 shrink-0 items-center gap-1.5 rounded-full px-3.5 text-sm font-medium md:h-9 md:px-3 md:text-xs transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
         active ? "bg-primary text-primary-foreground" : "bg-secondary text-muted-foreground",
       )}
     >
