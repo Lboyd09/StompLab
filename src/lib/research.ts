@@ -6,14 +6,25 @@ import { DEVICE_MAP } from "@/data/categories";
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
 import { STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { emailFor, loadPlan, recordBuild, recordFailure } from "@/lib/billing";
+import {
+  confirmBuildSlot,
+  emailFor,
+  isEmailVerified,
+  loadPlan,
+  loadPlanStrict,
+  recordFailure,
+  releaseBuildSlot,
+  reserveBuildSlot,
+} from "@/lib/billing";
+import type { Plan } from "./plan";
 import { getSql } from "@/lib/db";
-import { lookupCacheRaw, persistSongCache, saveEqCache, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
+import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
 import { focusGuitarRole, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
+import { VERIFY_EMAIL_LINE } from "./copy";
 import { finishTone } from "./tone-finish";
 import {
   GearSchema,
@@ -48,6 +59,11 @@ function findFeaturedSource(
     const pa = norm(p.artist ?? "");
     if (ps === s) return !a || pa.includes(a) || a.includes(pa);
     if (s.length < 5) return false;
+    // A title that only contains (or is contained in) a demo title is a different
+    // song unless the artist matches too: "Sandman" by America is not Metallica,
+    // and "Higher Love" is not Creed's "Higher". No artist, no loose match.
+    if (!a || !pa) return false;
+    if (!(pa.includes(a) || a.includes(pa))) return false;
     return ps.includes(s) || (s.includes(ps) && ps.length >= 5);
   });
 }
@@ -67,6 +83,37 @@ export function matchFeatured(
   );
 }
 
+const GEAR_KINDS = new Set(["guitar", "bass", "amp", "cab", "pedal", "pickup"]);
+const MAX_GEAR_ITEMS = 12;
+const MAX_GEAR_TEXT = 80;
+
+/** One short plain line: no control characters, no line breaks, capped. */
+export function oneLine(value: unknown, max: number): string {
+  return String(value ?? "")
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\u0000-\u001f\u007f]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, max);
+}
+
+/**
+ * The player's gear goes into the prompt, so it is trimmed here: at most 12
+ * items, 80 characters a field, one line each. GearSchema (preset-schema.ts)
+ * stays as it is.
+ */
+export function cleanUserGear(gear: UserGear[] | undefined): UserGear[] {
+  const out: UserGear[] = [];
+  for (const g of gear ?? []) {
+    if (out.length >= MAX_GEAR_ITEMS) break;
+    if (!g || !GEAR_KINDS.has(g.kind)) continue;
+    const name = oneLine(g.name, MAX_GEAR_TEXT);
+    if (!name) continue;
+    out.push({ id: oneLine(g.id, 40), kind: g.kind, name, notes: oneLine(g.notes, MAX_GEAR_TEXT) });
+  }
+  return out;
+}
+
 function gearLine(gear: UserGear[]): string {
   if (!gear.length) return "";
   return `\nPlayer locker — name these in recommendedGear when they fit, and tell the player which piece to grab: ${gear
@@ -74,7 +121,7 @@ function gearLine(gear: UserGear[]): string {
     .join("; ")}`;
 }
 
-async function standingFeedbackLessons(): Promise<string> {
+export async function standingFeedbackLessons(): Promise<string> {
   const g = globalThis as typeof globalThis & {
     __stompLessonsAt__?: number;
     __stompLessons__?: string;
@@ -88,14 +135,16 @@ async function standingFeedbackLessons(): Promise<string> {
       select closer_tweaks, want_preset, message, rating
       from feedback
       where kind in ('preset', 'revise', 'site')
-      order by created_at desc
+        and approved_at is not null
+      order by approved_at desc
       limit 24
     `;
     const bits: string[] = [];
     for (const r of rows) {
-      const tweak = (r.closer_tweaks || "").trim();
-      const want = (r.want_preset || "").trim();
-      const msg = (r.message || "").trim();
+      // Approved by an admin, and still capped before it reaches a prompt.
+      const tweak = oneLine(r.closer_tweaks, 240);
+      const want = oneLine(r.want_preset, 240);
+      const msg = oneLine(r.message, 240);
       if (typeof r.rating === "number" && r.rating <= 2 && want.length >= 8) bits.push(want);
       else if (tweak.length >= 8) bits.push(tweak);
       else if (want.length >= 8) bits.push(want);
@@ -131,7 +180,7 @@ export type ResearchOk = { ok: true; preset: Preset; source: "library" | "gemini
 export type ResearchErr = {
   ok: false;
   error: string;
-  reason?: "signin" | "paywall" | "quota" | "busy";
+  reason?: "signin" | "paywall" | "quota" | "busy" | "verify";
 };
 export type ResearchResult = ResearchOk | ResearchErr;
 
@@ -144,23 +193,41 @@ const ResearchIn = z.object({
   instrument: z.enum(["guitar", "bass"]),
   stompModel: DeviceEnum,
   playbackTarget: PlaybackEnum.optional().default("frfr"),
-  userGear: z.array(GearSchema).optional().default([]),
+  userGear: z.array(GearSchema).max(40).optional().default([]),
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
   guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
 });
+
+function cleanResearchInput(d: z.infer<typeof ResearchIn>) {
+  return {
+    ...d,
+    song: oneLine(d.song, 200),
+    artist: d.artist === undefined ? undefined : oneLine(d.artist, 120),
+    userGear: cleanUserGear(d.userGear),
+  };
+}
 
 const CreateIn = z.object({
   description: z.string().min(4).max(800),
   instrument: z.enum(["guitar", "bass"]),
   stompModel: DeviceEnum,
   playbackTarget: PlaybackEnum.optional().default("frfr"),
-  userGear: z.array(GearSchema).optional().default([]),
+  userGear: z.array(GearSchema).max(40).optional().default([]),
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
   guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
   playerName: z.string().max(80).optional().default(""),
 });
+
+function cleanCreateInput(d: z.infer<typeof CreateIn>) {
+  return {
+    ...d,
+    description: oneLine(d.description, 800),
+    playerName: oneLine(d.playerName, 80),
+    userGear: cleanUserGear(d.userGear),
+  };
+}
 
 const EqIn = z.object({ query: z.string().min(2).max(120) });
 
@@ -241,16 +308,42 @@ async function lookupBpm(song: string, artist: string, album: string): Promise<n
   }
 }
 
+function verifyEmailError(): ResearchErr {
+  return { ok: false, reason: "verify", error: VERIFY_EMAIL_LINE };
+}
+
+function planUnavailable(): ResearchErr {
+  return {
+    ok: false,
+    reason: "busy",
+    error: "We couldn't check your builds just now. Try again in a minute.",
+  };
+}
+
+function slotFailure(reason: "paywall" | "quota" | "unavailable"): ResearchErr {
+  return reason === "unavailable" ? planUnavailable() : blocked(reason);
+}
+
+/**
+ * Custom builds need a confirmed email, so a throwaway address cannot farm the
+ * free builds. Paying players (and the admin) skip the check: they paid.
+ */
+async function needsEmailConfirmation(userId: string, plan: Plan): Promise<boolean> {
+  if (plan.paid || plan.admin) return false;
+  return !(await isEmailVerified(userId));
+}
+
 export const researchSongFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => ResearchIn.parse(input))
+  .validator((input: unknown) => cleanResearchInput(ResearchIn.parse(input)))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
     const role = parseGuitarRole(data.guitarRole);
     const featuredSrc = findFeaturedSource(data.song, data.artist, data.instrument);
     const email = await emailFor(context.userId, context.email);
-    const plan = await loadPlan(context.userId, email);
+    const screenPlan = await loadPlan(context.userId, email);
 
-    const useLibrary = featuredSrc && (isDemoId(featuredSrc.id) ? !(plan.paid && role !== "both") : plan.paid && role === "both");
+    const useLibrary =
+      featuredSrc && (isDemoId(featuredSrc.id) ? !(screenPlan.paid && role !== "both") : screenPlan.paid && role === "both");
     if (featuredSrc && useLibrary) {
       const featured = withStompModel(
         { ...focusGuitarRole(featuredSrc, role), id: newId("pst"), createdAt: Date.now() },
@@ -259,7 +352,15 @@ export const researchSongFn = createServerFn({ method: "POST" })
       return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
     }
 
+    // From here on a build costs money, so the plan must be readable. Fail closed.
+    let plan: Plan;
+    try {
+      plan = await loadPlanStrict(context.userId, email);
+    } catch {
+      return planUnavailable();
+    }
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (await needsEmailConfirmation(context.userId, plan)) return verifyEmailError();
     if (tooManyResearches(context.userId)) {
       return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
     }
@@ -268,7 +369,6 @@ export const researchSongFn = createServerFn({ method: "POST" })
     if (!confirmed) {
       return { ok: false, error: SONG_NOT_FOUND };
     }
-    const bpm = await lookupBpm(confirmed.song, confirmed.artist, confirmed.album);
     const key = songCacheKey(
       confirmed.song,
       confirmed.artist,
@@ -279,6 +379,8 @@ export const researchSongFn = createServerFn({ method: "POST" })
       data.guitarRole,
     );
 
+    // A cache hit was confirmed when it was cached, so it skips the tempo lookup
+    // and the model. It is still a build and still counts.
     try {
       const cached = await lookupSongCache({
         song: confirmed.song,
@@ -290,22 +392,44 @@ export const researchSongFn = createServerFn({ method: "POST" })
         guitarRole: data.guitarRole,
       });
       if (cached.hit && cached.preset) {
+        const slot = await reserveBuildSlot({
+          userId: context.userId,
+          email,
+          plan,
+          kind: "song",
+          song: confirmed.song,
+          confirmed: true,
+        });
+        if (!slot.ok) return slotFailure(slot.reason);
+        let bpm = cached.bpm;
+        if (!bpm) {
+          // Rows cached before tempo was stored: ask once, then keep the answer.
+          bpm = await lookupBpm(confirmed.song, confirmed.artist, confirmed.album);
+          if (bpm) void saveCacheBpm(cached.key, bpm);
+        }
         const preset = withStompModel(
           { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
           data.stompModel,
         );
-        try {
-          await recordBuild(context.userId, "song", confirmed.song);
-        } catch {
-          /* ignore */
-        }
         return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId, bpm), source: "cache" };
       }
     } catch {
       /* miss */
     }
 
+    // Reserve the slot before the model call, so two builds in flight cannot
+    // both take the last one. It is confirmed on success and released on failure.
+    const slot = await reserveBuildSlot({
+      userId: context.userId,
+      email,
+      plan,
+      kind: "song",
+      song: confirmed.song,
+    });
+    if (!slot.ok) return slotFailure(slot.reason);
+    let settled = false;
     try {
+      const bpm = await lookupBpm(confirmed.song, confirmed.artist, confirmed.album);
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel, {
         omitWah: data.wahMode === "pedal",
       });
@@ -337,11 +461,8 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      try {
-        await recordBuild(context.userId, "song", confirmed.song);
-      } catch {
-        /* count is not worth losing the preset */
-      }
+      await confirmBuildSlot(slot.reservation);
+      settled = true;
       try {
         await persistSongCache({
           key,
@@ -350,6 +471,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
           instrument: data.instrument,
           stompModel: data.stompModel,
           preset: publicPreset(preset),
+          bpm,
         });
       } catch {
         /* cache miss next time is fine */
@@ -367,15 +489,22 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         error: message,
         reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
       };
+    } finally {
+      if (!settled) await releaseBuildSlot(slot.reservation);
     }
   });
 
 export const createCustomSoundFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => CreateIn.parse(input))
+  .validator((input: unknown) => cleanCreateInput(CreateIn.parse(input)))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
     const email = await emailFor(context.userId, context.email);
-    const plan = await loadPlan(context.userId, email);
+    let plan: Plan;
+    try {
+      plan = await loadPlanStrict(context.userId, email);
+    } catch {
+      return planUnavailable();
+    }
     const player = (data.playerName ?? "").trim();
     const key = soundCacheKey(data.description, data.instrument, data.stompModel, data.playbackTarget, player);
 
@@ -387,6 +516,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
         error: "Create is a subscriber feature. Song research still uses your free builds.",
       };
     }
+    if (await needsEmailConfirmation(context.userId, plan)) return verifyEmailError();
     if (tooManyResearches(context.userId)) {
       return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
     }
@@ -394,21 +524,34 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
     try {
       const cached = await lookupCacheRaw(key);
       if (cached.hit && cached.preset) {
+        const slot = await reserveBuildSlot({
+          userId: context.userId,
+          email,
+          plan,
+          kind: "create",
+          song: data.description.slice(0, 80),
+          confirmed: true,
+        });
+        if (!slot.ok) return slotFailure(slot.reason);
         const preset = withStompModel(
           { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
           data.stompModel,
         );
-        try {
-          await recordBuild(context.userId, "create", data.description.slice(0, 80));
-        } catch {
-          /* ignore */
-        }
         return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "cache" };
       }
     } catch {
       /* miss */
     }
 
+    const slot = await reserveBuildSlot({
+      userId: context.userId,
+      email,
+      plan,
+      kind: "create",
+      song: data.description.slice(0, 80),
+    });
+    if (!slot.ok) return slotFailure(slot.reason);
+    let settled = false;
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel, {
         omitWah: data.wahMode === "pedal",
@@ -433,11 +576,8 @@ ${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      try {
-        await recordBuild(context.userId, "create", preset.name);
-      } catch {
-        /* ignore */
-      }
+      await confirmBuildSlot(slot.reservation);
+      settled = true;
       try {
         await persistSongCache({
           key,
@@ -463,6 +603,8 @@ ${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
         error: message,
         reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
       };
+    } finally {
+      if (!settled) await releaseBuildSlot(slot.reservation);
     }
   });
 
@@ -474,7 +616,8 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
   .handler(async ({ context, data }): Promise<{ ok: true; matches: EqMatch[]; source: "gemini" } | ResearchErr> => {
     const email = await emailFor(context.userId, context.email);
     const plan = await loadPlan(context.userId, email);
-    const key = eqCacheKey(data.query);
+    const query = oneLine(data.query, 120);
+    const key = eqCacheKey(query);
 
     if (!plan.paid) {
       return {
@@ -482,6 +625,9 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
         reason: "paywall",
         error: "Catalog browse is free. Pedal matching unlocks with StompLab.",
       };
+    }
+    if (tooManyResearches(context.userId)) {
+      return { ok: false, reason: "busy", error: "Too many lookups in a minute. Wait a bit, then try again." };
     }
 
     try {
@@ -500,13 +646,13 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
 {"matches":[{"modelId":"","closeness":"exact|close|similar","how":"1-3 sentences"}]}
 Use only catalog modelId values. 1-4 matches, best first. Say when Helix has no exact model and why the stand-in is closest.
 
-Query: ${data.query}
+Query: ${query}
 
 Catalog:
 ${catalog}`,
       )) as { matches?: EqMatch[] };
       const matches = (json.matches ?? []).filter((m) => MODEL_MAP[m.modelId]).slice(0, 4);
-      void saveEqCache({ data: { key, query: data.query, matches } }).catch(() => undefined);
+      void persistEqCache({ key, query, matches }).catch(() => undefined);
       return { ok: true, matches, source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
@@ -526,16 +672,44 @@ const ReviseIn = z.object({
   playbackTarget: PlaybackEnum.optional().default("frfr"),
   note: z.string().min(2).max(240),
   current: z.string().max(2000),
-  userGear: z.array(GearSchema).optional().default([]),
+  userGear: z.array(GearSchema).max(40).optional().default([]),
 });
 
 export const revisePresetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => ReviseIn.parse(input))
+  .validator((input: unknown) => {
+    const d = ReviseIn.parse(input);
+    return {
+      ...d,
+      song: oneLine(d.song, 120),
+      artist: d.artist === undefined ? undefined : oneLine(d.artist, 120),
+      note: oneLine(d.note, 240),
+      current: oneLine(d.current, 2000),
+      userGear: cleanUserGear(d.userGear),
+    };
+  })
   .handler(async ({ context, data }): Promise<ResearchResult> => {
     const email = await emailFor(context.userId, context.email);
-    const plan = await loadPlan(context.userId, email);
+    let plan: Plan;
+    try {
+      plan = await loadPlanStrict(context.userId, email);
+    } catch {
+      return planUnavailable();
+    }
     if (!plan.canResearch) return blocked(plan.blockedReason === "quota" ? "quota" : "paywall");
+    if (await needsEmailConfirmation(context.userId, plan)) return verifyEmailError();
+    if (tooManyResearches(context.userId)) {
+      return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
+    }
+    const slot = await reserveBuildSlot({
+      userId: context.userId,
+      email,
+      plan,
+      kind: "revise",
+      song: data.song.trim(),
+    });
+    if (!slot.ok) return slotFailure(slot.reason);
+    let settled = false;
     try {
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel);
       const lessons = await standingFeedbackLessons();
@@ -566,11 +740,8 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
-      try {
-        await recordBuild(context.userId, "revise", data.song.trim());
-      } catch {
-        /* ignore */
-      }
+      await confirmBuildSlot(slot.reservation);
+      settled = true;
       return { ok: true, preset: sanitizeSnapshots(finishTone(preset)), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
@@ -584,6 +755,8 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         error: message,
         reason: /busy|try again in a minute/i.test(message) ? "busy" : undefined,
       };
+    } finally {
+      if (!settled) await releaseBuildSlot(slot.reservation);
     }
   });
 

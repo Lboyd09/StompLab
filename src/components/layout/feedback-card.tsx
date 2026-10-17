@@ -2,7 +2,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { submitAuthedFeedbackFn, submitFeedbackFn } from "@/lib/billing";
+import { submitAuthedFeedbackFn } from "@/lib/billing";
 import { usePlan } from "@/lib/use-plan";
 
 export function FeedbackCard({ song = "" }: { song?: string }) {
@@ -13,13 +13,13 @@ export function FeedbackCard({ song = "" }: { song?: string }) {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (message.trim().length < 4) return;
+    if (!plan.signedIn) {
+      toast.error("Sign in to send feedback.");
+      return;
+    }
     setBusy(true);
     try {
-      if (plan.signedIn) {
-        await submitAuthedFeedbackFn({ data: { message: message.trim(), kind: song ? "preset" : "site", song } });
-      } else {
-        await submitFeedbackFn({ data: { message: message.trim(), kind: song ? "preset" : "site", song } });
-      }
+      await submitAuthedFeedbackFn({ data: { message: message.trim(), kind: song ? "preset" : "site", song } });
       toast.success("Got it. Thank you.");
       setMessage("");
     } catch {

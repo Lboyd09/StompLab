@@ -1,8 +1,9 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { emailFor, invalidatePlanCache, siblingUserIds } from "@/lib/billing";
-import { getSql } from "@/lib/db";
+import { emailFor, invalidatePlanCache, isEmailVerified, siblingUserIds } from "@/lib/billing";
+import { getSql, withTransaction } from "@/lib/db";
+import { claimReferralSlot } from "@/lib/referral-claim";
 import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
 import {
   USER_CREATED_AT_QUERY,
@@ -146,6 +147,11 @@ export const redeemReferral = createServerFn({ method: "POST" })
     if (code.length < 4) return { ok: false, error: "That invite code doesn't look right." };
     const email = await emailFor(context.userId, context.email);
     let referrerId = "";
+    // An invite only counts for an account whose email is confirmed: throwaway
+    // addresses cannot farm bonus builds from each other.
+    if (!(await isEmailVerified(context.userId))) {
+      return { ok: false, error: "Check your email to confirm your account, then use the invite." };
+    }
     try {
       const sql = await getSql();
       await ensureReferralSchema(sql);
@@ -193,10 +199,12 @@ export const redeemReferral = createServerFn({ method: "POST" })
       if (!decision.ok) return decision;
       if (decision.already) return { ok: true, bonus: REFERRAL_BONUS };
 
-      await sql`
-        insert into referral_redemptions (referred_user_id, referrer_user_id)
-        values (${context.userId}, ${referrerId})
-      `;
+      // The friend cap is checked and taken in one locked transaction.
+      const claim = await claimReferralSlot(withTransaction, referrerId, context.userId);
+      if (claim === "full") {
+        return { ok: false, error: "That friend already invited the maximum number of people." };
+      }
+      if (claim === "already") return { ok: true, bonus: REFERRAL_BONUS };
       try {
         await bumpBonus(context.userId, REFERRAL_BONUS);
         await bumpBonus(referrerId, REFERRAL_BONUS);
