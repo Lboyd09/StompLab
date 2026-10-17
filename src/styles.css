@@ -696,8 +696,8 @@ html.sl-touring nav {
   }
 
   .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(44px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
   }
 }
 
@@ -719,8 +719,8 @@ html.sl-touring nav {
   }
 
   .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(52px, 1fr));
-    gap: 6px;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    gap: 4px;
   }
 
   .hx-lcd-wide {
@@ -1091,4 +1091,12 @@ html[data-controls="large"] .hx-hw-btn {
 #demos {
   scroll-margin-top: 18rem;
   scroll-margin-bottom: 2rem;
+}
+
+/* Six switches across a phone: caps shrink with the row (still round) so the Floor / LT never scroll sideways. */
+.hx-helix-row .hx-fs-cap,
+html[data-controls="large"] .hx-helix-row .hx-fs-cap {
+  max-width: 100%;
+  height: auto;
+  aspect-ratio: 1;
 }

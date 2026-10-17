@@ -212,6 +212,8 @@ export function factoryDefaults(modelId: string): NativeParams {
 export function syncNoteFor(block: StompBlock): number | undefined {
   const note = block.params.Note ?? block.params.Sync;
   if (typeof note === "number" && note >= 1 && note <= 19) return Math.round(note);
+  // Note 0 is the player choosing a free-running delay; it overrides an older preset's Scale.
+  if (note === 0) return undefined;
   const category = MODEL_MAP[block.modelId]?.category;
   // Presets written before real tempo sync stored "Scale 5" to mean the programmed dotted eighth.
   const scale = block.params.Scale;

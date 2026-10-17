@@ -7,7 +7,6 @@ import {
   deviceFor,
   dspLoad,
   featuredOriginal,
-  formatParam,
   isDemoId,
   isEqToggleBlock,
   isFeaturedKnownId,
@@ -491,24 +490,53 @@ export function PresetWorkspace({
                   <div>
                     <p className="text-sm font-medium">{model.name}</p>
                     <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {snapName ? `${snapName} · every knob` : "Every knob"} · 0 to 10
+                      {snapName ? `${snapName} · every knob` : "Every knob"} · as HX Edit shows it
                     </p>
                   </div>
                   <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
                   {knobs.map((p) => (
-                    <label key={p.name} className="grid grid-cols-[5.5rem_minmax(0,1fr)_2.4rem] items-center gap-2 text-xs">
-                      <span className="truncate text-muted-foreground">{p.name}</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        value={Number.isFinite(p.value) ? p.value : 5}
-                        aria-label={`${model.name} ${p.name}`}
-                        onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
-                        className="w-full accent-foreground"
-                      />
-                      <span className="text-right font-mono tabular-nums">{formatParam(p.value)}</span>
+                    <label key={p.name} className="grid grid-cols-[6rem_minmax(0,1fr)_4.2rem] items-center gap-2 text-xs">
+                      <span className="truncate text-muted-foreground" title={p.label}>{p.label}</span>
+                      {p.kind === "switch" ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={p.value >= 5}
+                          aria-label={`${model.name} ${p.label}`}
+                          onClick={() => changeParam(block.id, p.name, p.value >= 5 ? 0 : 10)}
+                          className={`min-h-11 rounded-full border px-3 text-xs uppercase tracking-[0.14em] md:min-h-8 ${
+                            p.value >= 5 ? "border-foreground bg-foreground text-background" : "border-border"
+                          }`}
+                        >
+                          {p.value >= 5 ? "On" : "Off"}
+                        </button>
+                      ) : p.kind === "choice" ? (
+                        <select
+                          value={p.value}
+                          aria-label={`${model.name} ${p.label}`}
+                          onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
+                          className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-base md:min-h-8 md:text-xs"
+                        >
+                          {Array.from({ length: p.max - p.min + 1 }, (_, i) => p.min + i).map((v) => (
+                            <option key={v} value={v}>
+                              {p.options?.[v - p.min] ?? v}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="range"
+                          min={0}
+                          max={10}
+                          step={0.1}
+                          value={Number.isFinite(p.value) ? p.value : 5}
+                          aria-label={`${model.name} ${p.label}`}
+                          aria-valuetext={p.display}
+                          onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
+                          className="w-full accent-foreground"
+                        />
+                      )}
+                      <span className="truncate text-right font-mono tabular-nums">{p.kind === "choice" && !p.options ? "" : p.display}</span>
                     </label>
                   ))}
                   </div>
