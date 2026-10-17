@@ -1,10 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
-import { z } from "zod";
-import { dbSource, getSql } from "@/lib/db";
-import { STOMP_MODEL_IDS } from "@/data/types";
+import { getSql } from "@/lib/db";
 import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { emailFor, loadPlan } from "@/lib/billing";
 import { parseGuitarRole, type GuitarRole } from "@/lib/guitar-role";
 import { playableIssues, sanitizeSnapshots } from "@/lib/snapshot-sanitize";
 
@@ -50,31 +47,16 @@ export function eqCacheKey(query: string) {
   return `eq|${norm(query)}`;
 }
 
-const LookupIn = z.object({ key: z.string().min(4).max(240) });
-
-const SaveSongIn = z.object({
-  key: z.string().min(4).max(240),
-  song: z.string().max(120),
-  artist: z.string().max(120),
-  instrument: z.enum(["guitar", "bass"]),
-  stompModel: z.enum(STOMP_MODEL_IDS),
-  preset: z.unknown(),
-});
-
-const SaveEqIn = z.object({
-  key: z.string().min(4).max(240),
-  query: z.string().max(120),
-  matches: z.unknown(),
-});
-
 type EqHit = { modelId: string; closeness: string; how: string };
 
 const miss = {
   hit: false as const,
+  key: "",
   kind: "",
   preset: null as Preset | null,
   matches: [] as EqHit[],
   hitCount: 0,
+  bpm: null as number | null,
 };
 
 function playablePreset(raw: unknown): Preset | null {
@@ -86,6 +68,11 @@ function playablePreset(raw: unknown): Preset | null {
   return healed;
 }
 
+function cachedBpm(raw: unknown): number | null {
+  const n = Number(raw);
+  return Number.isFinite(n) && n >= 40 && n <= 240 ? Math.round(n) : null;
+}
+
 /** Internal cache read — used by research so we never list a public library. */
 export async function lookupCacheRaw(key: string) {
   try {
@@ -95,7 +82,8 @@ export async function lookupCacheRaw(key: string) {
       matches: EqHit[] | null;
       kind: string;
       hit_count: number;
-    }>`select preset, matches, kind, hit_count from rig_cache where cache_key = ${key} limit 1`;
+      bpm: number | null;
+    }>`select preset, matches, kind, hit_count, bpm from rig_cache where cache_key = ${key} limit 1`;
     const row = rows[0];
     if (!row) return miss;
     const preset = playablePreset(row.preset);
@@ -103,10 +91,12 @@ export async function lookupCacheRaw(key: string) {
     await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${key}`;
     return {
       hit: true as const,
+      key,
       kind: row.kind,
       preset,
       matches: Array.isArray(row.matches) ? row.matches : [],
       hitCount: Number(row.hit_count) + 1,
+      bpm: cachedBpm(row.bpm),
     };
   } catch {
     return miss;
@@ -115,7 +105,9 @@ export async function lookupCacheRaw(key: string) {
 
 /**
  * Shared across accounts (rig_cache has no user_id). Exact v11 key first.
- * The loose fallback only reuses the current key version for this unit.
+ * The loose fallback only reuses the current key version for this unit, and it
+ * needs the same title AND the same artist: a title alone is a different song
+ * ("Creep" by TLC is not Radiohead's rig).
  */
 export async function lookupSongCache(opts: {
   song: string;
@@ -129,17 +121,12 @@ export async function lookupSongCache(opts: {
   const playback = opts.playbackTarget ?? "frfr";
   const wah = opts.wahMode ?? "pedal";
   const role = parseGuitarRole(opts.guitarRole);
-  const keys = [
-    songCacheKey(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah, role),
-    songCacheKey(opts.song, "", opts.instrument, opts.stompModel, playback, wah, role),
-  ];
-  const seen = new Set<string>();
-  for (const key of keys) {
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const row = await lookupCacheRaw(key);
-    if (row.hit && row.preset) return row;
-  }
+  const artistN = norm(opts.artist ?? "");
+  // A lookup with no artist cannot say which song it means, so it never hits.
+  if (!artistN) return miss;
+  const exact = songCacheKey(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah, role);
+  const row = await lookupCacheRaw(exact);
+  if (row.hit && row.preset) return row;
   try {
     const sql = await getSql();
     const songN = norm(opts.song);
@@ -147,45 +134,37 @@ export async function lookupSongCache(opts: {
       preset: Preset | null;
       hit_count: number;
       cache_key: string;
+      bpm: number | null;
     }>`
-      select preset, hit_count, cache_key from rig_cache
+      select preset, hit_count, cache_key, bpm from rig_cache
       where kind = 'song'
         and lower(trim(song)) = ${songN}
+        and lower(trim(artist)) = ${artistN}
         and instrument = ${opts.instrument}
         and cache_key like ${"song|v11|%|" + role}
         and stomp_model = ${opts.stompModel}
       order by
-        case when stomp_model = ${opts.stompModel} then 0 else 1 end,
         hit_count desc,
         updated_at desc
       limit 1
     `;
-    const row = rows[0];
-    const preset = playablePreset(row?.preset);
-    if (!row || !preset) return miss;
-    await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${row.cache_key}`;
+    const found = rows[0];
+    const preset = playablePreset(found?.preset);
+    if (!found || !preset) return miss;
+    await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${found.cache_key}`;
     return {
       hit: true as const,
+      key: found.cache_key,
       kind: "song",
       preset,
       matches: [] as EqHit[],
-      hitCount: Number(row.hit_count) + 1,
+      hitCount: Number(found.hit_count) + 1,
+      bpm: cachedBpm(found.bpm),
     };
   } catch {
     return miss;
   }
 }
-
-export const lookupCache = createServerFn({ method: "POST" })
-  .middleware([authMiddleware])
-  .validator((input: unknown) => LookupIn.parse(input))
-  .handler(async ({ context, data }) => {
-    const email = await emailFor(context.userId, context.email);
-    const plan = await loadPlan(context.userId, email);
-    // Guessing cache keys must still consume a research slot for free users.
-    if (!plan.paid && !plan.canResearch) return miss;
-    return lookupCacheRaw(data.key);
-  });
 
 /** Write (or refresh) a song/sound cache row. Conflict must keep the preset. */
 export async function persistSongCache(data: {
@@ -195,21 +174,23 @@ export async function persistSongCache(data: {
   instrument: string;
   stompModel: string;
   preset: unknown;
+  bpm?: number | null;
 }): Promise<boolean> {
   try {
     const sql = await getSql();
     const presetJson = JSON.stringify(data.preset);
     await sql.query(
-      `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset, updated_at)
-       values ($1, 'song', $2, $3, $4, $5, $6::jsonb, now())
+      `insert into rig_cache (cache_key, kind, song, artist, instrument, stomp_model, preset, bpm, updated_at)
+       values ($1, 'song', $2, $3, $4, $5, $6::jsonb, $7, now())
        on conflict (cache_key) do update set
          preset = excluded.preset,
          song = excluded.song,
          artist = excluded.artist,
          instrument = excluded.instrument,
          stomp_model = excluded.stomp_model,
+         bpm = coalesce(excluded.bpm, rig_cache.bpm),
          updated_at = now()`,
-      [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson],
+      [data.key, data.song, data.artist, data.instrument, data.stompModel, presetJson, cachedBpm(data.bpm)],
     );
     return true;
   } catch {
@@ -217,42 +198,35 @@ export async function persistSongCache(data: {
   }
 }
 
-export const saveSongCache = createServerFn({ method: "POST" })
-  .validator((input: unknown) => SaveSongIn.parse(input))
-  .handler(async ({ data }) => {
-    const saved = await persistSongCache(data);
-    return { saved };
-  });
-
-export const saveEqCache = createServerFn({ method: "POST" })
-  .validator((input: unknown) => SaveEqIn.parse(input))
-  .handler(async ({ data }) => {
-    try {
-      const sql = await getSql();
-      const matchesJson = JSON.stringify(data.matches);
-      await sql.query(
-        `insert into rig_cache (cache_key, kind, query, matches) values ($1, 'eq', $2, $3::jsonb)
-         on conflict (cache_key) do update set matches = excluded.matches, updated_at = now()`,
-        [data.key, data.query, matchesJson],
-      );
-      return { saved: true as const };
-    } catch {
-      return { saved: false as const };
-    }
-  });
-
-export const cacheHealth = createServerFn({ method: "GET" }).handler(async () => {
+/** Remember the studio tempo on a row that was cached before tempo was stored. */
+export async function saveCacheBpm(key: string, bpm: number): Promise<void> {
+  const value = cachedBpm(bpm);
+  if (!value || !key) return;
   try {
     const sql = await getSql();
-    const rows = await sql<{ n: number }>`select count(*)::int as n from rig_cache`;
-    if (!rows[0]) {
-      return { ok: false, entries: 0, backend: "none" as const };
-    }
-    return { ok: true, entries: Number(rows[0].n ?? 0), backend: dbSource };
+    await sql`update rig_cache set bpm = ${value} where cache_key = ${key} and bpm is null`;
   } catch {
-    return { ok: false, entries: 0, backend: "none" as const };
+    /* next hit asks again */
   }
-});
+}
+
+/**
+ * Internal only. Never a server function: the pedal-match cache is written by
+ * research after a real answer, not by the browser.
+ */
+export async function persistEqCache(data: { key: string; query: string; matches: unknown }): Promise<boolean> {
+  try {
+    const sql = await getSql();
+    await sql.query(
+      `insert into rig_cache (cache_key, kind, query, matches) values ($1, 'eq', $2, $3::jsonb)
+       on conflict (cache_key) do update set matches = excluded.matches, updated_at = now()`,
+      [data.key, data.query, JSON.stringify(data.matches)],
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
 
 /** Intentionally empty — shared cache is not a browseable library. */
 export const listSharedLibrary = createServerFn({ method: "GET" })

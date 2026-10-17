@@ -24,6 +24,9 @@ export function mailerConfigured(): boolean {
 
 let lastMailError = "";
 
+/** What a player sees when mail fails. The detail stays in the server log. */
+export const MAIL_UNAVAILABLE = `We couldn't send that email right now. Try again in a minute, or email ${PUBLIC_SUPPORT_EMAIL}.`;
+
 export function mailerLastError(): string {
   return lastMailError;
 }
@@ -56,10 +59,9 @@ export async function sendLabEmail(opts: {
   if (!to.includes("@")) throw new Error("That email doesn't look right.");
   const resend = envFirst(...RESEND_KEYS);
   if (!resend) {
-    lastMailError = "RESEND_API_KEY is missing";
-    throw new Error(
-      `Mail isn't connected on this site yet. Add RESEND_API_KEY on the host (Resend), set MAIL_FROM to a verified address like hello@stomplab.app, then try again. Until then, email ${PUBLIC_SUPPORT_EMAIL}.`,
-    );
+    lastMailError = "Mail is not connected";
+    console.error("[mail] no send key configured");
+    throw new Error(MAIL_UNAVAILABLE);
   }
 
   const froms = [mailFrom(), "Stomp Lab <onboarding@resend.dev>"].filter(
@@ -69,7 +71,7 @@ export async function sendLabEmail(opts: {
     froms.reverse();
   }
 
-  let last = "Could not send the email. Try again in a minute.";
+  let last = "Could not send the email";
   for (const from of froms) {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",
@@ -95,18 +97,33 @@ export async function sendLabEmail(opts: {
         ? String((body as { message?: string }).message ?? "")
         : "";
     if (/domain|verified|from/i.test(msg)) {
-      last =
-        "The from-address isn't verified on Resend. Set MAIL_FROM to a verified domain address (hello@stomplab.app), not a Gmail.";
+      last = "Sender address is not verified";
       continue;
     }
     if (/api key|unauthorized|invalid/i.test(msg)) {
-      last = "Resend rejected the API key. Check RESEND_API_KEY on the host.";
+      last = "Mail key was rejected";
       continue;
     }
-    last = msg || last;
+    last = msg.slice(0, 160) || last;
   }
   lastMailError = last;
-  throw new Error(last);
+  console.error("[mail] send failed:", last);
+  throw new Error(MAIL_UNAVAILABLE);
+}
+
+export async function sendVerificationEmailMessage(opts: { to: string; url: string }): Promise<void> {
+  const link = await absoluteUrl(opts.url, "/");
+  const subject = "Confirm your Stomp Lab account";
+  const text = [
+    "Confirm your email so you can build custom presets:",
+    link,
+    "",
+    "If you didn't make a Stomp Lab account, ignore this email.",
+  ].join("\n");
+  const html = `<p>Confirm your email so you can build custom presets:</p>
+<p><a href="${link.replace(/"/g, "")}">Confirm my account</a></p>
+<p>If you didn't make a Stomp Lab account, ignore this email.</p>`;
+  await sendLabEmail({ to: opts.to, subject, text, html });
 }
 
 export async function sendPasswordResetEmail(opts: { to: string; url: string }): Promise<void> {

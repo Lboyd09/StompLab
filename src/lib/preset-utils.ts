@@ -3,6 +3,10 @@ import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import type { CategoryId, FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
 import { STOMP_MODEL_IDS } from "@/data/types";
+import { helixIdFor } from "@/data/helix-ids";
+import { hxModel, SYNC_NOTES } from "@/data/hx-catalog";
+import { nativeFor, resolveParamKeys, syncNoteFor } from "./hx-params";
+import { formatNative, nativeToUi } from "./hx-units";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 
 export function blockModel(block: StompBlock) {
@@ -13,14 +17,80 @@ export function sortedBlocks(preset: Preset): StompBlock[] {
   return [...preset.blocks].sort((a, b) => a.position - b.position);
 }
 
-export function paramEntries(block: StompBlock): { name: string; value: number }[] {
-  const model = blockModel(block);
-  const names = model?.params ?? Object.keys(block.params);
-  return names.map((name) => ({ name, value: block.params[name] ?? 5 }));
-}
+export type ParamEntry = {
+  /** Name the preset stores the knob under (an older app name when the preset already uses one). */
+  name: string;
+  /** HX Edit's label for the control. */
+  label: string;
+  kind: "knob" | "switch" | "choice";
+  /** Stored value: 0–10 for knobs and switches, the real setting for choices. */
+  value: number;
+  min: number;
+  max: number;
+  /** What HX Edit shows for this setting (dB, Hz, ms, note value…). */
+  display: string;
+  options?: string[];
+};
 
-export function formatParam(value: number): string {
-  return value.toFixed(1).replace(/\.0$/, ".0");
+const HIDDEN_KEYS = new Set(["TempoSync1", "SyncSelect1", "TempoSync2", "SyncSelect2"]);
+
+/**
+ * The block's controls as HX Edit has them, in HX Edit's units. Values come from the preset;
+ * a knob the preset never set shows the factory default the exported file will carry.
+ */
+export function paramEntries(block: StompBlock): ParamEntry[] {
+  const m = hxModel(helixIdFor(block.modelId));
+  if (!m) {
+    return Object.entries(block.params).map(([name, value]) => ({
+      name,
+      label: name,
+      kind: "knob" as const,
+      value,
+      min: 0,
+      max: 10,
+      display: value.toFixed(1),
+    }));
+  }
+  const byKey = new Map<string, string>();
+  for (const name of Object.keys(block.params)) {
+    for (const key of resolveParamKeys(block.modelId, name)) if (!byKey.has(key)) byKey.set(key, name);
+  }
+  const out: ParamEntry[] = [];
+  for (const p of m.params) {
+    if (HIDDEN_KEYS.has(p.key)) continue;
+    const name = byKey.get(p.key) ?? p.key;
+    const set = block.params[name];
+    if (p.type === "i") {
+      const value = typeof set === "number" ? Math.round(set) : Number(p.def);
+      out.push({ name, label: p.label, kind: "choice", value, min: p.min, max: p.max, display: formatNative(p, value) });
+      continue;
+    }
+    const value = typeof set === "number" ? set : nativeToUi(p, p.def);
+    const native = nativeFor(block.modelId, p.key, name, value) ?? p.def;
+    out.push({
+      name,
+      label: p.label,
+      kind: p.type === "b" ? "switch" : "knob",
+      value,
+      min: 0,
+      max: 10,
+      display: formatNative(p, native),
+    });
+  }
+  if (m.byKey.SyncSelect1) {
+    const note = syncNoteFor(block);
+    out.push({
+      name: "Note",
+      label: "Note Sync",
+      kind: "choice",
+      value: note ?? 0,
+      min: 0,
+      max: 19,
+      display: note ? SYNC_NOTES[note - 1] : "Off (ms)",
+      options: ["Off (ms)", ...SYNC_NOTES],
+    });
+  }
+  return out;
 }
 
 export function dspLoad(preset: Preset): number {

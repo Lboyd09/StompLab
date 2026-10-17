@@ -1,88 +1,52 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { cronAuthorized } from "@/lib/cron-auth";
 import { getSql, pingDatabase } from "@/lib/db";
 
 /**
  * Once-a-day ping so a free Supabase project does not pause after 7 idle days.
  * Touches user + rig_cache with `limit 1` so it does not count whole tables
  * (that burned egress). Preview deploys never hit production Postgres.
+ * Needs `Authorization: Bearer ${CRON_SECRET}` (Vercel Cron sends it). The reply
+ * is only ok true or false.
  */
-function authorized(request: Request) {
-  const cron = request.headers.get("x-vercel-cron");
-  if (cron) return true;
-  const secret = (process.env.CRON_SECRET ?? process.env.KEEPALIVE_SECRET ?? "").trim();
-  if (!secret) return process.env.VERCEL_ENV !== "production";
-  const header = request.headers.get("authorization") ?? "";
-  return header === `Bearer ${secret}`;
-}
-
 function sleep(ms: number) {
   return new Promise((r) => setTimeout(r, ms));
 }
 
-async function pingOnce() {
+async function pingOnce(): Promise<boolean> {
   const ping = await pingDatabase();
-  if (!ping.ok) {
-    return { ...ping, users: 0, cache: 0 };
-  }
+  if (!ping.ok) return false;
   const sql = await getSql();
   await sql.query(`select 1 from "user" limit 1`);
   await sql.query(`select 1 from rig_cache limit 1`);
-  return {
-    ...ping,
-    users: 1,
-    cache: 1,
-  };
+  return true;
 }
 
 async function ping() {
   if (process.env.VERCEL_ENV === "preview") {
-    return Response.json({ ok: true, skipped: "preview" });
+    return Response.json({ ok: true });
   }
-  let last: Awaited<ReturnType<typeof pingOnce>> | null = null;
-  let lastErr = "";
   for (let attempt = 1; attempt <= 2; attempt += 1) {
     try {
-      last = await pingOnce();
-      if (last.ok) {
-        return Response.json({
-          ok: true,
-          users: last.users,
-          cache: last.cache,
-          source: last.source,
-          mode: last.mode,
-          host: last.host,
-          ms: last.pingMs,
-          attempt,
-          at: new Date().toISOString(),
-        });
-      }
-      lastErr = last.error;
+      if (await pingOnce()) return Response.json({ ok: true });
     } catch (err) {
-      lastErr = err instanceof Error ? err.message : String(err);
+      console.error("[keepalive] ping failed", err instanceof Error ? err.message : err);
     }
     if (attempt < 2) await sleep(1500);
   }
-  return Response.json(
-    {
-      ok: false,
-      error: lastErr || last?.error || "keepalive failed",
-      ms: last?.pingMs ?? 0,
-      at: new Date().toISOString(),
-    },
-    { status: 503 },
-  );
+  return Response.json({ ok: false }, { status: 503 });
 }
 
 export const Route = createFileRoute("/api/keepalive")({
   server: {
     handlers: {
       GET: async ({ request }) => {
-        if (!authorized(request)) return new Response("unauthorized", { status: 401 });
+        if (!cronAuthorized(request)) return new Response("unauthorized", { status: 401 });
         try {
           return await ping();
         } catch (err) {
-          const message = err instanceof Error ? err.message : "keepalive failed";
-          return Response.json({ ok: false, error: message }, { status: 500 });
+          console.error("[keepalive] failed", err instanceof Error ? err.message : err);
+          return Response.json({ ok: false }, { status: 500 });
         }
       },
     },

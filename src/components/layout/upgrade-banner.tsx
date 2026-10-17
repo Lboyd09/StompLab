@@ -8,7 +8,7 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
   const lead = plan.signedIn
     ? left > 0
       ? `${left} free custom build${left === 1 ? "" : "s"} left`
-      : "You've used your 3 free custom builds"
+      : "You've used your free custom builds"
     : FREE_BUILD_LINE;
   return (
     <Link
@@ -25,7 +25,7 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
         </span>
       </span>
       <span className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground px-6 text-sm font-semibold text-primary sm:px-6">
-        Get the Lab
+        Subscribe
       </span>
     </Link>
   );

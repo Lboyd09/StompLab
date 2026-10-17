@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { submitAuthedFeedbackFn, submitFeedbackFn } from "@/lib/billing";
+import { submitAuthedFeedbackFn } from "@/lib/billing";
 import { usePlan } from "@/lib/use-plan";
 
 const RATINGS = [1, 2, 3, 4, 5] as const;
@@ -57,6 +57,10 @@ export function PresetFeedbackForm({
     if (!rating && closerTweaks.trim().length < 4 && wantPreset.trim().length < 4 && wantApp.trim().length < 4) {
       return;
     }
+    if (!plan.signedIn) {
+      toast.error("Sign in to send feedback.");
+      return;
+    }
     setBusy(true);
     try {
       const payload = {
@@ -68,11 +72,7 @@ export function PresetFeedbackForm({
         wantApp: wantApp.trim(),
         message: closerTweaks.trim() || wantPreset.trim() || wantApp.trim() || `Rated ${rating}/5`,
       };
-      if (plan.signedIn) {
-        await submitAuthedFeedbackFn({ data: payload });
-      } else {
-        await submitFeedbackFn({ data: payload });
-      }
+      await submitAuthedFeedbackFn({ data: payload });
       toast.success("Got it — that improves the models and the next song.");
       setCloserTweaks("");
       setWantPreset("");

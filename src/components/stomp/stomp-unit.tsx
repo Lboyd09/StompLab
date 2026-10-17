@@ -1,7 +1,7 @@
 import { useMemo, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import type { DeviceLayout, Preset } from "@/data/types";
-import { deviceFor, paramEntries, sortedBlocks, visualToHardwareFs } from "@/lib/preset-utils";
+import { deviceFor, paramEntries, sortedBlocks, visualToHardwareFs, type ParamEntry } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { Knob } from "./knob";
@@ -172,54 +172,43 @@ export function StompUnit({
     }
   }
 
+  function paramKnob(p: ParamEntry | undefined, key: string, size: "sm" | "md" | "lg") {
+    const range = p?.kind === "choice" ? { min: p.min, max: p.max, step: 1 } : p?.kind === "switch" ? { min: 0, max: 10, step: 10 } : {};
+    return (
+      <Knob
+        key={p?.name ?? key}
+        label={p?.label ?? "—"}
+        value={p?.value ?? 0}
+        display={p?.display}
+        {...range}
+        size={size}
+        disabled={!p || !selected}
+        onChange={
+          p && selected
+            ? (v) => {
+                if (view !== "edit") onView("edit");
+                onChangeParam(selected.id, p.name, v);
+              }
+            : undefined
+        }
+      />
+    );
+  }
+
   const knobs = (
     <div className="hx-knob-row">
-      {([0, 1, 2] as const).map((i) => {
-        const p = pageParams[i];
-        return (
-          <Knob
-            key={p?.name ?? `empty-${i}`}
-            label={p?.name ?? "—"}
-            value={p?.value ?? 0}
-            size={largeControls ? "lg" : "md"}
-            disabled={!p || !selected}
-            onChange={
-              p && selected
-                ? (v) => {
-                    if (view !== "edit") onView("edit");
-                    onChangeParam(selected.id, p.name, v);
-                  }
-                : undefined
-            }
-          />
-        );
-      })}
+      {([0, 1, 2] as const).map((i) => paramKnob(pageParams[i], `empty-${i}`, largeControls ? "lg" : "md"))}
     </div>
   );
 
   function paramKnobs(count: number, size: "sm" | "md") {
+    // Helix Floor / LT: six knobs under the screen, paged through every control on the block.
+    const pages = Math.max(1, Math.ceil(params.length / count));
+    const at = ((paramPage % pages) + pages) % pages;
+    const row = params.slice(at * count, at * count + count);
     return (
       <div className="hx-knob-row">
-        {Array.from({ length: count }, (_, i) => {
-          const p = params[i];
-          return (
-            <Knob
-              key={p?.name ?? `slot-${i}`}
-              label={p?.name ?? "—"}
-              value={p?.value ?? 0}
-              size={size}
-              disabled={!p || !selected}
-              onChange={
-                p && selected
-                  ? (v) => {
-                      if (view !== "edit") onView("edit");
-                      onChangeParam(selected.id, p.name, v);
-                    }
-                  : undefined
-              }
-            />
-          );
-        })}
+        {Array.from({ length: count }, (_, i) => paramKnob(row[i], `slot-${i}`, size))}
       </div>
     );
   }
@@ -342,7 +331,18 @@ export function StompUnit({
             volume={volume}
             onVolume={setVolume}
             onMode={() => cycleMode(1)}
-            onTap={() => onView(view === "tuner" ? "play" : "tuner")}
+            onTap={() => {
+              if (view === "tuner") {
+                onView("play");
+                return;
+              }
+              toast.message(`Tap tempo: this preset is ${preset.tempo} BPM. Hold TAP on the unit for the tuner.`);
+            }}
+            onTapHold={() => onView(view === "tuner" ? "play" : "tuner")}
+            onPresetTurn={() => {
+              if (preset.snapshots.length) onSnapshot((activeSnapshot + 1) % preset.snapshots.length);
+            }}
+            onJoystick={() => cycleBlock(1)}
             fsMode={fsMode}
             tuner={view === "tuner"}
             renderFs={(index) =>
@@ -426,6 +426,9 @@ function HelixBoard({
   onVolume,
   onMode,
   onTap,
+  onTapHold,
+  onPresetTurn,
+  onJoystick,
   fsMode,
   tuner,
   renderFs,
@@ -439,6 +442,9 @@ function HelixBoard({
   onVolume: (n: number) => void;
   onMode: () => void;
   onTap: () => void;
+  onTapHold: () => void;
+  onPresetTurn: () => void;
+  onJoystick: () => void;
   fsMode: FsMode;
   tuner: boolean;
   renderFs: (index: number) => ReactNode;
@@ -450,21 +456,19 @@ function HelixBoard({
     <div className={cn("hx-helix-board", layout === "lt" && "hx-helix-board-lt")}>
       <div className="hx-helix-top">
         <div className="hx-helix-presetcol">
-          <Knob label="Preset" value={volume} onChange={onVolume} size="sm" />
+          <Knob label="Preset" value={0} size="sm" showValue={false} onPress={onPresetTurn} />
           <div className="flex gap-2">
             <button type="button" className="hx-hw-btn" onClick={onMode} aria-pressed={fsMode !== "stomp"}>
               Mode
             </button>
-            <button type="button" className="hx-hw-btn" onClick={onTap} aria-pressed={tuner}>
-              Tap
-            </button>
+            <HoldButton className="hx-hw-btn" onPress={onTap} onHold={onTapHold} pressed={tuner} label="Tap" />
           </div>
         </div>
         <div className="hx-helix-lcd">{lcd}</div>
         <div className="hx-helix-controls">
           {knobs}
           <div className="flex items-center justify-center gap-3">
-            <button type="button" className="hx-joystick" aria-label="Joystick" />
+            <button type="button" className="hx-joystick" aria-label="Joystick: next block" onClick={onJoystick} />
             <Knob label="Vol" value={volume} onChange={onVolume} size="sm" />
           </div>
           <div className="flex justify-center">{well}</div>
@@ -728,6 +732,40 @@ function Footswitch({
         </span>
       ) : null}
       {sublabel ? <span className="hx-silk">{sublabel}</span> : null}
+    </button>
+  );
+}
+
+/** A button that does one thing on a tap and another when held, like TAP / tuner on the hardware. */
+function HoldButton({ className, onPress, onHold, pressed, label }: { className: string; onPress: () => void; onHold: () => void; pressed: boolean; label: string }) {
+  const timer = useRef<number | null>(null);
+  const held = useRef(false);
+  return (
+    <button
+      type="button"
+      className={className}
+      aria-pressed={pressed}
+      aria-label={`${label} (hold for tuner)`}
+      onPointerDown={() => {
+        held.current = false;
+        timer.current = window.setTimeout(() => {
+          held.current = true;
+          onHold();
+        }, 600);
+      }}
+      onPointerUp={() => {
+        if (timer.current) window.clearTimeout(timer.current);
+        if (!held.current) onPress();
+      }}
+      onPointerLeave={() => timer.current && window.clearTimeout(timer.current)}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onPress();
+        }
+      }}
+    >
+      {label}
     </button>
   );
 }

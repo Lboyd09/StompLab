@@ -1,5 +1,6 @@
 import { MODEL_MAP } from "@/data/catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
+import { isVolumeKnob } from "./hx-params";
 
 const ABBREV: [RegExp, string][] = [
   [/\brhythm\b/i, "Rhy"],
@@ -22,7 +23,7 @@ export function fitSnapshotName(raw: string, max = 12): string {
   while (words.length > 1 && words.join(" ").length > max) words.pop();
   s = words.join(" ");
   if (s.length <= max) return s;
-  return s.slice(0, max).replace(/[\s\-]+$/g, "") || "Snap";
+  return s.slice(0, max).replace(/[\s-]+$/g, "") || "Snap";
 }
 
 const AMP_CAB: ReadonlySet<CategoryId> = new Set([
@@ -42,18 +43,6 @@ const GATES = new Set(["hard-gate", "noise-gate", "horizon-gate"]);
 
 /** UI 0–10. Above this a Hard Gate closes on a real chord and the snapshot goes silent. */
 const MAX_GATE_THRESHOLD = 2.2;
-
-/** Volume knobs that mute the path if a snapshot controller drops them to 0. */
-const LEVEL_PARAMS = new Set([
-  "Ch Vol",
-  "ChVol",
-  "Output",
-  "Level",
-  "Master",
-  "Volume",
-  "Boost",
-  "Gain",
-]);
 
 /** UI 0–10. Below this the block is effectively off. */
 const MIN_LEVEL = 3.2;
@@ -134,8 +123,8 @@ export function arrangeSignal(blocks: StompBlock[]): StompBlock[] {
   return reindex(body);
 }
 
-function isLevelName(name: string): boolean {
-  return LEVEL_PARAMS.has(name) || LEVEL_PARAMS.has(name.replace(/\s+/g, ""));
+function isLevelName(modelId: string, name: string): boolean {
+  return isVolumeKnob(modelId, name);
 }
 
 function liftParams(modelId: string, params: Record<string, number> | undefined): Record<string, number> | undefined {
@@ -149,7 +138,7 @@ function liftParams(modelId: string, params: Record<string, number> | undefined)
   for (const [name, value] of Object.entries(next)) {
     if (typeof value !== "number" || !Number.isFinite(value)) continue;
     if (modelId === "volume-pedal" && (name === "Level" || name === "Position" || name === "Pedal")) continue;
-    if (isLevelName(name) && value < MIN_LEVEL) next[name] = MIN_LEVEL;
+    if (isLevelName(modelId, name) && value < MIN_LEVEL) next[name] = MIN_LEVEL;
   }
   if (typeof next.Threshold === "number" && GATES.has(modelId) && next.Threshold > MAX_GATE_THRESHOLD) {
     next.Threshold = MAX_GATE_THRESHOLD;
@@ -238,7 +227,8 @@ export function playableIssues(preset: Preset): PlayableIssue[] {
     for (const [id, params] of Object.entries(over)) {
       if (!on.has(id)) continue;
       for (const [name, value] of Object.entries(params)) {
-        if (!LEVEL_PARAMS.has(name) && !LEVEL_PARAMS.has(name.replace(/\s+/g, ""))) continue;
+        const blockModel = healed.blocks.find((b) => b.id === id)?.modelId ?? "";
+        if (!isLevelName(blockModel, name)) continue;
         if (typeof value === "number" && value < MIN_LEVEL) {
           issues.push({ presetId: healed.id, snapshot: snap.name, reason: `${name} is muted` });
         }

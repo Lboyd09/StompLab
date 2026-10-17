@@ -12,11 +12,14 @@ import appCss from "../styles.css?url";
 const APP_NAME = "Stomp Lab";
 const ICON_V = "sl21";
 
+/** Applies the saved theme before first paint so a light-theme player never sees a dark flash. */
+const THEME_BOOT = `try{var t="dark";var r=JSON.parse(localStorage.getItem("stomplab.settings.v1")||"{}");if(r&&(r.theme==="light"||r.theme==="system"||r.theme==="dark"))t=r.theme;var d=t==="system"?matchMedia("(prefers-color-scheme: dark)").matches:t!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d)}catch(e){}`;
+
 export const Route = createRootRoute({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" },
+      { name: "viewport", content: "width=device-width, initial-scale=1, viewport-fit=cover" },
       { title: APP_NAME },
       {
         name: "description",
@@ -44,6 +47,7 @@ export const Route = createRootRoute({
         href: "https://fonts.googleapis.com/css2?family=Archivo:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Oswald:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap",
       },
     ],
+    scripts: [{ children: THEME_BOOT }],
   }),
   component: Root,
 });
@@ -56,7 +60,7 @@ function Root() {
       </head>
       <body>
         <VisitBeacon />
-        <PreviewHostBridge />
+        {import.meta.env.DEV || import.meta.env.VITE_PREVIEW_BRIDGE === "true" ? <PreviewHostBridge /> : null}
         <AuthProvider>
           <ShellSwitch />
           <Toaster />

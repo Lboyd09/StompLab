@@ -1,6 +1,6 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { Preset, StompBlock } from "@/data/types";
-import { blockModel, deviceFor, dspLoad, formatParam, lcdScribbleIndices, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { blockModel, deviceFor, dspLoad, lcdScribbleIndices, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -38,11 +38,12 @@ function BlockChip({
       type="button"
       onClick={onClick}
       className={cn(
-        "relative flex h-7 min-w-7 shrink-0 flex-col overflow-hidden rounded-[2px] border text-left",
+        "relative flex h-7 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[2px] border text-left",
         selected ? "border-white" : "border-black/70",
         !block.enabled && "opacity-35",
       )}
-      style={{ background: "#14181c", width: 36 }}
+      style={{ background: "#14181c", maxWidth: 36 }}
+      aria-label={`${model?.name ?? "Block"}${block.enabled ? "" : " (off)"}`}
     >
       <span className="h-[3px] w-full" style={{ background: color }} />
       <span className="flex flex-1 items-center justify-center px-0.5 font-mono text-[7px] font-semibold uppercase tracking-wide text-zinc-100">
@@ -149,8 +150,8 @@ export function LcdScreen({
           <div className="mt-auto grid grid-cols-3 gap-1 pb-1">
             {pageParams.map((p) => (
               <div key={p.name} className="text-center">
-                <div className="font-mono text-[9px] uppercase tracking-wider text-zinc-500">{p.name}</div>
-                <div className="font-mono text-[12px] tabular-nums">{formatParam(p.value)}</div>
+                <div className="truncate font-mono text-[9px] uppercase tracking-wider text-zinc-500">{p.label}</div>
+                <div className="truncate font-mono text-[12px] tabular-nums">{p.display}</div>
               </div>
             ))}
             {Array.from({ length: 3 - pageParams.length }).map((_, i) => (
@@ -167,8 +168,9 @@ export function LcdScreen({
           </div>
           <div className="relative flex min-h-10 flex-1 items-center">
             <div className="hx-path-line absolute inset-x-1 top-1/2 h-px -translate-y-1/2" />
-            <div className="relative flex w-full items-center gap-1 overflow-x-auto">
-              {blocks.map((b) => (
+            <div className="relative flex w-full items-center gap-[3px]">
+              {/* The unit shows an amp and its cab as one block, so the whole chain fits the screen. */}
+              {blocks.filter((b, i) => !(blockModel(b)?.category === "cab" && i > 0 && ["amp-guitar", "amp-bass", "preamp"].includes(blockModel(blocks[i - 1])?.category ?? ""))).map((b) => (
                 <BlockChip
                   key={b.id}
                   block={b}

@@ -189,6 +189,9 @@ export async function fetchPolarAdminStats(owner: string[] = []): Promise<PolarA
   }
 }
 
+/** What the player sees when checkout fails. Details go to the server log, never the screen. */
+export const CHECKOUT_UNAVAILABLE = "Checkout isn't available right now. Try again in a minute.";
+
 export function polarFriendlyError(status: number, detail: unknown): string {
   const d =
     typeof detail === "string"
@@ -199,19 +202,11 @@ export function polarFriendlyError(status: number, detail: unknown): string {
           ? JSON.stringify(detail)
           : "";
   const lower = d.toLowerCase();
-  if (status === 401 || status === 403 || lower === "unauthorized" || /invalid token|unauthenticated/.test(lower)) {
-    return "Polar rejected the checkout key. On the host, set POLAR_ACCESS_TOKEN from the same Polar org as the products (live vs sandbox must match).";
-  }
-  if (/success_url|return url|invalid url/.test(lower)) {
-    return "Polar rejected the return URL. In Polar, allow this site's real domain. Set APP_ORIGIN to that https URL on the host.";
-  }
+  console.error("[polar] request failed", status, d.slice(0, 300));
   if (/\bemail\b/.test(lower) && /required|missing|must|add an email/.test(lower)) {
     return "Polar needs the email on this account. Sign out, sign back in with the same address, then try again.";
   }
-  if (status === 404 || status === 422 || /product|not found|unprocessable|unknown product/.test(lower)) {
-    return "Polar does not recognize this product. Create a $6.99/month and a $75/year product, then set POLAR_PRODUCT_ID_MONTHLY and POLAR_PRODUCT_ID_YEARLY.";
-  }
-  return d || `Polar checkout failed (${status || "network"}). Try again in a minute.`;
+  return CHECKOUT_UNAVAILABLE;
 }
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -351,6 +346,84 @@ export function subscriptionStatusIsActive(status: string | null | undefined): b
   return s === "active" || s === "trialing" || s === "canceled";
 }
 
+/**
+ * Does this subscription still entitle the player to the paid plan right now?
+ * active and trialing: yes. canceled: yes only until current_period_end (a
+ * canceled row with no end date yet keeps access until Polar sends revoked).
+ * past_due, unpaid, refunded, revoked and anything else: no.
+ */
+export function subscriptionGrantsAccess(opts: {
+  status: string | null | undefined;
+  currentPeriodEnd?: Date | string | null;
+  now?: number;
+}): boolean {
+  const s = String(opts.status ?? "").trim().toLowerCase();
+  if (s === "active" || s === "trialing") return true;
+  if (s === "canceled" || s === "cancelled") {
+    if (!opts.currentPeriodEnd) return true;
+    const end = opts.currentPeriodEnd instanceof Date ? opts.currentPeriodEnd.getTime() : Date.parse(opts.currentPeriodEnd);
+    if (!Number.isFinite(end)) return true;
+    return end > (opts.now ?? Date.now());
+  }
+  return false;
+}
+
+/** Statuses where money stopped or never arrived. The plan is not active. */
+export function subscriptionStatusIsLapsed(status: string | null | undefined): boolean {
+  const s = String(status ?? "").trim().toLowerCase();
+  return (
+    s === "past_due" ||
+    s === "unpaid" ||
+    s === "incomplete" ||
+    s === "incomplete_expired" ||
+    s === "revoked" ||
+    s === "expired" ||
+    s === "refunded"
+  );
+}
+
+/** When Polar says the object changed (ISO), or "". Used so a late old event cannot win. */
+export function polarEventTime(payload: Record<string, unknown>): string {
+  const data = payloadData(payload);
+  for (const raw of [data.modified_at, data.modifiedAt, payload.timestamp]) {
+    const v = String(raw ?? "").trim();
+    if (!v) continue;
+    const t = Date.parse(v);
+    if (Number.isFinite(t)) return new Date(t).toISOString();
+  }
+  return "";
+}
+
+/** A refund that takes the plan away: order.refunded (full) or a succeeded refund that revokes benefits. */
+export function polarEventIsRefund(payload: Record<string, unknown> | null | undefined): boolean {
+  if (!payload) return false;
+  const type = polarEventType(payload);
+  const data = payloadData(payload);
+  const status = String(data.status ?? "").trim().toLowerCase();
+  if (type === "order.refunded" || type.endsWith("order.refunded")) {
+    return status !== "partially_refunded";
+  }
+  if (type === "refund.created" || type === "refund.updated" || type.endsWith("refund.created") || type.endsWith("refund.updated")) {
+    if (data.revoke_benefits === false || data.revokeBenefits === false) return false;
+    return status === "succeeded";
+  }
+  return false;
+}
+
+/** past_due / unpaid style event: returns the status to store, or "". */
+export function polarEventLapsedStatus(payload: Record<string, unknown> | null | undefined): string {
+  if (!payload) return "";
+  const type = polarEventType(payload);
+  if (type === "subscription.past_due" || type.endsWith("subscription.past_due")) return "past_due";
+  const status = String(payloadData(payload).status ?? "").trim().toLowerCase();
+  if (type.endsWith("subscription.updated") || type.endsWith("subscription.created")) {
+    if (status === "past_due" || status === "unpaid" || status === "incomplete" || status === "incomplete_expired") {
+      return status;
+    }
+  }
+  return "";
+}
+
 export async function createPolarCheckout(opts: {
   email: string;
   userId: string;
@@ -363,12 +436,8 @@ export async function createPolarCheckout(opts: {
   const token = polarToken();
   const productId = polarProductId(opts.interval);
   if (!token || !productId) {
-    const needed =
-      opts.interval === "year" ? "POLAR_PRODUCT_ID_YEARLY" : "POLAR_PRODUCT_ID_MONTHLY";
-    return {
-      ok: false,
-      error: `Checkout isn't connected yet. Add POLAR_ACCESS_TOKEN and ${needed} on the host, then try Subscribe again.`,
-    };
+    console.error("[polar] checkout is not configured for", opts.interval);
+    return { ok: false, error: CHECKOUT_UNAVAILABLE };
   }
   const metadata = { user_id: opts.userId, email: opts.email, interval: opts.interval };
   const bodies: Record<string, unknown>[] = [
@@ -408,7 +477,7 @@ export async function createPolarCheckout(opts: {
   }
 
   const urls = [`${polarBase()}/v1/checkouts/`, `${polarBase()}/v1/checkouts/custom/`];
-  let last = "Polar checkout failed";
+  let last = CHECKOUT_UNAVAILABLE;
   for (const body of bodies) {
     for (const url of urls) {
       try {
@@ -437,7 +506,8 @@ export async function createPolarCheckout(opts: {
         last = polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
         if (res.status === 401 || res.status === 403) return { ok: false, error: last };
       } catch (err) {
-        last = err instanceof Error ? err.message : "Polar network error";
+        console.error("[polar] checkout network error", err instanceof Error ? err.message : err);
+        last = CHECKOUT_UNAVAILABLE;
       }
     }
   }
@@ -627,7 +697,8 @@ export async function createCustomerPortalSession(opts: {
 }): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
   const token = polarToken();
   if (!token) {
-    return { ok: false, error: "Polar is not connected on this host." };
+    console.error("[polar] customer portal requested but Polar is not configured");
+    return { ok: false, error: "Billing isn't available right now. Try again in a minute." };
   }
   let customerId = (opts.customerId ?? "").trim();
   if (!customerId && (opts.email || opts.externalCustomerId)) {
@@ -656,7 +727,7 @@ export async function createCustomerPortalSession(opts: {
     return { ok: false, error: "No Polar customer on this account yet. Subscribe once, then manage it here." };
   }
   const urls = [`${polarBase()}/v1/customer-sessions/`, `${polarBase()}/v1/customer-sessions`];
-  let last = "Could not open Polar's customer portal.";
+  let last = "Billing isn't available right now. Try again in a minute.";
   for (const body of bodies) {
     for (const url of urls) {
       try {
@@ -678,10 +749,10 @@ export async function createCustomerPortalSession(opts: {
         }
         const portal = polarPortalUrlFromPayload(json);
         if (res.ok && portal.startsWith("http")) return { ok: true, url: portal };
-        last = polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
+        polarFriendlyError(res.status, json.detail || json.error || raw.slice(0, 240));
         if (res.status === 401 || res.status === 403) return { ok: false, error: last };
       } catch (err) {
-        last = err instanceof Error ? err.message : "Polar network error";
+        console.error("[polar] portal network error", err instanceof Error ? err.message : err);
       }
     }
   }

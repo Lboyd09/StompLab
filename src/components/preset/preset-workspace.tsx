@@ -1,13 +1,12 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset } from "@/data/types";
-import { copyHlx, downloadHlx, hlxFilename, canExportHlx } from "@/lib/hlx";
+import { copyHlx, downloadHlx, hlxFilename, hlxJson, canExportHlx } from "@/lib/hlx";
 import {
   blockModel,
   canDownloadPreset,
   deviceFor,
   dspLoad,
   featuredOriginal,
-  formatParam,
   isDemoId,
   isEqToggleBlock,
   isFeaturedKnownId,
@@ -28,7 +27,8 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
-import { PresetFeedbackDialog, PresetFeedbackForm } from "../layout/preset-feedback";
+import { DownloadBar, EXPORT_MODE_LABEL, ExportModePicker, ImportPanel, type ExportMode } from "./download-bar";
+import { PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
@@ -65,11 +65,12 @@ export function PresetWorkspace({
   const [copying, setCopying] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
-  const [askFeedback, setAskFeedback] = useState(false);
+  const [exportMode, setExportMode] = useState<ExportMode>("snapshot");
+  const [savedFile, setSavedFile] = useState<string | null>(null);
+  const [beforeRevise, setBeforeRevise] = useState<Preset | null>(null);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
   const displayed = withSnapshot(preset, activeSnapshot);
-  const exportMode = fsMode === "preset" ? "stomp" : fsMode;
   const original = featuredOriginal(preset.id);
   const isPodGo = preset.stompModel === "pod-go";
   const editor = isPodGo ? "POD Go Edit" : "HX Edit";
@@ -89,6 +90,8 @@ export function PresetWorkspace({
     setActiveSnapshot(0);
     setLcdView("play");
     setAssignFsIndex(1);
+    setSavedFile(null);
+    setBeforeRevise(null);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
@@ -203,23 +206,19 @@ export function PresetWorkspace({
       toast.error(
         `${device.name} does not export a preset file. Copy the chain below by hand.`,
       );
-      setAskFeedback(true);
       return;
     }
     const filename = hlxFilename(preset);
     if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
-    toast.success(
-      ok
-        ? `Saved ${filename}. In ${editor}: File → Import. The unit opens in ${exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode.`
-        : `Download was blocked. Use Copy JSON and save it as a ${exportExt} file.`,
-    );
-    if (ok) setAskFeedback(true);
+    if (ok) setSavedFile(filename);
+    else toast.error(`Download was blocked. Use Advanced, then Copy JSON, and save it as a .${exportExt} file.`);
   }
 
   async function onRevise(note: string) {
     if (!plan.signedIn) return;
     if (!plan.canResearch) return;
+    const before = preset;
     setRevising(note);
     try {
       const current = sortedBlocks(preset)
@@ -245,12 +244,21 @@ export function PresetWorkspace({
         return;
       }
       onChange(result.preset);
+      setBeforeRevise(before);
+      toast.success("Tone revised.", { action: { label: "Undo", onClick: () => undoRevise(before) } });
       notifyResearchSource(result.source);
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Could not revise.");
     } finally {
       setRevising(null);
     }
+  }
+
+  function undoRevise(prev: Preset | null = beforeRevise) {
+    if (!prev) return;
+    onChange(prev);
+    setBeforeRevise(null);
+    toast.message("Back to the earlier tone.");
   }
 
   async function onCopy() {
@@ -268,7 +276,7 @@ export function PresetWorkspace({
 
   return (
     <>
-    <div className="space-y-8">
+    <div className="space-y-8 pb-24">
       <header className="space-y-2">
           <div className="flex flex-wrap items-center gap-2 text-xs uppercase tracking-[0.16em] text-muted-foreground">
             <span>{preset.instrument}</span>
@@ -296,11 +304,11 @@ export function PresetWorkspace({
                 preset.name
               )}
             </h1>
-            <div className="flex flex-col items-end gap-1">
+            <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-sm sm:items-end">
               {canDownload ? (
                 <>
-                  <div className="flex flex-wrap justify-end gap-2">
-                    <Button type="button" onClick={onDownload} data-tour="download">
+                  <div className="flex flex-wrap gap-2 sm:justify-end">
+                    <Button type="button" className="h-11" onClick={onDownload} data-tour="download">
                       {canExportHlx(preset.stompModel)
                         ? `Download .${exportExt}`
                         : "Export unavailable"}
@@ -308,31 +316,31 @@ export function PresetWorkspace({
                     <Button
                       type="button"
                       variant="secondary"
+                      className="h-11"
                       aria-expanded={showAdvanced}
                       onClick={() => setShowAdvanced((open) => !open)}
                     >
                       Advanced
                     </Button>
                     {showAdvanced ? (
-                      <Button type="button" variant="secondary" onClick={() => void onCopy()} disabled={copying}>
+                      <Button type="button" variant="secondary" className="h-11" onClick={() => void onCopy()} disabled={copying}>
                         {copying ? "Copying" : "Copy JSON"}
                       </Button>
                     ) : null}
                   </div>
-                  <p className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                    {editor} · File · Import ·{" "}
-                    {exportMode === "snapshot" ? "Snapshot" : "Stomp"} mode
-                  </p>
+                  {canExportHlx(preset.stompModel) ? (
+                    <ExportModePicker value={exportMode} onChange={setExportMode} className="w-full" />
+                  ) : null}
                 </>
               ) : (
                 <>
-                  <Button asChild>
-                    <Link to="/upgrade">Unlock .{exportExt} download</Link>
+                  <Button asChild className="h-11">
+                    <Link to="/upgrade">Subscribe to download .{exportExt}</Link>
                   </Button>
-                  <p className="max-w-[16rem] text-right text-[10px] leading-relaxed text-muted-foreground">
+                  <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground sm:text-right">
                     {isDemoId(preset.id)
-                      ? "Demo download should be open — refresh if this is stuck."
-                      : "Look at the replica for free. This known rig downloads after unlock. Demos still download."}
+                      ? "We could not confirm your account. Reload the page and try again."
+                      : "This song is for subscribers. Subscribe to download it. The demos stay free."}
                   </p>
                 </>
               )}
@@ -382,7 +390,7 @@ export function PresetWorkspace({
                         setActiveSnapshot(i);
                         setFsMode("snapshot");
                       }}
-                      className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                      className={`min-h-11 rounded-full border px-4 text-sm font-medium md:min-h-9 md:px-3 md:text-xs ${
                         on ? "border-foreground bg-foreground text-background" : "border-border text-muted-foreground"
                       }`}
                     >
@@ -402,7 +410,7 @@ export function PresetWorkspace({
                     <button
                       type="button"
                       onClick={() => toggleBlock(gateBlock.id)}
-                      className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                      className={`min-h-11 rounded-full border px-4 text-xs uppercase tracking-[0.16em] md:min-h-8 md:px-3 ${
                         gateBlock.enabled
                           ? "border-foreground bg-foreground text-background"
                           : "border-border text-muted-foreground"
@@ -415,7 +423,7 @@ export function PresetWorkspace({
                     <button
                       type="button"
                       onClick={() => toggleBlock(eqBlock.id)}
-                      className={`rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.16em] ${
+                      className={`min-h-11 rounded-full border px-4 text-xs uppercase tracking-[0.16em] md:min-h-8 md:px-3 ${
                         eqBlock.enabled
                           ? "border-foreground bg-foreground text-background"
                           : "border-border text-muted-foreground"
@@ -443,12 +451,12 @@ export function PresetWorkspace({
                   <button
                     type="button"
                     onClick={() => selectBlock(b.id)}
-                    className="flex min-w-0 flex-1 items-start gap-3 text-left"
+                    className="flex min-h-11 min-w-0 flex-1 items-start gap-3 py-1 text-left"
                   >
                     <span className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: cat.lcd }} />
                     <span className="min-w-0 flex-1">
                       <span className="flex flex-wrap items-center gap-2">
-                        <span className="font-mono text-[10px] text-muted-foreground">{i + 1}</span>
+                        <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
                         <span className="text-sm font-medium">{model.name}</span>
                         <Badge variant="outline">{cat.short}</Badge>
                         {!b.enabled ? <Badge variant="outline">off</Badge> : null}
@@ -461,7 +469,7 @@ export function PresetWorkspace({
                     aria-pressed={b.enabled}
                     aria-label={`${b.enabled ? "Turn off" : "Turn on"} ${model.name} on this snapshot`}
                     onClick={() => toggleBlock(b.id)}
-                    className={`mt-0.5 shrink-0 rounded-full border px-3 py-1 text-[11px] uppercase tracking-[0.14em] ${
+                    className={`shrink-0 min-h-11 min-w-14 rounded-full border px-3 text-xs uppercase tracking-[0.14em] md:min-h-8 md:min-w-0 ${
                       b.enabled ? "border-foreground bg-foreground text-background" : "border-border"
                     }`}
                   >
@@ -482,24 +490,53 @@ export function PresetWorkspace({
                   <div>
                     <p className="text-sm font-medium">{model.name}</p>
                     <p className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
-                      {snapName ? `${snapName} · every knob` : "Every knob"} · 0 to 10
+                      {snapName ? `${snapName} · every knob` : "Every knob"} · as HX Edit shows it
                     </p>
                   </div>
                   <div className="grid gap-x-4 gap-y-2 sm:grid-cols-2">
                   {knobs.map((p) => (
-                    <label key={p.name} className="grid grid-cols-[5.5rem_minmax(0,1fr)_2.4rem] items-center gap-2 text-xs">
-                      <span className="truncate text-muted-foreground">{p.name}</span>
-                      <input
-                        type="range"
-                        min={0}
-                        max={10}
-                        step={0.1}
-                        value={Number.isFinite(p.value) ? p.value : 5}
-                        aria-label={`${model.name} ${p.name}`}
-                        onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
-                        className="w-full accent-foreground"
-                      />
-                      <span className="text-right font-mono tabular-nums">{formatParam(p.value)}</span>
+                    <label key={p.name} className="grid grid-cols-[6rem_minmax(0,1fr)_4.2rem] items-center gap-2 text-xs">
+                      <span className="truncate text-muted-foreground" title={p.label}>{p.label}</span>
+                      {p.kind === "switch" ? (
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={p.value >= 5}
+                          aria-label={`${model.name} ${p.label}`}
+                          onClick={() => changeParam(block.id, p.name, p.value >= 5 ? 0 : 10)}
+                          className={`min-h-11 rounded-full border px-3 text-xs uppercase tracking-[0.14em] md:min-h-8 ${
+                            p.value >= 5 ? "border-foreground bg-foreground text-background" : "border-border"
+                          }`}
+                        >
+                          {p.value >= 5 ? "On" : "Off"}
+                        </button>
+                      ) : p.kind === "choice" ? (
+                        <select
+                          value={p.value}
+                          aria-label={`${model.name} ${p.label}`}
+                          onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
+                          className="min-h-11 w-full rounded-md border border-border bg-background px-2 text-base md:min-h-8 md:text-xs"
+                        >
+                          {Array.from({ length: p.max - p.min + 1 }, (_, i) => p.min + i).map((v) => (
+                            <option key={v} value={v}>
+                              {p.options?.[v - p.min] ?? v}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          type="range"
+                          min={0}
+                          max={10}
+                          step={0.1}
+                          value={Number.isFinite(p.value) ? p.value : 5}
+                          aria-label={`${model.name} ${p.label}`}
+                          aria-valuetext={p.display}
+                          onChange={(e) => changeParam(block.id, p.name, Number(e.target.value))}
+                          className="w-full accent-foreground"
+                        />
+                      )}
+                      <span className="truncate text-right font-mono tabular-nums">{p.kind === "choice" && !p.options ? "" : p.display}</span>
                     </label>
                   ))}
                   </div>
@@ -557,7 +594,7 @@ export function PresetWorkspace({
             <CardHeader>
               <CardTitle>Snapshots</CardTitle>
               <CardDescription>
-                {preset.snapshots.length} sections · rename them before you download — the .hlx uses these names on
+                {preset.snapshots.length} sections · rename them before you download. The .${exportExt} uses these names on
                 the switches
               </CardDescription>
             </CardHeader>
@@ -585,9 +622,10 @@ export function PresetWorkspace({
                         setActiveSnapshot(i);
                         setFsMode("snapshot");
                       }}
-                      className="mt-2 size-2.5 shrink-0 rounded-full"
-                      style={{ background: s.color }}
-                    />
+                      className="-ml-2 -mt-1 grid size-11 shrink-0 place-items-center"
+                    >
+                      <span className="size-3 rounded-full" style={{ background: s.color }} />
+                    </button>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2">
                         <span className="font-mono text-[10px] text-muted-foreground">FS{i + 1}</span>
@@ -600,7 +638,7 @@ export function PresetWorkspace({
                             setActiveSnapshot(i);
                             setFsMode("snapshot");
                           }}
-                          className="h-8 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-sm font-medium"
+                          className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base font-medium md:h-8 md:text-sm"
                         />
                       </div>
                       <p className="text-xs text-muted-foreground">{s.notes}</p>
@@ -629,7 +667,7 @@ export function PresetWorkspace({
 
         <Card>
           <CardHeader>
-            <CardTitle>Build it on the Stomp</CardTitle>
+            <CardTitle>Build it on the {device.name}</CardTitle>
             <CardDescription>
               The replica is looking down at the unit. LCD at the top. Switch 1 is always top-left — that number is the silkscreen and HX Edit. Top row 1–3 (XL) / 1–4 (POD Go, HX Effects) / 1–6 (Helix).
             </CardDescription>
@@ -639,16 +677,17 @@ export function PresetWorkspace({
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">1.</span>
                 <span>
-                  USB to a computer. Open {editor}. File → Import the .{exportExt}. Firmware 3.80 or newer. Do not
+                  USB to a computer. Open {editor}. File → Import the .{exportExt}.{" "}
+                  {isPodGo ? "Update POD Go Edit and the unit first." : "Firmware 3.80 or newer."} Do not
                   drag the file onto a setlist.
                 </span>
               </li>
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">2.</span>
                 <span>
-                  On the unit, press PAGE until the display says{" "}
-                  {exportMode === "snapshot" ? "SNAP" : "STOMP"}. The file loads that mode; PAGE is how you
-                  confirm it.
+                  Put the {device.name} in {EXPORT_MODE_LABEL[exportMode]} mode
+                  {isPodGo ? "." : <> (press PAGE until the display says {exportMode === "snapshot" ? "SNAP" : "STOMP"}).</>}{" "}
+                  The numbered switches only recall the tones in Snapshot mode.
                 </span>
               </li>
               <li className="flex gap-2">
@@ -678,29 +717,50 @@ export function PresetWorkspace({
           <Card>
             <CardHeader>
               <CardTitle>Revise this tone</CardTitle>
-              <CardDescription>Tell the Lab what is off. It rewrites the path.</CardDescription>
+              <CardDescription>
+                {plan.canResearch
+                  ? "Tell the Lab what is off. It rewrites the path and uses one custom build."
+                  : plan.paid
+                    ? "You've used this month's custom builds. Revising is back next month."
+                    : "Revising uses a custom build, and your free builds are used."}
+              </CardDescription>
             </CardHeader>
             <CardContent className="flex flex-wrap gap-2">
-              {["Too dark", "Too bright", "More gain", "Less gain", "Wrong amp"].map((note) => (
+              {plan.canResearch ? (
+                ["Too dark", "Too bright", "More gain", "Less gain", "Wrong amp"].map((note) => (
+                  <button
+                    key={note}
+                    type="button"
+                    disabled={Boolean(revising)}
+                    onClick={() => void onRevise(note)}
+                    className="h-11 rounded-full bg-secondary px-4 text-sm disabled:opacity-60 md:h-9 md:px-3 md:text-xs"
+                  >
+                    {revising === note ? "Revising…" : note}
+                  </button>
+                ))
+              ) : !plan.paid ? (
+                <Button asChild className="h-11">
+                  <Link to="/upgrade">Subscribe to revise</Link>
+                </Button>
+              ) : null}
+              {beforeRevise ? (
                 <button
-                  key={note}
                   type="button"
-                  disabled={Boolean(revising)}
-                  onClick={() => void onRevise(note)}
-                  className="h-9 rounded-full bg-secondary px-3 text-xs"
+                  onClick={() => undoRevise()}
+                  className="h-11 rounded-full border border-border px-4 text-sm md:h-9 md:px-3 md:text-xs"
                 >
-                  {revising === note ? "Revising…" : note}
+                  Undo last revise
                 </button>
-              ))}
+              ) : null}
             </CardContent>
           </Card>
         ) : null}
 
         <Card>
-          <CardHeader>
+          <CardHeader id="preset-feedback">
             <CardTitle>After you test it</CardTitle>
             <CardDescription>
-              What you changed on the unit trains the next songs. We will not retune this one by hand.
+              What you changed on the unit helps make the next presets closer to the record.
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -741,7 +801,7 @@ export function PresetWorkspace({
                       setFsMode(id);
                       if (id !== "stomp") setLcdView("play");
                     }}
-                    className={`h-9 rounded-full px-3.5 text-xs font-medium ${
+                    className={`h-11 rounded-full px-4 text-xs font-medium md:h-9 md:px-3.5 ${
                       fsMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                     }`}
                   >
@@ -754,11 +814,11 @@ export function PresetWorkspace({
               {fsMode === "snapshot"
                 ? canDownload
                   ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
-                  : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Unlock to write this onto the unit."
+                  : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Subscribe to write this onto the unit."
                 : fsMode === "stomp"
                   ? canDownload
                     ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
-                    : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Unlock to write this onto the unit."
+                    : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Subscribe to write this onto the unit."
                   : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
             </p>
             <div data-tour="replica" data-tutorial="replica">
@@ -807,11 +867,31 @@ export function PresetWorkspace({
           </div>
         </div>
       </div>
-      <PresetFeedbackDialog
-        song={preset.song || preset.name}
-        open={askFeedback}
-        onClose={() => setAskFeedback(false)}
-      />
+      {canExportHlx(preset.stompModel) ? (
+        <DownloadBar
+          unitName={device.name}
+          ext={exportExt}
+          mode={exportMode}
+          canDownload={canDownload}
+          onDownload={onDownload}
+          panel={
+            savedFile && canDownload ? (
+              <ImportPanel
+                unitName={device.name}
+                editor={editor}
+                filename={savedFile}
+                mode={exportMode}
+                getJson={() => hlxJson(preset, { fsMode: exportMode })}
+                onClose={() => setSavedFile(null)}
+                onRate={() => {
+                  setSavedFile(null);
+                  document.getElementById("preset-feedback")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                }}
+              />
+            ) : null
+          }
+        />
+      ) : null}
     </>
   );
 }

@@ -73,7 +73,9 @@ describe("research prompt", () => {
     assert.match(prompt, /session tech/i);
     assert.match(prompt, /guitar\/pickups/i);
     assert.match(prompt, /A\/Bs against the RECORD/);
-    assert.match(prompt, /EVERY factory knob/);
+    assert.match(prompt, /Set every knob that shapes this tone/);
+    assert.match(prompt, /8 = dotted eighth/);
+    assert.equal(/Scale 5/.test(prompt), false);
     assert.match(prompt, /Unknown rock song/);
     assert.match(prompt, /GATE:/);
     assert.match(prompt, /cali-q-graphic/);
@@ -131,13 +133,15 @@ describe("research prompt", () => {
     assert.equal(fx.includes("amp-guitar") || fx.includes("# Guitar Amps"), false);
     assert.equal(/cali-rectifire|essex-a30|4x12-cali-v30/.test(fx), false);
     assert.match(fx, /deez-one-vintage/);
-    assert.match(fx, /knobs: Drive/);
+    assert.match(fx, /- deez-one-vintage\|[^\n]*Drive,Level,Tone/);
   });
 
   it("lists factory knobs on guitar amps so Google cannot leave them at 5", () => {
     const gtr = compactCatalogForPrompt("guitar", "hx-stomp");
-    assert.match(gtr, /# Guitar Amps \(knobs: Drive/);
-    assert.match(gtr, /cali-iv-rhythm-2\|/);
+    // Each amp row carries HX Edit's own knob names (Fullerton has two drive knobs).
+    assert.match(gtr, /# Guitar Amps/);
+    assert.match(gtr, /- cali-iv-rhythm-2\|[^\n]*Drive/);
+    assert.match(gtr, /- fullerton-nrm\|[^\n]*Drive Norm/);
   });
 
   it("omits wah models when the player has a real pedal", () => {
@@ -206,8 +210,8 @@ describe("per-unit catalog", () => {
 describe("devices", () => {
   it("lists Helix family and marks POD Go as .pgp", () => {
     assert.equal(DEVICE_MAP["helix-floor"].hlxDeviceId, 2162689);
-    assert.equal(DEVICE_MAP["helix-lt"].hlxDeviceId, 2162691);
-    assert.equal(DEVICE_MAP["hx-effects"].hlxDeviceId, 2162692);
+    assert.equal(DEVICE_MAP["helix-lt"].hlxDeviceId, 2162692);
+    assert.equal(DEVICE_MAP["hx-effects"].hlxDeviceId, 2162693);
     assert.equal(DEVICE_MAP["hx-effects"].hasAmpCab, false);
     assert.equal(DEVICE_MAP["pod-go"].exportFormat, "pgp");
     assert.equal(DEVICE_MAP["pod-go"].hlxDeviceId, 2162695);

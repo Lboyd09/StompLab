@@ -60,7 +60,7 @@ function CatalogModelPage() {
                 <Link
                   to="/catalog"
                   search={{ q: "", cat: model.category, tab: "browse", unit: d.id }}
-                  className="inline-flex h-9 items-center rounded-full bg-secondary px-3 text-xs font-medium"
+                  className="inline-flex h-11 items-center rounded-full bg-secondary px-3.5 text-sm font-medium md:h-9 md:px-3 md:text-xs"
                 >
                   {d.name}
                 </Link>

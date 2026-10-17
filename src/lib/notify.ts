@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { resendVerificationEmail } from "./billing";
 import type { ResearchErr } from "./research";
 
 export function notifyResearchError(
@@ -10,11 +11,25 @@ export function notifyResearchError(
     return;
   }
   if (err.reason === "paywall") {
-    toast.error(err.error, { action: { label: "Unlock", onClick: go.upgrade }, duration: 8000 });
+    toast.error(err.error, { action: { label: "Subscribe", onClick: go.upgrade }, duration: 8000 });
     return;
   }
   if (err.reason === "quota") {
     toast.error(err.error, { duration: 8000 });
+    return;
+  }
+  if (err.reason === "verify") {
+    toast.error(err.error, {
+      action: {
+        label: "Resend email",
+        onClick: () => {
+          void resendVerificationEmail()
+            .then((res) => (res.ok ? toast.success("Sent. Check your email.") : toast.error(res.error)))
+            .catch(() => toast.error("We couldn't send that email. Try again in a minute."));
+        },
+      },
+      duration: 10000,
+    });
     return;
   }
   const raw = err.error || "Research failed";

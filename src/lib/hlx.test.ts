@@ -36,7 +36,9 @@ describe("HELIX_IDS", () => {
     assert.equal(helixIdFor("knuckle-dragon"), undefined);
     assert.equal(helixIdFor("german-mottled"), undefined);
     for (const id of Object.values(HELIX_IDS)) {
-      assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(id), false, id);
+      // Stadium-only ids never; CabMicIr_ cabs are real HX 3.50+ models in HX Edit's catalog.
+      if (/^HD2_Mic/.test(id)) continue;
+      assert.equal(/Agoura_|HX2_/.test(id), false, id);
       assert.ok(isHxStompModelId(id), id);
     }
   });
@@ -65,7 +67,8 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block2["@model"], "HD2_AmpCaliIVR1");
     assert.equal(dsp0.block2["@type"], 1);
     assert.equal(dsp0.block2["@cab"], undefined);
-    assert.equal(dsp0.block2.Bright, true);
+    // The Helix Cali IV R1 has no Bright switch; HX Edit would drop an unknown key.
+    assert.equal(dsp0.block2.Bright, undefined);
     assert.equal(dsp0.block3["@model"], "HD2_CaliQ");
     assert.ok(Number(dsp0.block3["2200Hz"]) > 3, `2200Hz ${dsp0.block3["2200Hz"]} should be the icepick, not a flat 0–1 knob`);
     assert.ok(Number(dsp0.block3["240Hz"]) < -1, `240Hz ${dsp0.block3["240Hz"]} should be a cut`);
@@ -110,7 +113,7 @@ describe("buildHlx Teen Spirit", () => {
   it("uses snapshot mode globally and 1-based join position", () => {
     const global = tone.global as { "@pedalstate": number };
     assert.equal(global["@pedalstate"], 2);
-    assert.equal(dsp0.join["@position"], 5);
+    assert.equal(dsp0.join["@position"], 8);
     assert.equal(dsp0.block0["@no_snapshot_bypass"], false);
     assert.equal((hlx.data as { device: number }).device, 2162694);
     assert.equal(hlx.schema, "L6Preset");
@@ -125,7 +128,7 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(Object.keys(fs.dsp0).length, 0);
   });
 
-  it("snapshot mode writes an empty footswitch even when bypass assigns exist", () => {
+  it("keeps stomp switch assignments in snapshot mode, as real HX exports do", () => {
     const src = featured("featured-teen-spirit");
     const mixed = {
       ...src,
@@ -143,8 +146,8 @@ describe("buildHlx Teen Spirit", () => {
     };
     const snap = buildHlx(mixed, { fsMode: "snapshot" });
     const snapTone = (snap.data as { tone: Record<string, unknown> }).tone;
-    const snapFs = snapTone.footswitch as { dsp0: Record<string, unknown> };
-    assert.deepEqual(snapFs.dsp0, {});
+    const snapFs = snapTone.footswitch as { dsp0: Record<string, { "@fs_index": number }> };
+    assert.equal(snapFs.dsp0.block0?.["@fs_index"], 4);
     assert.equal((snapTone.global as { "@pedalstate": number })["@pedalstate"], 2);
     const stomp = buildHlx(mixed, { fsMode: "stomp" });
     const stompTone = (stomp.data as { tone: Record<string, unknown> }).tone;
@@ -320,7 +323,7 @@ describe("visual FS map", () => {
         const model = String(block["@model"] ?? "");
         if (!model) continue;
         assert.match(model, /^(HD2_|L6SPB_)/, `${p.id} ${k} ${model}`);
-        assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
+        assert.equal(/Agoura_|HX2_/.test(model), false, model);
         assert.equal(model.includes("AmpegScrambler") && !model.endsWith("OD"), false, model);
       }
       const snaps = p.footswitches.filter((f) => f.action === "snapshot");
@@ -337,12 +340,13 @@ describe("visual FS map", () => {
     const xl = withStompModel(featured("featured-teen-spirit"), "hx-stomp-xl");
     const hlx = buildHlx(xl);
     const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
-    const snap0 = tone.snapshot0 as { "@fs_index": number; "@name": string; "@fs_label"?: string };
-    const snap3 = tone.snapshot3 as { "@fs_index": number };
+    // Snapshots sit on their switches by order; real snapshots carry no @fs_index/@fs_label.
+    const snap0 = tone.snapshot0 as Record<string, unknown>;
+    const snap3 = tone.snapshot3 as Record<string, unknown>;
     assert.equal(snap0["@name"], "CLEAN");
-    assert.equal(snap0["@fs_label"], "CLEAN");
-    assert.equal(snap0["@fs_index"], 1);
-    assert.equal(snap3["@fs_index"], 4);
+    assert.equal(snap0["@fs_index"], undefined);
+    assert.ok(snap3);
+    assert.equal(tone.snapshot4, undefined);
   });
 
   it("writes XL bypass assigns to the same silkscreen index", () => {
@@ -370,12 +374,15 @@ describe("visual FS map", () => {
     assert.equal((hlx.data as { device: number }).device, 2162695);
     assert.equal((hlx.data as { meta: { application: string } }).meta.application, "POD Go Edit");
     const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
-    for (const [k, b] of Object.entries(dsp)) {
-      const model = String(b["@model"] ?? "");
-      if (!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_")) continue;
-      assert.equal(model.startsWith("L6SPB_"), false, `${k} ${model}`);
-      assert.ok(FACTORY_HLX_PARAMS[model], `${k} ${model}`);
-    }
+    // POD Go's own layout: P34 I/O and ten slots, built-ins in place.
+    assert.equal(dsp.input["@model"], "P34_AppDSPFlowInput");
+    assert.equal(dsp.output["@model"], "P34_AppDSPFlowOutput");
+    for (let i = 0; i < 10; i++) assert.ok(dsp[`block${i}`], `block${i}`);
+    const models = Object.values(dsp).map((b) => String(b["@model"] ?? ""));
+    assert.ok(models.includes("HD2_VolPanVolStereo"));
+    assert.ok(models.includes("HD2_FXLoopMono1"));
+    assert.ok(models.some((m) => m.startsWith("HD2_EQ_STATIC_")));
+    assert.equal(models.some((m) => m.startsWith("L6SPB_")), false);
   });
 
   it("writes every factory knob on each exportable block", () => {
@@ -571,7 +578,7 @@ describe("exhaustive HX Edit model export", () => {
       assert.ok(match, `${m.id} should export ${hid}`);
       const model = String(match[1]["@model"]);
       assert.ok(isHxStompModelId(model), `${m.id} ${model}`);
-      assert.equal(/Agoura_|VIC_|HX2_|CabMicIr_/.test(model), false, model);
+      assert.equal(/Agoura_|HX2_/.test(model), false, model);
       assert.equal(/^HD2_DistAmpegScrambler$/.test(model), false, model);
       exported.add(model);
       const factory = factoryParamsFor(model);
@@ -671,9 +678,10 @@ describe("multi-device export", () => {
     const floor = buildHlx({ ...miniPreset("scream-808"), stompModel: "helix-floor" });
     assert.equal((floor.data as { device: number }).device, 2162689);
     const dsp = (floor.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
-    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlowInput");
+    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlow1Input");
+    assert.equal(dsp.inputB["@model"], "HD2_AppDSPFlow2Input");
     const lt = buildHlx({ ...miniPreset("scream-808"), stompModel: "helix-lt" });
-    assert.equal((lt.data as { device: number }).device, 2162691);
+    assert.equal((lt.data as { device: number }).device, 2162692);
   });
 
   it("strips amp and cab from HX Effects exports", () => {
@@ -685,8 +693,9 @@ describe("multi-device export", () => {
       { id: "b3", modelId: "4x12-cali-v30", enabled: true, path: "main", position: 2, params: { Distance: 2 } },
     ];
     const hlx = buildHlx(preset);
-    assert.equal((hlx.data as { device: number }).device, 2162692);
+    assert.equal((hlx.data as { device: number }).device, 2162693);
     const dsp = (hlx.data as { tone: { dsp0: Record<string, Record<string, unknown>> } }).tone.dsp0;
+    assert.equal(dsp.inputA["@model"], "HelixFx_AppDSPFlowInput");
     const models = Object.entries(dsp)
       .filter(([k]) => k.startsWith("block") || k.startsWith("cab"))
       .map(([, b]) => String(b["@model"]));
@@ -713,7 +722,7 @@ describe("multi-device export", () => {
     assert.ok(tone.snapshot7);
     assert.equal(tone.snapshot8, undefined);
     const dsp = tone.dsp0 as Record<string, Record<string, unknown>>;
-    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlowInput");
+    assert.equal(dsp.inputA["@model"], "HD2_AppDSPFlow1Input");
     assert.equal(dsp.outputA["@model"], "HD2_AppDSPFlowOutput");
   });
 
