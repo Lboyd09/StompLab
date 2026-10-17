@@ -47,7 +47,7 @@ Latest product commit on `main`: `dddb77c` — “Reject unknown songs, finish t
 
 Stack: TanStack Start, React 19, Vite 8, Nitro on Vercel, Tailwind v4, Better Auth (email/password), Postgres (PGLite locally), Polar (merchant of record), Gemini 2.5 Flash for research. Package name is `stomp-lab`.
 
-`npm run build` is `vite build` only. On local PGLite the schema applies when the server starts (`src/lib/db.ts`); on Postgres `ensureDbReady` does not run migrations, so production needs `npm run db:migrate`. Do not put `db:migrate` back on the build. `npm run db:migrate` still exists for a manual run.
+`npm run build` is `vite build` only. On local PGLite every migration applies when the server starts (`src/lib/db.ts`). On Postgres the server only runs the idempotent security DDL in `src/lib/schema-ensure.ts` (migrations 0014–0019) before its first query; any other new migration needs `npm run db:migrate` — keep `schema-ensure.ts` in step with new security migrations. Do not put `db:migrate` back on the build. `npm run db:migrate` still exists for a manual run.
 
 Prices, in `src/lib/plan.ts`: $6.99/month, $75/year. Launch promo is 20% off the first monthly invoice only. Yearly stays $75. Invite from a paying monthly account is 50% off one monthly invoice for both sides, plus 3 extra custom builds. Free invite is 3 extra custom builds only. Cap is 3 friends. New account, first 48 hours, before that account has researched a song.
 
