@@ -1,3 +1,4 @@
+import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
 import { newId } from "./preset-utils";
@@ -5,6 +6,10 @@ import { fitSnapshotName } from "./snapshot-sanitize";
 
 const BOOSTS = new Set(["kinky-boost", "deranged-master"]);
 const HIGH_GAIN_AMP = /rect|uber|soldano|diezel|engl|revv|badonk|archetype|panama|vitriol|placater|german-x|citrus-rv|anglo-heavy|pv-/;
+/** Clean channels of high-gain amp families (Archetype Clean, PV Vitriol Clean, Placater Clean). */
+const CLEAN_CHANNEL = /clean/;
+/** Bass DI / amp-in-a-box pedals are the bass tone, not a drive that needs a gate. */
+const BASS_DI = /bass-di|sansamp|zeroamp|obsidian|ampeg-scrambler/;
 
 function categoryOf(modelId: string): CategoryId | undefined {
   return MODEL_MAP[modelId]?.category;
@@ -31,13 +36,39 @@ function isCleanName(name: string): boolean {
   return /\b(clean|intro|arp|dry)\b/i.test(name) && !/\b(lead|solo|crunch|dist|dirty|heavy)\b/i.test(name);
 }
 
-function needsGate(blocks: StompBlock[]): boolean {
+function needsGate(blocks: StompBlock[], bass: boolean): boolean {
   if (blocks.some((b) => b.modelId === "noise-gate" || b.modelId === "hard-gate" || b.modelId === "horizon-gate")) {
     return false;
   }
   const amp = blocks.find((b) => isAmp(b.modelId));
-  if (amp && ((amp.params.Drive ?? 0) >= 4.5 || HIGH_GAIN_AMP.test(amp.modelId))) return true;
-  return blocks.some((b) => isDrive(b.modelId));
+  const highGainAmp = amp && !CLEAN_CHANNEL.test(amp.modelId) && HIGH_GAIN_AMP.test(amp.modelId);
+  if (amp && ((amp.params.Drive ?? 0) >= 4.5 || highGainAmp)) return true;
+  if (bass) return false;
+  return blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId));
+}
+
+/** Block slots the unit spends: an amp and the cab after it are one block on HX. */
+function slotsUsed(blocks: StompBlock[]): number {
+  let n = 0;
+  blocks.forEach((b, i) => {
+    const prev = blocks[i - 1];
+    if (categoryOf(b.modelId) === "cab" && prev && isAmp(prev.modelId)) return;
+    n += 1;
+  });
+  return n;
+}
+
+function hasRoom(preset: Preset, blocks: StompBlock[]): boolean {
+  if (preset.stompModel === "pod-go") {
+    // POD Go: four free effect blocks beside its built-in wah, volume, amp, cab and EQ.
+    const free = blocks.filter((b) => {
+      const c = categoryOf(b.modelId);
+      return c && !["amp-guitar", "amp-bass", "preamp", "cab", "mic", "wah"].includes(c) && b.modelId !== "volume-pedal";
+    });
+    return free.length < 4;
+  }
+  const max = DEVICE_MAP[preset.stompModel]?.maxBlocks ?? 8;
+  return slotsUsed(blocks) < max;
 }
 
 const GEAR_SWAP: { gear: RegExp; from: string; to: string }[] = [
@@ -98,16 +129,18 @@ function withOverrides(snap: Snapshot, blockId: string, patch: Record<string, nu
 }
 
 function shapeGenerated(preset: Preset): Preset {
-  let next = alignGear(markLikely(preset));
+  const next = alignGear(markLikely(preset));
   let blocks = next.blocks.map((b) => ({ ...b, params: { ...b.params } }));
 
+  const bass = next.instrument === "bass";
   for (const block of blocks) {
     if (!isDelay(block.modelId)) continue;
     if ((block.params.Time ?? 0) >= 9) block.params.Time = 4.2;
-    if ((block.params.Scale ?? 0) <= 0) block.params.Scale = 5;
+    // No time and no note: follow the song tempo on the dotted eighth. A Time the model chose stays free-running.
+    if (block.params.Note === undefined && block.params.Time === undefined && (block.params.Scale ?? 0) <= 0) block.params.Note = 8;
   }
 
-  if (needsGate(blocks) && blocks.length < 8 && MODEL_MAP["noise-gate"]) {
+  if (needsGate(blocks, bass) && hasRoom(next, blocks) && MODEL_MAP["noise-gate"]) {
     const ampAt = blocks.findIndex((b) => isAmp(b.modelId));
     const gate: StompBlock = {
       id: newId("blk"),
@@ -125,7 +158,7 @@ function shapeGenerated(preset: Preset): Preset {
 
   const leadSnaps = next.snapshots.filter((s) => isLeadName(s.name));
   let boost = blocks.find((b) => b.modelId === "kinky-boost");
-  if (leadSnaps.length && !boost && blocks.length < 8 && MODEL_MAP["kinky-boost"]) {
+  if (leadSnaps.length && !boost && !bass && hasRoom(next, blocks) && MODEL_MAP["kinky-boost"]) {
     const ampAt = blocks.findIndex((b) => isAmp(b.modelId));
     const at = ampAt < 0 ? blocks.length : ampAt;
     boost = {

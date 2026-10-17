@@ -1,5 +1,7 @@
 import { CATEGORIES, CATEGORY_MAP, DEFAULT_PARAMS, DEVICE_MAP, STOMP_DEVICES } from "./categories";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids";
+import { hxModel, hxModelOnUnit } from "./hx-catalog";
+import { podGoIdFor } from "./podgo-catalog";
 import { AMP_MODELS } from "./models-amps";
 import { CAB_MODELS } from "./models-cabs";
 import { FX_MODELS } from "./models-fx";
@@ -97,12 +99,21 @@ export function modelOnDevice(model: HxModel, deviceId: StompModelId): boolean {
   const device = DEVICE_MAP[deviceId];
   if (!device) return false;
   if (!device.hasAmpCab && AMP_CAB_CATS.has(model.category)) return false;
-  const hid = HELIX_IDS[model.id] ?? "";
-  if (deviceId === "pod-go") {
-    if (hid.startsWith("L6SPB_")) return false;
-    if (UNEXPORTABLE_MODELS.has(model.id)) return false;
-  }
-  return true;
+  const hid = helixIdFor(model.id);
+  if (!hid) return model.category === "mic";
+  if (deviceId === "pod-go") return Boolean(podGoIdFor(hid, "pre") || podGoIdFor(hid, "post"));
+  const family = deviceId === "helix-floor" ? "floor" : deviceId === "helix-lt" ? "lt" : deviceId === "hx-effects" ? "effects" : "stomp";
+  return hxModelOnUnit(hid, family);
+}
+
+/** Knob names to offer Gemini for a model: HX Edit's own labels, minus amp-modeling internals. */
+const HIDDEN_KNOBS = /^(Hum|Ripple|Bias|Bias X|Tempo Sync.*|Note Sync.*|Headroom|Stereo|Trails|Scale)$/i;
+export function promptKnobs(modelId: string): string[] {
+  const m = hxModel(helixIdFor(modelId));
+  if (!m) return [];
+  const names = m.params.map((p) => p.label).filter((l) => !HIDDEN_KNOBS.test(l));
+  if (m.byKey.SyncSelect1) names.push("Note");
+  return [...new Set(names)];
 }
 
 export function devicesForModel(model: HxModel): StompDevice[] {
@@ -254,17 +265,22 @@ export function compactCatalogForPrompt(
     if (cat.id === "send-return") {
       models = models.filter((m) => ["fx-loop", "send", "return"].includes(m.id));
     }
+    if (deviceId) models = models.filter((m) => modelOnDevice(m, deviceId));
     if (!models.length) continue;
-    const knobs = DEFAULT_PARAMS[cat.id] ?? [];
-    rows.push(knobs.length ? `# ${cat.label} (knobs: ${knobs.join(",")})` : `# ${cat.label}`);
-    for (const m of models) {
-      if (cat.id === "amp-guitar" || cat.id === "amp-bass" || cat.id === "cab" || cat.id === "distortion") {
+    // Knobs every model in the category shares go in the header; each row lists only its own extras.
+    const lists = models.map((m) => promptKnobs(m.id));
+    const shared = (lists[0] ?? []).filter((k) => lists.every((l) => l.includes(k)));
+    rows.push(shared.length ? `# ${cat.label} (every model: ${shared.join(",")})` : `# ${cat.label}`);
+    models.forEach((m, i) => {
+      const own = lists[i].filter((k) => !shared.includes(k));
+      const knobs = own.length ? `|${own.join(",")}` : "";
+      if (cat.id === "amp-guitar" || cat.id === "amp-bass" || cat.id === "distortion") {
         const hint = m.description.replace(/\s+/g, " ").split(".")[0].slice(0, 56);
-        rows.push(`- ${m.id}|${m.basedOn}|${hint}`);
+        rows.push(`- ${m.id}|${m.basedOn}|${hint}${knobs}`);
       } else {
-        rows.push(`- ${m.id}|${m.basedOn}`);
+        rows.push(`- ${m.id}|${m.basedOn}${knobs}`);
       }
-    }
+    });
   }
   return rows.join("\n");
 }

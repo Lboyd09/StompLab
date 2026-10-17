@@ -147,11 +147,23 @@ export function paramFor(modelId: string, key: string): HxParam | undefined {
   return hxModel(helixIdFor(modelId))?.byKey[key];
 }
 
-const LEVEL_UI = new Set(["Ch Vol", "ChVol", "Output", "Level", "Master", "Volume", "Gain"]);
+const VOLUME_KEY = /^(ChVol|Ch Vol|Master|Level|Volume|Output)$/;
+const LEGACY_LEVEL_UI = new Set(["Ch Vol", "ChVol", "Output", "Level", "Master", "Volume"]);
+
+/**
+ * Knobs that mute the path when low: channel volume, master, output and level — by the real HX
+ * key, so a Tube Screamer's Gain (its drive) or Kinky Boost's Boost switch is not mistaken for one.
+ */
+export function isVolumeKnob(modelId: string, uiName: string): boolean {
+  if (modelId === "volume-pedal") return false;
+  const m = hxModel(helixIdFor(modelId));
+  if (!m) return LEGACY_LEVEL_UI.has(uiName) || LEGACY_LEVEL_UI.has(uiName.replace(/\s+/g, ""));
+  return resolveParamKeys(modelId, uiName).some((k) => VOLUME_KEY.test(k) && m.byKey[k]?.type === "f");
+}
 
 /** CLAUDE.md: channel volume / output / level / master stay at or above ~3.2 or the snapshot goes silent. */
-export function clampUiLevel(uiName: string, raw: number): number {
-  if (!LEVEL_UI.has(uiName) && !LEVEL_UI.has(uiName.replace(/\s+/g, ""))) return raw;
+export function clampUiLevel(modelId: string, uiName: string, raw: number): number {
+  if (!isVolumeKnob(modelId, uiName)) return raw;
   return raw < 3.2 ? 3.2 : raw;
 }
 
@@ -159,7 +171,7 @@ export function clampUiLevel(uiName: string, raw: number): number {
 export function nativeFor(modelId: string, key: string, uiName: string, ui: number): number | boolean | undefined {
   const p = paramFor(modelId, key);
   if (!p) return undefined;
-  const raw = Number.isFinite(ui) ? clampUiLevel(uiName, ui) : 5;
+  const raw = Number.isFinite(ui) ? clampUiLevel(modelId, uiName, ui) : 5;
   const special = specialCurve(modelId, key, raw);
   return coerceNative(p, special ?? uiToNative(p, raw));
 }
@@ -267,4 +279,32 @@ export function legacyMicIndex(block: StompBlock): number {
   const raw = block.params.Mic;
   if (typeof raw !== "number") return 0;
   return Math.max(0, Math.min(15, Math.round(raw)));
+}
+
+/**
+ * Clean a block's knobs from Gemini or an old preset: keep every knob the model really has
+ * (by HX key, label or the app's older names), 0–10 for knobs, the real setting for whole-number
+ * and Note knobs. Unknown names are dropped; nothing missing is invented.
+ */
+export function normalizeBlockParams(modelId: string, raw: Record<string, unknown> | undefined): Record<string, number> {
+  const out: Record<string, number> = {};
+  if (!raw) return out;
+  const m = hxModel(helixIdFor(modelId));
+  for (const [name, value] of Object.entries(raw)) {
+    const n = typeof value === "number" ? value : typeof value === "boolean" ? (value ? 10 : 0) : Number(value);
+    if (!Number.isFinite(n)) continue;
+    if (name === "Note" || name === "Sync") {
+      if (m?.byKey.SyncSelect1 && n >= 1 && n <= 19) out.Note = Math.round(n);
+      continue;
+    }
+    if (name === "Mic") {
+      out.Mic = Math.max(0, Math.min(15, Math.round(n)));
+      continue;
+    }
+    const keys = resolveParamKeys(modelId, name);
+    if (!keys.length) continue;
+    const p = m?.byKey[keys[0]];
+    out[name] = p?.type === "i" ? Math.max(p.min, Math.min(p.max, Math.round(n))) : Math.max(0, Math.min(10, n));
+  }
+  return out;
 }

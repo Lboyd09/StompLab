@@ -47,7 +47,7 @@ Latest product commit on `main`: `dddb77c` — “Reject unknown songs, finish t
 
 Stack: TanStack Start, React 19, Vite 8, Nitro on Vercel, Tailwind v4, Better Auth (email/password), Postgres (PGLite locally), Polar (merchant of record), Gemini 2.5 Flash for research. Package name is `stomp-lab`.
 
-`npm run build` is `vite build` only. Schema applies when the server starts (`src/lib/db.ts`). Do not put `db:migrate` back on the build. `npm run db:migrate` still exists for a manual run.
+`npm run build` is `vite build` only. On local PGLite the schema applies when the server starts (`src/lib/db.ts`); on Postgres `ensureDbReady` does not run migrations, so production needs `npm run db:migrate`. Do not put `db:migrate` back on the build. `npm run db:migrate` still exists for a manual run.
 
 Prices, in `src/lib/plan.ts`: $6.99/month, $75/year. Launch promo is 20% off the first monthly invoice only. Yearly stays $75. Invite from a paying monthly account is 50% off one monthly invoice for both sides, plus 3 extra custom builds. Free invite is 3 extra custom builds only. Cap is 3 friends. New account, first 48 hours, before that account has researched a song.
 
@@ -63,7 +63,7 @@ Import those. Don’t invent a third wording.
 - A song is confirmed on iTunes before cache, Gemini, or `recordBuild`. Unknown, fake, or mash titles return `SONG_NOT_FOUND` (“We couldn't find that song. Check the title and artist, or open a demo.”). They are not cached and not counted. Featured demos still return from the library before that check.
 - Build stays disabled until a suggestion is picked or `looksLikeRealSong` passes. A grammatical fake (“The Quantum Refrigerator at 3AM”) can still be submitted. The server rejects it. That is intentional.
 - Tempo comes from a small BPM lookup. `finishTone` overwrites the preset tempo when BPM is 40–240. The JSON example tempo is 96, not 120, so the model is not taught “always 120”. If the lookup fails, nothing forces 120.
-- Generated presets get a noise gate (threshold about 1.6–1.8 on a 0–10 knob) in front of a high-gain amp or a drive, off on clean/intro snapshots. Delays default to tempo sync (Scale 5). Lead delay mix ≤ 2.5 and feedback ≤ 3.5. Time is never left at 10. A lead/solo snapshot gets a Kinky Boost at output 7, not a tiny channel-volume nudge. Clean snapshots drop dirt and the gate and keep amp drive low.
+- Generated presets get a noise gate (threshold about 1.6–1.8 on a 0–10 knob) in front of a high-gain amp or a drive, off on clean/intro snapshots. A delay with no Time and no Note gets Note 8 (dotted eighth, tempo-synced); a Time the model chose stays free-running. Lead delay mix ≤ 2.5 and feedback ≤ 3.5. Time is never left at 10. A lead/solo snapshot gets a Kinky Boost (its Boost switch on — the model has no output knob), not a tiny channel-volume nudge. Clean snapshots drop dirt and the gate and keep amp drive low.
 - Snapshot names fit 12 characters by abbreviating whole words first (`RHYTHM CRUNCH` → `Rhy Crnch`). Do not slice mid-word. The abbrev regexes must not use the `g` flag (`lastIndex` sticks).
 - Gemini uses a response schema, retries once on bad JSON, and never shows a raw parse error (“Expected ',' or ']'…”). The player sees “We couldn't read that preset. Try that song again.”
 - History dedupes by song + unit (or custom name + unit), newest first, cap 400. Same song and unit reuses the v11 cache instead of a new Gemini call. The repeat still counts as a build.
@@ -104,7 +104,7 @@ Standing prompt rules live in `src/lib/preset-schema.ts` and `src/lib/research-l
 
 ## Tone rules you will get wrong if you guess
 
-Knobs in the UI and in preset JSON are 0–10. Export maps them onto Helix ranges. Do not write Helix’s native numbers into the preset.
+Knobs in the UI and in preset JSON are 0–10, except whole-number knobs (Note, Mic, Interval, Mode, Clipping), which carry their real setting. Export maps them onto HX ranges in `src/lib/hx-units.ts` using HX Edit’s own catalog (`src/data/hx-catalog.ts`). Do not write HX native numbers for 0–10 knobs. Knob names can be the HX Edit labels (Gain, Tone) or the older app names (Drive, Treble); `src/lib/hx-params.ts` resolves both. A knob left out keeps Line 6’s factory default.
 
 HX Stomp holds 8 blocks. A gate after the cab, or a threshold hotter than about 2.2, mutes the snapshot. That muted Sandman. Never add `hard-gate`. The gate block is `noise-gate`. Its threshold stays open (about 1.6–2.2). Clean and intro snapshots bypass it. Level on that block is unity in the exporter; don’t “fix” loudness with it.
 
@@ -128,7 +128,7 @@ Stand-ins, use these ids:
 
 Unsourced gear notes start with `Likely —`. Don’t add that prefix twice.
 
-Delay Scale 5 is the tempo sync (dotted eighth as programmed). Lead mix ≤ 2.5, feedback ≤ 3.5.
+Tempo sync is the `Note` knob on a delay: 8 = dotted eighth, 6 = quarter, 9 = eighth (HX `TempoSync1` + `SyncSelect1`). Older presets stored `Scale: 5` for the dotted eighth; the exporter still reads that. Delay `Scale` is otherwise a stereo control. Lead mix ≤ 2.5, feedback ≤ 3.5.
 
 Snapshot names: 12 characters in the `.hlx`. `fitSnapshotName` abbreviates every word, then cuts. `sanitizeLabel` in `src/lib/hlx.ts` still slices to 12; names should already fit.
 
@@ -151,7 +151,8 @@ Rhythm vs lead controls show up only when the two guitar parts are actually diff
 | Shell | `src/routes/__root.tsx`, `src/components/layout/app-shell.tsx`. Bare routes (no shell): `/login`, `/reset-password`, `/goodbye`. `/upgrade` stays in the shell. |
 | Home / build | `src/routes/index.tsx`, `song-typeahead.tsx` (suggestions are in the document flow, not an absolute menu over the button) |
 | Preset screen | `src/components/preset/preset-workspace.tsx`, `src/components/stomp/` |
-| Export | `src/lib/hlx.ts` |
+| Export | `src/lib/hlx.ts` (HX units), `src/lib/pgp.ts` (POD Go’s ten-slot layout), `src/lib/hx-params.ts` (knob names → HX keys), `src/lib/hx-units.ts` (0–10 ↔ native), `src/lib/hx-validate.ts` (checks a file against the catalogs). Per-unit device id, I/O models and snapshot controller live on `STOMP_DEVICES` in `src/data/categories.ts`, taken from real exports. |
+| HX / POD Go model catalogs | `src/data/hx-catalog.gen.ts`, `src/data/podgo-catalog.gen.ts` — generated by `scripts/build-hx-catalog.mjs` / `scripts/build-podgo-catalog.mjs`; licence in `src/data/HX_CATALOG_NOTICE.md`. Don’t hand-edit. |
 | Catalog | `src/data/catalog.ts`, `models-*.ts`, `helix-ids.ts`, `helix-params.ts`. Find-equivalent scores are `findEquivalents`. |
 | Player’s gear | `src/data/gear-catalog.ts`. Brand fold is `canonicalBrand` inside `expand()`. `popularFor` matches the full display name (`ESP LTD EC-1000` is brand ESP + model “LTD EC-1000”). |
 | Plan, paywall, admin data | `src/lib/plan.ts`, `src/lib/billing.ts`, `src/lib/use-plan.ts` |

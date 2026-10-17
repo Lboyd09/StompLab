@@ -127,7 +127,7 @@ export const FEATURED: Preset[] = [
       block("b2", "cali-rectifire", { Drive: 1.2, Bass: 5.5, Mid: 4.2, Treble: 5.4, Presence: 3.2, Master: 5.5, "Ch Vol": 5.8, Sag: 3.4 }, 3),
       block("b5", "cali-q-graphic", { "80Hz": 7.0, "240Hz": 3.4, "750Hz": 2.6, "2200Hz": 6.4, "6600Hz": 5.8 }, 4, false),
       block("b3", "4x12-cali-v30", { Mic: 0, Distance: 1.6, "Low Cut": 2.8, "High Cut": 7.4, "Early Refl": 2.2 }, 5),
-      block("b7", "simple-delay", { Time: 4.2, Feedback: 3.0, Mix: 2.2, Scale: 5 }, 6, false),
+      block("b7", "simple-delay", { Time: 4.2, Feedback: 3.0, Mix: 2.2, Note: 8 }, 6, false),
     ],
     snapshots: [
       {
@@ -159,7 +159,7 @@ export const FEATURED: Preset[] = [
         paramOverrides: {
           b2: { Drive: 3.4, "Ch Vol": 6.0, Presence: 5.4, Mid: 5.6, Treble: 5.6, Master: 5.4 },
           b6: { Drive: 1.2, Output: 7.2 },
-          b7: { Mix: 2.2, Feedback: 3.0, Scale: 5 },
+          b7: { Mix: 2.2, Feedback: 3.0, Note: 8 },
         },
       },
     ],

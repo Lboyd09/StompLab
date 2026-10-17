@@ -190,3 +190,47 @@ describe("unit conversion", () => {
     assert.equal(formatNative(m.byKey.Time, 0.42), "420 ms");
   });
 });
+
+describe("Gemini output to preset", () => {
+  it("keeps HX Edit's own knob names and whole-number settings, and invents nothing", async () => {
+    const { parsePresetJson, toPreset } = await import("./preset-schema.ts");
+    const out = parsePresetJson({
+      name: "T",
+      tempo: 100,
+      blocks: [
+        { modelId: "scream-808", params: { Gain: 2, Tone: 6, Level: 7.5, Bogus: 3 } },
+        { modelId: "simple-pitch", params: { Interval: -12, Mix: 5 } },
+        { modelId: "simple-delay", params: { Note: 8, Mix: 2 } },
+      ],
+      snapshots: [{ name: "A" }],
+    });
+    const p = toPreset(out, { source: "song", instrument: "guitar", stompModel: "hx-stomp" });
+    assert.deepEqual(p.blocks[0].params, { Gain: 2, Tone: 6, Level: 7.5 });
+    assert.equal(p.blocks[1].params.Interval, -12);
+    assert.equal(p.blocks[2].params.Note, 8);
+    const native = blockNativeParams(p.blocks[1]);
+    assert.equal(native.Interval1, -12);
+  });
+});
+
+describe("tone finishing", () => {
+  it("leaves clean amps ungated, gives bass no guitar boost, and keeps a chosen delay time", async () => {
+    const { finishTone } = await import("./tone-finish.ts");
+    const song = (p: Preset): Preset => ({ ...p, source: "song" });
+    const clean = finishTone(song(preset("hx-stomp", [block("a", "archetype-clean", { Drive: 2 }, 0)])), 100);
+    assert.equal(clean.blocks.some((b) => b.modelId === "noise-gate"), false);
+    const bass = finishTone(song({ ...preset("hx-stomp", [block("a", "ampeg-svt-nrm", { Drive: 3 }, 0)]), instrument: "bass" }), 100);
+    assert.equal(bass.blocks.some((b) => b.modelId === "kinky-boost"), false);
+    const slap = finishTone(song(preset("hx-stomp", [block("d", "simple-delay", { Time: 1.1 }, 0)])), 100);
+    assert.equal(slap.blocks[0].params.Note, undefined);
+    const bare = finishTone(song(preset("hx-stomp", [block("d", "simple-delay", { Mix: 2 }, 0)])), 100);
+    assert.equal(bare.blocks[0].params.Note, 8);
+  });
+
+  it("shows the rhythm/lead choice for real two-guitar bands", async () => {
+    const { guitarArrangement } = await import("../data/guitar-parts.ts");
+    assert.equal(guitarArrangement("Paranoid Android", "Radiohead"), "dual");
+    assert.equal(guitarArrangement("Everlong", "Foo Fighters"), "dual");
+    assert.equal(guitarArrangement("Smells Like Teen Spirit", "Nirvana"), "single");
+  });
+});

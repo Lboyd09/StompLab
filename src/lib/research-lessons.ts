@@ -16,8 +16,8 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Snapshot 1 is the recorded OPENING. Only add a snapshot when the TONE changes (blocks or knobs). Intro and verse that share a chain are ONE snapshot. A solo / signature trick is its own snapshot.
 - Footswitches 1, 2, 3 carry the first three snapshots. Spare FS (4+) = GATE then EQ then WAH bypass. No TAP on FS1–3.
 - ONLY catalog modelId values. Factory HX names only. Never invent models or IRs.
-- Cab = a factory HD2 cab. Prefer the tracking/studio rig over a later tour rig.
-- Set every factory knob. Missing params become 5 and miss the record.
+- Cab = a cab from the list (the one on the record if HX has it). Prefer the tracking/studio rig over a later tour rig.
+- Use the knob names listed for each model. Set every knob that shapes the tone; one left out keeps Line 6's factory default.
 - Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
 - GATE: when the chain has a high-gain amp or a drive pedal, add noise-gate IN FRONT of the amp. Threshold must be 2 or lower (about 1.8), Decay about 2.4, and the clean or intro snapshot bypasses it. Never hard-gate. A missing or hot threshold mutes the snapshot. Level on a gate stays unity, never a mute.
 - LEVELS: Ch Vol, Output, Level, Master, and Boost stay at 3.2 or higher on every snapshot. A 0 recalls as mute. Volume pedal Position / Level stays off the heel (never 0). Amp and cab are ON in every snapshot.
@@ -26,13 +26,13 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Do not "fix" a previous song by name. Turn a miss into a general rule.
 - CLEAN OPENING: if the recorded intro/verse is clean, snapshot 1 MUST be clean — dirt pedals OFF, amp Drive 1.2–2.4, gate OFF. A dirty opening means you left a dirt pedal on or Drive ≥ 3.
 - PEDAL-PLATFORM AMPS: when the session used a clean preamp/head as a pedal platform (Mesa Studio Pre rhythm-clean, Hiwatt, Twin), use the CLEAN channel (cali-iv-rhythm-1, us-double-nrm, whowatt-100). Do not sneak the crunch/lead channel. The pedal is the dirty channel.
-- SOLOS: about +3 dB from kinky-boost Output near 7 on the lead snapshot only, not a tiny Ch Vol nudge and not extra Drive. Extra Drive on the same amp is a different song.
-- DELAY: sync to tempo (Scale 5, dotted eighth) by default. Lead Mix ≤ 2.5 and Feedback ≤ 3.5. Never set Time to 10.
+- SOLOS: kinky-boost on the lead snapshot only (Boost 10 turns its boost switch on, Drive 1–2), not a tiny Ch Vol nudge and not extra Drive. Extra Drive on the same amp is a different song.
+- DELAY: Note = 8 (dotted eighth) or 6 (quarter) to follow tempo; leave Note out and set Time (value × 100 ms) for a free-running delay such as a slapback. Lead Mix ≤ 2.5 and Feedback ≤ 3.5.
 - NAMES: snapshot names are 12 characters. Abbreviate (Rhy, Crnch) before cutting a word in half.
 - UNSOURCED GEAR: if it is not a session credit, interview, or published rig, prefix the note with "Likely —".
 - VERSE CHORUS/MOD: if a chorus/vibe is the verse identity, it turns OFF for the dry anthem chorus (Small Clone pattern). Do not leave it on for the loud section unless the record did.
 - SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
-- SINGING FUZZ: Big Muff / Ram's Head used for a vocal lead needs Mid around 5–6, not a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
+- SINGING FUZZ: Big Muff / Ram's Head has no Mid knob; for a vocal lead keep Tone near 4–5 rather than a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
 - TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Add noise-gate in front of the amp (Threshold ≤ 2), not a hard-gate.
 - RHYTHM vs LEAD: when the brief says rhythm only or lead only, that is a different guitarist. Research their guitar, amp, and pedals. Do not return the other part's chain with Drive or Ch Vol nudged. Do not put both guitarists in one preset. If the song is one guitarist, build that one rig and do not invent a second part.
 - PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
