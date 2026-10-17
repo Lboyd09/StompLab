@@ -10,7 +10,7 @@ export function notifyResearchError(
     return;
   }
   if (err.reason === "paywall") {
-    toast.error(err.error, { action: { label: "Unlock", onClick: go.upgrade }, duration: 8000 });
+    toast.error(err.error, { action: { label: "Subscribe", onClick: go.upgrade }, duration: 8000 });
     return;
   }
   if (err.reason === "quota") {
