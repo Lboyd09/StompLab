@@ -93,8 +93,18 @@ export type StompDevice = {
   exportFormat: ExportFormat;
   hlxDeviceId?: number;
   inputModel?: string;
+  /** inputB @model when it differs from inputA (Helix Floor / LT use HD2_AppDSPFlow2Input). */
+  inputModelB?: string;
   outputModel?: string;
   outputSend?: string;
+  /** Controller number HX Edit uses for "Snapshots" on this unit (from real exports). */
+  snapshotController?: number;
+  /** @position of the join block (end of the path grid). */
+  joinPosition?: number;
+  /** global @topology1 as this unit's own exports write it. */
+  topology1?: "A" | 0;
+  /** @fs_index of the expression pedal toe switch, when the unit has a built-in pedal. */
+  toeSwitchFs?: number;
   notes: string[];
 };
 

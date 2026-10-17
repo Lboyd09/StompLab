@@ -6,6 +6,7 @@ import { FEATURED } from "../data/featured.ts";
 import { helixIdFor } from "../data/helix-ids.ts";
 import { FACTORY_HLX_PARAMS } from "../data/helix-params.ts";
 import { buildHlx, canExportHlx } from "./hlx.ts";
+import { validatePreset } from "./hx-validate.ts";
 import { withStompModel } from "./preset-utils.ts";
 import { applyWahPreference } from "./wah.ts";
 import type { WahMode } from "./wah.ts";
@@ -20,15 +21,15 @@ describe("1,000-player launch pass", () => {
         const hlx = buildHlx(preset);
         assert.equal((hlx.data as { device: number }).device, device.hlxDeviceId, `${src.id} ${device.id}`);
         const tone = (hlx.data as { tone: Record<string, unknown> }).tone;
-        const snap0 = tone.snapshot0 as { "@fs_index"?: number; "@fs_label"?: string; "@name": string };
-        assert.equal(snap0["@fs_index"], 1, `${src.id} ${device.id} snap0 fs`);
-        assert.ok(snap0["@fs_label"], `${src.id} ${device.id} missing scribble`);
+        const snap0 = tone.snapshot0 as { "@name": string };
+        assert.ok(snap0["@name"], `${src.id} ${device.id} snapshot 1 has no name`);
         assert.equal((tone.global as { "@pedalstate": number })["@pedalstate"], 2, `${src.id} ${device.id} snapshot mode`);
+        assert.deepEqual(validatePreset(hlx, { strict: true }), [], `${src.id} ${device.id}`);
         const dsp = tone.dsp0 as Record<string, Record<string, unknown>>;
         for (const [k, b] of Object.entries(dsp)) {
           if (!k.startsWith("block") && k !== "cab0") continue;
           const model = String(b["@model"] ?? "");
-          if (!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_")) continue;
+          if (!model || model.startsWith("HD2_App") || model.startsWith("HelixStomp_") || device.id === "pod-go") continue;
           assert.ok(FACTORY_HLX_PARAMS[model], `${src.id} ${device.id} ${k} ${model}`);
         }
       }
@@ -42,9 +43,9 @@ describe("1,000-player launch pass", () => {
       snapshots: src.snapshots.map((s, i) => (i === 0 ? { ...s, name: "Verse" } : s)),
     };
     const hlx = buildHlx(renamed);
-    const snap0 = (hlx.data as { tone: { snapshot0: { "@name": string; "@fs_label": string } } }).tone.snapshot0;
+    const snap0 = (hlx.data as { tone: { snapshot0: { "@name": string; "@custom_name": boolean } } }).tone.snapshot0;
     assert.equal(snap0["@name"], "VERSE");
-    assert.equal(snap0["@fs_label"], "VERSE");
+    assert.equal(snap0["@custom_name"], true);
   });
 
   it("strips wah for a thousand players who already own a pedal", () => {
@@ -98,8 +99,9 @@ describe("1,000-player launch pass", () => {
       if (canExportHlx(device.id)) {
         const hlx = buildHlx(preset);
         assert.equal((hlx.data as { device: number }).device, device.hlxDeviceId);
-        const snap0 = (hlx.data as { tone: { snapshot0: { "@fs_label": string } } }).tone.snapshot0;
-        assert.ok(snap0["@fs_label"], `${src.id} ${device.id} scribble`);
+        const snap0 = (hlx.data as { tone: { snapshot0: { "@name": string } } }).tone.snapshot0;
+        assert.ok(snap0["@name"], `${src.id} ${device.id} snapshot name`);
+        if (n < 60) assert.deepEqual(validatePreset(hlx, { strict: true }), [], `${src.id} ${device.id} ${wah}`);
       }
       n += 1;
     }

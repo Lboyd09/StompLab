@@ -207,7 +207,7 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "bighorn-fuzz", { Drive: 6.4, Bass: 6.2, Mid: 5.4, Treble: 5.0, Output: 5.8, Mix: 10 }, 0, false),
-      block("b2", "echo-platter-legacy", { Time: 3.6, Feedback: 3.0, Mix: 2.6, Scale: 5 }, 1),
+      block("b2", "echo-platter-legacy", { Time: 3.6, Feedback: 3.0, Mix: 2.6 }, 1),
       block("b3", "whowatt-100", { Drive: 2.4, Bass: 5.4, Mid: 6.2, Treble: 5.8, Presence: 5.0, Master: 6.2, "Ch Vol": 6.0, Sag: 2.8 }, 2),
       block("b4", "4x12-whowatt-100", { Mic: 0, Distance: 3.0, "Low Cut": 2.0, "High Cut": 7.6, "Early Refl": 4.2 }, 3),
       block("b5", "plate", { Decay: 3.0, Predelay: 2.0, Mix: 1.6, "Low Cut": 3.4, "High Cut": 7.0 }, 4),
@@ -289,8 +289,8 @@ export const FEATURED: Preset[] = [
     ],
     blocks: [
       block("b1", "deluxe-comp", { Threshold: 4.2, Gain: 5.2, Attack: 3.6, Release: 4.4, Mix: 5.5 }, 0),
-      block("b2", "vintage-digital", { Time: 4.2, Feedback: 3.6, Mix: 4.6, Mod: 1.0, Scale: 5 }, 1),
-      block("b3", "elephant-man", { Time: 2.6, Feedback: 2.4, Mix: 2.0, Mod: 4.2, Scale: 5 }, 2),
+      block("b2", "vintage-digital", { Time: 4.2, Feedback: 3.6, Mix: 4.6, Mod: 1.0, Note: 8 }, 1),
+      block("b3", "elephant-man", { Time: 2.6, Feedback: 2.4, Mix: 2.0, Mod: 4.2 }, 2),
       block("b4", "essex-a30", { Drive: 3.2, Bass: 4.8, Treble: 6.6, Presence: 5.4, Master: 5.8, "Ch Vol": 6.0, Sag: 2.8 }, 3),
       block("b5", "2x12-blue-bell", { Mic: 0, Distance: 2.8, "Low Cut": 2.4, "High Cut": 8.0, "Early Refl": 3.6 }, 4),
       block("b6", "plateaux", { Decay: 3.0, Predelay: 1.8, Mix: 1.8, "Low Cut": 3.2, "High Cut": 7.2 }, 5),
@@ -595,7 +595,7 @@ export const FEATURED: Preset[] = [
       block("b2", "kwb", { Drive: 6.4, Bass: 5.6, Treble: 5.4, Output: 5.6 }, 1, false),
       block("b3", "us-deluxe-nrm", { Drive: 3.2, Bass: 5.0, Mid: 5.8, Treble: 6.2, Presence: 4.8, Master: 5.6, "Ch Vol": 6.0, Sag: 3.2 }, 2),
       block("b4", "1x12-us-deluxe", { Mic: 0, Distance: 2.4, "Low Cut": 2.2, "High Cut": 7.8, "Early Refl": 3.0 }, 3),
-      block("b5", "cosmos-echo", { Time: 3.4, Feedback: 3.2, Mix: 2.4, Mod: 2.0, Scale: 5 }, 4),
+      block("b5", "cosmos-echo", { Time: 3.4, Feedback: 3.2, Mix: 2.4, Mod: 2.0 }, 4),
       block("b6", "hall", { Decay: 2.8, Predelay: 1.6, Mix: 1.8, "Low Cut": 3.2, "High Cut": 7.0 }, 5),
     ],
     snapshots: [

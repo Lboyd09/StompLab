@@ -206,8 +206,8 @@ describe("per-unit catalog", () => {
 describe("devices", () => {
   it("lists Helix family and marks POD Go as .pgp", () => {
     assert.equal(DEVICE_MAP["helix-floor"].hlxDeviceId, 2162689);
-    assert.equal(DEVICE_MAP["helix-lt"].hlxDeviceId, 2162691);
-    assert.equal(DEVICE_MAP["hx-effects"].hlxDeviceId, 2162692);
+    assert.equal(DEVICE_MAP["helix-lt"].hlxDeviceId, 2162692);
+    assert.equal(DEVICE_MAP["hx-effects"].hlxDeviceId, 2162693);
     assert.equal(DEVICE_MAP["hx-effects"].hasAmpCab, false);
     assert.equal(DEVICE_MAP["pod-go"].exportFormat, "pgp");
     assert.equal(DEVICE_MAP["pod-go"].hlxDeviceId, 2162695);

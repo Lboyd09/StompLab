@@ -352,17 +352,17 @@ export const HELIX_IDS: Record<string, string> = {
   "busy-one-ch1": "HD2_AmpBusyOneCh1",
   "busy-one-ch2": "HD2_AmpBusyOneCh2",
   "busy-one-jump": "HD2_AmpBusyOneJump",
-  "studio-tube-pre": "HD2_PreampStudioTubePre",
+  "studio-tube-pre": "HD2_PreampVintagePre",
   // Classic HD2_Cab* from real HX Edit .hlx (NOT CabMicIr_* Stadium IRs).
   "soup-pro-ellipse": "HD2_Cab1x6x9SoupProEllipse",
   "1x8-small-tweed": "HD2_Cab1x8SmallTweed",
-  "1x10-us-princess": "HD2_Cab1x10USPrincess",
+  "1x10-us-princess": "HD2_Cab1x10PrincessCopperhead",
   "1x12-field-coil": "HD2_Cab1x12FieldCoil",
-  "1x12-fullerton": "HD2_Cab1x12Fullerton",
-  "1x12-grammatico": "HD2_Cab1x12Grammatico",
+  "1x12-fullerton": "HD2_Cab1x12Fullerton5C3",
+  "1x12-grammatico": "HD2_Cab1x12Grammatico5E3",
   "1x12-us-deluxe": "HD2_Cab1x12USDeluxe",
-  "1x12-open-cast": "HD2_Cab1x12OpenCast",
-  "1x12-open-cream": "HD2_Cab1x12OpenCream",
+  "1x12-open-cast": "HD2_CabMicIr_1x12OpenCast",
+  "1x12-open-cream": "HD2_CabMicIr_1x12OpenCream",
   "1x12-cali-ext": "HD2_Cab1x12CaliExt",
   "1x12-cali-iv": "HD2_Cab1x12CaliIV",
   "1x12-blue-bell": "HD2_Cab1x12BlueBell",
@@ -371,26 +371,26 @@ export const HELIX_IDS: Record<string, string> = {
   "1x12-del-sol": "HD2_Cab1x12DelSol",
   "2x12-blue-bell": "HD2_Cab2x12BlueBell",
   "2x12-silver-bell": "HD2_Cab2x12SilverBell",
-  "2x12-match-h30": "HD2_Cab2x12MatchH30",
-  "2x12-match-g25": "HD2_Cab2x12MatchG25",
+  "2x12-match-h30": "HD2_Cab1x12MatchH30",
+  "2x12-match-g25": "HD2_Cab1x12MatchG25",
   "2x12-double-c12n": "HD2_Cab2x12DoubleC12N",
   "2x12-interstate": "HD2_Cab2x12Interstate",
   "2x12-jazz-rivet": "HD2_Cab2x12JazzRivet",
   "2x12-mail-c12q": "HD2_Cab2x12MailC12Q",
-  "2x12-mandarin-30": "HD2_Cab2x12Mandarin30",
+  "2x12-mandarin-30": "HD2_CabMicIr_2x12Mandarin",
   "4x10-tweed-p10r": "HD2_Cab4x10TweedP10R",
-  "4x10-us-super": "HD2_Cab4x10USSuper",
+  "4x10-us-super": "HD2_CabMicIr_4x10USSuper",
   "4x12-whowatt-100": "HD2_Cab4x12WhoWatt100",
   "4x12-greenback-25": "HD2_Cab4x12Greenback25",
-  "4x12-greenback-30": "HD2_Cab4x12Greenback30",
+  "4x12-greenback-30": "HD2_CabMicIr_4x12Greenback30",
   "4x12-greenback-20": "HD2_Cab4x12Greenback20",
   "4x12-1960-t75": "HD2_Cab4x121960T75",
   "4x12-blackback-30": "HD2_Cab4x12Blackback30",
-  "4x12-brit-v30": "HD2_Cab4x12BritV30",
+  "4x12-brit-v30": "HD2_CabMicIr_4x12BritV30",
   "4x12-cali-v30": "HD2_Cab4X12CaliV30",
   "4x12-mandarin-em": "HD2_Cab4x12MandarinEM",
-  "4x12-moon-t75": "HD2_Cab4x12MoonT75",
-  "4x12-cartog-guv": "HD2_Cab4x12CartogGuv",
+  "4x12-moon-t75": "HD2_CabMicIr_4x12MOONT75",
+  "4x12-cartog-guv": "HD2_CabMicIr_4x12CartogGuv",
   "4x12-uber-v30": "HD2_Cab4x12UberV30",
   "4x12-uber-t75": "HD2_Cab4x12UberT75",
   "4x12-xxl-v30": "HD2_Cab4x12XXLV30",
@@ -422,8 +422,8 @@ export const HELIX_IDS: Record<string, string> = {
 
 export function isHxStompModelId(id: string): boolean {
   if (!id) return false;
-  if (/Agoura_|VIC_|HX2_|CabMicIr_/.test(id)) return false;
-  return id.startsWith("HD2_") || id.startsWith("L6SPB_");
+  // Only ids in HX Edit's own catalog (hx-catalog.ts). That includes the 3.50+ CabMicIr_ cabs.
+  return Boolean(FACTORY_HLX_PARAMS[id]);
 }
 
 /** Catalog ids that exist in the UI but have no HX Stomp 3.80 @model. Never export. */
@@ -447,8 +447,7 @@ export function helixIdFor(modelId: string): string | undefined {
   if (UNEXPORTABLE_MODELS.has(modelId)) return undefined;
   const id = HELIX_IDS[modelId];
   if (!id || !isHxStompModelId(id)) return undefined;
-  // HX Edit rejects @model strings that are not on the connected unit.
-  // Only emit ids we have verified against factory HX Stomp 3.80 dumps.
+  // HX Edit rejects @model strings it does not know. Only emit catalog ids.
   if (!FACTORY_HLX_PARAMS[id]) return undefined;
   return id;
 }
