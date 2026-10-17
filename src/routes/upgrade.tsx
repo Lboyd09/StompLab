@@ -2,11 +2,11 @@ import { createFileRoute, Link, Navigate, useNavigate } from "@tanstack/react-ro
 import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Mark } from "@/components/layout/mark";
-import { PageWash } from "@/components/layout/page-wash";
 import { InviteCard } from "@/components/layout/invite-card";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
-import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
+import { PAID_BUILD_LINE } from "@/lib/copy";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { confirmCheckout, startCheckout } from "@/lib/billing";
 import {
@@ -36,11 +36,9 @@ export const Route = createFileRoute("/upgrade")({
 });
 
 const PERKS = [
-  "Type any song. Get a .hlx HX Edit will import — or a .pgp for POD Go Edit.",
+  "Type any song. Get a .hlx for HX Edit, or a .pgp for POD Go Edit.",
   PAID_BUILD_LINE,
-  "Create custom sounds. History. Extra snapshots. Gear locker sync.",
-  "Every custom research counts as one build — demos stay free forever.",
-  "Cancel any time. Access lasts until the period ends.",
+  "Create custom sounds, keep your history, sync your gear locker.",
 ];
 
 function UpgradePage() {
@@ -51,6 +49,7 @@ function UpgradePage() {
   const [busy, setBusy] = useState<PlanInterval | null>(null);
   const [error, setError] = useState("");
   const [agreed, setAgreed] = useState(false);
+  const [interval, setInterval] = useState<PlanInterval>("month");
   const checkoutId = parseCheckoutId(search.checkout_id);
   const [confirming, setConfirming] = useState(Boolean(checkoutId));
   const [monthOff, setMonthOff] = useState(false);
@@ -128,7 +127,7 @@ function UpgradePage() {
       return;
     }
     if (!agreed) {
-      setError("Check the box to agree to the Terms and the automatic-renewal subscription.");
+      setError("Tick the box above to agree to the Terms and automatic renewal, then subscribe.");
       return;
     }
     setBusy(interval);
@@ -168,8 +167,10 @@ function UpgradePage() {
 
   if (isPending || planPending) {
     return (
-      <div className="grid place-items-center py-8 text-foreground">
-        <p className="text-sm text-muted-foreground">Checking your account…</p>
+      <div className="mx-auto w-full max-w-3xl space-y-6 py-4" aria-busy="true" aria-label="Loading">
+        <Skeleton className="h-16 w-16 rounded-2xl" />
+        <Skeleton className="h-14 w-2/3" />
+        <Skeleton className="h-72 w-full rounded-2xl" />
       </div>
     );
   }
@@ -220,192 +221,114 @@ function UpgradePage() {
   }
 
   const saving = yearlySavingsUsd();
+  const firstMonth = monthOff ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd();
 
   return (
     <div className="relative overflow-x-clip">
-      <PageWash />
-      <div className="relative z-10 mx-auto w-full max-w-3xl space-y-8">
-        <div className="flex flex-col items-start gap-6 sm:flex-row sm:items-center sm:gap-8">
+      <div className="relative z-10 mx-auto w-full max-w-xl space-y-6">
+        <div className="flex flex-col items-start gap-5">
           <Mark size="lg" />
           <div className="space-y-3">
-            <Link to="/" className="inline-flex text-sm font-semibold tracking-[-0.02em] text-muted-foreground">
-              Stomp Lab
-            </Link>
             <p className="sl-kicker">Research any song</p>
             <h1 className="sl-hero-title text-[clamp(2.8rem,8vw,4.4rem)]">Subscribe</h1>
             <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Type any song. {FREE_BUILD_LINE} {PAID_BUILD_LINE}
+              Type any song and get the file for your unit. {PAID_BUILD_LINE} The three demos stay free.
             </p>
-            <RigDisclaimer />
           </div>
         </div>
 
-        <p className="rounded-xl border border-border bg-secondary/40 px-4 py-3 text-sm text-muted-foreground">
-          {monthOff ? (
-            <>
-              <span className="font-medium text-foreground">
-                Invite: {REFERRAL_SUBSCRIBE_PERCENT}% off your first month.
-              </span>{" "}
-              Monthly pays {formatUsd(priceMonthlyReferralUsd())} this month, then {formatUsd(PRICE_MONTHLY_USD)}
-              /mo. Your friend who invited you gets {REFERRAL_SUBSCRIBE_PERCENT}% off their next monthly invoice
-              too. Yearly is {formatUsd(PRICE_YEARLY_USD)} — no invite cut on the year plan.
-            </>
-          ) : (
-            <>
-              <span className="font-medium text-foreground">Launch: {LAUNCH_DISCOUNT_PERCENT}% off the first month.</span>{" "}
-              Monthly pays {formatUsd(priceMonthlyLaunchUsd())} the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo.
-              Yearly is {formatUsd(PRICE_YEARLY_USD)} — that is the only yearly price, every year, until you cancel.
-            </>
-          )}
-        </p>
+        <div className="space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
+          <div role="radiogroup" aria-label="Billing" className="grid grid-cols-2 gap-2 rounded-xl bg-secondary p-1">
+            {(["month", "year"] as const).map((id) => (
+              <button
+                key={id}
+                type="button"
+                role="radio"
+                aria-checked={interval === id}
+                onClick={() => setInterval(id)}
+                className={`min-h-11 rounded-lg px-3 text-sm font-medium ${
+                  interval === id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
+                }`}
+              >
+                {id === "month" ? "Monthly" : "Yearly"}
+              </button>
+            ))}
+          </div>
 
-        <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
-        <p className="text-xs leading-relaxed text-muted-foreground">
-          {monthOff ? (
-            <>
-              Invite: Polar charges {formatUsd(priceMonthlyReferralUsd())} for this first month, then{" "}
-              {formatUsd(PRICE_MONTHLY_USD)}/month. The friend who invited you gets the same cut on their next
-              monthly invoice. Yearly is {formatUsd(PRICE_YEARLY_USD)} with no invite cut. Cancel from Account →
-              Manage subscription. You keep the Lab until the period ends. No proration.
-            </>
-          ) : (
-            <>
-              First month is {LAUNCH_DISCOUNT_PERCENT}% off. After that Polar charges {formatUsd(PRICE_MONTHLY_USD)}
-              /month or {formatUsd(PRICE_YEARLY_USD)}/year until you cancel from Account → Manage subscription.
-              Cancel online the same way you subscribed. You keep the Lab until the period ends. No proration.
-            </>
-          )}
-        </p>
+          <div>
+            <p className="sl-hero-title text-5xl tabular-nums">
+              {interval === "month" ? formatUsd(firstMonth) : formatUsd(PRICE_YEARLY_USD)}
+              <span className="ml-1 text-base font-normal tracking-normal text-muted-foreground">
+                {interval === "month" ? " first month" : "/yr"}
+              </span>
+            </p>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {interval === "month" ? (
+                <>
+                  <span className="line-through">{formatUsd(PRICE_MONTHLY_USD)}</span> then {formatUsd(PRICE_MONTHLY_USD)}/mo.{" "}
+                  {monthOff
+                    ? `Invite: ${REFERRAL_SUBSCRIBE_PERCENT}% off the first month. The friend who invited you gets the same cut.`
+                    : `${LAUNCH_DISCOUNT_PERCENT}% off the first month.`}
+                </>
+              ) : (
+                <>Save {formatUsd(saving)} a year compared with monthly. Same price every year.</>
+              )}
+            </p>
+          </div>
 
-        <div className="grid gap-4 md:grid-cols-2">
-          <PlanCard
-            label="Monthly"
-            price={monthOff ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd()}
-            period=" first month"
-            compareAt={PRICE_MONTHLY_USD}
-            renewNote={`Then ${formatUsd(PRICE_MONTHLY_USD)}/mo after the first month`}
-            badge={
-              monthOff
-                ? `Invite ${REFERRAL_SUBSCRIBE_PERCENT}% off first month`
-                : `${LAUNCH_DISCOUNT_PERCENT}% off first month`
-            }
-            cta={`Subscribe — ${formatUsd(monthOff ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd())} first month`}
-            busy={busy === "month"}
-            confirming={confirming}
-            pending={isPending || !agreed}
-            onClick={() => void onSubscribe("month")}
-            perks={PERKS}
-          />
-          <PlanCard
-            label="Yearly"
-            price={PRICE_YEARLY_USD}
-            period="/yr"
-            renewNote={`Billed ${formatUsd(PRICE_YEARLY_USD)} once a year`}
-            badge={`Save ${formatUsd(saving)}/yr vs monthly`}
-            highlight
-            cta={`Subscribe — ${formatUsd(PRICE_YEARLY_USD)}/year`}
-            busy={busy === "year"}
-            confirming={confirming}
-            pending={isPending || !agreed}
-            onClick={() => void onSubscribe("year")}
-            perks={PERKS}
-          />
+          <ul className="space-y-3">
+            {PERKS.map((p) => (
+              <li key={p} className="flex gap-2 text-sm">
+                <Check className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span>{p}</span>
+              </li>
+            ))}
+          </ul>
+
+          <div className="space-y-3 border-t border-border pt-5">
+            <LegalAgree kind="subscribe" checked={agreed} onChange={setAgreed} />
+            <Button
+              type="button"
+              size="lg"
+              className="h-12 w-full"
+              aria-disabled={!agreed || busy !== null || confirming}
+              disabled={busy !== null || confirming}
+              onClick={() => void onSubscribe(interval)}
+            >
+              {busy || confirming ? <Loader2 className="size-4 animate-spin" /> : null}
+              {confirming
+                ? "Confirming payment…"
+                : busy
+                  ? "Opening checkout…"
+                  : `Subscribe — ${interval === "month" ? `${formatUsd(firstMonth)} first month` : `${formatUsd(PRICE_YEARLY_USD)}/year`}`}
+            </Button>
+            {!agreed && !error ? (
+              <p className="text-sm text-muted-foreground">Tick the box above to subscribe.</p>
+            ) : null}
+            {error ? (
+              <p className="text-sm text-destructive" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <p className="text-xs leading-relaxed text-muted-foreground">
+              Paid through Polar. Cancel any time from Account; you keep access until the period ends.
+              {user?.primaryEmail ? ` The subscription is tied to ${user.primaryEmail}.` : ""}
+            </p>
+          </div>
         </div>
 
-        {error ? <p className="text-sm text-destructive">{error}</p> : null}
-        <p className="text-xs text-muted-foreground">
-          Checkout is Polar (merchant of record).{" "}
-          {monthOff
-            ? `Invite is ${REFERRAL_SUBSCRIBE_PERCENT}% off the first monthly invoice only — Polar shows ${formatUsd(priceMonthlyReferralUsd())} at checkout. The friend who invited you gets the same cut on their next monthly invoice.`
-            : `The launch discount is ${LAUNCH_DISCOUNT_PERCENT}% off your first month only — Polar shows the discounted monthly total at checkout.`}{" "}
-          Yearly checkout is {formatUsd(PRICE_YEARLY_USD)}, every year. Going back before you pay does not
-          unlock anything. Polar marks the payment confirmed, then succeeded — we wait for succeeded. The
-          subscription sticks to {user?.primaryEmail || "your email"} after Polar says it is active. Cancel any
-          time from Account → Manage subscription; you keep the Lab until the period ends.
-        </p>
+        <RigDisclaimer />
 
         <InviteCard />
 
         <p className="text-sm text-muted-foreground">
           Not ready?{" "}
-          <a href="/" className="text-primary underline underline-offset-2">
+          <Link to="/" className="text-primary underline underline-offset-2">
             Play the three demo songs
-          </a>{" "}
-          — Sandman, Teen Spirit, Comfortably Numb. Always works.
+          </Link>{" "}
+          — Sandman, Teen Spirit, Comfortably Numb.
         </p>
-
       </div>
-    </div>
-  );
-}
-
-function PlanCard({
-  label,
-  price,
-  period,
-  compareAt,
-  renewNote,
-  badge,
-  highlight,
-  cta,
-  busy,
-  confirming,
-  pending,
-  onClick,
-  perks,
-}: {
-  label: string;
-  price: number;
-  period: string;
-  compareAt?: number;
-  renewNote?: string;
-  badge?: string;
-  highlight?: boolean;
-  cta: string;
-  busy: boolean;
-  confirming: boolean;
-  pending: boolean;
-  onClick: () => void;
-  perks: string[];
-}) {
-  return (
-    <div
-      className={`rounded-2xl border bg-card p-7 ${
-        highlight ? "border-foreground" : "border-border"
-      }`}
-    >
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{label}</p>
-        {badge ? (
-          <span className="rounded-full bg-secondary px-2 py-0.5 text-[10px] font-medium uppercase tracking-wider">
-            {badge}
-          </span>
-        ) : null}
-      </div>
-      <p className="mt-3 sl-hero-title text-5xl tabular-nums">
-        {formatUsd(price)}
-        <span className="ml-1 text-base font-normal text-muted-foreground">{period}</span>
-      </p>
-      {compareAt != null ? (
-        <p className="mt-1 text-sm text-muted-foreground">
-          <span className="line-through">{formatUsd(compareAt)}</span>
-          {renewNote ? <> · {renewNote}</> : null}
-        </p>
-      ) : renewNote ? (
-        <p className="mt-1 text-sm text-muted-foreground">{renewNote}</p>
-      ) : null}
-      <ul className="mt-6 space-y-3">
-        {perks.map((p) => (
-          <li key={p} className="flex gap-2 text-sm">
-            <Check className="mt-0.5 size-4 shrink-0 text-primary" />
-            <span>{p}</span>
-          </li>
-        ))}
-      </ul>
-      <Button type="button" className="mt-6 w-full" disabled={busy || confirming || pending} onClick={onClick}>
-        {busy || confirming ? <Loader2 className="size-4 animate-spin" /> : null}
-        {confirming ? "Confirming payment…" : busy ? "Opening checkout…" : cta}
-      </Button>
     </div>
   );
 }

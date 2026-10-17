@@ -83,10 +83,6 @@ export function GearPicker({
                 className={`flex min-h-11 w-full items-center px-3 py-2 text-left text-sm ${
                   i === hi ? "bg-secondary" : "hover:bg-secondary"
                 }`}
-                onPointerDown={(e) => {
-                  e.preventDefault();
-                  pick(g.name);
-                }}
                 onClick={(e) => {
                   e.preventDefault();
                   pick(g.name);

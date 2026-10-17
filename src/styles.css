@@ -174,10 +174,8 @@ html.sl-touring nav {
 }
 
 .sl-enter {
-  opacity: 0;
-  transform: translateY(12px);
-  filter: blur(4px);
-  animation: sl-enter var(--motion-enter) var(--ease-out) forwards;
+  /* Visible from the first paint. Only a small rise, never from invisible. */
+  animation: sl-rise var(--motion-enter) var(--ease-out) both;
 }
 
 .sl-enter-1 { animation-delay: 0ms; }
@@ -199,6 +197,15 @@ html.sl-touring nav {
 .sl-stagger > *:nth-child(4) { animation-delay: 280ms; }
 .sl-stagger > *:nth-child(5) { animation-delay: 360ms; }
 .sl-stagger > *:nth-child(6) { animation-delay: 440ms; }
+
+@keyframes sl-rise {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
 
 @keyframes sl-enter {
   to {

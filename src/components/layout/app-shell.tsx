@@ -4,6 +4,7 @@ import {
   Clock,
   Guitar,
   Library,
+  Lock,
   Search,
   Settings,
   Sparkles,
@@ -27,6 +28,7 @@ import { BrandLockup } from "./mark";
 import { Onboarding } from "./onboarding";
 import { PageWash } from "./page-wash";
 import { Tutorial } from "./tutorial";
+import { UnitChip } from "./unit-chip";
 import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pushMyPresets } from "@/lib/billing";
@@ -65,7 +67,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useRouterState({ select: (s) => s.location });
   const pathname = location.pathname;
   const navigate = useNavigate();
-  const { plan } = usePlan();
+  const { plan, isPending: planPending } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
   const userId = user?.id ?? null;
   const [q, setQ] = useState("");
@@ -316,7 +318,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : null}
 
           <div className="flex flex-wrap items-center gap-2" data-tour="unit">
-            <div className="flex rounded-full bg-secondary p-1">
+            <UnitChip className="md:hidden" />
+            <div className="hidden rounded-full bg-secondary p-1 md:flex">
               {(["guitar", "bass"] as const).map((id) => (
                 <button
                   key={id}
@@ -331,7 +334,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </button>
               ))}
             </div>
-            <div className="flex rounded-full bg-secondary p-1">
+            <div className="hidden rounded-full bg-secondary p-1 md:flex">
               <label className="sr-only" htmlFor="device">
                 Unit
               </label>
@@ -371,7 +374,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <span className="sl-header-rule" aria-hidden />
       </header>
 
-      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-[calc(8rem+env(safe-area-inset-bottom))] pt-10 md:pb-20 md:pt-16">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 pb-[calc(9rem+env(safe-area-inset-bottom))] pt-10 md:pb-20 md:pt-16">
         {children}
         <LegalFooter className="mt-16 pb-4" />
       </main>
@@ -379,24 +382,40 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <Onboarding onFinished={() => setShowTutorial(true)} />
       <Tutorial force={showTutorial} onClose={() => setShowTutorial(false)} />
 
-      <nav className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 backdrop-blur md:hidden">
+      <nav
+        aria-label="Main"
+        className="fixed inset-x-0 bottom-0 z-40 border-t border-border bg-background/95 pb-[env(safe-area-inset-bottom)] backdrop-blur md:hidden"
+      >
         <div className="grid grid-cols-5">
-          {NAV.map((item) => (
-            <Link
-              key={item.to}
-              to={item.to}
-              className={cn(
-                "relative flex min-h-14 flex-col items-center justify-center gap-1 text-[10px] transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
-                pathname === item.to ? "text-primary" : "text-muted-foreground",
-              )}
-            >
-              {pathname === item.to ? (
-                <span className="absolute top-0 h-0.5 w-5 rounded-full bg-pop" aria-hidden />
-              ) : null}
-              <item.icon className="size-4" />
-              {item.label}
-            </Link>
-          ))}
+          {NAV.map((item) => {
+            const locked = item.to === "/create" && !plan.paid && !planPending;
+            return (
+              <Link
+                key={item.to}
+                to={item.to}
+                aria-current={isActive(item.to) ? "page" : undefined}
+                className={cn(
+                  "relative flex min-h-14 flex-col items-center justify-center gap-1 text-xs transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+                  isActive(item.to) ? "text-primary" : "text-muted-foreground",
+                )}
+              >
+                {isActive(item.to) ? (
+                  <span className="absolute top-0 h-0.5 w-5 rounded-full bg-pop" aria-hidden />
+                ) : null}
+                <span className="relative">
+                  <item.icon className="size-5" />
+                  {locked ? (
+                    <Lock
+                      className="absolute -right-2 -top-1.5 size-3 rounded-full bg-background text-muted-foreground"
+                      aria-hidden
+                    />
+                  ) : null}
+                </span>
+                {item.label}
+                {locked ? <span className="sr-only"> (subscribers)</span> : null}
+              </Link>
+            );
+          })}
         </div>
       </nav>
     </div>
@@ -432,18 +451,14 @@ function SearchResults({
             key={p.id}
             type="button"
             className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-            onPointerDown={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              onSong(p);
-            }}
+            onClick={() => onSong(p)}
           >
             <span>
               <span className="block text-sm">{p.song}</span>
               <span className="block text-xs text-muted-foreground">{p.artist}</span>
             </span>
-            <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
-              {locked ? "Unlock" : "Song"}
+            <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
+              {locked ? "Paid" : "Song"}
             </span>
           </button>
         );
@@ -453,11 +468,7 @@ function SearchResults({
           key={m.id}
           type="button"
           className="flex w-full items-start justify-between gap-3 px-3 py-2.5 text-left hover:bg-secondary"
-          onPointerDown={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            onModel(m);
-          }}
+          onClick={() => onModel(m)}
         >
           <span>
             <span className="block text-sm">{m.name}</span>
@@ -471,11 +482,7 @@ function SearchResults({
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 border-t border-border px-3 py-2.5 text-left hover:bg-secondary"
-        onPointerDown={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          onResearch();
-        }}
+        onClick={() => onResearch()}
       >
         <span className="text-sm">Research “{q.trim()}”</span>
         <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">Lab</span>

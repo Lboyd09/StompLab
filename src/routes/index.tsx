@@ -11,7 +11,6 @@ import { GeminiHint } from "@/components/layout/gemini-hint";
 import { SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
-import { UpgradeBanner } from "@/components/layout/upgrade-banner";
 import { InviteCard } from "@/components/layout/invite-card";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
@@ -24,6 +23,7 @@ import { applyWahPreference } from "@/lib/wah";
 import { matchFeatured, researchSongFn } from "@/lib/research";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
+import { PAID_BUILD_LINE } from "@/lib/copy";
 import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd, priceMonthlyLaunchUsd } from "@/lib/plan";
 import { looksLikeRealSong } from "@/lib/song-check";
 import { takeInviteResult } from "@/lib/referral-code";
@@ -60,6 +60,7 @@ function Home() {
   const rest = featured.filter((p) => !(DEMO_IDS as readonly string[]).includes(p.id));
   const subscribed = plan.paid || plan.admin;
   const unit = DEVICE_MAP[stompModel]?.name ?? "HX Stomp";
+  const needsSong = !picked && !looksLikeRealSong(song, artist);
 
   useEffect(() => {
     if (search.q) setSong(search.q);
@@ -125,14 +126,17 @@ function Home() {
         return;
       }
     }
-    if (planPending) return;
+    if (planPending) {
+      toast.message("Still loading your account. Try again in a second.");
+      return;
+    }
     if (!plan.signedIn) {
       await navigate({ to: "/login", search: { next: "/" } });
       return;
     }
     if (!plan.canResearch) {
       if (plan.paid) {
-        toast.error("You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.");
+        toast.error("You've used this month's custom builds. Demos still work. Resets next calendar month.");
         return;
       }
       await navigate({ to: "/upgrade" });
@@ -213,8 +217,6 @@ function Home() {
 
   return (
     <div className="space-y-10 md:space-y-14">
-      {!subscribed ? <UpgradeBanner plan={plan} pending={planPending} /> : null}
-
       <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
         <div className="relative space-y-5">
           <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
@@ -232,9 +234,9 @@ function Home() {
           {subscribed ? (
             <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">
               <span className="font-medium text-foreground tabular-nums">
-                {plan.admin ? "Unlimited" : `${plan.monthUsed} / ${plan.monthLimit}`}
+                {plan.admin ? plan.monthUsed : `${plan.monthUsed} / ${plan.monthLimit}`}
               </span>{" "}
-              {plan.admin ? "custom builds" : "custom builds used this month"}
+              {plan.admin ? "custom builds this month, no cap on this account" : "custom builds used this month"}
             </p>
           ) : (
             <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">Three demos always work. No account needed.</p>
@@ -295,16 +297,22 @@ function Home() {
             <Button
               type="submit"
               size="lg"
-              disabled={busy || (planPending && !plan.signedIn) || (!picked && !looksLikeRealSong(song, artist))}
+              disabled={busy || planPending || needsSong}
+              aria-describedby={needsSong ? "build-hint" : undefined}
               className="w-full sm:w-auto sm:px-8"
             >
-              {busy ? <Loader2 className="size-4 animate-spin" /> : null}
-              {busy ? "Researching" : "Build this preset"}
+              {busy || planPending ? <Loader2 className="size-4 animate-spin" /> : null}
+              {busy ? "Researching" : planPending ? "Loading your account" : "Build this preset"}
             </Button>
             <Button type="button" size="lg" variant="outline" onClick={openFirstDemo} className="w-full sm:w-auto">
               See a demo
             </Button>
           </div>
+          {needsSong && !busy ? (
+            <p id="build-hint" className="text-sm text-muted-foreground">
+              Pick a song from the list or type the full title and artist.
+            </p>
+          ) : null}
           {busy ? <ResearchProgress pct={progress} /> : null}
           <p className="text-xs text-muted-foreground">
             {instrument} · {unit}. Change the unit in the header. Type two letters to pick the recording.
@@ -351,17 +359,14 @@ function Home() {
               type="button"
               aria-label={`Open ${p.song}`}
               data-tour={p.id === "featured-sandman" ? "demo-sandman" : undefined}
-              onPointerDown={(e) => {
-                e.preventDefault();
-                openFeatured(p.id);
-              }}
+              onClick={() => openFeatured(p.id)}
               className="sl-card group rounded-2xl border border-border bg-card p-6 text-left"
             >
-              <div className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
+              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
               <div className="mt-2 sl-hero-title text-2xl">{p.song}</div>
               <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
               <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
-                Open on Stomp
+                Open on {unit}
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
             </button>
@@ -376,11 +381,11 @@ function Home() {
             <h2 className="sl-hero-title text-3xl">Type any song</h2>
             <p className="max-w-md text-sm text-primary-foreground/80">
               The three demos are free. After that, {formatUsd(priceMonthlyLaunchUsd())} the first month — then{" "}
-              {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. 50 custom builds a month.
+              {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. {PAID_BUILD_LINE}
             </p>
           </div>
           <Button asChild variant="secondary" size="lg" className="h-12 w-full shrink-0 px-8 text-base sm:w-auto">
-            <Link to="/upgrade">Get the Lab</Link>
+            <Link to="/upgrade">Subscribe</Link>
           </Button>
           </div>
         </section>
@@ -404,10 +409,7 @@ function Home() {
                 <button
                   key={p.id}
                   type="button"
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    openFeatured(p.id);
-                  }}
+                  onClick={() => openFeatured(p.id)}
                   className="sl-card group rounded-2xl border border-border bg-card p-6 text-left"
                 >
                   <div className="flex items-start justify-between gap-2">

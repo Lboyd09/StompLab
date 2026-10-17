@@ -109,9 +109,9 @@ export function SongTypeahead({
               setOpen(false);
             }
           }}
-          placeholder="Smells Like Teen Spirit"
+          placeholder="Song title"
           autoComplete="off"
-          className="h-12"
+          className="h-12 placeholder:font-normal placeholder:text-muted-foreground/50"
         />
         {open && hits.length ? (
           <ul
@@ -128,11 +128,6 @@ export function SongTypeahead({
                   className={`flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left ${
                     i === hi ? "bg-secondary" : "hover:bg-secondary"
                   }`}
-                  onPointerDown={(e) => {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    pick(h);
-                  }}
                   onClick={(e) => {
                     e.preventDefault();
                     e.stopPropagation();
@@ -159,7 +154,7 @@ export function SongTypeahead({
                     </span>
                   </span>
                   {h.featuredId ? (
-                    <span className="shrink-0 text-[10px] uppercase tracking-wider text-muted-foreground">
+                    <span className="shrink-0 text-[11px] uppercase tracking-wider text-muted-foreground">
                       Lab
                     </span>
                   ) : null}
@@ -177,7 +172,8 @@ export function SongTypeahead({
           id="artist"
           value={artist}
           onChange={(e) => onArtist(e.target.value)}
-          placeholder="Nirvana"
+          placeholder="Artist"
+          className="placeholder:font-normal placeholder:text-muted-foreground/50"
         />
       </div>
     </div>

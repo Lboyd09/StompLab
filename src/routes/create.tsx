@@ -125,8 +125,8 @@ function CreatePage() {
     return (
       <div className="pb-28">
         <PaywallCard
-          title="Create is in the full Lab"
-          body={`Create is paid. ${FREE_BUILD_LINE} Describe a custom sound, or optionally a player you want to sound like.`}
+          title="Create is for subscribers"
+          body={`Create is for subscribers: describe a sound, or a player you want to sound like. Free builds work on songs, not here. Type a song on the Lab page. ${FREE_BUILD_LINE}`}
         />
       </div>
     );

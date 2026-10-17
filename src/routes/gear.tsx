@@ -162,7 +162,7 @@ function GearPage() {
           <div className="space-y-4">
             {popular.length ? (
               <div>
-                <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">Common — tap to add</p>
+                <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Common — tap to add</p>
                 <ul className="grid gap-1 sm:grid-cols-2">
                   {popular.map((g) => (
                     <CatalogRow
@@ -176,7 +176,7 @@ function GearPage() {
               </div>
             ) : null}
             <div>
-              <p className="mb-2 text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
+              <p className="mb-2 text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
                 Browse a brand · {brands.length}
               </p>
               <div className="max-h-80 overflow-y-auto rounded-xl border border-border bg-secondary/30 p-2">
@@ -186,7 +186,7 @@ function GearPage() {
                       key={b}
                       type="button"
                       onClick={() => setBrand(b)}
-                      className="inline-flex h-8 max-w-full items-center gap-1.5 rounded-full bg-secondary px-3 text-xs font-medium"
+                      className="inline-flex h-11 max-w-full items-center gap-1.5 rounded-full bg-secondary px-3 text-sm font-medium md:h-9 md:text-xs"
                     >
                       <span className="truncate">{b}</span>
                       <span className="tabular-nums text-muted-foreground">{modelsFor(kind, b).length}</span>
@@ -284,7 +284,7 @@ function GearPage() {
                     className="flex min-w-0 items-start justify-between gap-3 rounded-xl border border-border bg-card p-4"
                   >
                     <div className="min-w-0">
-                      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</div>
+                      <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</div>
                       <div className="font-medium">{g.name}</div>
                       {g.notes ? <p className="mt-1 text-sm text-muted-foreground">{g.notes}</p> : null}
                     </div>

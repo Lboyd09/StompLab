@@ -1,12 +1,15 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { Search, Trash2 } from "lucide-react";
+import { Download, Search, Trash2 } from "lucide-react";
 import { useMemo, useState } from "react";
+import { toast } from "sonner";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { FREE_BUILD_LINE } from "@/lib/copy";
+import { canExportHlx, downloadHlx, exportExtension, hlxFilename } from "@/lib/hlx";
+import type { Preset } from "@/data/types";
 import { HISTORY_CAP } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -21,6 +24,7 @@ function HistoryPage() {
   const stompModel = useAppStore((s) => s.stompModel);
   const { plan, isPending } = usePlan();
   const [q, setQ] = useState("");
+  const [confirmId, setConfirmId] = useState<string | null>(null);
   const [filter, setFilter] = useState<"all" | "song" | "custom">("all");
   const user = presets.filter((p) => p.source !== "featured");
   const demos = FEATURED.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
@@ -36,6 +40,21 @@ function HistoryPage() {
     });
   }, [user, q, filter]);
 
+  function onDelete(p: Preset) {
+    removePreset(p.id);
+    setConfirmId(null);
+    toast.message(`Deleted ${p.song || p.name}.`, {
+      action: { label: "Undo", onClick: () => savePreset(p) },
+      duration: 8000,
+    });
+  }
+
+  function onRedownload(p: Preset) {
+    const ok = downloadHlx(p, { fsMode: "snapshot" });
+    if (ok) toast.success(`Saved ${hlxFilename(p)}.`);
+    else toast.error("Could not save that file. Open the preset and try Download there.");
+  }
+
   if (isPending) {
     return <p className="text-sm text-muted-foreground">Loading…</p>;
   }
@@ -43,7 +62,7 @@ function HistoryPage() {
     return (
       <div className="mx-auto max-w-lg space-y-4 py-4">
         <PageHeader kicker="Your builds" title="History">
-          Sign in to keep builds on this device. {FREE_BUILD_LINE}
+          Sign in to see your builds here. {FREE_BUILD_LINE}
         </PageHeader>
         <Button asChild>
           <Link to="/login" search={{ next: "/history" }}>
@@ -57,8 +76,8 @@ function HistoryPage() {
   return (
     <div className="space-y-8 pb-16 md:pb-8">
       <PageHeader kicker="Your builds" title="History">
-        History is local to this device (newest first, up to {HISTORY_CAP} presets, same song and unit kept
-        once). It does not sync across devices.
+        Your builds sync to your account and stay on this device. Newest first, up to {HISTORY_CAP} presets,
+        and the same song and unit is kept once.
       </PageHeader>
 
       {user.length === 0 ? (
@@ -123,8 +142,8 @@ function HistoryPage() {
                   className="sl-card flex min-w-0 items-center gap-3 rounded-xl border border-border bg-card p-4"
                 >
                   <Link to="/preset/$id" params={{ id: p.id }} className="min-w-0 flex-1 overflow-hidden">
-                    <div className="truncate text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
-                      {p.source} · {p.instrument} · {DEVICE_MAP[p.stompModel]?.short ?? p.stompModel}
+                    <div className="truncate text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
+                      {p.source === "custom" ? "Create" : "Song"} · {p.instrument} · {DEVICE_MAP[p.stompModel]?.short ?? p.stompModel}
                     </div>
                     <div className="truncate font-medium">
                       {p.song ? `${p.song}${p.artist ? ` — ${p.artist}` : ""}` : p.name}
@@ -140,15 +159,39 @@ function HistoryPage() {
                       </p>
                     ) : null}
                   </Link>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    aria-label="Delete"
-                    onClick={() => removePreset(p.id)}
-                  >
-                    <Trash2 className="size-4" />
-                  </Button>
+                  {confirmId === p.id ? (
+                    <div className="flex shrink-0 flex-col gap-1.5 sm:flex-row">
+                      <Button type="button" variant="destructive" className="h-11" onClick={() => onDelete(p)}>
+                        Delete
+                      </Button>
+                      <Button type="button" variant="secondary" className="h-11" onClick={() => setConfirmId(null)}>
+                        Keep
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="flex shrink-0 items-center">
+                      {canExportHlx(p.stompModel) ? (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="size-11"
+                          aria-label={`Download .${exportExtension(p.stompModel) ?? "hlx"} again`}
+                          onClick={() => onRedownload(p)}
+                        >
+                          <Download className="size-4" />
+                        </Button>
+                      ) : null}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-11"
+                        aria-label={`Delete ${p.song || p.name}`}
+                        onClick={() => setConfirmId(p.id)}
+                      >
+                        <Trash2 className="size-4" />
+                      </Button>
+                    </div>
+                  )}
                 </li>
               ))}
             </ul>
@@ -176,7 +219,7 @@ function HistoryPage() {
                     });
                   }}
                 >
-                  <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
+                  <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>
                   <div className="font-medium">{p.song}</div>
                 </Link>
               </li>

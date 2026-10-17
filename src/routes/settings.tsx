@@ -10,6 +10,7 @@ import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
 import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
+import { Skeleton } from "@/components/ui/skeleton";
 import { useAppStore } from "@/store/app-store";
 import { WahSelect } from "@/components/layout/wah-select";
 import { cn } from "@/lib/utils";
@@ -122,7 +123,10 @@ function SettingsPage() {
       <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">Account</h2>
         {accountPending ? (
-          <p className="text-sm text-muted-foreground">Checking your account…</p>
+          <div className="space-y-2" aria-busy="true" aria-label="Loading">
+            <Skeleton className="h-4 w-40" />
+            <Skeleton className="h-3 w-56" />
+          </div>
         ) : user ? (
           <>
             <div className="flex flex-wrap items-center justify-between gap-3">
