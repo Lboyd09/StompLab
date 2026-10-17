@@ -13,7 +13,7 @@ import { SYNC_NOTES, type HxParam } from "@/data/hx-catalog";
  * - Low cut: 20 Hz + 30 Hz per step (2.2 ≈ 86 Hz on a guitar cab); bass cabs are capped lower in hx-params.
  * - High cut: the linear 1.5–20.1 kHz curve presets were written against.
  * - Other frequencies: logarithmic across the range.
- * - Delay Time: value / 10 seconds (5 = 500 ms).
+ * - Delay Time and reverb Predelay: value / 10 seconds (5 = 500 ms), as presets were tuned.
  * - Everything else: linear across the range.
  */
 
@@ -52,7 +52,7 @@ export function curveFor(p: HxParam): ParamCurve {
     return "linear";
   }
   if (p.unit === "frequency" && p.min > 0 && p.max / p.min > 8) return "log";
-  if (p.key === "Time" && /^time_ms/.test(p.unit)) return "time";
+  if ((p.key === "Time" || p.key === "Predelay" || p.key === "PreDelay") && /^time_ms/.test(p.unit)) return "time";
   return "linear";
 }
 

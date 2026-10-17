@@ -245,6 +245,18 @@ export function blockNativeParams(block: StompBlock, overrides?: Record<string, 
     // Quieter than factory hum/ripple; Liam's ear-checked presets were tuned this way.
     if (m.byKey.Hum && params.Hum === undefined) out.Hum = 0.05;
     if (m.byKey.Ripple && params.Ripple === undefined) out.Ripple = 0.05;
+    // Bias at noon, as every ear-checked preset was exported before the factory catalog.
+    if (m.byKey.Bias && params.Bias === undefined) out.Bias = 0.5;
+    if (m.byKey.BiasX && params["Bias X"] === undefined && params.BiasX === undefined) out.BiasX = 0.5;
+  }
+  if (block.modelId.startsWith("cali-iv")) {
+    // The amp's built-in graphic stays flat unless asked (factory Cali IV Rhythm 2.hlx).
+    for (const band of ["80Hz", "240Hz", "750Hz", "2200Hz", "6600Hz"]) if (m.byKey[band] && params[band] === undefined) out[band] = 0;
+  }
+  if (block.modelId === "70s-chorus") {
+    // The demos' CE-1 vibrato settings (chorus mode ignores them, vibrato mode uses them).
+    if (m.byKey.VibratoRate && params.VibratoRate === undefined) out.VibratoRate = 0.34;
+    if (m.byKey.VibratoDepth && params.VibratoDepth === undefined) out.VibratoDepth = 0.5;
   }
   if (block.modelId === "noise-gate" || block.modelId === "hard-gate" || block.modelId === "horizon-gate") {
     if (m.byKey.Level) out.Level = 0;
