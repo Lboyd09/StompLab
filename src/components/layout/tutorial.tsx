@@ -1,4 +1,4 @@
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useLayoutEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
@@ -67,7 +67,6 @@ export function Tutorial({
   onClose?: () => void;
 }) {
   const navigate = useNavigate();
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const instrument = useAppStore((s) => s.instrument);
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
@@ -106,7 +105,7 @@ export function Tutorial({
       id: "lab",
       title: "Type the song. Get the file.",
       body: "This is the Lab. Type two letters, or tap a demo. The chain, snapshots, and gear update live — same as after research.",
-      cta: "Open this demo",
+      cta: device.mobile ? "Next" : "Open this demo",
     },
     {
       id: "home",
@@ -158,9 +157,10 @@ export function Tutorial({
         setOpen(false);
         return;
       }
-      setOpen(true);
+      // First visit: only open the tour on the home page, so a shared /preset, /catalog or /upgrade link is not hijacked.
+      setOpen(window.location.pathname === "/");
     } catch {
-      setOpen(true);
+      setOpen(window.location.pathname === "/");
     }
   }, [force]);
 
@@ -168,6 +168,7 @@ export function Tutorial({
     function replay() {
       setStep(0);
       setOpen(true);
+      if (window.location.pathname !== "/") void navigate({ to: "/" });
     }
     window.addEventListener(TUTORIAL_EVENT, replay);
     return () => window.removeEventListener(TUTORIAL_EVENT, replay);
@@ -176,9 +177,8 @@ export function Tutorial({
   useLayoutEffect(() => {
     if (!open) return;
     document.documentElement.classList.add("sl-touring");
-    if (pathname !== "/") void navigate({ to: "/" });
     return () => document.documentElement.classList.remove("sl-touring");
-  }, [open, pathname, navigate]);
+  }, [open]);
 
   function markDone() {
     try {
@@ -224,7 +224,7 @@ export function Tutorial({
   if (!open || !current) return null;
 
   const primary = () => {
-    if (current.id === "home" || current.id === "lab") {
+    if (current.id === "home" || (current.id === "lab" && !steps.some((s) => s.id === "home"))) {
       openDemo(pickedDemo?.id);
       return;
     }
