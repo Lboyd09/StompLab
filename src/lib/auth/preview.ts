@@ -17,8 +17,15 @@
  * broker env var and this constant together.
  */
 export const PREVIEW_CLIENT_ID = "grok_preview";
-export const PREVIEW_CLIENT_SECRET =
-  "8bcdb7fc5a33874ad933ca568918d5790388a0795e44c4d1dea691f801b17ec5";
+
+/**
+ * The preview client's secret is never stored in the repo. A preview that wants
+ * federated sign-in sets `GROK_PREVIEW_CLIENT_SECRET` itself; with nothing set,
+ * the broker providers stay off and email/password is the only sign-in.
+ */
+export function previewClientSecret(): string {
+  return (process.env.GROK_PREVIEW_CLIENT_SECRET ?? "").trim();
+}
 
 /** The shared auth broker issuer (OIDC discovery lives under it). */
 export const GROK_ISSUER_DEFAULT = "https://auth.grok.me";

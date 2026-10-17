@@ -56,7 +56,7 @@ function Root() {
       </head>
       <body>
         <VisitBeacon />
-        <PreviewHostBridge />
+        {import.meta.env.DEV || import.meta.env.VITE_PREVIEW_BRIDGE === "true" ? <PreviewHostBridge /> : null}
         <AuthProvider>
           <ShellSwitch />
           <Toaster />

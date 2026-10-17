@@ -95,19 +95,14 @@ function isBusyStatus(status: number, message: string): boolean {
   );
 }
 
+/** Short player copy for a failed model call. The provider's own text goes to the server log only. */
+export const RESEARCH_UNAVAILABLE = "Research isn't available right now. Try a demo, then try again later.";
+
 function friendlyGoogleError(status: number, raw: string): string {
   const lower = raw.toLowerCase();
-  if (status === 400 && /api.?key|invalid/i.test(raw)) {
-    return "The research key was rejected. Check GEMINI_API_KEY on the host.";
-  }
-  if (status === 403 || /permission|disabled/i.test(lower)) {
-    return "Research is blocked on this key. Enable Gemini 2.5 Flash for it in Google AI Studio.";
-  }
-  if (isBusyStatus(status, raw) || /billing|credit|quota/i.test(lower)) {
-    return "Research is waiting on API billing. Add credit, wait a minute, try a demo in the meantime.";
-  }
-  if (status === 404) return "Gemini 2.5 Flash isn't available on this key yet.";
-  return raw.slice(0, 220) || `Research failed (${status}). Try again.`;
+  console.error("[research] model request failed", status, raw.slice(0, 300));
+  if (isBusyStatus(status, raw) || /billing|credit|quota/i.test(lower)) return BUSY;
+  return RESEARCH_UNAVAILABLE;
 }
 
 async function fetchWithTimeout(url: string, init: RequestInit, ms: number): Promise<Response> {
@@ -136,7 +131,8 @@ async function googleGenerate(
   system = SYSTEM,
   schema?: unknown,
 ): Promise<string> {
-  const url = `${GOOGLE_GENERATE}?key=${encodeURIComponent(key)}`;
+  // The key goes in the x-goog-api-key header only, never in the URL (URLs get logged).
+  const url = GOOGLE_GENERATE;
   let payload: RequestInit = {
     method: "POST",
     headers: {
@@ -207,7 +203,7 @@ async function googleGenerate(
     }
     text = googleAnswerText(body.candidates?.[0]?.content?.parts);
   } catch (err) {
-    if (err instanceof Error && /blocked|rejected|billing|Research/.test(err.message)) throw err;
+    if (err instanceof Error && /blocked|Research|busy/i.test(err.message)) throw err;
     throw new Error("Could not read that answer. Try the song again.");
   }
   if (!text.trim()) throw new Error("Empty answer. Try again.");
@@ -247,7 +243,8 @@ async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): 
       message = raw.slice(0, 220);
     }
     if (isBusyStatus(res.status, message)) throw new Error(BUSY);
-    throw new Error(message || `Research failed (${res.status}). Try again.`);
+    console.error("[research] gateway request failed", res.status, message.slice(0, 300));
+    throw new Error(RESEARCH_UNAVAILABLE);
   }
   try {
     const body = JSON.parse(raw) as { choices?: { message?: { content?: string } }[] };

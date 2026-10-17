@@ -149,7 +149,7 @@ function UpgradePage() {
         return;
       }
       if (!res.url || !/^https?:\/\//i.test(res.url)) {
-        setError("Polar did not return a checkout page. Check POLAR_ACCESS_TOKEN and the product IDs on the host.");
+        setError("Checkout isn't available right now. Try again in a minute.");
         return;
       }
       window.location.href = res.url;
