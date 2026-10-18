@@ -15,6 +15,8 @@ type Props = {
   step?: number;
   /** What HX Edit shows for the value (dB, Hz, ms, note…). Defaults to the number. */
   display?: string;
+  /** Accessible name when the knob has no printed label. */
+  ariaLabel?: string;
 };
 
 /**
@@ -33,13 +35,14 @@ export function Knob({
   max = 10,
   step = 0.1,
   display,
+  ariaLabel,
 }: Props) {
   const start = useRef<{ y: number; v: number } | null>(null);
   const moved = useRef(false);
   const span = max - min || 1;
   const clamped = Math.max(min, Math.min(max, value));
   const angle = -135 + ((clamped - min) / span) * 270;
-  const dim = size === "lg" ? "size-16" : size === "sm" ? "size-[38px]" : "size-14";
+  const dim = size === "lg" ? "size-16" : size === "sm" ? "size-11" : "size-14";
   const snap = (v: number) => {
     const s = Math.round((v - min) / step) * step + min;
     return Math.max(min, Math.min(max, Math.round(s * 1000) / 1000));
@@ -92,7 +95,7 @@ export function Knob({
       <button
         type="button"
         role={isSlider ? "slider" : undefined}
-        aria-label={label || (onPress ? "Select" : "Knob")}
+        aria-label={ariaLabel ?? (label || (onPress ? "Select" : "Knob"))}
         aria-valuemin={isSlider ? min : undefined}
         aria-valuemax={isSlider ? max : undefined}
         aria-valuenow={isSlider ? clamped : undefined}
