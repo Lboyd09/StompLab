@@ -76,7 +76,7 @@ export function LcdScreen({
   } else if (helix || view === "edit") {
     body = (
       <>
-        <SignalFlow blocks={blocks} selectedId={selected?.id} onSelect={onSelectBlock} />
+        <SignalFlow blocks={blocks} selectedId={selected?.id} onSelect={helix ? onSelectBlock : undefined} />
         <ParamStrip block={selected} page={paramPage} perPage={spec.knobs} showName />
       </>
     );
@@ -145,7 +145,8 @@ function SignalFlow({
 }: {
   blocks: StompBlock[];
   selectedId?: string;
-  onSelect: (id: string) => void;
+  /** Helix: tap a block. The small screens select with the upper knob, as the hardware does. */
+  onSelect?: (id: string) => void;
 }) {
   // The unit draws an amp and its cab as one block, so the whole chain fits the screen.
   const shown = blocks.filter(
@@ -162,7 +163,7 @@ function SignalFlow({
       <div className="hx-lcd-flow-row">
         <span className="hx-path-line" aria-hidden />
         {shown.map((b) => (
-          <BlockChip key={b.id} block={b} selected={b.id === selectedId} onClick={() => onSelect(b.id)} />
+          <BlockChip key={b.id} block={b} selected={b.id === selectedId} onClick={onSelect ? () => onSelect(b.id) : undefined} />
         ))}
       </div>
       <span className="hx-lcd-io">Out</span>
@@ -170,9 +171,16 @@ function SignalFlow({
   );
 }
 
-function BlockChip({ block, selected, onClick }: { block: StompBlock; selected: boolean; onClick: () => void }) {
+function BlockChip({ block, selected, onClick }: { block: StompBlock; selected: boolean; onClick?: () => void }) {
   const model = blockModel(block);
   const color = model ? CATEGORY_MAP[model.category].lcd : "#9aa3ad";
+  const chip = (
+    <span className={cn("hx-lcd-chip", selected && "hx-lcd-chip-sel", !block.enabled && "hx-lcd-chip-off")}>
+      <span className="hx-lcd-chip-bar" style={{ background: color }} />
+      <span className="hx-lcd-chip-text">{model?.abbrev ?? "—"}</span>
+    </span>
+  );
+  if (!onClick) return <span className="hx-lcd-chip-hit hx-lcd-chip-static">{chip}</span>;
   return (
     <button
       type="button"
@@ -181,10 +189,7 @@ function BlockChip({ block, selected, onClick }: { block: StompBlock; selected: 
       aria-label={`${model?.name ?? "Block"}${block.enabled ? "" : " (off)"}`}
       aria-pressed={selected}
     >
-      <span className={cn("hx-lcd-chip", selected && "hx-lcd-chip-sel", !block.enabled && "hx-lcd-chip-off")}>
-        <span className="hx-lcd-chip-bar" style={{ background: color }} />
-        <span className="hx-lcd-chip-text">{model?.abbrev ?? "—"}</span>
-      </span>
+      {chip}
     </button>
   );
 }

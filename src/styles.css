@@ -533,7 +533,7 @@ html.sl-touring nav {
 .hx-lcd-flow { display: flex; align-items: center; gap: 2px; padding: 2px 3px; flex: 1; min-height: 52px; }
 .hx-lcd-io { font-size: 7px; color: #6a6e68; text-transform: uppercase; }
 @container replica (max-width: 420px) {
-  .hx-board-helix .hx-lcd-io { display: none; }
+  .hx-lcd-io { display: none; }
 }
 .hx-lcd-flow-row { position: relative; display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; }
 .hx-path-line { position: absolute; inset-inline: 0; top: 50%; height: 1px; background: color-mix(in oklab, #e8e6df 22%, transparent); }
@@ -558,6 +558,8 @@ html.sl-touring nav {
   border-radius: 2px;
   background: #151a1e;
 }
+
+.hx-lcd-chip-static { height: 30px; }
 .hx-lcd-chip-sel { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
 .hx-lcd-chip-off { opacity: 0.38; }
 .hx-lcd-chip-bar { height: 3px; flex-shrink: 0; }
@@ -784,7 +786,7 @@ html[data-controls="large"] .hx-well { grid-template-columns: repeat(3, 52px); }
 /* ── HX Effects ── */
 .hx-fx-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .hx-fx-left, .hx-fx-right { display: flex; align-items: center; gap: 4px; }
-.hx-fx-right { flex-direction: column; }
+.hx-fx-right { flex-wrap: wrap; justify-content: flex-end; }
 .hx-fx-big { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100px; text-align: center; }
 .hx-switches-fx .hx-switch-cell { gap: 4px; }
 

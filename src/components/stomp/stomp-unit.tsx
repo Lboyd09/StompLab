@@ -81,6 +81,7 @@ export function StompUnit({
   const [tapped, setTapped] = useState<number | null>(null);
   const taps = useRef<number[]>([]);
   const downs = useRef<Record<number, number>>({});
+  const combo = useRef(0);
   const lastView = useRef(0);
 
   // A new preset or unit forgets the tapped tempo.
@@ -148,8 +149,10 @@ export function StompUnit({
       case "down": {
         const other = face.kind === "up" ? spec.down : spec.up;
         const t = other ? downs.current[other] : undefined;
+        if (Date.now() - combo.current < 600) return; // the second switch of a ▲+▼ press
         if (t && Date.now() - t < 450) {
           // BANK ▲ + ▼ together: Snapshot mode (and back).
+          combo.current = Date.now();
           onFsMode(fsMode === "snapshot" ? "stomp" : "snapshot");
           return;
         }
@@ -199,7 +202,7 @@ export function StompUnit({
         value={p?.value ?? 0}
         display={p?.display}
         {...range}
-        size={largeControls ? "lg" : helix || layout === "podgo" ? "sm" : "md"}
+        size={perPage > 3 ? "sm" : largeControls ? "lg" : "md"}
         disabled={!p || !selected}
         onChange={
           p && selected
@@ -605,11 +608,10 @@ function Footswitch({
 }) {
   const timer = useRef<number | null>(null);
   const held = useRef(false);
-  const down = useRef(false);
 
+  // Down starts the hold timer (and the ▲+▼ timing); the press itself fires on click, so assistive tech works too.
   function start() {
     held.current = false;
-    down.current = true;
     onDown();
     if (onHold) {
       timer.current = window.setTimeout(() => {
@@ -618,11 +620,9 @@ function Footswitch({
       }, 800);
     }
   }
-  function end(fire: boolean) {
+  function stop() {
     if (timer.current) window.clearTimeout(timer.current);
     timer.current = null;
-    if (fire && down.current && !held.current) onPress();
-    down.current = false;
   }
 
   const label = face.label ? fitSwitchLabel(face.label, 8) : "";
@@ -637,19 +637,23 @@ function Footswitch({
       aria-pressed={face.kind === "stomp" || face.kind === "snapshot" ? face.led === "lit" : undefined}
       className={cn("hx-footswitch", selected && "hx-footswitch-sel")}
       onPointerDown={start}
-      onPointerUp={() => end(true)}
-      onPointerLeave={() => end(false)}
-      onPointerCancel={() => end(false)}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
       onContextMenu={(e) => e.preventDefault()}
       onKeyDown={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        if (!e.repeat) start();
+        // Hold Space for the hold function (TAP → tuner); a quick Space or Enter is a press.
+        if (e.key === " " && !e.repeat) start();
       }}
       onKeyUp={(e) => {
-        if (e.key !== "Enter" && e.key !== " ") return;
-        e.preventDefault();
-        end(true);
+        if (e.key === " ") stop();
+      }}
+      onClick={() => {
+        if (held.current) {
+          held.current = false;
+          return;
+        }
+        onPress();
       }}
     >
       <span
