@@ -80,7 +80,7 @@ describe("googleAnswerText", () => {
 describe("research thinking", () => {
   const src = readFileSync(new URL("./gemini.ts", import.meta.url), "utf8");
   it("lets Flash think so it can A/B against the record", () => {
-    assert.match(src, /thinkingBudget:\s*4096/);
+    assert.match(src, /thinkingBudget \?\? 4096/);
     assert.match(src, /reasoning_effort:\s*"medium"/);
     assert.equal(/thinkingBudget:\s*0/.test(src), false);
     assert.equal(/reasoning_effort:\s*"none"/.test(src), false);
@@ -98,7 +98,7 @@ describe("research thinking", () => {
     assert.match(src, /arrangement by TONE/);
     assert.match(src, /tone fingerprint/);
     assert.match(src, /If the opening is clean, snapshot 1 is clean/);
-    assert.match(src, /Singing muffs keep Mid near 5–6/);
+    assert.match(src, /Singing muffs \(Big Muff: Sustain, Tone, Level only — no Mid knob\) keep Tone near 4–5/);
     assert.match(src, /Tight chug = TS tightener/);
   });
 });

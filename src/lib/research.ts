@@ -19,10 +19,10 @@ import {
 import type { Plan } from "./plan";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
-import { focusGuitarRole, parseGuitarRole, type GuitarRole } from "./guitar-role";
+import { libraryServesFeatured, parseGuitarRole, songBuildRole, type GuitarRole } from "./guitar-role";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
-import { friendlyResearchError, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
+import { friendlyResearchError, geminiGroundedNotes, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
 import { VERIFY_EMAIL_LINE } from "./copy";
 import { finishTone } from "./tone-finish";
@@ -32,6 +32,9 @@ import {
   jsonSchemaHintCustom,
   overlayUserGear,
   parsePresetJson,
+  parseRecordNotes,
+  RECORD_NOTES_SYSTEM,
+  recordNotesPrompt,
   publicPreset,
   songResearchInstructions,
   customSoundInstructions,
@@ -73,14 +76,12 @@ export function matchFeatured(
   artist: string | undefined,
   instrument: "guitar" | "bass",
   stompModel: StompModelId,
-  guitarRole: GuitarRole = "both",
+  /** Ignored: a featured preset is served whole, whatever part was picked. */
+  _guitarRole?: GuitarRole,
 ): Preset | null {
   const hit = findFeaturedSource(song, artist, instrument);
   if (!hit) return null;
-  return withStompModel(
-    { ...focusGuitarRole(hit, guitarRole), id: newId("pst"), createdAt: Date.now() },
-    stompModel,
-  );
+  return withStompModel({ ...hit, id: newId("pst"), createdAt: Date.now() }, stompModel);
 }
 
 const GEAR_KINDS = new Set(["guitar", "bass", "amp", "cab", "pedal", "pickup"]);
@@ -196,7 +197,8 @@ const ResearchIn = z.object({
   userGear: z.array(GearSchema).max(40).optional().default([]),
   wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
   wahModelId: z.string().max(40).optional().default("teardrop-310"),
-  guitarRole: z.enum(["rhythm", "lead", "both"]).optional().default("both"),
+  // Ignored (always the lead part). Tolerated so an older client still validates.
+  guitarRole: z.string().max(20).optional(),
 });
 
 function cleanResearchInput(d: z.infer<typeof ResearchIn>) {
@@ -294,11 +296,23 @@ function finishPreset(
   );
 }
 
+/** Step 1 of a song build. Never throws; empty notes when search is unavailable. */
+async function researchRecord(
+  song: string,
+  artist: string,
+  album: string,
+  instrument: "guitar" | "bass",
+  role: GuitarRole,
+): Promise<{ notes: string; bpm: number | null }> {
+  const text = await geminiGroundedNotes(recordNotesPrompt(song, artist, album, instrument, role), RECORD_NOTES_SYSTEM);
+  return parseRecordNotes(text);
+}
+
 async function lookupBpm(song: string, artist: string, album: string): Promise<number | null> {
   try {
     const json = (await geminiJson(
       `Studio tempo in BPM for the original recording of "${song}" by ${artist}${album ? ` on ${album}` : ""}. Reply {"bpm": <integer>}. Use the album tempo, not a live version. If you are not sure, reply {"bpm": 0}. Never answer 120 unless the song is actually about 120.`,
-      { system: "Reply with one JSON object and nothing else.", schema: BPM_RESPONSE_SCHEMA },
+      { system: "Reply with one JSON object and nothing else.", schema: BPM_RESPONSE_SCHEMA, thinkingBudget: 512, maxOutputTokens: 2048 },
     )) as { bpm?: number };
     const bpm = Number(json?.bpm);
     if (!Number.isFinite(bpm) || bpm < 40 || bpm > 240) return null;
@@ -337,16 +351,14 @@ export const researchSongFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => cleanResearchInput(ResearchIn.parse(input)))
   .handler(async ({ context, data }): Promise<ResearchResult> => {
-    const role = parseGuitarRole(data.guitarRole);
+    // guitarRole from the client is ignored: a song build is always the lead part.
     const featuredSrc = findFeaturedSource(data.song, data.artist, data.instrument);
     const email = await emailFor(context.userId, context.email);
     const screenPlan = await loadPlan(context.userId, email);
 
-    const useLibrary =
-      featuredSrc && (isDemoId(featuredSrc.id) ? !(screenPlan.paid && role !== "both") : screenPlan.paid && role === "both");
-    if (featuredSrc && useLibrary) {
+    if (featuredSrc && libraryServesFeatured(isDemoId(featuredSrc.id), screenPlan.paid)) {
       const featured = withStompModel(
-        { ...focusGuitarRole(featuredSrc, role), id: newId("pst"), createdAt: Date.now() },
+        { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
         data.stompModel,
       );
       return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
@@ -369,6 +381,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
     if (!confirmed) {
       return { ok: false, error: SONG_NOT_FOUND };
     }
+    const role = songBuildRole(data.instrument, confirmed.song, confirmed.artist);
     const key = songCacheKey(
       confirmed.song,
       confirmed.artist,
@@ -376,7 +389,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       data.stompModel,
       data.playbackTarget,
       data.wahMode,
-      data.guitarRole,
+      role,
     );
 
     // A cache hit was confirmed when it was cached, so it skips the tempo lookup
@@ -389,7 +402,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
         stompModel: data.stompModel,
         playbackTarget: data.playbackTarget,
         wahMode: data.wahMode,
-        guitarRole: data.guitarRole,
+        guitarRole: role,
       });
       if (cached.hit && cached.preset) {
         const slot = await reserveBuildSlot({
@@ -429,18 +442,23 @@ export const researchSongFn = createServerFn({ method: "POST" })
     if (!slot.ok) return slotFailure(slot.reason);
     let settled = false;
     try {
-      const bpm = await lookupBpm(confirmed.song, confirmed.artist, confirmed.album);
+      // Step 1: a search-grounded look at the record (gear, settings, sections,
+      // tempo, tuning). Fail-soft: without it the preset call works from memory.
+      const [record, lessons] = await Promise.all([
+        researchRecord(confirmed.song, confirmed.artist, confirmed.album, data.instrument, role),
+        standingFeedbackLessons(),
+      ]);
+      const bpm = record.bpm ?? (await lookupBpm(confirmed.song, confirmed.artist, confirmed.album));
       const catalog = compactCatalogForPrompt(data.instrument, data.stompModel, {
         omitWah: data.wahMode === "pedal",
       });
-      const lessons = await standingFeedbackLessons();
       const wah = wahPromptLine(parseWahMode(data.wahMode), parseWahModelId(data.wahModelId));
       const prompt = `${lessons}
 
 Confirmed recording: "${confirmed.song}" by ${confirmed.artist}${confirmed.album ? `, album ${confirmed.album}` : ""}.
 ${bpm ? `Studio tempo is ${bpm} BPM. Set the preset tempo to ${bpm}.` : "Set tempo to the recording's real BPM. Do not use 120 unless the song is actually about 120."}
-
-${songResearchInstructions(confirmed.song, confirmed.artist, data.instrument, wah, parseGuitarRole(data.guitarRole))}
+${record.notes ? `\nResearch notes from a web search of this recording. Use these facts over memory when they are specific; mark gear the notes call likely as "Likely —"; ignore anything that is about a live rig or a different song:\n${record.notes}\n` : ""}
+${songResearchInstructions(confirmed.song, confirmed.artist, data.instrument, wah, role)}
 ${gearLine(data.userGear)}
 
 Catalog (id|basedOn):
