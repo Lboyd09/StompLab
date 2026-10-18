@@ -936,3 +936,24 @@ describe("audible demos", () => {
   });
 });
 
+
+describe("Stomp mode footswitch assignment", () => {
+  it("puts the delay on FS2 when the player picks it in Stomp mode", () => {
+    const base = featured("featured-sandman");
+    const delay = base.blocks.find((b) => MODEL_MAP[b.modelId]?.category === "delay");
+    assert.ok(delay, "Sandman has a delay");
+    const preset: Preset = {
+      ...base,
+      footswitches: [
+        ...base.footswitches.filter((f) => !(f.action === "bypass" && (f.index === 2 || f.targetBlockId === delay.id))),
+        { index: 2, label: "DLY", color: "#22e07a", action: "bypass", targetBlockId: delay.id, notes: "" },
+      ],
+    };
+    const hlx = buildHlx(preset, { fsMode: "stomp" }) as {
+      data: { tone: { footswitch: { dsp0: Record<string, { "@fs_index": number }> }; dsp0: Record<string, { "@model"?: string }> } };
+    };
+    const fs = hlx.data.tone.footswitch.dsp0;
+    const hits = Object.values(fs).filter((f) => f["@fs_index"] === visualToHardwareFs(2));
+    assert.equal(hits.length, 1, "exactly one block on FS2");
+  });
+});

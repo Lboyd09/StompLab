@@ -2,16 +2,11 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { PartSelect } from "@/components/layout/part-select";
 import { PlaybackSelect } from "@/components/layout/playback-select";
-import { guitarArrangement } from "@/data/guitar-parts";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
-import { FeedbackCard } from "@/components/layout/feedback-card";
 import { GeminiHint } from "@/components/layout/gemini-hint";
-import { SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
-import { InviteCard } from "@/components/layout/invite-card";
 import { VerifyBanner } from "@/components/layout/verify-banner";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
@@ -43,8 +38,6 @@ function Home() {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
-  const guitarRole = useAppStore((s) => s.guitarRole);
-  const setGuitarRole = useAppStore((s) => s.setGuitarRole);
   const savePreset = useAppStore((s) => s.savePreset);
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
@@ -100,12 +93,9 @@ function Home() {
       setStatus("Type a song title first.");
       return;
     }
-    const arrangement = instrument === "guitar" ? guitarArrangement(song.trim(), artist.trim()) : "single";
-    const roleForBuild = arrangement === "dual" ? (guitarRole === "lead" ? "lead" : "rhythm") : "both";
-    const featuredHit =
-      arrangement === "dual" && subscribed
-        ? null
-        : matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel, roleForBuild);
+    // The server builds the lead part for two-guitar songs; nothing to pick here.
+    const roleForBuild = "both" as const;
+    const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel, roleForBuild);
     if (featuredHit) {
       const src = FEATURED.find(
         (p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song,
@@ -235,21 +225,6 @@ function Home() {
               {plan.admin ? "custom builds this month, no cap on this account" : "custom builds used this month"}
             </p>
           ) : null}
-          <div className="sl-enter sl-enter-5 space-y-2">
-            <p className="text-sm text-muted-foreground">{plan.signedIn ? "Free demos:" : "Try one free, no account:"}</p>
-            <div className="flex flex-wrap gap-2">
-              {demos.map((p) => (
-                <button
-                  key={p.id}
-                  type="button"
-                  onClick={() => openFeatured(p.id)}
-                  className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-primary"
-                >
-                  {p.song}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         <VerifyBanner plan={plan} />
@@ -298,12 +273,6 @@ function Home() {
             }}
           />
           <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
-          {instrument === "guitar" && guitarArrangement(song, artist) === "dual" ? (
-            <PartSelect
-              value={guitarRole === "lead" ? "lead" : "rhythm"}
-              onChange={setGuitarRole}
-            />
-          ) : null}
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"
@@ -340,7 +309,7 @@ function Home() {
             <p className="sl-kicker">Always free</p>
             <h2 className="sl-hero-title text-3xl">Demos</h2>
           </div>
-          <span className="text-xs text-muted-foreground">One tap. Download included.</span>
+          <span className="text-xs text-muted-foreground">No account needed</span>
         </div>
         <div className="sl-stagger grid gap-3 sm:grid-cols-3">
           {demos.map((p) => (
@@ -354,8 +323,8 @@ function Home() {
             >
               <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground">{p.artist}</div>
               <div className="mt-2 sl-hero-title text-2xl">{p.song}</div>
-              <p className="mt-3 line-clamp-2 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
-              <div className="mt-6 flex items-center gap-1 text-xs font-medium text-foreground transition-colors group-hover:text-pop">
+              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-muted-foreground">{p.summary}</p>
+              <div className="mt-6 flex items-center gap-1 text-sm font-medium text-primary transition-colors group-hover:text-pop">
                 Open on {unit}
                 <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
               </div>
@@ -363,11 +332,6 @@ function Home() {
           ))}
         </div>
       </section>
-
-      <div className="relative space-y-4">
-        <SignalPath />
-        <RigDisclaimer />
-      </div>
 
       {!subscribed ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
@@ -424,11 +388,7 @@ function Home() {
         </section>
       ) : null}
 
-      <InviteCard />
-
-      <div className="max-w-2xl">
-        <FeedbackCard />
-      </div>
+      <RigDisclaimer />
     </div>
   );
 }

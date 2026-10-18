@@ -1,7 +1,7 @@
 import type { Sql } from "./db";
 
 /**
- * The security migrations (0014 to 0020) as idempotent single statements. The
+ * The security migrations (0014 to 0021) as idempotent single statements. The
  * migration files are the source of truth; this list runs the same DDL once per
  * process so a host that never ran `npm run db:migrate` still has the columns
  * the quota, webhook and feedback code reads. Keep it in step with those files.
@@ -34,6 +34,7 @@ export const SECURITY_SCHEMA_STATEMENTS: string[] = [
      created_at timestamptz not null default now()
    )`,
   `create index if not exists shared_presets_user_idx on shared_presets (user_id, created_at)`,
+  `alter table feedback add column if not exists context jsonb`,
   `update entitlements e
    set user_id = m.id, updated_at = now()
    from (

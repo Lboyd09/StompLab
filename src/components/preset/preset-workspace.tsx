@@ -27,10 +27,10 @@ import { StompUnit } from "../stomp/stomp-unit";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
-import { FsAssignPanel } from "./fs-assign";
-import { DownloadBar, EXPORT_MODE_LABEL, ImportPanel, type ExportMode } from "./download-bar";
-import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
-import { PresetFeedbackForm } from "../layout/preset-feedback";
+import { FsAssignPanel, stompSwitchIndices } from "./fs-assign";
+import { DownloadBar, EXPORT_MODE_LABEL, type ExportMode } from "./download-bar";
+import { FREE_BUILD_LINE } from "@/lib/copy";
+import { PostDownloadDialog, shouldAskAgain } from "../layout/post-download";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { sharePresetFn } from "@/lib/share";
@@ -79,8 +79,33 @@ export function PresetWorkspace({
   const [sharing, setSharing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
-  const [exportMode, setExportMode] = useState<ExportMode>("snapshot");
+  // One choice drives the page and the file: Stomp shows effects on the switches, Snapshot shows song parts.
+  const exportMode: ExportMode = fsMode === "stomp" ? "stomp" : "snapshot";
+  const stompMode = fsMode === "stomp";
+  const setExportMode = (mode: ExportMode) => {
+    setFsMode(mode);
+    if (mode !== "stomp") return;
+    setActiveSnapshot(0);
+    if (readOnly || preset.footswitches.some((f) => f.action === "bypass")) return;
+    // First time in Stomp mode: put the chain's effects on the switches, in order.
+    const effects = sortedBlocks(preset).filter((b) => !isAmpOrCab(b.modelId) && blockModel(b));
+    const picks: FootswitchAssign[] = stompSwitchIndices(preset)
+      .slice(0, effects.length)
+      .map((index, i) => {
+        const model = blockModel(effects[i])!;
+        return {
+          index,
+          label: model.abbrev,
+          color: CATEGORY_MAP[model.category].lcd,
+          action: "bypass",
+          targetBlockId: effects[i].id,
+          notes: `Toggle ${model.name}`,
+        };
+      });
+    if (picks.length) onChange({ ...preset, footswitches: [...preset.footswitches, ...picks] });
+  };
   const [savedFile, setSavedFile] = useState<string | null>(null);
+  const [askOpen, setAskOpen] = useState<"download" | "rate" | null>(null);
   const [beforeRevise, setBeforeRevise] = useState<Preset | null>(null);
   const device = deviceFor(preset);
   const load = dspLoad(preset);
@@ -141,19 +166,20 @@ export function PresetWorkspace({
     setLcdView("play");
     setAssignFsIndex(1);
     setSavedFile(null);
+    setAskOpen(!readOnly && shouldAskAgain(preset.id) ? "rate" : null);
     setBeforeRevise(null);
     // Intentionally keyed on preset.id so knob edits don't reset the section.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [preset.id, preset.stompModel, defaultFsMode, setFsMode, setActiveSnapshot, setLcdView, setAssignFsIndex]);
 
   function changeParam(blockId: string, name: string, value: number) {
-    const snap = preset.snapshots[activeSnapshot];
+    const target = stompMode ? 0 : activeSnapshot;
+    const snap = preset.snapshots[target];
     if (snap) {
-      if (fsMode !== "snapshot") setFsMode("snapshot");
       onChange({
         ...preset,
         snapshots: preset.snapshots.map((s, i) =>
-          i === activeSnapshot
+          i === target
             ? {
                 ...s,
                 paramOverrides: {
@@ -177,20 +203,20 @@ export function PresetWorkspace({
   function toggleBlock(blockId: string) {
     const block = preset.blocks.find((b) => b.id === blockId);
     if (!block) return;
-    const snap = preset.snapshots[activeSnapshot];
+    const target = stompMode ? 0 : activeSnapshot;
+    const snap = preset.snapshots[target];
     if (snap) {
       const on = snap.enabledBlocks.includes(blockId);
       if (on && isAmpOrCab(block.modelId)) {
         toast.message("Amp and cab stay on. Turning them off makes that snapshot silent.");
         return;
       }
-      if (fsMode !== "snapshot") setFsMode("snapshot");
       const enabledBlocks = on
         ? snap.enabledBlocks.filter((id) => id !== blockId)
         : [...snap.enabledBlocks, blockId];
       onChange({
         ...preset,
-        snapshots: preset.snapshots.map((s, i) => (i === activeSnapshot ? { ...s, enabledBlocks } : s)),
+        snapshots: preset.snapshots.map((s, i) => (i === target ? { ...s, enabledBlocks } : s)),
       });
       return;
     }
@@ -226,12 +252,16 @@ export function PresetWorkspace({
   }
 
   function assignFs(index: number, patch: Partial<FootswitchAssign> | null) {
-    const rest = preset.footswitches.filter((f) => f.index !== index);
+    // Stomp assignments and snapshot switches share numbers; only replace the stomp one.
+    const rest = preset.footswitches.filter(
+      (f) =>
+        !(f.action === "bypass" && (f.index === index || (patch?.targetBlockId && f.targetBlockId === patch.targetBlockId))),
+    );
     if (!patch) {
       onChange({ ...preset, footswitches: rest });
       return;
     }
-    const existing = preset.footswitches.find((f) => f.index === index);
+    const existing = preset.footswitches.find((f) => f.index === index && f.action === "bypass");
     const nextAssign: FootswitchAssign = {
       index,
       label: patch.label ?? existing?.label ?? `FS${index}`,
@@ -261,7 +291,10 @@ export function PresetWorkspace({
     const filename = hlxFilename(preset);
     if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
-    if (ok) setSavedFile(filename);
+    if (ok) {
+      setSavedFile(filename);
+      setAskOpen("download");
+    }
     else toast.error(`Download was blocked. Use Advanced, then Copy JSON, and save it as a .${exportExt} file.`);
   }
 
@@ -355,6 +388,11 @@ export function PresetWorkspace({
               )}
             </h1>
             <div className="flex w-full flex-col gap-2 sm:w-auto sm:max-w-sm sm:items-end">
+              {canDownload && canExportHlx(preset.stompModel) && !readOnly ? (
+                <Button type="button" className="h-11 w-full sm:w-auto" onClick={onDownload} data-tour="download">
+                  Download .{exportExt}
+                </Button>
+              ) : null}
               {canDownload ? null : (
                 <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground sm:text-right">
                   {signInToDownload
@@ -393,25 +431,21 @@ export function PresetWorkspace({
 
         <div className="flex min-w-0 flex-col gap-6">
           <div className="order-2 grid gap-4 md:grid-cols-2">
-            {readOnly ? null : (
-              <FsAssignPanel
-                preset={preset}
-                fsIndex={assignFsIndex}
-                fsMode={fsMode}
-                onAssign={assignFs}
-                onReset={original ? resetFeatured : undefined}
-              />
+            {readOnly || !stompMode ? null : (
+              <FsAssignPanel preset={preset} onAssign={assignFs} onReset={original ? resetFeatured : undefined} />
             )}
 
         <Card className="md:col-span-2">
           <CardHeader>
             <CardTitle>Signal path</CardTitle>
             <CardDescription>
-              Pick a snapshot first. On and off, and every knob, apply to that snapshot only. Then download.
+              {stompMode
+                ? "How the preset starts when you load it. Use Footswitches to turn effects on and off while you play."
+                : "Pick a song part first. On and off, and every knob, apply to that part only."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3">
-            {preset.snapshots.length ? (
+            {preset.snapshots.length && !stompMode ? (
               <div className="flex flex-wrap gap-2" role="group" aria-label="Snapshot to edit">
                 {preset.snapshots.map((s, i) => {
                   const on = i === activeSnapshot;
@@ -622,7 +656,7 @@ export function PresetWorkspace({
           </Card>
         ) : null}
 
-        {preset.snapshots.length ? (
+        {preset.snapshots.length && !stompMode && !readOnly ? (
           <Card>
             <CardHeader>
               <CardTitle>Switch names</CardTitle>
@@ -812,7 +846,9 @@ export function PresetWorkspace({
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <PresetFeedbackForm song={preset.song || preset.name} />
+            <Button type="button" variant="secondary" className="h-11" onClick={() => setAskOpen("rate")}>
+              Rate this preset
+            </Button>
           </CardContent>
         </Card>
         )}
@@ -834,38 +870,40 @@ export function PresetWorkspace({
           </div>
 
           <div className="hx-replica-fit order-1 min-w-0 space-y-4">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="flex rounded-full bg-secondary p-1">
+            <div className="space-y-1.5">
+              <p id="fs-mode-label" className="text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+                Footswitches
+              </p>
+              <div role="radiogroup" aria-labelledby="fs-mode-label" className="grid grid-cols-2 rounded-full bg-secondary p-1 sm:inline-grid">
                 {(
                   [
-                    ["snapshot", "Snapshot"],
-                    ["stomp", "Stomp"],
-                    ["preset", "Preset"],
+                    ["snapshot", "Song parts (Snapshot)"],
+                    ["stomp", "Effects (Stomp)"],
                   ] as const
                 ).map(([id, label]) => (
                   <button
                     key={id}
                     type="button"
+                    role="radio"
+                    aria-checked={exportMode === id}
                     onClick={() => {
-                      setFsMode(id);
-                      if (id !== "stomp") setLcdView("play");
+                      setExportMode(id);
+                      setLcdView("play");
                     }}
-                    className={`h-11 rounded-full px-4 text-xs font-medium md:h-9 md:px-3.5 ${
-                      fsMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
+                    className={`h-11 rounded-full px-3 text-xs font-medium sm:px-4 md:h-9 ${
+                      exportMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
                     }`}
                   >
                     {label}
                   </button>
                 ))}
               </div>
+              <p className="text-xs text-muted-foreground">
+                {stompMode
+                  ? "Each switch turns one effect on or off, like a pedalboard. The file opens this way."
+                  : "Each switch is one part of the song. The file opens this way."}
+              </p>
             </div>
-            <p className="text-xs text-muted-foreground">
-              {fsMode === "snapshot"
-                ? "Each numbered switch is one part of the song. Tap one to hear what changes."
-                : fsMode === "stomp"
-                  ? "Each switch turns one effect on or off, like a pedalboard."
-                  : "Switches pick presets, the way the unit sits between songs."}
-            </p>
             <div data-tour="replica" data-tutorial="replica">
               <StompUnit
                 preset={displayed}
@@ -886,7 +924,7 @@ export function PresetWorkspace({
                 onAssignFsIndex={setAssignFsIndex}
               />
             </div>
-            {preset.snapshots.length ? (
+            {preset.snapshots.length && !stompMode ? (
               <section aria-labelledby="song-map" className="space-y-2">
                 <div className="flex items-baseline justify-between gap-2">
                   <h2 id="song-map" className="text-sm font-semibold">Song map</h2>
@@ -939,47 +977,20 @@ export function PresetWorkspace({
           canDownload={canDownload}
           signInNext={signInToDownload}
           onDownload={onDownload}
-          panel={
-            savedFile && canDownload ? (
-              <ImportPanel
-                unitName={device.name}
-                editor={editor}
-                filename={savedFile}
-                mode={exportMode}
-                getJson={() => hlxJson(preset, { fsMode: exportMode })}
-                upsell={
-                  plan.paid || plan.admin ? null : (
-                    <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-3">
-                      <p className="text-sm font-medium">Want a song you actually play?</p>
-                      <p className="mt-0.5 text-xs text-muted-foreground">
-                        {plan.signedIn
-                          ? plan.freeRemaining > 0
-                            ? `Type any song on the Lab page. You have ${plan.freeRemaining} free custom build${plan.freeRemaining === 1 ? "" : "s"}.`
-                            : PAID_BUILD_LINE
-                          : FREE_BUILD_LINE}
-                      </p>
-                      <Button asChild size="sm" className="mt-2 h-11">
-                        {plan.signedIn && plan.freeRemaining <= 0 ? (
-                          <Link to="/upgrade">Subscribe</Link>
-                        ) : plan.signedIn ? (
-                          <Link to="/">Build my song</Link>
-                        ) : (
-                          <Link to="/login" search={{ mode: "up" }}>Create a free account</Link>
-                        )}
-                      </Button>
-                    </div>
-                  )
-                }
-                onClose={() => setSavedFile(null)}
-                onRate={() => {
-                  setSavedFile(null);
-                  document.getElementById("preset-feedback")?.scrollIntoView({ behavior: "smooth", block: "center" });
-                }}
-              />
-            ) : null
-          }
         />
       ) : null}
+      <PostDownloadDialog
+        open={askOpen !== null}
+        preset={preset}
+        filename={savedFile}
+        editor={editor}
+        unitName={device.name}
+        modeLabel={EXPORT_MODE_LABEL[exportMode]}
+        fsMode={exportMode}
+        getJson={() => hlxJson(preset, { fsMode: exportMode })}
+        showImport={askOpen === "download"}
+        onClose={() => setAskOpen(null)}
+      />
     </>
   );
 }

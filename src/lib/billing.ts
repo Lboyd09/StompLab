@@ -2139,6 +2139,18 @@ const FeedbackFields = {
   closerTweaks: z.string().max(500).optional().default(""),
   wantPreset: z.string().max(500).optional().default(""),
   wantApp: z.string().max(500).optional().default(""),
+  /** What a self-improving prompt needs: unit, which part was off, tags, and the file they got. */
+  context: z
+    .object({
+      unit: z.string().max(40).optional(),
+      artist: z.string().max(120).optional(),
+      presetId: z.string().max(80).optional(),
+      snapshot: z.string().max(40).optional(),
+      tags: z.array(z.string().max(40)).max(12).optional(),
+      fsMode: z.enum(["snapshot", "stomp"]).optional(),
+      preset: z.unknown().optional(),
+    })
+    .optional(),
 };
 
 function feedbackHasBody(d: {
@@ -2147,7 +2159,9 @@ function feedbackHasBody(d: {
   wantPreset: string;
   wantApp: string;
   rating?: number;
+  context?: { tags?: string[] };
 }) {
+  if (d.context?.tags?.length) return true;
   return (
     d.message.trim().length >= 4 ||
     d.closerTweaks.trim().length >= 4 ||
@@ -2181,8 +2195,34 @@ export const submitAuthedFeedbackFn = createServerFn({ method: "POST" })
     const sql = await getSql();
     const message = (
       data.message.trim() ||
-      [data.closerTweaks, data.wantPreset, data.wantApp].filter((s) => s.trim().length >= 4).join("\n")
+      [data.closerTweaks, data.wantPreset, data.wantApp].filter((s) => s.trim().length >= 4).join("\n") ||
+      (data.context?.tags ?? []).join(", ")
     ).slice(0, 800);
+    const extra: Record<string, unknown> | null = data.context ? { ...data.context } : null;
+    if (extra && JSON.stringify(extra.preset ?? null).length > 150_000) delete extra.preset;
+    if (extra) {
+      try {
+        await sql.query(
+          `insert into feedback (user_id, email, kind, message, song, rating, closer_tweaks, want_preset, want_app, context)
+           values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10::jsonb)`,
+          [
+            context.userId,
+            email,
+            data.kind ?? "site",
+            message,
+            data.song ?? "",
+            data.rating ?? null,
+            data.closerTweaks ?? "",
+            data.wantPreset ?? "",
+            data.wantApp ?? "",
+            JSON.stringify(extra),
+          ],
+        );
+        return { ok: true as const };
+      } catch {
+        /* older database without the context column: fall through */
+      }
+    }
     try {
       await sql`
         insert into feedback (user_id, email, kind, message, song, rating, closer_tweaks, want_preset, want_app)
