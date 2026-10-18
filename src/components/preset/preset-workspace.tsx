@@ -27,7 +27,8 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel } from "./fs-assign";
-import { DownloadBar, EXPORT_MODE_LABEL, ExportModePicker, ImportPanel, type ExportMode } from "./download-bar";
+import { DownloadBar, EXPORT_MODE_LABEL, ImportPanel, type ExportMode } from "./download-bar";
+import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
 import { PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
@@ -304,47 +305,13 @@ export function PresetWorkspace({
                 preset.name
               )}
             </h1>
-            <div className="flex w-full flex-col gap-3 sm:w-auto sm:max-w-sm sm:items-end">
-              {canDownload ? (
-                <>
-                  <div className="flex flex-wrap gap-2 sm:justify-end">
-                    <Button type="button" className="h-11" onClick={onDownload} data-tour="download">
-                      {canExportHlx(preset.stompModel)
-                        ? `Download .${exportExt}`
-                        : "Export unavailable"}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="secondary"
-                      className="h-11"
-                      aria-expanded={showAdvanced}
-                      onClick={() => setShowAdvanced((open) => !open)}
-                    >
-                      Advanced
-                    </Button>
-                    {showAdvanced ? (
-                      <Button type="button" variant="secondary" className="h-11" onClick={() => void onCopy()} disabled={copying}>
-                        {copying ? "Copying" : "Copy JSON"}
-                      </Button>
-                    ) : null}
-                  </div>
-                  {canExportHlx(preset.stompModel) ? (
-                    <ExportModePicker value={exportMode} onChange={setExportMode} className="w-full" />
-                  ) : null}
-                </>
-              ) : (
-                <>
-                  <Button asChild className="h-11">
-                    <Link to="/upgrade">Subscribe to download .{exportExt}</Link>
-                  </Button>
-                  <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground sm:text-right">
-                    {isDemoId(preset.id)
-                      ? "We could not confirm your account. Reload the page and try again."
-                      : "This song is for subscribers. Subscribe to download it. The demos stay free."}
-                  </p>
-                </>
-              )}
-            </div>
+            {canDownload ? null : (
+              <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground sm:text-right">
+                {isDemoId(preset.id)
+                  ? "We could not confirm your account. Reload the page and try again."
+                  : "You can look around. Subscribe to download this one; the demos stay free."}
+              </p>
+            )}
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
           {!canExportHlx(preset.stompModel) ? (
@@ -459,7 +426,6 @@ export function PresetWorkspace({
                         <span className="font-mono text-[11px] text-muted-foreground">{i + 1}</span>
                         <span className="text-sm font-medium">{model.name}</span>
                         <Badge variant="outline">{cat.short}</Badge>
-                        {!b.enabled ? <Badge variant="outline">off</Badge> : null}
                       </span>
                       <span className="mt-0.5 block text-xs text-muted-foreground">Based on {model.basedOn}</span>
                     </span>
@@ -592,10 +558,9 @@ export function PresetWorkspace({
         {preset.snapshots.length ? (
           <Card>
             <CardHeader>
-              <CardTitle>Snapshots</CardTitle>
+              <CardTitle>Switch names</CardTitle>
               <CardDescription>
-                {preset.snapshots.length} sections · rename them before you download. The .${exportExt} uses these names on
-                the switches
+                These names show on the unit. Rename them before you download if you like.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -668,18 +633,15 @@ export function PresetWorkspace({
         <Card>
           <CardHeader>
             <CardTitle>Build it on the {device.name}</CardTitle>
-            <CardDescription>
-              The replica is looking down at the unit. LCD at the top. Switch 1 is always top-left — that number is the silkscreen and HX Edit. Top row 1–3 (XL) / 1–4 (POD Go, HX Effects) / 1–6 (Helix).
-            </CardDescription>
+            <CardDescription>Import on a computer, then play.</CardDescription>
           </CardHeader>
           <CardContent>
             <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">1.</span>
                 <span>
-                  USB to a computer. Open {editor}. File → Import the .{exportExt}.{" "}
-                  {isPodGo ? "Update POD Go Edit and the unit first." : "Firmware 3.80 or newer."} Do not
-                  drag the file onto a setlist.
+                  Connect the {device.name} to a computer with USB. Open {editor}, then File → Import the .{exportExt}.{" "}
+                  {isPodGo ? "Update POD Go Edit and the unit first." : "Use firmware 3.80 or newer."}
                 </span>
               </li>
               <li className="flex gap-2">
@@ -692,9 +654,7 @@ export function PresetWorkspace({
               </li>
               <li className="flex gap-2">
                 <span className="font-mono text-[10px] text-foreground/70">3.</span>
-                <span>
-                  Numbers match the silkscreen. Switch 1 is top-left. XL: top 1–3 + MODE, bottom 4–6 + TAP. POD Go / HX Effects: top 1–4, bottom 5–8. Helix: top 1–6, bottom 7–12. Volume is the right knob on a Stomp, on the rear of an XL.
-                </span>
+                <span>Switch 1 is top-left, the same numbers as the replica above.</span>
               </li>
               {preset.programming.map((step, i) => (
                 <li key={i} className="flex gap-2">
@@ -703,6 +663,23 @@ export function PresetWorkspace({
                 </li>
               ))}
             </ol>
+            {canDownload && canExportHlx(preset.stompModel) ? (
+              <div className="mt-3">
+                <button
+                  type="button"
+                  aria-expanded={showAdvanced}
+                  onClick={() => setShowAdvanced((open) => !open)}
+                  className="min-h-11 text-xs text-muted-foreground underline underline-offset-2"
+                >
+                  Download blocked?
+                </button>
+                {showAdvanced ? (
+                  <Button type="button" variant="secondary" className="ml-2 h-11" onClick={() => void onCopy()} disabled={copying}>
+                    {copying ? "Copying" : "Copy the file as text"}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
             <p className="mt-3 text-xs text-muted-foreground">
               Stuck?{" "}
               <Link to="/guide" className="text-primary underline underline-offset-2">
@@ -719,7 +696,7 @@ export function PresetWorkspace({
               <CardTitle>Revise this tone</CardTitle>
               <CardDescription>
                 {plan.canResearch
-                  ? "Tell the Lab what is off. It rewrites the path and uses one custom build."
+                  ? "Played it and something's off? Tap what's wrong. It rebuilds the tone and uses one custom build."
                   : plan.paid
                     ? "You've used this month's custom builds. Revising is back next month."
                     : "Revising uses a custom build, and your free builds are used."}
@@ -812,14 +789,10 @@ export function PresetWorkspace({
             </div>
             <p className="text-xs text-muted-foreground">
               {fsMode === "snapshot"
-                ? canDownload
-                  ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
-                  : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Subscribe to write this onto the unit."
+                ? "Each numbered switch is one part of the song. Tap one to hear what changes."
                 : fsMode === "stomp"
-                  ? canDownload
-                    ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
-                    : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Subscribe to write this onto the unit."
-                  : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
+                  ? "Each switch turns one effect on or off, like a pedalboard."
+                  : "Switches pick presets, the way the unit sits between songs."}
             </p>
             <div data-tour="replica" data-tutorial="replica">
               <StompUnit
@@ -842,27 +815,45 @@ export function PresetWorkspace({
               />
             </div>
             {preset.snapshots.length ? (
-              <div className="flex flex-wrap gap-2" role="group" aria-label="Recall a snapshot">
-                {preset.snapshots.map((s, i) => {
-                  const on = i === activeSnapshot;
-                  return (
-                    <button
-                      key={s.id}
-                      type="button"
-                      aria-pressed={on}
-                      onClick={() => {
-                        setActiveSnapshot(i);
-                        setFsMode("snapshot");
-                      }}
-                      className={`h-11 rounded-full border px-4 text-sm font-medium ${
-                        on ? "border-foreground bg-foreground text-background" : "border-border bg-card"
-                      }`}
-                    >
-                      {s.name || `Snap ${i + 1}`}
-                    </button>
-                  );
-                })}
-              </div>
+              <section aria-labelledby="song-map" className="space-y-2">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h2 id="song-map" className="text-sm font-semibold">Song map</h2>
+                  <span className="text-xs text-muted-foreground tabular-nums">{preset.tempo} BPM</span>
+                </div>
+                <ol className="space-y-1.5" role="group" aria-label="Recall a snapshot">
+                  {preset.snapshots.map((s, i) => {
+                    const on = i === activeSnapshot && fsMode === "snapshot";
+                    return (
+                      <li key={s.id}>
+                        <button
+                          type="button"
+                          aria-pressed={on}
+                          onClick={() => {
+                            setActiveSnapshot(i);
+                            setFsMode("snapshot");
+                          }}
+                          className={`flex min-h-11 w-full items-start gap-3 rounded-xl border px-3 py-2.5 text-left ${
+                            on ? "border-foreground bg-secondary" : "border-border bg-card"
+                          }`}
+                        >
+                          <span
+                            className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full font-mono text-xs font-semibold text-black"
+                            style={{ background: s.color }}
+                          >
+                            {i + 1}
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block text-sm font-medium">{s.name || `Snapshot ${i + 1}`}</span>
+                            {s.notes ? (
+                              <span className="mt-0.5 block text-xs leading-relaxed text-muted-foreground">{s.notes}</span>
+                            ) : null}
+                          </span>
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ol>
+              </section>
             ) : null}
           </div>
         </div>
@@ -872,6 +863,7 @@ export function PresetWorkspace({
           unitName={device.name}
           ext={exportExt}
           mode={exportMode}
+          onMode={setExportMode}
           canDownload={canDownload}
           onDownload={onDownload}
           panel={
@@ -882,6 +874,29 @@ export function PresetWorkspace({
                 filename={savedFile}
                 mode={exportMode}
                 getJson={() => hlxJson(preset, { fsMode: exportMode })}
+                upsell={
+                  plan.paid || plan.admin ? null : (
+                    <div className="rounded-lg border border-primary/40 bg-primary/10 px-3 py-3">
+                      <p className="text-sm font-medium">Want a song you actually play?</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        {plan.signedIn
+                          ? plan.freeRemaining > 0
+                            ? `Type any song on the Lab page. You have ${plan.freeRemaining} free custom build${plan.freeRemaining === 1 ? "" : "s"}.`
+                            : PAID_BUILD_LINE
+                          : FREE_BUILD_LINE}
+                      </p>
+                      <Button asChild size="sm" className="mt-2 h-11">
+                        {plan.signedIn && plan.freeRemaining <= 0 ? (
+                          <Link to="/upgrade">Subscribe</Link>
+                        ) : plan.signedIn ? (
+                          <Link to="/">Build my song</Link>
+                        ) : (
+                          <Link to="/login" search={{ mode: "up" }}>Create a free account</Link>
+                        )}
+                      </Button>
+                    </div>
+                  )
+                }
                 onClose={() => setSavedFile(null)}
                 onRate={() => {
                   setSavedFile(null);

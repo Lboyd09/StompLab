@@ -65,8 +65,8 @@ function GearPage() {
   if (!plan.canGear) {
     return (
       <PaywallCard
-        title="Gear locker is in the full Lab"
-        body="Save the guitars, basses, and amps you actually own. Research then tells you which piece to grab — and when to skip the Stomp amp and run four-cable method into a real head."
+        title="Presets that know your gear"
+        body="Save the guitars, pedals and amps you own. Every preset then tells you which of them to grab for that song. Part of the full Lab."
       />
     );
   }

@@ -9,6 +9,8 @@ export type AppUser = {
   profileImageUrl: string | null;
   /** True when this is the sandbox/dev fallback (auth not configured). */
   isDevFallback: boolean;
+  /** Better Auth's emailVerified. Custom builds wait on it for free accounts. */
+  emailVerified?: boolean;
 };
 
 /**
@@ -69,8 +71,9 @@ export function useCurrentUserState(): CurrentUserState {
       primaryEmail: raw.email ?? null,
       profileImageUrl: raw.image ?? null,
       isDevFallback: false,
+      emailVerified: Boolean(raw.emailVerified),
     };
-  }, [raw?.id, raw?.name, raw?.email, raw?.image]);
+  }, [raw?.id, raw?.name, raw?.email, raw?.image, raw?.emailVerified]);
   return { user, isPending };
 }
 

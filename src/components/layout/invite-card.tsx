@@ -105,63 +105,16 @@ export function InviteCard({
         <div className="min-w-0 flex-1 space-y-1.5">
           <p className="sl-kicker">Invite</p>
           <h2 className="sl-hero-title text-2xl">
-            {paidInvite ? "Invite — 50% off + 3 extra builds" : "Invite — 3 extra custom builds"}
+            {paidInvite ? "Give a friend 50% off" : `Give a friend ${REFERRAL_BONUS} free builds`}
           </h2>
           <p className="text-sm leading-relaxed text-muted-foreground">
-            {paidInvite ? (
-              <>
-                Your friend creates a <span className="text-foreground">new</span> account from this link. You both get{" "}
-                {REFERRAL_BONUS} extra custom builds. Because you subscribe, their first monthly invoice is{" "}
-                {REFERRAL_SUBSCRIBE_PERCENT}% off — and your next monthly invoice is too. Yearly stays $
-                {PRICE_YEARLY_USD}. Cap is {cap} friends.
-              </>
-            ) : (
-              <>
-                Your friend creates a <span className="text-foreground">new</span> account from this link. You both get{" "}
-                {REFERRAL_BONUS} extra custom builds — that’s all this
-                invite does until you subscribe. Polar’s {REFERRAL_SUBSCRIBE_PERCENT}% off is only on a paid monthly
-                invite. Cap is {cap} friends.
-              </>
-            )}
+            {paidInvite
+              ? `When a friend makes a new account with your link, you both get ${REFERRAL_BONUS} extra custom builds, and you each get ${REFERRAL_SUBSCRIBE_PERCENT}% off one monthly invoice.`
+              : `When a friend makes a new account with your link, you both get ${REFERRAL_BONUS} extra custom builds.`}{" "}
+            Up to {cap} friends.
           </p>
         </div>
       </div>
-
-      <ol className="sl-stagger mt-6 space-y-4">
-        <li className="border-t border-border pt-4">
-          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">01</p>
-          <p className="mt-2 text-sm font-medium">Copy your link</p>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">
-            It opens Create account — not Sign in. Existing accounts cannot use it.
-          </p>
-        </li>
-        <li className="border-t border-border pt-4">
-          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">02</p>
-          <p className="mt-2 text-sm font-medium">They sign up with that link</p>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">
-            The extra {REFERRAL_BONUS} builds land on both accounts as soon as the new account is created.
-          </p>
-        </li>
-        <li className="border-t border-border pt-4">
-          <p className="font-mono text-[11px] tabular-nums tracking-[0.22em] text-pop">03</p>
-          <p className="mt-2 text-sm font-medium">
-            {paidInvite ? `If they start monthly, Polar takes ${REFERRAL_SUBSCRIBE_PERCENT}% off` : "Subscribe if you want to send 50% off"}
-          </p>
-          <p className="mt-1 text-sm leading-snug text-muted-foreground">
-            {paidInvite ? (
-              <>
-                Their first monthly invoice, and your next monthly invoice — not a refund of this month. Yearly stays $
-                {PRICE_YEARLY_USD}. Unsubscribing later does not take the extra builds back.
-              </>
-            ) : (
-              <>
-                Free accounts only pass extra builds. After you subscribe monthly, this same link also gives them{" "}
-                {REFERRAL_SUBSCRIBE_PERCENT}% off their first month.
-              </>
-            )}
-          </p>
-        </li>
-      </ol>
 
       {isPending && !signedIn ? null : !showCode ? (
         <div className="mt-5">
@@ -193,9 +146,6 @@ export function InviteCard({
                   className="w-full min-w-0 font-mono text-xs"
                 />
               ) : null}
-              <p className="text-xs text-muted-foreground">
-                The link opens Create account. If Copy is blocked, select the link and copy it.
-              </p>
             </>
           ) : (
             <p className="text-sm text-muted-foreground">Invite codes need the database.</p>

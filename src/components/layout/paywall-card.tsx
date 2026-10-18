@@ -25,15 +25,12 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
           </span>
         </p>
         <p className="text-sm text-muted-foreground">
-          Launch {LAUNCH_DISCOUNT_PERCENT}% off the first month. Then {formatUsd(PRICE_MONTHLY_USD)}/mo. Yearly is{" "}
-          {formatUsd(PRICE_YEARLY_USD)} — no discount on the year plan.
+          {LAUNCH_DISCOUNT_PERCENT}% off the first month, then {formatUsd(PRICE_MONTHLY_USD)}/mo. Cancel any time.
         </p>
         <ul className="space-y-2 text-sm text-muted-foreground">
-          <li>
-            Type a song. Get that guitar rig — a .{ext} that {editor} can import for your {device?.name ?? "unit"}.
-          </li>
-          <li>History of the songs you built. Gear locker and extra snapshots after subscribe.</li>
-          <li>{PAID_BUILD_LINE} The three demos stay free.</li>
+          <li>Any song as a .{ext} that {editor} imports for your {device?.name ?? "unit"}.</li>
+          <li>{PAID_BUILD_LINE}</li>
+          <li>Create, the gear locker, and every rig in the library.</li>
         </ul>
         <Button asChild className="w-full">
           <Link to="/upgrade">Subscribe</Link>
@@ -42,7 +39,7 @@ export function PaywallCard({ title, body }: { title: string; body: string }) {
       <p className="text-sm text-muted-foreground">
         Not ready?{" "}
         <Link to="/" className="text-primary underline underline-offset-2">
-          Play Sandman, Teen Spirit, or Comfortably Numb
+          Try the free demos
         </Link>
         .
       </p>

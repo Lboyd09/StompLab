@@ -25,7 +25,7 @@ export const FEATURED: Preset[] = [
     name: "Teen Spirit",
     tempo: 117,
     summary:
-      "Clean intro — no chorus, no DS-1. Verse is the distortion. Hello is a light chorus, not a wash. Nevermind (1991). Mesa Studio Pre stays a clean platform. Download this file again — older imports still have the old switch order.",
+      "Clean intro, a DS-1 crunch for the loud parts, and a light chorus for the hello section. Nevermind (1991): Kurt through a Mesa Studio Pre kept clean, with the pedals doing the dirt.",
     originalGear: [
       { role: "Guitar", name: "Early-'90s MIJ Strat with Seymour Duncan JB (bridge)", notes: "Guitar World: volume 10, standard tuning. Bridge pickup, pick near the bridge. Live he also used Mustangs/Jaguars." },
       { role: "Amp", name: "Mesa/Boogie Studio preamp + Crown Power Base 2", notes: "Rhythm channel used CLEAN as a pedal platform. Volume 6, Master 5, Treble 6, Bass 3, Middle 8, Reverb 0, Rhythm Bright on. Helix: Cali IV Rhythm 1 (clean), not Rhythm 2 crunch." },
@@ -108,7 +108,7 @@ export const FEATURED: Preset[] = [
     name: "Sandman",
     tempo: 123,
     summary:
-      "Clean wah intro, a tight Recto chug, then a mid-forward lead with a boost and a short dotted delay. The Black Album (1991). Bob Rock tracked James on an ESP Explorer with an EMG 81 into a Tube Screamer and a Mesa Dual Rectifier, blended with a Marshall. Kirk's solo sits louder and less scooped.",
+      "Clean wah intro, a tight Recto chug, and a boosted lead with a short dotted delay. The Black Album (1991): James on an ESP Explorer with an EMG 81, a Tube Screamer into a Mesa Dual Rectifier blended with a Marshall. Kirk's solo sits louder and less scooped.",
     originalGear: [
       { role: "Guitar", name: "ESP Explorer, EMG 81", notes: "James rhythm, bridge pickup. Kirk's intro is a wah lick in front of the amp." },
       { role: "Pedal", name: "Ibanez TS-9 Tube Screamer", notes: "Drive low, Level high. Tightens the Recto. Off for the clean intro." },
@@ -194,7 +194,7 @@ export const FEATURED: Preset[] = [
     name: "Numb Solo",
     tempo: 64,
     summary:
-      "Clean Hiwatt verses. Singing muff solos. The Wall (1979). Gilmour's solos are a Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp. This preset uses Echo Platter, the Helix Binson model — not Cosmos Echo. Verses are the Hiwatt almost clean. Three tones: verse, solo 1, solo 2. The vibrato is in his hands.",
+      "Near-clean Hiwatt verses and two singing Big Muff solos. The Wall (1979): Gilmour's Ram's Head Big Muff into a Hiwatt DR-103, with a Binson Echorec in front of the amp (Echo Platter here, the Helix Binson). The vibrato is in your hands.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster", notes: "Neck pickup for the first solo, bridge-leaning for the second. Tone rolled back to ~6–7." },
       { role: "Pedal", name: "Electro-Harmonix Big Muff (Ram's Head)", notes: "Sustain up, tone around 11–12 o'clock. Off for verses." },
@@ -276,7 +276,7 @@ export const FEATURED: Preset[] = [
     name: "Streets",
     tempo: 126,
     summary:
-      "The Joshua Tree (1987, Windmill Lane / Brian Eno, Daniel Lanois). Edge: Strat into a Vox AC30, Korg SDD-3000 dotted-eighth plus a shorter analog Memory Man. The guitar stays almost clean — the delay IS the riff. Three tones: intro cascade / verse SDD / chorus both.",
+      "The delay is the riff: a near-clean Vox with a dotted-eighth cascade. The Joshua Tree (1987): Edge's Strat into a Vox AC30, a Korg SDD-3000 plus a shorter Memory Man. Three tones: intro cascade, verse, and chorus with both delays.",
     originalGear: [
       { role: "Guitar", name: "Fender Stratocaster / Explorer", notes: "Bright pickup, lots of pick attack, near the bridge. Edge scrapes a textured pick." },
       { role: "Delay", name: "Korg SDD-3000", notes: "Dotted 8th digital (~357 ms at 126 BPM). The Joshua Tree sound. Also used as a preamp boost." },
@@ -358,7 +358,7 @@ export const FEATURED: Preset[] = [
     name: "Give It Away",
     tempo: 92,
     summary:
-      "Blood Sugar Sex Magik (1991, The Mansion / Rick Rubin). Frusciante tracked a '58 Strat into two Marshalls (guitar head for edge, bass head for punch) split with a DOD chorus. Give It Away's quack is a Mu-Tron III. Three tones: filter riff / dry crunch / solo bump.",
+      "The Mu-Tron quack, a dry crunch, and a solo bump. Blood Sugar Sex Magik (1991): Frusciante's '58 Strat into two Marshalls split with a DOD chorus, and a Mu-Tron III for the filter riff.",
     originalGear: [
       { role: "Guitar", name: "1958 Fender Stratocaster", notes: "Worn Strat, single coils, often bridge or middle. He also DI'd some overdubs into the board." },
       { role: "Pedal", name: "Mu-Tron III", notes: "Up position. Sensitivity follows pick attack — play it like percussion." },
@@ -430,7 +430,7 @@ export const FEATURED: Preset[] = [
     name: "YYZ Bass",
     tempo: 126,
     summary:
-      "Moving Pictures (1981, Le Studio / Terry Brown). Geddy's bass is a bright Jazz Bass split between a DI and an Ampeg SVT / Hiwatt stack. Light compression so the picked 16ths stay percussive. The record is one bass tone — Riff is the patch. Lead is a small Drive/Treble bump for the busier figure, not a different amp.",
+      "One punchy, bright bass tone with light compression so the 16ths stay percussive. Moving Pictures (1981): Geddy's Jazz Bass split between a DI and an Ampeg SVT / Hiwatt stack. Lead is a small drive and treble bump for the busier figure.",
     originalGear: [
       { role: "Bass", name: "Fender Jazz Bass", notes: "Moving Pictures era. Both pickups, a little bridge-heavy. Rickenbacker 4001 on earlier Rush." },
       { role: "Amp", name: "Ampeg SVT + Hiwatt, blended with DI", notes: "The record is amp + direct. Punch, clack, and a mid bump." },
@@ -496,7 +496,7 @@ export const FEATURED: Preset[] = [
     name: "Schism",
     tempo: 82,
     summary:
-      "Lateralus (2001, Cello / David Bottrill). Justin Chancellor is a Wal MKII into Diezel/Mesa with analog chorus on the unison lines. Period dirt is a SansAmp-style blend, not a 2010s Darkglass. Three tones on a 3-switch unit: dry line / unison chorus / heavy. XL adds Lead.",
+      "Dry line, unison chorus, and heavy. Lateralus (2001): Justin Chancellor's Wal MKII into Diezel and Mesa, analog chorus on the unison lines, SansAmp-style blend for the dirt. XL adds a Lead switch.",
     originalGear: [
       { role: "Bass", name: "Wal MKII", notes: "Active, dense mids, very articulate. The part is the tone." },
       { role: "Amp", name: "Diezel VH4 / Mesa / GK", notes: "High-headroom grind. Wet/dry in the live rig." },
@@ -579,7 +579,7 @@ export const FEATURED: Preset[] = [
     name: "Paranoid",
     tempo: 82,
     summary:
-      "OK Computer (1997, Canned Applause / Nigel Godrich). Three songs in one: a nasal Tele into a clean Fender Eighty-Five, a Marshall Shredmaster for the heavy section, and a Space Echo + Small Stone for the 6/8 weep. Helix has no Shredmaster — KWB is the high-gain pedal into a clean amp, which is how Jonny used it. No gate.",
+      "Three songs in one: nasal clean, a screaming heavy section, and the 6/8 weep. OK Computer (1997): a Tele into a clean Fender Eighty-Five, a Shredmaster for the heavy part (KWB into a clean amp here, the way Jonny used it), and a Space Echo with a Small Stone.",
     originalGear: [
       { role: "Guitar", name: "Fender Telecaster Plus (Lace Sensor)", notes: "Jonny's nasal, mid-forward dry core." },
       { role: "Pedal", name: "Marshall Shredmaster", notes: "The heavy-section dirt, into a clean amp. Not an amp channel." },
@@ -660,7 +660,7 @@ export const FEATURED: Preset[] = [
     name: "Come As You Are",
     tempo: 120,
     summary:
-      "Nevermind (1991, Sound City / Butch Vig). This song IS the Small Clone — chorus stays on the whole way. DS-1 for the louder sections. Same Mesa Studio Pre + Marshall 1960 T75 rack as Teen Spirit, including the Mesa 5-band graphic. Two tones: verse (clone, DS-1 off) and chorus (DS-1 in). The solo is the chorus chain — not its own snapshot.",
+      "The Small Clone is the song: chorus on the whole way, DS-1 added for the loud parts. Nevermind (1991): the same Mesa Studio Pre and Marshall rack as Teen Spirit, with the Mesa 5-band graphic. The solo uses the chorus switch.",
     originalGear: [
       { role: "Guitar", name: "Fender Jaguar / Mustang", notes: "Single coil, slightly dark." },
       { role: "Pedal", name: "EHX Small Clone", notes: "Always on. The watery line is the riff." },
@@ -724,7 +724,7 @@ export const FEATURED: Preset[] = [
     name: "Killing Name",
     tempo: 84,
     summary:
-      "Rage Against the Machine (1992, Sound City / GGGarth). Tom Morello's verse is a Cry Baby into a relatively tight Marshall JCM-800 2205; the chorus is the same amp wide open, wah off. The solo uses a DigiTech Whammy. No wah block in this patch — plug yours (and the Whammy) in front. No gate — the groove has to breathe.",
+      "Tight Marshall verse, the same amp wide open for the chorus. Rage Against the Machine (1992): Tom Morello's Cry Baby into a JCM-800 2205, and a Whammy for the solo. Plug your own wah and Whammy in front; no gate, so the groove breathes.",
     originalGear: [
       { role: "Guitar", name: "Custom 'Arm the Homeless' (EMG humbuckers, kill switch)", notes: "Drop D. Bridge. The kill switch is the stutter, not a Helix block." },
       { role: "Pedal", name: "Dunlop Cry Baby", notes: "The verse riff is a wah part. Plug yours in front of the unit." },
@@ -799,7 +799,7 @@ export const FEATURED: Preset[] = [
     name: "Higher",
     tempo: 78,
     summary:
-      "Clean chorus verse, then a thick Recto chorus. Human Clay (1999), produced by John Kurzweg. Mark Tremonti's part is a PRS into a Mesa Dual Rectifier. The verse stays clean with a light chorus. The chorus is the Recto, not a louder copy of the verse. The lift is a boost, not more drive.",
+      "Clean chorus verse, then a thick Recto chorus lifted by a boost, not more drive. Human Clay (1999): Mark Tremonti's PRS into a Mesa Dual Rectifier.",
     originalGear: [
       { role: "Guitar", name: "PRS Custom 24", notes: "Tremonti. Bridge for the chorus, neck or middle for the verse arpeggio." },
       { role: "Amp", name: "Mesa Dual Rectifier", notes: "The heavy chorus. Clean channel, or the gain channel barely open, for the verse." },

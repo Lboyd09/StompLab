@@ -32,10 +32,11 @@ export function UnitChip({ className }: { className?: string }) {
         onClick={() => setOpen(true)}
         aria-haspopup="dialog"
         aria-label={`Unit and instrument: ${device.name}, ${instrument}. Change`}
-        className="inline-flex h-11 items-center gap-2 rounded-full bg-secondary px-4 text-sm font-medium"
+        className="inline-flex h-11 max-w-full items-center gap-1 rounded-full bg-secondary px-3 text-sm font-medium"
       >
-        <span>
-          {device.name} · <span className="capitalize">{instrument}</span>
+        <span className="truncate">
+          {device.name} · <span className="sm:hidden">{instrument === "bass" ? "Bass" : "Gtr"}</span>
+          <span className="hidden capitalize sm:inline">{instrument}</span>
         </span>
         <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
       </button>

@@ -7,7 +7,7 @@ import { Mark } from "@/components/layout/mark";
 import { PageWash } from "@/components/layout/page-wash";
 import { authClient, authEnabled } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { FORGOT_PASSWORD_COPY, FREE_BUILD_LINE } from "@/lib/copy";
+import { FREE_BUILD_LINE } from "@/lib/copy";
 import { MIN_PASSWORD_LENGTH, SIGN_IN_PASSWORD_MIN, RESET_TOKEN_MINUTES } from "@/lib/password-policy";
 import { parseCheckoutId, parseNext } from "@/lib/next-path";
 import { LegalAgree } from "@/components/layout/legal-agree";
@@ -16,7 +16,6 @@ import { captureReferralCode, peekReferralCode, clearReferralCode, rememberInvit
 import { redeemReferral, invitePerkForCode } from "@/lib/referrals";
 import { requestResetMail } from "@/lib/reset-mail";
 import { checkEmailHold } from "@/lib/closed-accounts";
-import { PRICE_YEARLY_USD } from "@/lib/plan";
 
 export const Route = createFileRoute("/login")({
   validateSearch: (s: Record<string, unknown>): { next?: string; checkout_id?: string; ref?: string; mode?: string; perk?: string } => ({
@@ -299,12 +298,10 @@ function LoginPage() {
                 : mode === "up"
                   ? search.ref
                     ? paidInvite
-                      ? "Your friend subscribes. Create a new account from this link — you both get 3 extra custom builds, and your first monthly invoice is 50% off. Yearly stays $" +
-                        PRICE_YEARLY_USD +
-                        ". Existing accounts cannot use this."
-                      : "Your friend is on the free plan. Create a new account from this link — you both get 3 extra custom builds. That’s all this invite does. Polar’s 50% off only comes from a paying friend’s invite."
-                    : "Email and a password. A friend’s invite code (optional) gives you both 3 extra custom builds."
-                  : "Email and a password. Use the same address every time — a second account starts over."}
+                      ? "A friend invited you. Create an account and you both get 3 extra custom builds, plus 50% off your first month if you subscribe monthly."
+                      : "A friend invited you. Create an account and you both get 3 extra custom builds."
+                    : `${FREE_BUILD_LINE} No card needed.`
+                  : "Welcome back. Your presets and gear are waiting."}
             </p>
           </div>
         </div>
@@ -365,7 +362,7 @@ function LoginPage() {
                   maxLength={12}
                 />
                 <p className="text-xs text-muted-foreground">
-                  Optional. Paste the code or use your friend’s link. New account, first 48 hours, before you research a song. You both get 3 extra custom builds.
+                  Got a code from a friend? You both get 3 extra custom builds.
                 </p>
               </div>
             ) : null}
@@ -433,10 +430,6 @@ function LoginPage() {
 
         <div className="space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Help</p>
-          <details>
-            <summary className="cursor-pointer font-medium">Forgot password?</summary>
-            <p className="mt-2 text-muted-foreground">{FORGOT_PASSWORD_COPY}</p>
-          </details>
           <details>
             <summary className="cursor-pointer font-medium">Sign-in isn't working</summary>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">

@@ -3,8 +3,6 @@ import { Check, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Mark } from "@/components/layout/mark";
-import { InviteCard } from "@/components/layout/invite-card";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { PAID_BUILD_LINE } from "@/lib/copy";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
@@ -36,9 +34,25 @@ export const Route = createFileRoute("/upgrade")({
 });
 
 const PERKS = [
-  "Type any song. Get a .hlx for HX Edit, or a .pgp for POD Go Edit.",
-  PAID_BUILD_LINE,
-  "Create custom sounds, keep your history, sync your gear locker.",
+  "Any song you play: a .hlx for HX Edit or a .pgp for POD Go Edit, built for your unit.",
+  `${PAID_BUILD_LINE} Revise a tone that's off with one tap.`,
+  "Every rig in the library, plus Create: describe a sound or a player.",
+  "Your gear locker on every device, so presets use what you own.",
+];
+
+const FAQ: { q: string; a: string }[] = [
+  {
+    q: "Will it load on my unit?",
+    a: "Files are built for HX Stomp, HX Stomp XL, Helix Floor, Helix LT, HX Effects and POD Go. Pick yours in the header before you build.",
+  },
+  {
+    q: "What if it doesn't sound right?",
+    a: "Tap what's off (too dark, more gain, wrong amp) and the Lab rebuilds it. Every knob is also editable before you download.",
+  },
+  {
+    q: "Can I cancel?",
+    a: "Any time, from Account. You keep access until the period you paid for ends.",
+  },
 ];
 
 function UpgradePage() {
@@ -226,15 +240,12 @@ function UpgradePage() {
   return (
     <div className="relative overflow-x-clip">
       <div className="relative z-10 mx-auto w-full max-w-xl space-y-6">
-        <div className="flex flex-col items-start gap-5">
-          <Mark size="lg" />
-          <div className="space-y-3">
-            <p className="sl-kicker">Research any song</p>
-            <h1 className="sl-hero-title text-[clamp(2.8rem,8vw,4.4rem)]">Subscribe</h1>
-            <p className="max-w-xl text-lg leading-relaxed text-muted-foreground">
-              Type any song and get the file for your unit. {PAID_BUILD_LINE} The three demos stay free.
-            </p>
-          </div>
+        <div className="space-y-3">
+          <p className="sl-kicker">The full Lab</p>
+          <h1 className="sl-hero-title text-[clamp(2.2rem,7vw,3.6rem)]">Every song on your setlist, ready to import</h1>
+          <p className="max-w-xl text-base leading-relaxed text-muted-foreground">
+            Type a song, get the file. One commercial preset pack often costs more than a month here.
+          </p>
         </div>
 
         <div className="space-y-5 rounded-2xl border border-border bg-card p-5 sm:p-7">
@@ -250,7 +261,7 @@ function UpgradePage() {
                   interval === id ? "bg-background text-foreground shadow-sm" : "text-muted-foreground"
                 }`}
               >
-                {id === "month" ? "Monthly" : "Yearly"}
+                {id === "month" ? "Monthly" : `Yearly · save ${formatUsd(yearlySavingsUsd())}`}
               </button>
             ))}
           </div>
@@ -265,13 +276,15 @@ function UpgradePage() {
             <p className="mt-1 text-sm text-muted-foreground">
               {interval === "month" ? (
                 <>
-                  <span className="line-through">{formatUsd(PRICE_MONTHLY_USD)}</span> then {formatUsd(PRICE_MONTHLY_USD)}/mo.{" "}
+                  Then {formatUsd(PRICE_MONTHLY_USD)}/mo.{" "}
                   {monthOff
                     ? `Invite: ${REFERRAL_SUBSCRIBE_PERCENT}% off the first month. The friend who invited you gets the same cut.`
                     : `${LAUNCH_DISCOUNT_PERCENT}% off the first month.`}
                 </>
               ) : (
-                <>Save {formatUsd(saving)} a year compared with monthly. Same price every year.</>
+                <>
+                  {formatUsd(PRICE_YEARLY_USD / 12)}/mo, billed yearly. Save {formatUsd(saving)} compared with monthly.
+                </>
               )}
             </p>
           </div>
@@ -317,16 +330,23 @@ function UpgradePage() {
           </div>
         </div>
 
-        <RigDisclaimer />
+        <dl className="space-y-4">
+          {FAQ.map((f) => (
+            <div key={f.q}>
+              <dt className="text-sm font-medium">{f.q}</dt>
+              <dd className="mt-1 text-sm leading-relaxed text-muted-foreground">{f.a}</dd>
+            </div>
+          ))}
+        </dl>
 
-        <InviteCard />
+        <RigDisclaimer />
 
         <p className="text-sm text-muted-foreground">
           Not ready?{" "}
           <Link to="/" className="text-primary underline underline-offset-2">
-            Play the three demo songs
-          </Link>{" "}
-          — Sandman, Teen Spirit, Comfortably Numb.
+            Try the free demos
+          </Link>
+          : Enter Sandman, Teen Spirit, Comfortably Numb.
         </p>
       </div>
     </div>

@@ -397,21 +397,6 @@ export function StompUnit({
             </div>
           </div>
         )}
-        {xl ? (
-          <p className="hx-silk mt-3 text-center">
-            Looking down · FS1 top-left · top 1–3 + MODE · bottom 4–6 + TAP · LCD on the right
-          </p>
-        ) : layout === "podgo" ? (
-          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · FS8 TAP / Tuner · EXP on the right</p>
-        ) : layout === "effects" ? (
-          <p className="hx-silk mt-3 text-center">FS1 top-left · top 1–4 · bottom 5–8 · scribble strips match HX Effects</p>
-        ) : layout === "floor" || layout === "lt" ? (
-          <p className="hx-silk mt-3 text-center">
-            Looking down · FS1 top-left · two rows of six · EXP on the right
-          </p>
-        ) : (
-          <p className="hx-silk mt-3 text-center">LCD top-left · knobs under the screen · Volume on the right · FS 1–3</p>
-        )}
       </div>
     </div>
   );

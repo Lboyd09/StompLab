@@ -125,8 +125,8 @@ function CreatePage() {
     return (
       <div className="pb-28">
         <PaywallCard
-          title="Create is for subscribers"
-          body={`Create is for subscribers: describe a sound, or a player you want to sound like. Free builds work on songs, not here. Type a song on the Lab page. ${FREE_BUILD_LINE}`}
+          title="Describe a sound, get a preset"
+          body={`"Edge's Joshua Tree delays with more grit." "My church's clean worship tone." Create builds a preset from words, not a song title. It's part of the full Lab. Your free builds work on songs from the Lab page.`}
         />
       </div>
     );

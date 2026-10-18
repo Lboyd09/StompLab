@@ -12,6 +12,7 @@ import { SignalPath } from "@/components/layout/signal-path";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { InviteCard } from "@/components/layout/invite-card";
+import { VerifyBanner } from "@/components/layout/verify-banner";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
@@ -210,11 +211,6 @@ function Home() {
 
   const used = plan.signedIn && !plan.paid ? Math.min(plan.monthLimit || FREE_BUILDS, plan.freeUsed) : 0;
 
-  function openFirstDemo() {
-    const first = demos[0];
-    if (first) openFeatured(first.id);
-  }
-
   return (
     <div className="space-y-10 md:space-y-14">
       <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
@@ -228,8 +224,8 @@ function Home() {
           </h1>
           <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
           <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
-            We research the recorded guitar or bass and build a preset for your {unit} — path, knobs, snapshots,
-            and a file you import.
+            We research the gear on the record and build a preset for your {unit}: the chain, the knobs, and a
+            switch for each part of the song.
           </p>
           {subscribed ? (
             <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">
@@ -238,10 +234,25 @@ function Home() {
               </span>{" "}
               {plan.admin ? "custom builds this month, no cap on this account" : "custom builds used this month"}
             </p>
-          ) : (
-            <p className="sl-enter sl-enter-5 text-sm text-muted-foreground">Three demos always work. No account needed.</p>
-          )}
+          ) : null}
+          <div className="sl-enter sl-enter-5 space-y-2">
+            <p className="text-sm text-muted-foreground">Try one free, no account:</p>
+            <div className="flex flex-wrap gap-2">
+              {demos.map((p) => (
+                <button
+                  key={p.id}
+                  type="button"
+                  onClick={() => openFeatured(p.id)}
+                  className="min-h-11 rounded-full border border-border bg-card px-4 text-sm font-medium text-foreground transition-colors hover:border-primary"
+                >
+                  {p.song}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+
+        <VerifyBanner plan={plan} />
 
         {plan.signedIn && !plan.paid ? (
           <div className="relative flex items-center gap-3">
@@ -304,9 +315,6 @@ function Home() {
               {busy || planPending ? <Loader2 className="size-4 animate-spin" /> : null}
               {busy ? "Researching" : planPending ? "Loading your account" : "Build this preset"}
             </Button>
-            <Button type="button" size="lg" variant="outline" onClick={openFirstDemo} className="w-full sm:w-auto">
-              See a demo
-            </Button>
           </div>
           {needsSong && !busy ? (
             <p id="build-hint" className="text-sm text-muted-foreground">
@@ -314,34 +322,16 @@ function Home() {
             </p>
           ) : null}
           {busy ? <ResearchProgress pct={progress} /> : null}
-          <p className="text-xs text-muted-foreground">
-            {instrument} · {unit}. Change the unit in the header. Type two letters to pick the recording.
-            {gear.length ? (
-              <>
-                {" "}
-                Locker has {gear.length} piece{gear.length === 1 ? "" : "s"} — research will tell you which to grab.
-              </>
-            ) : (
-              <>
-                {" "}
-                Add what you own in{" "}
-                <Link to="/gear" className="text-primary underline underline-offset-2">
-                  Gear
-                </Link>{" "}
-                so the file names the models to use.
-              </>
-            )}
-          </p>
+          {gear.length ? (
+            <p className="text-xs text-muted-foreground">
+              Using your gear: {gear.length} piece{gear.length === 1 ? "" : "s"} from your locker.
+            </p>
+          ) : null}
           <GeminiHint plan={plan} pending={planPending} />
           {status && busy === false ? (
             <p className="text-sm text-destructive">{status}</p>
           ) : null}
         </form>
-
-        <div className="relative space-y-4 sl-enter sl-enter-5">
-          <SignalPath />
-          <RigDisclaimer />
-        </div>
       </section>
 
       <section className="space-y-6" id="demos">
@@ -374,14 +364,19 @@ function Home() {
         </div>
       </section>
 
+      <div className="relative space-y-4">
+        <SignalPath />
+        <RigDisclaimer />
+      </div>
+
       {!subscribed ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
-            <h2 className="sl-hero-title text-3xl">Type any song</h2>
+            <h2 className="sl-hero-title text-3xl">Every song on your setlist</h2>
             <p className="max-w-md text-sm text-primary-foreground/80">
-              The three demos are free. After that, {formatUsd(priceMonthlyLaunchUsd())} the first month — then{" "}
-              {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. {PAID_BUILD_LINE}
+              {PAID_BUILD_LINE} {formatUsd(priceMonthlyLaunchUsd())} the first month, then{" "}
+              {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr. Cancel any time.
             </p>
           </div>
           <Button asChild variant="secondary" size="lg" className="h-12 w-full shrink-0 px-8 text-base sm:w-auto">

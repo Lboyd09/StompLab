@@ -116,10 +116,8 @@ function CatalogPage() {
 
   return (
     <div className="space-y-6" data-tutorial="catalog">
-      <UpgradeBanner plan={plan} pending={planPending} />
       <PageHeader kicker="Every factory model" title="Line 6 catalog">
-        Each amp, cab, and pedal on its own page — filtered by HX Stomp, XL, Helix, LT, HX Effects, or POD Go.
-        Type a pedal you own and we’ll show the Line 6 name.
+        Every amp, cab and pedal, and the real gear it's based on. Type a pedal you own to find its Line 6 match.
       </PageHeader>
 
       <div className="flex w-fit rounded-full bg-secondary p-1">
@@ -357,6 +355,7 @@ function CatalogPage() {
           </div>
         </>
       )}
+      <UpgradeBanner plan={plan} pending={planPending} />
     </div>
   );
 }

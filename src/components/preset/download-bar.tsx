@@ -63,6 +63,7 @@ export function ImportPanel({
   getJson,
   onClose,
   onRate,
+  upsell,
 }: {
   unitName: string;
   editor: string;
@@ -71,6 +72,8 @@ export function ImportPanel({
   getJson: () => string;
   onClose: () => void;
   onRate: () => void;
+  /** Shown to players without a plan: the next step after a free demo. */
+  upsell?: React.ReactNode;
 }) {
   const [json, setJson] = useState<string | null>(null);
   const [canShare, setCanShare] = useState(false);
@@ -125,6 +128,7 @@ export function ImportPanel({
           </li>
         </ol>
       </div>
+      {upsell ? <div className="mt-4">{upsell}</div> : null}
       <div className="mt-4 flex flex-wrap items-center justify-between gap-2 rounded-lg bg-secondary/60 px-3 py-2">
         <p className="text-sm">After you play it: how close was it?</p>
         <button
@@ -144,6 +148,7 @@ export function DownloadBar({
   unitName,
   ext,
   mode,
+  onMode,
   canDownload,
   onDownload,
   panel,
@@ -151,6 +156,7 @@ export function DownloadBar({
   unitName: string;
   ext: string;
   mode: ExportMode;
+  onMode: (mode: ExportMode) => void;
   canDownload: boolean;
   onDownload: () => void;
   panel?: React.ReactNode;
@@ -161,9 +167,19 @@ export function DownloadBar({
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 md:pb-[max(0.625rem,env(safe-area-inset-bottom))]">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{unitName}</p>
-          <p className="truncate text-xs text-muted-foreground">
-            .{ext} file{canDownload ? ` · ${EXPORT_MODE_LABEL[mode]} mode` : ""}
-          </p>
+          {canDownload ? (
+            <button
+              type="button"
+              onClick={() => onMode(mode === "snapshot" ? "stomp" : "snapshot")}
+              aria-label={`File opens in ${EXPORT_MODE_LABEL[mode]} mode. Tap to switch.`}
+              className="-my-2 flex min-h-11 max-w-full items-center truncate text-xs text-muted-foreground"
+            >
+              .{ext} · opens in {EXPORT_MODE_LABEL[mode]} mode
+              <span className="ml-1.5 text-primary underline underline-offset-2">change</span>
+            </button>
+          ) : (
+            <p className="truncate text-xs text-muted-foreground">.{ext} file</p>
+          )}
         </div>
         {canDownload ? (
           <Button type="button" size="lg" className="h-11 shrink-0 px-5" onClick={onDownload}>

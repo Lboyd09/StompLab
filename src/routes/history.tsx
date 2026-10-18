@@ -62,13 +62,20 @@ function HistoryPage() {
     return (
       <div className="mx-auto max-w-lg space-y-4 py-4">
         <PageHeader kicker="Your builds" title="History">
-          Sign in to see your builds here. {FREE_BUILD_LINE}
+          Every preset you build is saved here, on your phone and your computer. {FREE_BUILD_LINE}
         </PageHeader>
-        <Button asChild>
-          <Link to="/login" search={{ next: "/history" }}>
-            Sign in
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild>
+            <Link to="/login" search={{ next: "/history", mode: "up" }}>
+              Create a free account
+            </Link>
+          </Button>
+          <Button asChild variant="secondary">
+            <Link to="/login" search={{ next: "/history" }}>
+              Sign in
+            </Link>
+          </Button>
+        </div>
       </div>
     );
   }
@@ -76,14 +83,13 @@ function HistoryPage() {
   return (
     <div className="space-y-8 pb-16 md:pb-8">
       <PageHeader kicker="Your builds" title="History">
-        Your builds sync to your account and stay on this device. Newest first, up to {HISTORY_CAP} presets,
-        and the same song and unit is kept once.
+        Saved to your account, so they're here on your phone and your computer. Newest first.
       </PageHeader>
 
       {user.length === 0 ? (
         <div className="space-y-3 rounded-2xl border border-border bg-card p-6">
           <p className="text-sm text-muted-foreground">
-            No researched presets yet. Build one from the Lab or Create page.
+            Nothing built yet. Type a song on the Lab page and it lands here.
           </p>
           <div className="flex flex-wrap gap-2">
             <Button asChild>

@@ -209,10 +209,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <PageWash />
       <header className="sticky top-0 z-40 bg-background/70 backdrop-blur-xl">
         <div className="mx-auto flex max-w-6xl flex-col gap-3 px-4 py-3">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3">
             <Link to="/" className="flex min-w-0 shrink-0 items-center" aria-label="Stomp Lab">
-              <BrandLockup />
+              <BrandLockup className="[&>span:last-child]:hidden sm:[&>span:last-child]:inline" />
             </Link>
+            <div className="min-w-0 flex-1 md:hidden" data-tour="unit">
+              <UnitChip />
+            </div>
 
             <div className="relative hidden min-w-0 flex-1 md:block" data-tour="search">
               <Search className="pointer-events-none absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
@@ -250,7 +253,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               ) : null}
             </div>
 
-            <div className="ml-auto flex items-center gap-2">
+            <div className="ml-auto flex shrink-0 items-center gap-2">
               <Link
                 to="/account"
                 className="hidden h-10 items-center gap-1.5 rounded-full px-3 text-xs font-medium text-muted-foreground transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:text-pop sm:inline-flex"
@@ -317,8 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           ) : null}
 
-          <div className="flex flex-wrap items-center gap-2" data-tour="unit">
-            <UnitChip className="md:hidden" />
+          <div className="hidden flex-wrap items-center gap-2 md:flex" data-tour="unit">
             <div className="hidden rounded-full bg-secondary p-1 md:flex">
               {(["guitar", "bass"] as const).map((id) => (
                 <button
