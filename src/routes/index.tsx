@@ -236,7 +236,7 @@ function Home() {
             </p>
           ) : null}
           <div className="sl-enter sl-enter-5 space-y-2">
-            <p className="text-sm text-muted-foreground">Try one free, no account:</p>
+            <p className="text-sm text-muted-foreground">{plan.signedIn ? "Free demos:" : "Try one free, no account:"}</p>
             <div className="flex flex-wrap gap-2">
               {demos.map((p) => (
                 <button
