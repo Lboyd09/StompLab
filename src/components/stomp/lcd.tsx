@@ -1,242 +1,252 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { Preset, StompBlock } from "@/data/types";
-import { blockModel, deviceFor, dspLoad, lcdScribbleIndices, paramEntries, sortedBlocks } from "@/lib/preset-utils";
+import { blockModel, dspLoad, paramEntries, sortedBlocks } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
-
-type LcdView = "play" | "edit" | "tuner" | "assign";
-type FsMode = "stomp" | "snapshot" | "preset";
+import { fitSwitchLabel, type FsMode, type SwitchFace, type UnitSpec } from "./hardware";
 
 type Props = {
   preset: Preset;
+  spec: UnitSpec;
   selectedBlockId: string | null;
   onSelectBlock: (id: string | null) => void;
-  view: LcdView;
+  /** play / edit / tuner. On Helix LT, play is Performance view and edit is Signal Flow. */
+  view: "play" | "edit" | "tuner";
   fsMode: FsMode;
+  /** Already wrapped to the block's page count. */
   paramPage: number;
   activeSnapshot: number;
-  assignFsIndex: number;
+  faces: SwitchFace[];
+  tempo: number;
   showDsp?: boolean;
-  onScribbleTap?: (index: number) => void;
 };
 
-type Scribble = { index: number; label: string; color: string };
+const MODE_TAG: Record<FsMode, string> = { stomp: "Stomp", snapshot: "Snapshot", preset: "Preset" };
 
-function BlockChip({
-  block,
-  selected,
-  onClick,
-}: {
-  block: StompBlock;
-  selected: boolean;
-  onClick: () => void;
-}) {
-  const model = blockModel(block);
-  const cat = model ? CATEGORY_MAP[model.category] : null;
-  const color = cat?.lcd ?? "#9aa3ad";
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={cn(
-        "relative flex h-7 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-[2px] border text-left",
-        selected ? "border-white" : "border-black/70",
-        !block.enabled && "opacity-35",
-      )}
-      style={{ background: "#14181c", maxWidth: 36 }}
-      aria-label={`${model?.name ?? "Block"}${block.enabled ? "" : " (off)"}`}
-    >
-      <span className="h-[3px] w-full" style={{ background: color }} />
-      <span className="flex flex-1 items-center justify-center px-0.5 font-mono text-[7px] font-semibold uppercase tracking-wide text-zinc-100">
-        {model?.abbrev ?? "—"}
-      </span>
-    </button>
-  );
-}
-
-function scribblesFor(preset: Preset, fsMode: FsMode, xl: boolean): Scribble[] {
-  const dim = "#5a5e62";
-  const indices = lcdScribbleIndices(xl ? "xl" : "stomp");
-  return indices.map((index) => {
-    const assign = preset.footswitches.find((f) => f.index === index);
-    if (fsMode === "preset") {
-      const labels = xl
-        ? { 1: "▲", 2: "C", 3: "D", 4: "▼", 5: "A", 6: "B" }
-        : { 1: "PRESET-", 2: "TAP", 3: "PRESET+" };
-      return { index, label: labels[index as keyof typeof labels] ?? "", color: dim };
-    }
-    if (assign) return { index, label: assign.label.slice(0, 8), color: assign.color };
-    return { index, label: "—", color: dim };
-  });
-}
-
+/**
+ * The unit's main screen.
+ * HX Stomp / XL / POD Go: Play view = preset name + footswitch labels; Edit view = signal flow + parameters.
+ * Helix Floor: signal flow with the six parameters above the knobs.
+ * Helix LT: Performance view (big boxes for the middle eight switches) or Signal Flow.
+ */
 export function LcdScreen({
   preset,
+  spec,
   selectedBlockId,
   onSelectBlock,
   view,
   fsMode,
   paramPage,
   activeSnapshot,
-  assignFsIndex,
+  faces,
+  tempo,
   showDsp = true,
-  onScribbleTap,
 }: Props) {
   const blocks = sortedBlocks(preset);
   const selected = blocks.find((b) => b.id === selectedBlockId) ?? blocks[0];
-  const model = selected ? blockModel(selected) : undefined;
-  const params = selected ? paramEntries(selected) : [];
-  const pageCount = Math.max(1, Math.ceil(params.length / 3));
-  const page = ((paramPage % pageCount) + pageCount) % pageCount;
-  const pageParams = params.slice(page * 3, page * 3 + 3);
-  const device = deviceFor(preset);
-  const load = dspLoad(preset);
   const snap = preset.snapshots[activeSnapshot];
-  const layout = device.layout;
-  const xl = layout === "xl";
-  const showLcdScribbles = layout === "stomp" || layout === "xl";
-  const strips = showLcdScribbles ? scribblesFor(preset, fsMode, xl) : [];
-  const topStrips = xl ? strips.slice(0, 3) : [];
-  const bottomStrips = xl ? strips.slice(3, 6) : strips;
+  const helix = spec.layout === "floor" || spec.layout === "lt";
+  const load = dspLoad(preset);
+
+  const header = (
+    <div className="hx-lcd-head">
+      <span className="hx-lcd-slot">01A</span>
+      <span className="hx-lcd-name">{preset.name}</span>
+      <span className="hx-lcd-meta">
+        <span>{MODE_TAG[fsMode]}</span>
+        <span className="tabular-nums">{tempo} BPM</span>
+        {showDsp && (view === "edit" || helix) ? (
+          <span className={cn("tabular-nums", load > 90 ? "text-red-400" : load > 75 ? "text-amber-300" : "text-emerald-400")}>
+            {load}%
+          </span>
+        ) : null}
+      </span>
+    </div>
+  );
+
+  let body: React.ReactNode;
+  if (view === "tuner") {
+    body = <TunerView />;
+  } else if (spec.layout === "lt" && view === "play") {
+    body = (
+      <>
+        <FaceGrid faces={pick(faces, [2, 3, 4, 5, 8, 9, 10, 11])} cols={4} big />
+        <ParamStrip block={selected} page={paramPage} perPage={spec.knobs} />
+      </>
+    );
+  } else if (helix || view === "edit") {
+    body = (
+      <>
+        <SignalFlow blocks={blocks} selectedId={selected?.id} onSelect={helix ? onSelectBlock : undefined} />
+        <ParamStrip block={selected} page={paramPage} perPage={spec.knobs} showName />
+      </>
+    );
+  } else {
+    // Play view: big preset name, snapshot under it, then the footswitch labels laid out like the switches.
+    const rows =
+      spec.layout === "stomp"
+        ? [[1, 2, 3]]
+        : [
+            [1, 2, 3],
+            [4, 5, 6],
+          ];
+    body = (
+      <>
+        <div className="hx-lcd-play">
+          <span className="hx-lcd-play-slot">01A · {tempo} BPM</span>
+          <span className="hx-lcd-play-name">{preset.name}</span>
+          {snap && fsMode === "snapshot" ? (
+            <span className="hx-lcd-play-snap" style={{ color: snap.color }}>
+              {snap.name}
+            </span>
+          ) : null}
+        </div>
+        <div className="hx-lcd-boxes">
+          {rows.map((row, i) => (
+            <FaceGrid key={i} faces={pick(faces, row)} cols={row.length} />
+          ))}
+        </div>
+      </>
+    );
+  }
 
   return (
-    <div
-      className={cn(
-        "hx-lcd relative",
-        (layout === "floor" || layout === "lt") && "hx-lcd-wide",
-      )}
-    >
-      <div className="flex items-center justify-between gap-1 overflow-hidden px-2 pt-1.5">
-        <div className="flex min-w-0 flex-1 items-center gap-1">
-          <span className="shrink-0 rounded-[2px] bg-zinc-100 px-1 py-[1px] font-mono text-[10px] font-semibold text-zinc-900">
-            01A
-          </span>
-          <span className="min-w-0 flex-1 truncate font-medium text-[11px] tracking-wide">{preset.name}</span>
-        </div>
-        <div className="flex shrink-0 items-center gap-2 font-mono text-[10px] text-zinc-400">
-          <span className="uppercase tracking-wider text-zinc-500">
-            {fsMode === "snapshot" ? "snap" : fsMode}
-          </span>
-          <span className="tabular-nums">{preset.tempo}</span>
-          {showDsp ? (
-            <span
-              className={cn(
-                "tabular-nums",
-                load > 90 ? "text-red-400" : load > 75 ? "text-amber-300" : "text-emerald-400",
-              )}
-            >
-              {load}%
-            </span>
-          ) : null}
-        </div>
-      </div>
-
-      {view === "tuner" ? (
-        <TunerView />
-      ) : view === "edit" && selected && model ? (
-        <div className="flex flex-1 flex-col px-2 pt-2">
-          <div className="mb-1 flex items-center justify-between">
-            <div className="flex min-w-0 items-center gap-1.5">
-              <span
-                className="size-2 shrink-0 rounded-full"
-                style={{ background: CATEGORY_MAP[model.category].lcd }}
-              />
-              <span className="truncate text-[11px] font-medium">{model.name}</span>
-            </div>
-            <span className="font-mono text-[9px] text-zinc-500">
-              {page + 1}/{pageCount}
-            </span>
-          </div>
-          <p className="mb-2 line-clamp-2 text-[9px] leading-snug text-zinc-500">Based on {model.basedOn}</p>
-          <div className="mt-auto grid grid-cols-3 gap-1 pb-1">
-            {pageParams.map((p) => (
-              <div key={p.name} className="text-center">
-                <div className="truncate font-mono text-[9px] uppercase tracking-wider text-zinc-500">{p.label}</div>
-                <div className="truncate font-mono text-[12px] tabular-nums">{p.display}</div>
-              </div>
-            ))}
-            {Array.from({ length: 3 - pageParams.length }).map((_, i) => (
-              <div key={`empty-${i}`} />
-            ))}
-          </div>
-        </div>
-      ) : (
-        <div className="flex flex-1 flex-col px-2 pt-2">
-          <div className="mb-1 flex items-center justify-between font-mono text-[9px] uppercase tracking-wider text-zinc-500">
-            <span>In</span>
-            <span>{snap ? snap.name : "Play"}</span>
-            <span>Out</span>
-          </div>
-          <div className="relative flex min-h-10 flex-1 items-center">
-            <div className="hx-path-line absolute inset-x-1 top-1/2 h-px -translate-y-1/2" />
-            <div className="relative flex w-full items-center gap-[3px]">
-              {/* The unit shows an amp and its cab as one block, so the whole chain fits the screen. */}
-              {blocks.filter((b, i) => !(blockModel(b)?.category === "cab" && i > 0 && ["amp-guitar", "amp-bass", "preamp"].includes(blockModel(blocks[i - 1])?.category ?? ""))).map((b) => (
-                <BlockChip
-                  key={b.id}
-                  block={b}
-                  selected={b.id === (selectedBlockId ?? selected?.id)}
-                  onClick={() => onSelectBlock(b.id)}
-                />
-              ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {view === "tuner" || !showLcdScribbles ? null : (
-        <div className="mt-auto">
-          {topStrips.length ? (
-            <ScribbleRow items={topStrips} active={assignFsIndex} onTap={onScribbleTap} />
-          ) : null}
-          <ScribbleRow items={bottomStrips} active={assignFsIndex} onTap={onScribbleTap} />
-        </div>
-      )}
+    <div className={cn("hx-lcd", helix && "hx-lcd-wide")} data-view={view}>
+      {view === "play" && !helix ? null : header}
+      {body}
     </div>
   );
 }
 
-function ScribbleRow({
-  items,
-  active,
-  onTap,
-}: {
-  items: Scribble[];
-  active?: number;
-  onTap?: (index: number) => void;
-}) {
+function pick(faces: SwitchFace[], order: number[]) {
+  return order.map((i) => faces.find((f) => f.index === i)).filter((f): f is SwitchFace => Boolean(f));
+}
+
+function FaceGrid({ faces, cols, big }: { faces: SwitchFace[]; cols: number; big?: boolean }) {
   return (
-    <div
-      className="grid border-t border-white/10"
-      style={{ gridTemplateColumns: `repeat(${items.length}, 1fr)` }}
-    >
-      {items.map((fs) => (
-        <button
-          key={`${fs.index}-${fs.label}`}
-          type="button"
-          onClick={() => onTap?.(fs.index)}
-          className={cn(
-            "flex flex-col items-center border-l border-white/5 px-1 py-1 first:border-l-0",
-            active === fs.index && "bg-white/10",
-          )}
+    <div className={cn("hx-lcd-facegrid", big && "hx-lcd-facegrid-big")} style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
+      {faces.map((f) => (
+        <div
+          key={f.index}
+          className={cn("hx-lcd-face", f.led === "lit" && "hx-lcd-face-on", f.kind === "empty" && "hx-lcd-face-empty")}
+          style={{ ["--face" as string]: f.color }}
         >
-          <span className="mb-0.5 size-1.5 rounded-full" style={{ background: fs.color }} />
-          <span className="w-full truncate text-center font-mono text-[8px] uppercase tracking-wider text-zinc-300">
-            {fs.label}
-          </span>
-        </button>
+          <span className="hx-lcd-face-bar" />
+          <span className="hx-lcd-face-label">{f.label ? fitSwitchLabel(f.label, big ? 9 : 7) : "—"}</span>
+        </div>
       ))}
+    </div>
+  );
+}
+
+function SignalFlow({
+  blocks,
+  selectedId,
+  onSelect,
+}: {
+  blocks: StompBlock[];
+  selectedId?: string;
+  /** Helix: tap a block. The small screens select with the upper knob, as the hardware does. */
+  onSelect?: (id: string) => void;
+}) {
+  // The unit draws an amp and its cab as one block, so the whole chain fits the screen.
+  const shown = blocks.filter(
+    (b, i) =>
+      !(
+        blockModel(b)?.category === "cab" &&
+        i > 0 &&
+        ["amp-guitar", "amp-bass", "preamp"].includes(blockModel(blocks[i - 1])?.category ?? "")
+      ),
+  );
+  return (
+    <div className="hx-lcd-flow">
+      <span className="hx-lcd-io">In</span>
+      <div className="hx-lcd-flow-row">
+        <span className="hx-path-line" aria-hidden />
+        {shown.map((b) => (
+          <BlockChip key={b.id} block={b} selected={b.id === selectedId} onClick={onSelect ? () => onSelect(b.id) : undefined} />
+        ))}
+      </div>
+      <span className="hx-lcd-io">Out</span>
+    </div>
+  );
+}
+
+function BlockChip({ block, selected, onClick }: { block: StompBlock; selected: boolean; onClick?: () => void }) {
+  const model = blockModel(block);
+  const color = model ? CATEGORY_MAP[model.category].lcd : "#9aa3ad";
+  const chip = (
+    <span className={cn("hx-lcd-chip", selected && "hx-lcd-chip-sel", !block.enabled && "hx-lcd-chip-off")}>
+      <span className="hx-lcd-chip-bar" style={{ background: color }} />
+      <span className="hx-lcd-chip-text">{model?.abbrev ?? "—"}</span>
+    </span>
+  );
+  if (!onClick) return <span className="hx-lcd-chip-hit hx-lcd-chip-static">{chip}</span>;
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="hx-lcd-chip-hit"
+      aria-label={`${model?.name ?? "Block"}${block.enabled ? "" : " (off)"}`}
+      aria-pressed={selected}
+    >
+      {chip}
+    </button>
+  );
+}
+
+function ParamStrip({
+  block,
+  page,
+  perPage,
+  showName,
+}: {
+  block: StompBlock | undefined;
+  page: number;
+  perPage: number;
+  showName?: boolean;
+}) {
+  const model = block ? blockModel(block) : undefined;
+  const params = block ? paramEntries(block) : [];
+  const pages = Math.max(1, Math.ceil(params.length / perPage));
+  const row = params.slice(page * perPage, page * perPage + perPage);
+  return (
+    <div className="hx-lcd-params">
+      {showName && model ? (
+        <div className="hx-lcd-params-head">
+          <span className="size-2 shrink-0 rounded-full" style={{ background: CATEGORY_MAP[model.category].lcd }} />
+          <span className="min-w-0 flex-1 truncate">{model.name}</span>
+          {block && !block.enabled ? <span className="text-zinc-500">Off</span> : null}
+          <span className="tabular-nums text-zinc-500">
+            {page + 1}/{pages}
+          </span>
+        </div>
+      ) : null}
+      <div className="hx-lcd-params-row" style={{ gridTemplateColumns: `repeat(${perPage}, minmax(0, 1fr))` }}>
+        {Array.from({ length: perPage }, (_, i) => {
+          const p = row[i];
+          return (
+            <div key={p?.name ?? `e-${i}`} className="hx-lcd-param">
+              <span className="hx-lcd-param-label">{p?.label ?? ""}</span>
+              <span className="hx-lcd-param-value">{p?.display ?? ""}</span>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
 
 function TunerView() {
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-2">
-      <div className="font-mono text-3xl font-semibold tracking-widest">A</div>
-      <div className="relative h-1.5 w-40 rounded-full bg-zinc-800">
-        <div className="absolute left-1/2 top-1/2 size-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-emerald-400" />
+    <div className="hx-lcd-tuner" role="status">
+      <div className="hx-lcd-tuner-note">—</div>
+      <div className="hx-lcd-tuner-scale" aria-hidden>
+        {Array.from({ length: 11 }, (_, i) => (
+          <span key={i} className={cn(i === 5 && "hx-lcd-tuner-mid")} />
+        ))}
       </div>
-      <div className="font-mono text-[10px] text-zinc-500">440 Hz · in tune</div>
+      <div className="hx-lcd-tuner-hint">Tuner · play a string</div>
+      <div className="hx-lcd-tuner-hint">Press any switch to exit</div>
     </div>
   );
 }

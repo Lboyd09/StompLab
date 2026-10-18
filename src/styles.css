@@ -293,34 +293,35 @@ html.sl-touring nav {
   to { opacity: 1; transform: translateY(0); }
 }
 
+.hx-replica-fit {
+  container-type: inline-size;
+  container-name: replica;
+}
+
+/* ───────── Line 6 replica (src/components/stomp). Layouts follow docs/replica-controls.md. ───────── */
+
+.hx-replica-scroll {
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 12px 0 28px;
+  width: 100%;
+  max-width: 100%;
+}
+
 .hx-chassis {
   position: relative;
   background:
     radial-gradient(circle at 18% 12%, color-mix(in oklab, #fff 8%, transparent), transparent 28%),
     linear-gradient(165deg, #2c3036 0%, #16181c 34%, #0c0d10 72%, #07080a 100%);
   border: 1px solid #3a3e44;
-  border-radius: 6px;
-  padding: 16px 16px 36px;
+  border-radius: 8px;
+  padding: 12px 12px 18px;
   box-shadow:
     inset 0 1px 0 color-mix(in oklab, #fff 16%, transparent),
     inset 0 -10px 16px color-mix(in oklab, #000 70%, transparent),
     0 1px 0 #4a4e54,
     0 32px 56px -30px #000;
   color: #c5c9c2;
-  overflow: visible;
-}
-
-.hx-sparkle {
-  pointer-events: none;
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background-image:
-    radial-gradient(circle at 12% 22%, color-mix(in oklab, #fff 18%, transparent) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 68% 40%, color-mix(in oklab, #fff 12%, transparent) 0 1px, transparent 1.4px),
-    radial-gradient(circle at 40% 78%, color-mix(in oklab, #fff 10%, transparent) 0 1px, transparent 1.5px);
-  background-size: 42px 42px, 58px 58px, 36px 36px;
-  opacity: 0.22;
 }
 
 .hx-chassis > *:not(.hx-sparkle) {
@@ -332,7 +333,7 @@ html.sl-touring nav {
 .hx-chassis::after {
   content: "";
   position: absolute;
-  top: 10px;
+  top: 8px;
   width: 6px;
   height: 6px;
   border-radius: 50%;
@@ -340,399 +341,36 @@ html.sl-touring nav {
   box-shadow: inset 0 0 0 1px #0a0b0d;
   z-index: 1;
 }
+.hx-chassis::before { left: 8px; }
+.hx-chassis::after { right: 8px; }
 
-.hx-chassis::before {
-  left: 11px;
+.hx-sparkle {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  border-radius: inherit;
+  background-image:
+    radial-gradient(circle at 12% 22%, color-mix(in oklab, #fff 18%, transparent) 0 1px, transparent 1.6px),
+    radial-gradient(circle at 68% 40%, color-mix(in oklab, #fff 12%, transparent) 0 1px, transparent 1.4px),
+    radial-gradient(circle at 40% 78%, color-mix(in oklab, #fff 10%, transparent) 0 1px, transparent 1.5px);
+  background-size: 42px 42px, 58px 58px, 36px 36px;
+  opacity: 0.22;
 }
 
-.hx-chassis::after {
-  right: 11px;
-}
-
-.hx-replica-fit {
-  container-type: inline-size;
-  container-name: replica;
-}
-
-.hx-replica-scroll {
-  overflow-x: auto;
-  overflow-y: visible;
-  padding: 16px 8px 56px;
-  width: 100%;
-  max-width: 100%;
-  min-height: 12rem;
-}
-
-.hx-chassis-stomp {
-  max-width: 560px;
-  border-radius: 6px;
-}
-
-.hx-chassis-xl {
-  max-width: min(980px, 100%);
-  width: 100%;
-  border-radius: 6px;
-}
-
-.hx-chassis-floor {
-  max-width: 1120px;
-  background:
-    linear-gradient(180deg, #2a2e34 0%, #121416 48%, #08090b 100%);
-}
-
-.hx-chassis-lt {
-  max-width: 1000px;
-  background:
-    linear-gradient(180deg, #1a1c20 0%, #101214 50%, #08090b 100%);
-}
-
-.hx-chassis-effects {
-  max-width: 780px;
-}
-
-.hx-chassis-podgo {
-  max-width: 920px;
-  background:
-    linear-gradient(180deg, #2c3036 0%, #16181c 48%, #0c0d10 100%);
-}
-
-.hx-lcd-wide {
-  max-width: 360px;
-  min-height: 180px;
-  aspect-ratio: auto;
-}
-
-.hx-helix-board {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.hx-helix-top {
-  display: grid;
-  grid-template-columns: auto minmax(180px, 280px) minmax(0, 1fr) auto;
-  gap: 14px;
-  align-items: start;
-}
-
-.hx-helix-presetcol {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  padding-top: 8px;
-}
-
-.hx-helix-lcd {
-  min-width: 0;
-}
-
-.hx-helix-controls {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.hx-helix-pedals {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  align-items: center;
-  padding-top: 4px;
-}
-
-.hx-helix-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  overflow: visible;
-  padding: 4px 2px 8px;
-}
-
-.hx-helix-row {
-  display: grid;
-  grid-template-columns: repeat(6, minmax(56px, 1fr));
-  gap: 8px;
-  justify-items: center;
-  min-width: 0;
-}
-
-.hx-helix-cell {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-}
-
-.hx-effects-board {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-}
-
-.hx-effects-top {
-  display: grid;
-  grid-template-columns: minmax(0, 220px) auto;
-  gap: 16px;
-  align-items: start;
-  justify-content: center;
-}
-
-.hx-effects-lcd {
-  min-width: 0;
-  max-width: 220px;
-}
-
-.hx-effects-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.hx-effects-grid .hx-helix-row {
-  grid-template-columns: repeat(4, minmax(56px, 1fr));
-}
-
-.hx-podgo-board {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 18px;
-  align-items: stretch;
-}
-
-.hx-podgo-exp {
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding-bottom: 8px;
-}
-
-.hx-podgo-main {
-  display: flex;
-  min-width: 0;
-  flex-direction: column;
-  gap: 12px;
-  align-items: center;
-}
-
-.hx-podgo-lcd {
-  width: 100%;
-  max-width: 240px;
-}
-
-.hx-podgo-fs {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(52px, 1fr));
-  gap: 12px 10px;
-  width: 100%;
-  justify-items: center;
-}
-
-.hx-exp {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 6px;
-  width: 84px;
-}
-
-.hx-exp-tread {
-  width: 70px;
-  height: 96px;
-  border-radius: 8px 8px 10px 10px;
-  background:
-    repeating-linear-gradient(
-      180deg,
-      #2e3238 0 7px,
-      #1a1c20 7px 14px
-    );
-  border: 1px solid #3a3e44;
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 12%, transparent),
-    0 8px 0 #0a0b0d,
-    0 12px 18px #000;
-  transform: perspective(280px) rotateX(14deg);
-}
-
-.hx-exp-tall {
-  height: 128px;
-}
-
-.hx-scribble {
-  width: 100%;
-  max-width: 84px;
-  height: 18px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  border-radius: 1px;
-  border: 1px solid #000;
-  background: #0a1010;
-  padding: 0 4px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #d4e8c8;
-  box-shadow: inset 0 0 0 1px #1a2a1c;
-}
-
-.hx-scribble-on {
-  background: #141a14;
-  color: #e8e6df;
-}
-
-.hx-knob-row {
-  display: flex;
-  flex-wrap: nowrap;
-  align-items: flex-end;
-  justify-content: center;
-  gap: 10px;
-}
-
-.hx-helix-controls .hx-knob-row {
-  display: grid;
-  grid-template-columns: repeat(3, auto);
-  gap: 10px 14px;
-}
-
-.hx-joystick {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  border: 1px solid #3a3e44;
-  background: radial-gradient(circle at 35% 30%, #5c6168, #1c1e22 60%, #0a0b0d);
-  box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent),
-    0 2px 4px #000;
-}
-
-@media (max-width: 860px) {
-  .hx-helix-top {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1.1fr);
-  }
-
-  .hx-helix-pedals {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    justify-content: flex-end;
-  }
-
-  .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(48px, 1fr));
-  }
-
-  .hx-effects-top {
-    grid-template-columns: minmax(0, 220px) auto;
-  }
-}
-
-@container replica (max-width: 960px) {
-  .hx-xl-board {
-    grid-template-columns: repeat(4, minmax(48px, 1fr));
-    grid-template-areas:
-      "lcd lcd lcd lcd"
-      "well well well well"
-      "fs1 fs2 fs3 mode"
-      "fs4 fs5 fs6 tap";
-    gap: 12px 8px;
-  }
-
-  .hx-xl-lcd,
-  .hx-xl-well {
-    justify-self: center;
-  }
-
-  .hx-xl-lcd,
-  .hx-xl-lcd .hx-lcd {
-    max-width: 260px;
-  }
-}
-@container replica (max-width: 720px) {
-  .hx-helix-top {
-    grid-template-columns: auto minmax(0, 1fr) minmax(0, 1fr);
-  }
-
-  .hx-helix-pedals {
-    grid-column: 1 / -1;
-    flex-direction: row;
-    justify-content: flex-end;
-  }
-}
-
-@container replica (max-width: 560px) {
-  .hx-helix-top {
-    grid-template-columns: minmax(0, 1fr);
-    justify-items: center;
-  }
-
-  .hx-helix-pedals {
-    flex-direction: row;
-    justify-content: center;
-  }
-
-  .hx-effects-top {
-    grid-template-columns: 1fr;
-    justify-items: center;
-  }
-
-  .hx-podgo-board {
-    grid-template-columns: 1fr;
-  }
-
-  .hx-podgo-exp {
-    order: 2;
-    padding-top: 8px;
-    justify-content: center;
-  }
-
-  .hx-effects-grid .hx-helix-row,
-  .hx-podgo-fs {
-    grid-template-columns: repeat(4, minmax(48px, 1fr));
-  }
-
-  .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
-  }
-}
-
-@media (max-width: 640px) {
-  .hx-podgo-board {
-    grid-template-columns: 1fr;
-  }
-
-  .hx-podgo-exp {
-    order: 2;
-    padding-top: 8px;
-  }
-}
-
-@media (max-width: 560px) {
-  .hx-effects-grid .hx-helix-row,
-  .hx-podgo-fs {
-    grid-template-columns: repeat(4, minmax(48px, 1fr));
-  }
-
-  .hx-helix-row {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    gap: 4px;
-  }
-
-  .hx-lcd-wide {
-    max-width: 220px;
-  }
-}
+/* Real proportions cap the width on a desktop; on a phone every unit fills the column. */
+.hx-chassis-stomp { max-width: 540px; }
+.hx-chassis-xl { max-width: 640px; }
+.hx-chassis-podgo { max-width: 700px; }
+.hx-chassis-effects { max-width: 640px; }
+.hx-chassis-floor { max-width: 1100px; background: linear-gradient(180deg, #2a2e34 0%, #121416 48%, #08090b 100%); }
+.hx-chassis-lt { max-width: 1000px; background: linear-gradient(180deg, #1c1e22 0%, #101214 50%, #08090b 100%); }
 
 .hx-brand {
   display: flex;
   align-items: baseline;
   justify-content: space-between;
-  padding: 0 2px 10px;
+  padding: 0 10px 8px;
 }
 
 .hx-brand-mark {
@@ -743,126 +381,79 @@ html.sl-touring nav {
   color: #7a7e78;
 }
 
-.hx-stomp-board {
-  display: grid;
-  grid-template-columns: minmax(0, 220px) auto auto;
-  grid-template-areas:
-    "lcd well vol"
-    "knobs silk silk"
-    "fs fs fs";
-  gap: 12px 12px;
-  align-items: start;
-  justify-content: center;
+.hx-silk {
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #7a7e78;
 }
 
-.hx-stomp-lcd {
-  grid-area: lcd;
-  min-width: 0;
-  max-width: 220px;
+/* Hardware buttons: 44px minimum so they are thumb-sized. */
+.hx-hw-btn {
+  display: inline-grid;
+  place-items: center;
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 4px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 8px;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #a6aca6;
+  background: linear-gradient(180deg, #2a2d32, #16181c);
+  border: 1px solid #3a3e44;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent), 0 2px 0 #050607;
+  touch-action: manipulation;
 }
+.hx-hw-btn:hover { color: #e8e6df; }
+.hx-hw-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 6%, transparent); }
+.hx-hw-btn[aria-pressed="true"] { color: #fff; border-color: #6a6e74; }
 
-.hx-stomp-well {
-  grid-area: well;
-  align-self: start;
+.hx-knob {
+  background: radial-gradient(circle at 32% 26%, #e8eaee, #9aa0a8 38%, #3a3e44 68%, #121416);
+  box-shadow:
+    inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent),
+    0 0 0 2px #0a0b0d,
+    0 0 0 3px #5a5e64,
+    0 3px 6px #000;
 }
+.hx-knob-tick { background: #f4f6f8; }
 
-.hx-stomp-vol {
-  grid-area: vol;
+.hx-deco-knob {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #c8ccd2, #6a7078 40%, #24272c 70%, #0e0f12);
+  box-shadow: 0 0 0 2px #0a0b0d, 0 0 0 3px #4a4e54, 0 3px 6px #000;
+}
+.hx-deco-knob-big { width: 52px; height: 52px; }
+
+.hx-knob-row {
   display: flex;
+  flex-wrap: nowrap;
   align-items: flex-start;
   justify-content: center;
-  padding-top: 8px;
+  gap: 12px;
 }
+.hx-knob-row-5 { gap: 8px; }
+.hx-knob-row-6 { gap: 6px; }
+.hx-knob-row > * { min-width: 0; }
 
-.hx-stomp-knobs {
-  grid-area: knobs;
-}
+.hx-knobs-under { margin-top: 10px; }
 
-.hx-stomp-silk {
-  grid-area: silk;
-  align-self: center;
-  justify-self: end;
-  padding-right: 8px;
-  letter-spacing: 0.28em;
-}
-
-.hx-stomp-fs {
-  grid-area: fs;
-  padding-top: 8px;
-}
-
-.hx-well {
-  display: grid;
-  grid-template-columns: 44px 38px 44px;
-  grid-template-rows: auto auto auto;
-  place-items: center;
-  gap: 6px 4px;
-  padding: 8px 8px 10px;
-  background: #08090b;
-  border-radius: 6px;
-  box-shadow:
-    inset 0 2px 6px #000,
-    0 0 0 1px #2a2d32;
-  flex-shrink: 0;
-}
-
-.hx-well-save {
-  grid-column: 1 / -1;
-  text-align: center;
-  font-size: 7px;
-  letter-spacing: 0.22em;
-}
-
-.hx-xl-board {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(52px, 1fr)) minmax(0, 1.15fr) auto;
-  grid-template-areas:
-    "fs1 fs2 fs3 mode lcd well"
-    "fs4 fs5 fs6 tap  lcd well";
-  gap: 14px 10px;
-  align-items: center;
-  justify-items: center;
-}
-
-.hx-xl-fs1 { grid-area: fs1; }
-.hx-xl-fs2 { grid-area: fs2; }
-.hx-xl-fs3 { grid-area: fs3; }
-.hx-xl-fs4 { grid-area: fs4; }
-.hx-xl-fs5 { grid-area: fs5; }
-.hx-xl-fs6 { grid-area: fs6; }
-.hx-xl-mode { grid-area: mode; }
-.hx-xl-tap { grid-area: tap; }
-
-.hx-xl-lcd {
-  grid-area: lcd;
-  display: flex;
-  min-width: 0;
-  max-width: 240px;
-  width: 100%;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-}
-
-.hx-xl-well {
-  grid-area: well;
-  align-self: start;
-  padding-top: 2px;
-  justify-self: center;
-}
-
+/* ── Main LCD ── */
 .hx-lcd {
-  background: #07090c;
-  width: 100%;
-  max-width: 220px;
-  min-height: 176px;
-  height: auto;
   display: flex;
   flex-direction: column;
-  overflow-x: hidden;
-  overflow-y: auto;
+  width: 100%;
+  min-height: 150px;
+  overflow: hidden;
+  background: #05070a;
   border: 1px solid #000;
-  border-radius: 2px;
+  border-radius: 3px;
   box-shadow:
     inset 0 0 0 1px #1a221c,
     0 0 0 3px #0a0c0e,
@@ -870,154 +461,353 @@ html.sl-touring nav {
   font-family: var(--font-mono);
   color: #e8e6df;
 }
+.hx-lcd-wide { min-height: 168px; }
 
-.hx-path-line {
-  background: color-mix(in oklab, #e8e6df 18%, transparent);
+.hx-lcd-head {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px 2px;
+  min-width: 0;
+  font-size: 9px;
+}
+.hx-lcd-slot {
+  flex-shrink: 0;
+  padding: 0 3px;
+  border-radius: 2px;
+  background: #e8e6df;
+  color: #0a0b0d;
+  font-weight: 600;
+}
+.hx-lcd-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.hx-lcd-meta { display: flex; flex-shrink: 0; gap: 5px; color: #8a8e88; font-size: 8px; text-transform: uppercase; }
+
+.hx-lcd-play {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 6px 4px;
+  text-align: center;
+  min-width: 0;
+}
+.hx-lcd-play-slot { font-size: 9px; color: #8a8e88; letter-spacing: 0.1em; }
+.hx-lcd-play-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; line-height: 1.2; }
+.hx-lcd-play-snap { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; }
+
+.hx-lcd-boxes { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 2px; }
+.hx-lcd-facegrid { display: grid; gap: 2px; }
+.hx-lcd-facegrid-big { flex: 1; padding: 4px; gap: 3px; }
+.hx-lcd-face {
+  display: flex;
+  min-width: 0;
+  min-height: 30px;
+  flex-direction: column;
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid #1c2024;
+  border-radius: 2px;
+  background: #0c0f12;
+}
+.hx-lcd-facegrid-big .hx-lcd-face { min-height: 40px; }
+.hx-lcd-face-bar { height: 3px; background: color-mix(in oklab, var(--face) 40%, #0c0f12); }
+.hx-lcd-face-on { background: color-mix(in oklab, var(--face) 26%, #0c0f12); border-color: color-mix(in oklab, var(--face) 70%, #000); }
+.hx-lcd-face-on .hx-lcd-face-bar { background: var(--face); }
+.hx-lcd-face-empty .hx-lcd-face-label { color: #4a4e54; }
+.hx-lcd-face-label {
+  display: grid;
+  flex: 1;
+  place-items: center;
+  padding: 1px 2px;
+  font-size: 8px;
+  line-height: 1.1;
+  text-align: center;
+  text-transform: uppercase;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  color: #dcdad3;
+}
+.hx-lcd-facegrid-big .hx-lcd-face-label { font-size: 9px; }
+
+.hx-lcd-flow { display: flex; align-items: center; gap: 2px; padding: 2px 3px; flex: 1; min-height: 52px; }
+.hx-lcd-io { font-size: 7px; color: #6a6e68; text-transform: uppercase; }
+@container replica (max-width: 420px) {
+  .hx-lcd-io { display: none; }
+}
+.hx-lcd-flow-row { position: relative; display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; }
+.hx-path-line { position: absolute; inset-inline: 0; top: 50%; height: 1px; background: color-mix(in oklab, #e8e6df 22%, transparent); }
+.hx-lcd-chip-hit {
+  position: relative;
+  display: grid;
+  flex: 1 1 0;
+  min-width: 0;
+  max-width: 44px;
+  height: 44px;
+  place-items: center;
+  background: none;
+}
+.hx-lcd-chip {
+  display: flex;
+  width: 100%;
+  height: 26px;
+  margin: 0 1px;
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid #000;
+  border-radius: 2px;
+  background: #151a1e;
 }
 
-.hx-knob {
-  background:
-    radial-gradient(circle at 32% 26%, #e8eaee, #9aa0a8 38%, #3a3e44 68%, #121416);
+.hx-lcd-chip-static { height: 30px; }
+.hx-lcd-chip-sel { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
+.hx-lcd-chip-off { opacity: 0.38; }
+.hx-lcd-chip-bar { height: 3px; flex-shrink: 0; }
+.hx-lcd-chip-text { display: grid; flex: 1; place-items: center; font-size: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; }
+
+.hx-lcd-params { margin-top: auto; padding: 2px 4px 4px; border-top: 1px solid #1a1e22; }
+.hx-lcd-params-head { display: flex; align-items: center; gap: 4px; padding: 2px 0; font-size: 9px; min-width: 0; }
+.hx-lcd-params-row { display: grid; gap: 2px; }
+.hx-lcd-param { display: flex; min-width: 0; flex-direction: column; align-items: center; }
+.hx-lcd-param-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; text-transform: uppercase; color: #7a7e78; }
+.hx-lcd-param-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-variant-numeric: tabular-nums; }
+
+.hx-lcd-tuner { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; }
+.hx-lcd-tuner-note { font-size: 28px; font-weight: 600; line-height: 1; }
+.hx-lcd-tuner-scale { display: flex; align-items: flex-end; gap: 5px; height: 16px; }
+.hx-lcd-tuner-scale span { width: 2px; height: 8px; background: #3a3e44; }
+.hx-lcd-tuner-scale .hx-lcd-tuner-mid { height: 16px; background: #22e06a; }
+.hx-lcd-tuner-hint { font-size: 8px; color: #8a8e88; text-transform: uppercase; letter-spacing: 0.08em; }
+
+html[data-lcd="bright"] .hx-lcd {
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent),
-    0 0 0 2px #0a0b0d,
-    0 0 0 3px #5a5e64,
-    0 3px 6px #000;
+    inset 0 0 0 1px #2a4a32,
+    0 0 0 3px #0a0c0e,
+    0 0 0 4px #2c3036,
+    0 0 28px #7dff9a44;
+  color: #f2fff4;
 }
 
-.hx-knob-tick {
-  background: #f4f6f8;
+/* ── HX Stomp / XL / POD Go: screen top-left, VIEW-ACTION-PAGE cluster and VOLUME to the right ── */
+.hx-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+}
+.hx-top-right { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.hx-vol { align-self: flex-end; }
+
+.hx-well {
+  display: grid;
+  grid-template-columns: repeat(3, 44px);
+  place-items: center;
+  gap: 2px 4px;
+  padding: 6px;
+  background: #08090b;
+  border-radius: 6px;
+  box-shadow: inset 0 2px 6px #000, 0 0 0 1px #2a2d32;
+}
+.hx-well-save { grid-column: 1 / -1; font-size: 7px; letter-spacing: 0.22em; }
+.hx-lower-knob {
+  display: block;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 32% 26%, #c8ccd2, #6a7078 40%, #24272c 70%, #0e0f12);
+  box-shadow: 0 0 0 2px #0a0b0d, 0 0 0 3px #4a4e54;
 }
 
-.hx-silk {
+/* ── Footswitches ── */
+.hx-switches {
+  display: grid;
+  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
+  gap: 14px 6px;
+  margin-top: 16px;
+  justify-items: center;
+  align-items: start;
+}
+.hx-switch-cell { display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: center; gap: 6px; }
+.hx-scribble-spacer { height: 30px; }
+
+.hx-footswitch {
+  display: flex;
+  width: 100%;
+  min-width: 44px;
+  min-height: 44px;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 0 0;
+  background: none;
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+.hx-fs-cap {
+  position: relative;
+  display: grid;
+  width: min(56px, calc(100% - 10px));
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid #2a2d32;
+  background: radial-gradient(circle at 38% 28%, #5a5e64, #1c1e22 62%, #0a0b0d);
+  box-shadow: inset 0 2px 0 color-mix(in oklab, #fff 18%, transparent), 0 5px 0 #07080a;
+}
+/* The LED ring around the cap. */
+.hx-fs-cap::after {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 50%;
+  border: 3px solid var(--ring, #23262a);
+  pointer-events: none;
+}
+.hx-led-off { --ring: #23262a; }
+.hx-led-dim { --ring: color-mix(in oklab, var(--led) 34%, #16181b); }
+.hx-led-lit { --ring: var(--led); }
+.hx-led-lit::after { box-shadow: 0 0 12px var(--led), inset 0 0 6px color-mix(in oklab, var(--led) 60%, transparent); }
+.hx-led-blink::after { animation: hx-tap-blink var(--beat, 0.5s) steps(1, end) infinite; }
+@keyframes hx-tap-blink {
+  0% { opacity: 1; }
+  30% { opacity: 0.25; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hx-led-blink::after { animation: none; }
+}
+html[data-motion="reduce"] .hx-led-blink::after { animation: none; }
+
+.hx-footswitch:active .hx-fs-cap { transform: translateY(2px); box-shadow: inset 0 2px 0 color-mix(in oklab, #fff 12%, transparent), 0 3px 0 #07080a; }
+.hx-footswitch-sel .hx-fs-cap { outline: 1px dashed color-mix(in oklab, #e8e6df 55%, transparent); outline-offset: 8px; }
+.hx-fs-num { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: #c9ccd0; }
+.hx-fs-label {
+  max-width: 100%;
+  min-height: 2.3em;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  word-break: keep-all;
+  overflow-wrap: normal;
+  color: #d6d8d2;
+}
+.hx-fs-label-empty { color: #4a4e54; }
+.hx-fs-silk { margin-top: 2px; font-size: 7px; }
+
+html[data-controls="large"] .hx-fs-cap { width: min(68px, calc(100% - 10px)); }
+html[data-controls="large"] .hx-hw-btn { min-height: 52px; min-width: 52px; }
+html[data-controls="large"] .hx-well { grid-template-columns: repeat(3, 52px); }
+
+/* ── Scribble strips (Helix Floor, HX Effects) ── */
+.hx-scribble {
+  display: grid;
+  width: 100%;
+  max-width: 92px;
+  min-height: 30px;
+  place-items: center;
+  padding: 2px 3px 4px;
+  border: 1px solid #000;
+  border-radius: 2px;
+  background: #06090a;
+  box-shadow: inset 0 0 0 1px #1a2a1c, inset 0 -3px 0 color-mix(in oklab, var(--face, #3a3e44) 45%, #06090a);
   font-family: var(--font-mono);
   font-size: 8px;
-  letter-spacing: 0.16em;
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  text-align: center;
   text-transform: uppercase;
-  color: #6a6e68;
-}
-
-.hx-hw-btn {
-  min-height: 26px;
-  min-width: 42px;
-  padding: 0 5px;
-  border-radius: 3px;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  color: #9aa09a;
-  background: linear-gradient(180deg, #2a2d32, #16181c);
-  border: 1px solid #3a3e44;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent);
-}
-
-.hx-hw-btn:hover {
+  word-break: keep-all;
+  overflow-wrap: normal;
   color: #e8e6df;
 }
+.hx-scribble-on { background: color-mix(in oklab, var(--face) 22%, #06090a); box-shadow: inset 0 0 0 1px #1a2a1c, inset 0 -3px 0 var(--face); }
+.hx-scribble-dim { color: #5a5e62; }
+.hx-scribble-sel { outline: 1px solid #fff; outline-offset: 1px; }
+.hx-scribble-btn { min-height: 44px; }
 
-.hx-fs {
-  background:
-    radial-gradient(circle at 38% 28%, #5a5e64, #1c1e22 62%, #0a0b0d);
-  border: 1px solid #2a2d32;
+/* ── Helix Floor / LT ── */
+.hx-helix-top {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "left" "lcd" "right";
+  gap: 10px;
+}
+.hx-helix-left { grid-area: left; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 6px; }
+.hx-preset-knob { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0 4px; }
+.hx-helix-lcd { grid-area: lcd; min-width: 0; }
+.hx-helix-right { grid-area: right; display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px 12px; }
+.hx-helix-vols { display: flex; gap: 8px; }
+.hx-helix-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; }
+.hx-joystick-wrap { display: flex; align-items: center; }
+.hx-joy-arrow { display: grid; width: 44px; height: 44px; place-items: center; font-family: var(--font-mono); color: #8a8e88; background: none; }
+.hx-joystick {
+  display: block;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid #3a3e44;
+  background: radial-gradient(circle at 35% 30%, #5c6168, #1c1e22 60%, #0a0b0d);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent), 0 2px 4px #000;
+}
+.hx-helix-bottom { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
+.hx-helix-switches { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 14px; }
+.hx-helix-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.hx-helix-cell { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 6px; }
+.hx-board-helix .hx-fs-label { font-size: 8px; }
+.hx-board-helix .hx-exp { align-self: flex-end; }
+@container replica (max-width: 759px) {
+  .hx-board-helix .hx-exp { width: auto; flex-direction: row; align-items: center; gap: 10px; }
+  .hx-board-helix .hx-exp-tread { height: 72px; }
+  .hx-board-helix .hx-exp-strip { width: 92px; }
 }
 
-.hx-fs-cap {
-  width: 54px;
-  height: 54px;
-  box-shadow:
-    inset 0 2px 0 color-mix(in oklab, #fff 18%, transparent),
-    0 6px 0 #07080a;
+@container replica (min-width: 760px) {
+  .hx-helix-top {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-areas: "left lcd right";
+    align-items: start;
+  }
+  .hx-helix-left { flex-direction: column; flex-wrap: nowrap; }
+  .hx-helix-right { flex-direction: column; flex-wrap: nowrap; }
+  .hx-helix-nav { display: grid; grid-template-columns: repeat(2, auto); justify-items: center; }
+  .hx-helix-nav .hx-joystick-wrap { grid-column: 1 / -1; }
+  .hx-helix-bottom { flex-direction: row; align-items: flex-end; }
+  .hx-helix-lcd .hx-lcd { min-height: 200px; }
 }
 
-@media (min-width: 768px) {
-  .hx-fs-cap {
-    width: 58px;
-    height: 58px;
-  }
+/* ── POD Go ── */
+.hx-podgo-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
+.hx-podgo-bottom .hx-switches { margin-top: 16px; }
+
+/* ── HX Effects ── */
+.hx-fx-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
+.hx-fx-left, .hx-fx-right { display: flex; align-items: center; gap: 4px; }
+.hx-fx-right { flex-wrap: wrap; justify-content: flex-end; }
+.hx-fx-big { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100px; text-align: center; }
+.hx-switches-fx .hx-switch-cell { gap: 4px; }
+
+/* ── Expression pedal (Helix Floor, Helix LT, POD Go) ── */
+.hx-exp { display: flex; width: 76px; flex-shrink: 0; flex-direction: column; align-items: center; gap: 6px; }
+.hx-exp-strip { min-height: 26px; font-size: 7px; }
+.hx-exp-leds { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 4px; }
+.hx-exp-led { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in oklab, var(--led) 25%, #111); }
+.hx-exp-led-on { background: var(--led); box-shadow: 0 0 6px var(--led); }
+.hx-exp-tread {
+  width: 64px;
+  height: 112px;
+  border-radius: 8px 8px 10px 10px;
+  background: repeating-linear-gradient(180deg, #2e3238 0 7px, #1a1c20 7px 14px);
+  border: 1px solid #3a3e44;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 12%, transparent), 0 8px 0 #0a0b0d, 0 12px 18px #000;
+  transform: perspective(280px) rotateX(var(--tilt, 0deg));
+  touch-action: none;
+  cursor: ns-resize;
 }
-
-@media (max-width: 960px) {
-  .hx-xl-board {
-    grid-template-columns: repeat(4, minmax(48px, 1fr));
-    grid-template-areas:
-      "lcd lcd lcd lcd"
-      "well well well well"
-      "fs1 fs2 fs3 mode"
-      "fs4 fs5 fs6 tap";
-    gap: 12px 8px;
-  }
-
-  .hx-xl-lcd,
-  .hx-xl-well {
-    justify-self: center;
-  }
-
-  .hx-xl-lcd,
-  .hx-xl-lcd .hx-lcd {
-    max-width: 260px;
-  }
-}
-
-@media (max-width: 720px) {
-  .hx-xl-board {
-    grid-template-columns: repeat(4, minmax(48px, 1fr));
-    grid-template-areas:
-      "lcd lcd lcd lcd"
-      "well well well well"
-      "fs1 fs2 fs3 mode"
-      "fs4 fs5 fs6 tap";
-    gap: 12px 8px;
-  }
-
-  .hx-xl-lcd,
-  .hx-xl-well {
-    justify-self: center;
-  }
-}
-
-@media (max-width: 420px) {
-  .hx-stomp-board {
-    grid-template-columns: minmax(0, 1fr) auto;
-    grid-template-areas:
-      "lcd well"
-      "knobs knobs"
-      "vol silk"
-      "fs fs";
-  }
-
-  .hx-stomp-vol {
-    padding-top: 0;
-  }
-
-  .hx-well {
-    grid-template-columns: 36px 30px 36px;
-    gap: 6px 3px;
-    padding: 6px 4px 8px;
-  }
-
-  .hx-hw-btn {
-    min-width: 34px;
-    min-height: 22px;
-  }
-
-  .hx-lcd {
-    max-width: 180px;
-  }
-
-  .hx-stomp-lcd,
-  .hx-xl-lcd,
-  .hx-lcd-wide,
-  .hx-effects-lcd,
-  .hx-podgo-lcd {
-    max-width: 180px;
-  }
-
-  .hx-fs-cap {
-    width: 48px;
-    height: 48px;
-  }
-}
+.hx-exp-toe { min-width: 64px; }
 
 @media (prefers-reduced-motion: reduce) {
   * {
@@ -1059,25 +849,6 @@ html[data-motion="reduce"] .sl-card:focus-visible {
   transform: none;
 }
 
-html[data-lcd="bright"] .hx-lcd {
-  box-shadow:
-    inset 0 0 0 1px #2a4a32,
-    0 0 0 3px #0a0c0e,
-    0 0 0 4px #2c3036,
-    0 0 28px #7dff9a44;
-  color: #f2fff4;
-}
-
-html[data-controls="large"] .hx-fs-cap {
-  width: 68px;
-  height: 68px;
-}
-
-html[data-controls="large"] .hx-hw-btn {
-  min-height: 32px;
-  min-width: 48px;
-}
-
 
 .sl-spot-hole {
   pointer-events: none;
@@ -1094,9 +865,3 @@ html[data-controls="large"] .hx-hw-btn {
 }
 
 /* Six switches across a phone: caps shrink with the row (still round) so the Floor / LT never scroll sideways. */
-.hx-helix-row .hx-fs-cap,
-html[data-controls="large"] .hx-helix-row .hx-fs-cap {
-  max-width: 100%;
-  height: auto;
-  aspect-ratio: 1;
-}
