@@ -85,16 +85,16 @@ stomplab.app was still returning Vercel’s security checkpoint (`429`, `x-verce
 
 `researchSongFn` in `src/lib/research.ts`, in this order:
 
-1. Featured library, before song confirmation and before the paywall. Demos (`DEMO_IDS`: Sandman, Teen Spirit, Numb) are free for everyone. A paid player who picked rhythm or lead only skips the canned demo and gets a generated part. Other featured rigs (including Higher) are paid, and only when the guitar role is “both”.
+1. Featured library, before song confirmation and before the paywall. Demos (`DEMO_IDS`: Sandman, Teen Spirit, Numb) are free for everyone. Other featured rigs (including Higher) are served to paid players. The guitar role plays no part: a featured preset is served whole (`libraryServesFeatured` in `src/lib/guitar-role.ts`).
 2. Plan and quota (`canResearch`). Free exhaustion is the paywall message. Paid exhaustion is “this month’s 50 custom builds”.
 3. Rate limit.
-4. `confirmReleasedSong` (`src/lib/song-verify.ts` → iTunes, fail closed) then `lookupBpm`.
-5. Cache key `song|v11|…` including unit, instrument, playback, wah, and guitar role. SQL fallback is `song|v11|%|role` and the same `stomp_model`. Do not bump to v12 unless you mean to throw away every cached song.
-6. Gemini, then `recordBuild`, then persist. `recordBuild` only after a real preset exists.
+4. `confirmReleasedSong` (`src/lib/song-verify.ts` → iTunes, fail closed).
+5. Cache key `song|v11|…` including unit, instrument, playback, wah, and guitar role. The role is decided on the server (`songBuildRole`): `lead` for a song `guitarArrangement` knows has two guitar parts, `both` for everything else and for bass. The client’s `guitarRole` is ignored. So one-guitarist rows (`|both`) and earlier lead builds (`|lead`) still hit; `|rhythm` rows are orphaned. SQL fallback is `song|v11|%|role` and the same `stomp_model`. Do not bump to v12 unless you mean to throw away every cached song.
+6. Two Gemini calls. Step 1 (`geminiGroundedNotes`, Google key only, Google Search grounding, 30 s, fail-soft) returns a short fact sheet: tempo, tuning, guitarist, guitar/pickup, amp and settings, pedals, delay/reverb, per-section tone. 2.5 Flash cannot ground and return a JSON schema in the same call, so step 1 is plain text read by `parseRecordNotes`. Its BPM is the tempo; `lookupBpm` runs only when step 1 has none. Step 2 is the structured preset call with those notes in the prompt. Then `recordBuild`, then persist. `recordBuild` only after a real preset exists.
 
 `finishPreset` is wah + the player’s gear overlay + `finishTone(bpm)` + `sanitizeSnapshots`.
 
-`finishTone` (`src/lib/tone-finish.ts`) reshapes generated presets only. If `source === "featured"`, it may set tempo and then returns. Do not run the shaper on the hand-built demos. Fix a demo in `src/data/featured.ts`.
+`finishTone` (`src/lib/tone-finish.ts`) reshapes generated presets only. If `source === "featured"`, it may set tempo and then returns. Do not run the shaper on the hand-built demos. Fix a demo in `src/data/featured.ts`. It also level-matches generated snapshots on the amp’s Ch Vol (`levelMatch`: clean and riff level, a solo about +2.5 dB, moves capped, never below 3.2). A tuning other than E standard becomes the first tip (“Tune down a half step (Eb standard)”); no pitch block is added.
 
 `createCustomSoundFn` is not a song. It does not confirm a title and does not take a BPM. Create is paid.
 
@@ -141,7 +141,7 @@ Homepage trio only: Enter Sandman, Smells Like Teen Spirit, Comfortably Numb. Hi
 - **Comfortably Numb.** The delay in the chain is Echo Platter (the Helix Binson), in front of the amp. The copy says Echorec. It must not say Cosmos Echo and then load a different model.
 - **Higher** (Creed, Human Clay, tempo 78). Verse clean with chorus (drive ~1.6, gate and boost off). Chorus heavy (drive ~5.4, gate on, chorus pedal off). The lift is the boost output, not more drive. The CE-2 note is marked likely.
 
-Rhythm vs lead controls show up only when the two guitar parts are actually different rigs. Don’t offer them on a song that is one part.
+A looked-up guitar song is always the LEAD guitarist’s part across the whole song (owner decision): that player’s intro, verse, chorus, and solo tones as snapshots. Never the rhythm player’s part, never a blend of two players. One-guitarist songs build that guitarist. Bass is unchanged. There is no rhythm/lead picker; the server ignores a `guitarRole` sent by an older client. Snapshots are named by song section (Intro, Verse, Chorus, Solo); `Clean` only in a clean snapshot’s name (that is what `finishTone` cleans up), `Solo`/`Lead` only on the solo (that is what gets the boost).
 
 ## Map
 

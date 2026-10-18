@@ -26,15 +26,15 @@ export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY 
 - Do not "fix" a previous song by name. Turn a miss into a general rule.
 - CLEAN OPENING: if the recorded intro/verse is clean, snapshot 1 MUST be clean — dirt pedals OFF, amp Drive 1.2–2.4, gate OFF. A dirty opening means you left a dirt pedal on or Drive ≥ 3.
 - PEDAL-PLATFORM AMPS: when the session used a clean preamp/head as a pedal platform (Mesa Studio Pre rhythm-clean, Hiwatt, Twin), use the CLEAN channel (cali-iv-rhythm-1, us-double-nrm, whowatt-100). Do not sneak the crunch/lead channel. The pedal is the dirty channel.
-- SOLOS: kinky-boost on the lead snapshot only (Boost 10 turns its boost switch on, Drive 1–2), not a tiny Ch Vol nudge and not extra Drive. Extra Drive on the same amp is a different song.
+- SOLOS: kinky-boost on the solo snapshot only (Boost 10 turns its boost switch on, Drive 1–2), not a tiny Ch Vol nudge and not extra Drive. Extra Drive on the same amp is a different song.
 - DELAY: Note = 8 (dotted eighth) or 6 (quarter) to follow tempo; leave Note out and set Time (value × 100 ms) for a free-running delay such as a slapback. Lead Mix ≤ 2.5 and Feedback ≤ 3.5.
-- NAMES: snapshot names are 12 characters. Abbreviate (Rhy, Crnch) before cutting a word in half.
+- NAMES: snapshots are named for the song section (Intro, Verse, Chorus, Solo), 12 characters. "Clean" only in a clean snapshot's name; "Solo"/"Lead" only on the solo snapshot. Abbreviate (Chors, Crnch) before cutting a word in half.
 - UNSOURCED GEAR: if it is not a session credit, interview, or published rig, prefix the note with "Likely —".
 - VERSE CHORUS/MOD: if a chorus/vibe is the verse identity, it turns OFF for the dry anthem chorus (Small Clone pattern). Do not leave it on for the loud section unless the record did.
 - SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
 - SINGING FUZZ: Big Muff / Ram's Head has no Mid knob; for a vocal lead keep Tone near 4–5 rather than a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
 - TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Add noise-gate in front of the amp (Threshold ≤ 2), not a hard-gate.
-- RHYTHM vs LEAD: when the brief says rhythm only or lead only, that is a different guitarist. Research their guitar, amp, and pedals. Do not return the other part's chain with Drive or Ch Vol nudged. Do not put both guitarists in one preset. If the song is one guitarist, build that one rig and do not invent a second part.
+- WHOSE PART: a song build is the LEAD guitarist's part through the whole song (their intro, verse, chorus, solo). When the record has two guitar parts, research the lead player's guitar, amp, and pedals — never the rhythm player's chain and never both players in one preset. If the song is one guitarist, build that one rig and do not invent a second part.
 - PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
 
 export function generalizeLesson(raw: string): string | null {

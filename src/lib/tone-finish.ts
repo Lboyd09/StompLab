@@ -32,8 +32,12 @@ function isLeadName(name: string): boolean {
   return /\b(lead|solo|lick)\b/i.test(name);
 }
 
+/**
+ * Only a snapshot the model called clean is cleaned up. "Intro" alone is not
+ * clean: plenty of records open on the riff.
+ */
 function isCleanName(name: string): boolean {
-  return /\b(clean|intro|arp|dry)\b/i.test(name) && !/\b(lead|solo|crunch|dist|dirty|heavy)\b/i.test(name);
+  return /\bclean\b/i.test(name) && !/\b(lead|solo|crunch|crnch|dist|dirty|heavy)\b/i.test(name);
 }
 
 function needsGate(blocks: StompBlock[], bass: boolean): boolean {
@@ -156,9 +160,12 @@ function shapeGenerated(preset: Preset): Preset {
     }));
   }
 
+  // A solo is a lift over the rest of the song. If every snapshot is named
+  // like a lead ("Lead Verse", "Lead Chorus"), there is nothing to lift over.
   const leadSnaps = next.snapshots.filter((s) => isLeadName(s.name));
+  const liftLeads = leadSnaps.length > 0 && leadSnaps.length < next.snapshots.length;
   let boost = blocks.find((b) => b.modelId === "kinky-boost");
-  if (leadSnaps.length && !boost && !bass && hasRoom(next, blocks) && MODEL_MAP["kinky-boost"]) {
+  if (liftLeads && !boost && !bass && hasRoom(next, blocks) && MODEL_MAP["kinky-boost"]) {
     const ampAt = blocks.findIndex((b) => isAmp(b.modelId));
     const at = ampAt < 0 ? blocks.length : ampAt;
     boost = {
@@ -195,14 +202,12 @@ function shapeGenerated(preset: Preset): Preset {
         Master: Math.min(Math.max(master, 3.4), 5.2),
       });
     }
+    if (liftLeads && isLeadName(snap.name) && boost) {
+      // Without a boost the lift comes from Ch Vol in levelMatch below.
+      if (!shaped.enabledBlocks.includes(boost.id)) shaped = { ...shaped, enabledBlocks: [...shaped.enabledBlocks, boost.id] };
+      shaped = withOverrides(shaped, boost.id, { Drive: 1.2, Output: 7 });
+    }
     if (isLeadName(snap.name)) {
-      if (boost) {
-        if (!shaped.enabledBlocks.includes(boost.id)) shaped = { ...shaped, enabledBlocks: [...shaped.enabledBlocks, boost.id] };
-        shaped = withOverrides(shaped, boost.id, { Drive: 1.2, Output: 7 });
-      } else if (amp) {
-        const vol = shaped.paramOverrides?.[amp.id]?.["Ch Vol"] ?? amp.params["Ch Vol"] ?? 5;
-        shaped = withOverrides(shaped, amp.id, { "Ch Vol": Math.min(10, vol + 1.5) });
-      }
       for (const delay of delays) {
         const mix = shaped.paramOverrides?.[delay.id]?.Mix ?? delay.params.Mix ?? 5;
         const fb = shaped.paramOverrides?.[delay.id]?.Feedback ?? delay.params.Feedback ?? 5;
@@ -218,7 +223,76 @@ function shapeGenerated(preset: Preset): Preset {
     return { ...f, label: label.slice(0, 12) };
   });
 
-  return { ...next, blocks, snapshots, footswitches };
+  const leveled = bass ? { blocks, snapshots } : levelMatch(blocks, snapshots, liftLeads);
+  return { ...next, blocks: leveled.blocks, snapshots: leveled.snapshots, footswitches };
+}
+
+/**
+ * SL-60 level match. A rough loudness estimate per snapshot from its gain
+ * staging, then the amp's Ch Vol nudged so clean and rhythm sit level and a
+ * solo is a small lift (about +2.5 dB), not a 6 dB jump.
+ *
+ * Estimate, in dB relative to nothing in particular:
+ *   2 per Ch Vol step, 0.4 per amp Drive step (more gain = more compression =
+ *   louder at the same knob), 1.5 for a drive pedal on, 3 for the boost on.
+ * A move up is capped at 1.2 on the knob (don't blow up a quiet part); a move
+ * down can be up to 2.5 (taming a jump is safe). Never below 3.2 (mute floor).
+ */
+const DB_PER_CHVOL = 2;
+const DB_PER_DRIVE = 0.4;
+const DB_DIRT_ON = 1.5;
+const DB_BOOST_ON = 3;
+export const LEAD_LIFT_DB = 2.5;
+const MAX_CHVOL_UP = 1.2;
+const MAX_CHVOL_DOWN = 2.5;
+const MIN_CHVOL = 3.2;
+const MAX_CHVOL = 8.5;
+/** Hand-built demos sit at Ch Vol 5.4–6.2; an amp the model left unset starts here. */
+const DEFAULT_CHVOL = 6;
+
+export function snapshotLoudness(blocks: StompBlock[], snap: Snapshot): number | null {
+  const amp = blocks.find((b) => isAmp(b.modelId));
+  if (!amp) return null;
+  const on = new Set(snap.enabledBlocks);
+  const over = snap.paramOverrides?.[amp.id] ?? {};
+  const chVol = over["Ch Vol"] ?? amp.params["Ch Vol"] ?? DEFAULT_CHVOL;
+  const drive = Math.min(over.Drive ?? amp.params.Drive ?? 5, 7);
+  const dirt = blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && on.has(b.id));
+  const boost = blocks.some((b) => BOOSTS.has(b.modelId) && on.has(b.id));
+  return DB_PER_CHVOL * chVol + DB_PER_DRIVE * drive + (dirt ? DB_DIRT_ON : 0) + (boost ? DB_BOOST_ON : 0);
+}
+
+function levelMatch(
+  blocks: StompBlock[],
+  snapshots: Snapshot[],
+  liftLeads: boolean,
+): { blocks: StompBlock[]; snapshots: Snapshot[] } {
+  const amp = blocks.find((b) => isAmp(b.modelId));
+  if (!amp || snapshots.length < 2) return { blocks, snapshots };
+  let ampBlocks = blocks;
+  if (amp.params["Ch Vol"] === undefined) {
+    ampBlocks = blocks.map((b) => (b.id === amp.id ? { ...b, params: { ...b.params, "Ch Vol": DEFAULT_CHVOL } } : b));
+  }
+  const lead = (s: Snapshot) => liftLeads && isLeadName(s.name);
+  const base =
+    snapshots.find((s) => !lead(s) && !isCleanName(s.name)) ?? snapshots.find((s) => !lead(s));
+  if (!base) return { blocks: ampBlocks, snapshots };
+  const baseDb = snapshotLoudness(ampBlocks, base);
+  if (baseDb === null) return { blocks: ampBlocks, snapshots };
+  const ampBlock = ampBlocks.find((b) => b.id === amp.id)!;
+
+  const out = snapshots.map((snap) => {
+    if (snap.id === base.id) return snap;
+    const db = snapshotLoudness(ampBlocks, snap);
+    if (db === null) return snap;
+    const target = baseDb + (lead(snap) ? LEAD_LIFT_DB : 0);
+    const move = Math.max(-MAX_CHVOL_DOWN, Math.min(MAX_CHVOL_UP, (target - db) / DB_PER_CHVOL));
+    if (Math.abs(move) < 0.25) return snap;
+    const chVol = snap.paramOverrides?.[amp.id]?.["Ch Vol"] ?? ampBlock.params["Ch Vol"] ?? DEFAULT_CHVOL;
+    const next = Math.round(Math.max(MIN_CHVOL, Math.min(MAX_CHVOL, chVol + move)) * 10) / 10;
+    return withOverrides(snap, amp.id, { "Ch Vol": next });
+  });
+  return { blocks: ampBlocks, snapshots: out };
 }
 
 /** Post-process a generated preset. Featured demos only get the name fit via sanitize. */

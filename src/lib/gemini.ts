@@ -30,13 +30,14 @@ export const SYSTEM =
   "5) pedal order on THAT session, not a later tour board. Distortion ~noon unless a published number exists. " +
   "6) cab + speakers + mic + distance; close and dry unless the record is roomy. " +
   "7) technique in tips (pick, palm mute, guitar volume as a gain stage). " +
-  "8) arrangement by TONE not lyrics — sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. Rhythm and lead are different tones. Never mash them into one snapshot. Amp + cab stay ON in every snapshot. " +
-  "9) THEN map each real piece to a catalog modelId. " +
+  "8) arrangement by TONE not lyrics — walk the song section by section (intro, verse, chorus, bridge, solo, outro) and write down what the player's tone does in each: dirt on/off, pickup, guitar volume, delay/reverb amount, modulation. Sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. One player's part, never two players mashed into one snapshot. Amp + cab stay ON in every snapshot. " +
+  "9) time effects from the tempo: name the delay as a note value (dotted eighth, quarter) when it follows the beat, or in ms for a slapback; say how wet the delay and reverb sit in the mix. " +
+  "10) THEN map each real piece to a catalog modelId, and copy published settings onto the matching knobs. " +
   "Session credits beat a simplified 'use a Twin' guide. Tracking rig beats a later tour rig. Guitar Chalk is good for tone language; credits win on gear. " +
   "Listener test: album in one ear, this preset in the other. " +
   "If the opening is clean, snapshot 1 is clean (dirt OFF, Drive 1.2–2.4). If a clean head is a pedal platform, use the clean channel — the pedal is the dirty channel. " +
-  "Solos: Ch Vol / Presence / a boost, not extra Drive. Verse chorus/mod turns off for a dry anthem chorus unless the record left it on. " +
-  "Saturating echo (Echorec, tape) goes before the amp. Singing muffs keep Mid near 5–6. Tight chug = TS tightener + moderate amp Drive, not a wall.";
+  "Solos: kinky-boost switched on for the solo snapshot, not extra amp Drive and not only a Ch Vol nudge. Verse chorus/mod turns off for a dry anthem chorus unless the record left it on. " +
+  "Saturating echo (Echorec, tape) goes before the amp. Singing muffs (Big Muff: Sustain, Tone, Level only — no Mid knob) keep Tone near 4–5. Tight chug = TS tightener + moderate amp Drive, not a wall.";
 export const CUSTOM_SYSTEM =
   "You are a session tech. Invent one original Line 6 Helix-family preset from a player's description. This is a custom sound, not a song replica. Do not copy a famous player's documented rig or a similar recorded song unless they named that song. Reply with a single JSON object. No markdown.";
 
@@ -125,38 +126,44 @@ export function googleAnswerText(
     .join("");
 }
 
-async function googleGenerate(
-  key: string,
-  prompt: string,
-  system = SYSTEM,
-  schema?: unknown,
-): Promise<string> {
+type GoogleOpts = {
+  system?: string;
+  schema?: unknown;
+  /** Thinking tokens count toward maxOutputTokens on 2.5, so the cap leaves room for the answer. */
+  thinkingBudget?: number;
+  maxOutputTokens?: number;
+  /** Google Search grounding. 2.5 Flash cannot combine it with a JSON response, so it is text only. */
+  search?: boolean;
+  timeoutMs?: number;
+};
+
+function googleBody(prompt: string, system: string, opts: GoogleOpts, plain = false): string {
+  const json = !opts.search;
+  return JSON.stringify({
+    systemInstruction: { parts: [{ text: system }] },
+    contents: [{ role: "user", parts: [{ text: prompt }] }],
+    ...(opts.search ? { tools: [{ google_search: {} }] } : {}),
+    generationConfig: {
+      temperature: 0.15,
+      maxOutputTokens: opts.maxOutputTokens ?? 16384,
+      ...(json ? { responseMimeType: "application/json" } : {}),
+      ...(json && opts.schema && !plain ? { responseSchema: opts.schema } : {}),
+      ...(plain ? {} : { thinkingConfig: { thinkingBudget: opts.thinkingBudget ?? 4096 } }),
+    },
+  });
+}
+
+async function googleGenerate(key: string, prompt: string, system = SYSTEM, opts: GoogleOpts = {}): Promise<string> {
   // The key goes in the x-goog-api-key header only, never in the URL (URLs get logged).
   const url = GOOGLE_GENERATE;
-  let payload: RequestInit = {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-goog-api-key": key,
-    },
-    body: JSON.stringify({
-      systemInstruction: { parts: [{ text: system }] },
-      contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: {
-        temperature: 0.15,
-        maxOutputTokens: 8192,
-        responseMimeType: "application/json",
-        ...(schema ? { responseSchema: schema } : {}),
-        thinkingConfig: { thinkingBudget: 4096 },
-      },
-    }),
-  };
+  const headers = { "Content-Type": "application/json", "x-goog-api-key": key };
+  let payload: RequestInit = { method: "POST", headers, body: googleBody(prompt, system, opts) };
 
   let res: Response | null = null;
   let raw = "";
   for (let attempt = 0; attempt < 2; attempt++) {
     try {
-      res = await fetchWithTimeout(url, payload, GENERATE_MS);
+      res = await fetchWithTimeout(url, payload, opts.timeoutMs ?? GENERATE_MS);
       raw = await res.text().catch(() => "");
     } catch (err) {
       if (err instanceof Error && err.name === "AbortError") throw new Error(BUSY);
@@ -172,18 +179,9 @@ async function googleGenerate(
       continue;
     }
     if (res.status === 400 && attempt === 0 && /thinking|schema|response_schema/i.test(raw)) {
-      payload = {
-        ...payload,
-        body: JSON.stringify({
-          systemInstruction: { parts: [{ text: system }] },
-          contents: [{ role: "user", parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.15,
-            maxOutputTokens: 8192,
-            responseMimeType: "application/json",
-          },
-        }),
-      };
+      // A rejected schema or thinking config: ask again as plain JSON so the build still lands.
+      console.error("[research] request config rejected, retrying without schema", raw.slice(0, 300));
+      payload = { ...payload, body: googleBody(prompt, system, opts, true) };
       continue;
     }
     throw new Error(friendlyGoogleError(res.status, raw));
@@ -210,6 +208,29 @@ async function googleGenerate(
   return text;
 }
 
+/**
+ * Step 1 of a song build: a Google-Search-grounded look at the record (gear,
+ * settings, sections, tempo, tuning). Plain text, because 2.5 Flash cannot
+ * ground and return a JSON schema in one call. Google key only; the gateway has
+ * no search. Never throws: no notes just means the preset call works from memory.
+ */
+export async function geminiGroundedNotes(prompt: string, system: string, timeoutMs = 30000): Promise<string | null> {
+  const { google } = collectResearchKeys();
+  if (!google) return null;
+  try {
+    const text = await googleGenerate(google, prompt, system, {
+      search: true,
+      thinkingBudget: 1024,
+      maxOutputTokens: 6144,
+      timeoutMs,
+    });
+    return text.trim() || null;
+  } catch (err) {
+    console.error("[research] grounded notes skipped", err instanceof Error ? err.message : "failed");
+    return null;
+  }
+}
+
 async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): Promise<string> {
   const res = await fetchWithTimeout(
     GATEWAY,
@@ -222,7 +243,7 @@ async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): 
       body: JSON.stringify({
         model: GATEWAY_MODEL,
         temperature: 0.15,
-        max_tokens: 8192,
+        max_tokens: 16384,
         reasoning_effort: "medium",
         response_format: { type: "json_object" },
         messages: [
@@ -257,14 +278,32 @@ async function gatewayGenerate(token: string, prompt: string, system = SYSTEM): 
   }
 }
 
+/**
+ * Knob lists are arrays of {name, value}. Gemini's response schema cannot hold
+ * an open object: an OBJECT with no properties is rejected (and the call fell
+ * back to no schema) or comes back empty. parsePresetJson accepts this shape
+ * and the older {Knob: value} map.
+ */
+const KNOBS = {
+  type: "ARRAY",
+  items: {
+    type: "OBJECT",
+    properties: { name: { type: "STRING" }, value: { type: "NUMBER" } },
+    required: ["name", "value"],
+    propertyOrdering: ["name", "value"],
+  },
+};
+
+const STRINGS = { type: "ARRAY", items: { type: "STRING" } };
+
+/** Research fields come first, so the model commits to the record before any modelId. */
 export const PRESET_RESPONSE_SCHEMA = {
   type: "OBJECT",
   properties: {
-    name: { type: "STRING" },
-    tempo: { type: "NUMBER" },
-    summary: { type: "STRING" },
-    fingerprint: { type: "STRING" },
     error: { type: "STRING" },
+    guitarist: { type: "STRING" },
+    tuning: { type: "STRING" },
+    tempo: { type: "NUMBER" },
     originalGear: {
       type: "ARRAY",
       items: {
@@ -274,8 +313,13 @@ export const PRESET_RESPONSE_SCHEMA = {
           name: { type: "STRING" },
           notes: { type: "STRING" },
         },
+        required: ["role", "name", "notes"],
+        propertyOrdering: ["role", "name", "notes"],
       },
     },
+    fingerprint: { type: "STRING" },
+    summary: { type: "STRING" },
+    name: { type: "STRING" },
     blocks: {
       type: "ARRAY",
       items: {
@@ -283,17 +327,74 @@ export const PRESET_RESPONSE_SCHEMA = {
         properties: {
           modelId: { type: "STRING" },
           enabled: { type: "BOOLEAN" },
-          params: { type: "OBJECT" },
+          params: KNOBS,
         },
-        required: ["modelId"],
+        required: ["modelId", "enabled", "params"],
+        propertyOrdering: ["modelId", "enabled", "params"],
       },
     },
-    snapshots: { type: "ARRAY", items: { type: "OBJECT" } },
-    footswitches: { type: "ARRAY", items: { type: "OBJECT" } },
-    programming: { type: "ARRAY", items: { type: "STRING" } },
-    tips: { type: "ARRAY", items: { type: "STRING" } },
+    snapshots: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          name: { type: "STRING" },
+          sections: { type: "STRING" },
+          changes: { type: "STRING" },
+          color: { type: "STRING" },
+          enabledModelIds: STRINGS,
+          paramOverrides: {
+            type: "ARRAY",
+            items: {
+              type: "OBJECT",
+              properties: { modelId: { type: "STRING" }, params: KNOBS },
+              required: ["modelId", "params"],
+              propertyOrdering: ["modelId", "params"],
+            },
+          },
+        },
+        required: ["name", "sections", "changes", "enabledModelIds"],
+        propertyOrdering: ["name", "sections", "changes", "color", "enabledModelIds", "paramOverrides"],
+      },
+    },
+    footswitches: {
+      type: "ARRAY",
+      items: {
+        type: "OBJECT",
+        properties: {
+          index: { type: "INTEGER" },
+          label: { type: "STRING" },
+          color: { type: "STRING" },
+          action: {
+            type: "STRING",
+            enum: ["bypass", "snapshot", "tap", "tuner", "looper", "preset-up", "preset-down", "mode"],
+          },
+          snapshotName: { type: "STRING" },
+          targetModelId: { type: "STRING" },
+        },
+        required: ["index", "label", "action"],
+        propertyOrdering: ["index", "label", "color", "action", "snapshotName", "targetModelId"],
+      },
+    },
+    programming: STRINGS,
+    tips: STRINGS,
   },
-  required: ["name", "tempo", "blocks"],
+  required: ["name", "tempo", "tuning", "guitarist", "originalGear", "fingerprint", "summary", "blocks", "snapshots", "footswitches", "tips"],
+  propertyOrdering: [
+    "error",
+    "guitarist",
+    "tuning",
+    "tempo",
+    "originalGear",
+    "fingerprint",
+    "summary",
+    "name",
+    "blocks",
+    "snapshots",
+    "footswitches",
+    "programming",
+    "tips",
+  ],
 };
 
 export const BPM_RESPONSE_SCHEMA = {
@@ -304,14 +405,18 @@ export const BPM_RESPONSE_SCHEMA = {
 
 export async function geminiJson(
   prompt: string,
-  opts?: { system?: string; schema?: unknown },
+  opts?: { system?: string; schema?: unknown; thinkingBudget?: number; maxOutputTokens?: number },
 ): Promise<unknown> {
   const { google, gateway } = collectResearchKeys();
   if (!google && !gateway) {
     throw new Error("Song research isn't configured on this copy yet. Try a featured demo, or try again later.");
   }
   const system = opts?.system ?? SYSTEM;
-  const schema = opts?.schema;
+  const gOpts: GoogleOpts = {
+    schema: opts?.schema,
+    thinkingBudget: opts?.thinkingBudget,
+    maxOutputTokens: opts?.maxOutputTokens,
+  };
 
   const errors: string[] = [];
   const read = async (text: string, repair: () => Promise<string>): Promise<unknown | null> => {
@@ -334,13 +439,13 @@ export async function geminiJson(
   const tryGoogle = async (userPrompt: string) => {
     if (!google) return null;
     try {
-      const text = await googleGenerate(google, userPrompt, system, schema);
+      const text = await googleGenerate(google, userPrompt, system, gOpts);
       return await read(text, () =>
         googleGenerate(
           google,
           `${userPrompt}\n\nThe previous answer was not valid JSON. Reply with one JSON object only.`,
           system,
-          schema,
+          gOpts,
         ),
       );
     } catch (err) {

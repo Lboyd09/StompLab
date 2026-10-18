@@ -2,7 +2,6 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Preset } from "../data/types.ts";
 import { DEMO_IDS, FEATURED } from "../data/featured.ts";
-import { focusGuitarRole } from "./guitar-role.ts";
 import { isAmpOrCab, playableIssues, sanitizeSnapshots } from "./snapshot-sanitize.ts";
 
 function preset(partial: Partial<Preset> = {}): Preset {
@@ -105,18 +104,6 @@ describe("sanitizeSnapshots", () => {
       assert.ok(snap.enabledBlocks.includes("cab"));
     }
     assert.deepEqual(playableIssues(out), []);
-  });
-
-  it("keeps intro when the player picks rhythm or lead, and drops the other part", () => {
-    const sand = FEATURED.find((p) => p.id === "featured-sandman")!;
-    const rhythm = focusGuitarRole(sand, "rhythm");
-    assert.deepEqual(rhythm.snapshots.map((s) => s.name), ["Intro", "Rhythm"]);
-    const lead = focusGuitarRole(sand, "lead");
-    assert.deepEqual(lead.snapshots.map((s) => s.name), ["Intro", "Lead"]);
-    const both = focusGuitarRole(sand, "both");
-    assert.equal(both.snapshots.length, 3);
-    const teen = focusGuitarRole(FEATURED.find((p) => p.id === "featured-teen-spirit")!, "rhythm");
-    assert.deepEqual(teen.snapshots.map((s) => s.name), ["Clean", "Verse", "Hello"]);
   });
 
   it("keeps amp/cab on every demo snapshot", () => {

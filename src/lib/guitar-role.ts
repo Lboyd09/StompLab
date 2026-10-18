@@ -1,5 +1,4 @@
-import type { GuitarArrangement } from "@/data/guitar-parts";
-import type { Preset } from "@/data/types";
+import { guitarArrangement, type GuitarArrangement } from "@/data/guitar-parts";
 
 export const GUITAR_ROLE_IDS = ["rhythm", "lead", "both"] as const;
 export type GuitarRole = (typeof GUITAR_ROLE_IDS)[number];
@@ -8,34 +7,53 @@ export function parseGuitarRole(value: string | null | undefined): GuitarRole {
   return value === "rhythm" || value === "lead" || value === "both" ? value : "both";
 }
 
-const LEAD_NAME = /\b(lead|solo|lick)\b/i;
-const RHYTHM_NAME = /\b(rhythm|chug|riff)\b/i;
-
 /**
- * Drop the other guitar part when the player picked rhythm or lead.
- * Intro / verse / hello stay — they are not a lead or a rhythm name.
- * No-op if that would empty the preset or nothing matches.
+ * Which part a song build targets. The owner's rule: a looked-up guitar song is
+ * always the LEAD player's part. Whatever the client sent is ignored.
+ *
+ * - Bass: "both" (one bassist, unchanged).
+ * - A song we know has two guitar parts: "lead".
+ * - Anything else (one guitarist, or we don't know): "both". The prompt still
+ *   asks for the lead / featured part if the record turns out to have two.
+ *
+ * The value is also the last field of the v11 cache key, so "both" keeps every
+ * one-guitarist row and "lead" keeps the lead rows already built.
  */
-export function focusGuitarRole(preset: Preset, role: GuitarRole): Preset {
-  if (role === "both" || preset.instrument === "bass") return preset;
-  const drop = role === "lead" ? RHYTHM_NAME : LEAD_NAME;
-  const keep = role === "lead" ? LEAD_NAME : RHYTHM_NAME;
-  const snapshots = preset.snapshots.filter((s) => !(drop.test(s.name) && !keep.test(s.name)));
-  if (!snapshots.length || snapshots.length === preset.snapshots.length) return preset;
-  const ids = new Set(snapshots.map((s) => s.id));
-  return {
-    ...preset,
-    snapshots,
-    footswitches: preset.footswitches.filter((f) => {
-      if (f.action !== "snapshot") return true;
-      return f.snapshotId != null && ids.has(f.snapshotId);
-    }),
-  };
+export function songBuildRole(
+  instrument: "guitar" | "bass",
+  song: string,
+  artist: string | undefined,
+): GuitarRole {
+  if (instrument === "bass") return "both";
+  return guitarArrangement(song, artist) === "dual" ? "lead" : "both";
 }
 
 /**
- * Gemini brief. Rhythm and lead are different guitarists, not a Drive nudge.
- * "both" means one guitarist — do not invent a second part.
+ * Featured library, decided without the guitar role: the free demos go to
+ * everyone, the other featured rigs to paying players. A paid player on a
+ * two-guitar song still gets the hand-built demo, never a generated part.
+ */
+export function libraryServesFeatured(isDemo: boolean, paid: boolean): boolean {
+  return isDemo || paid;
+}
+
+const LEAD_PART = [
+  "LEAD GUITARIST'S PART, THE WHOLE SONG. This record has more than one guitar part. Build the lead player's part: the player who plays the solo, the signature lines, and the hooks.",
+  "Research THAT player's guitar, pickup, amp and channel, and pedals on this session.",
+  "Snapshots follow that one player through the song: their intro, their verse, their chorus, their solo. Add a snapshot only where their tone changes. If they play rhythm under the vocal, that is their verse tone, on their rig.",
+  "Never the rhythm guitarist's chain. Never a blend of two players in one preset or one snapshot.",
+  "Example: Guns N' Roses is Slash's Les Paul and Marshall, not Izzy Stradlin's rig.",
+].join(" ");
+
+const ONE_PART = [
+  "Build the part of the guitarist who carries this song, through the whole song.",
+  "If the record has more than one electric guitar part (a rhythm bed under a lead line, a second player, ambient swells over chords), build the LEAD part: the one with the solo, the melodic lines, and the hooks. Never the rhythm-only part, never a blend of two players.",
+  "Snapshots are that one player's tone changes (clean vs dirty, the solo), not a second guitarist.",
+].join(" ");
+
+/**
+ * Gemini brief for whose part this is. Guitar songs are always the lead part
+ * (owner decision); a one-guitarist song is just that guitarist.
  */
 export function guitarRolePrompt(
   role: GuitarRole,
@@ -45,23 +63,6 @@ export function guitarRolePrompt(
   if (instrument === "bass") {
     return "Bass: one player. Snapshots are tone changes of that bass (finger vs pick, clean vs grind), not a guitar-style solo boost. Do not invent a second bassist.";
   }
-  if (role === "rhythm" || (arrangement === "dual" && role !== "lead")) {
-    return [
-      "RHYTHM GUITARIST ONLY. Research THAT player's guitar, pickups, amp, channel, and pedals.",
-      "Do not research the lead guitarist. Do not return the lead chain with Drive or Ch Vol turned down.",
-      "No lead snapshot, no solo boost, no solo delay, no wah that belongs to the other player.",
-      "Example: Metallica rhythm is James's Explorer, Tube Screamer, and Recto chug — not Kirk's lead guitar.",
-      "One rig. Snapshots are tone changes of the rhythm part only (clean intro vs the riff).",
-    ].join(" ");
-  }
-  if (role === "lead") {
-    return [
-      "LEAD GUITARIST ONLY. Research THAT player's guitar, pickups, amp, and pedals as a different rig.",
-      "Not the rhythm chain with Drive, Ch Vol, or Presence nudged. Different guitar if they played one. Different gain. Different effects (wah, boost, delay) if that player used them.",
-      "Do not include the rhythm chug, the rhythm guitarist's guitar, or a 'both parts' snapshot.",
-      "Example: Metallica lead is Kirk's guitar and lead tone, not James's scooped Recto with the volume up.",
-      "One rig for the lead part. If a song's 'lead' is just the rhythm tone played higher, say so and still build the lead player's chain, not a mash of both.",
-    ].join(" ");
-  }
-  return "One guitarist carries this song. Build that one rig. Do not invent a second guitarist, a lead snapshot, or a rhythm-plus-lead mash. Snapshots are tone changes of this part only (clean vs dirty), not two players.";
+  if (role === "lead" || arrangement === "dual") return LEAD_PART;
+  return ONE_PART;
 }

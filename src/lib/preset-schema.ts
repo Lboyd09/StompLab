@@ -49,10 +49,17 @@ function coerceNum(v: unknown): number | undefined {
   return undefined;
 }
 
+/** Knobs arrive as {Knob: value} or, from the response schema, as [{name, value}]. */
 function coerceParams(raw: unknown): Record<string, number> {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return {};
+  if (!raw || typeof raw !== "object") return {};
+  const entries: [string, unknown][] = Array.isArray(raw)
+    ? raw
+        .filter((k): k is { name: unknown; value: unknown } => Boolean(k) && typeof k === "object" && "name" in k)
+        .map((k) => [String(k.name ?? "").trim(), k.value])
+    : Object.entries(raw as Record<string, unknown>);
   const out: Record<string, number> = {};
-  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+  for (const [k, v] of entries) {
+    if (!k) continue;
     const n = coerceNum(v);
     if (n !== undefined) out[k] = n;
   }
@@ -67,11 +74,18 @@ export const BlockOut = z.object({
   params: Params.optional(),
 });
 
+/** Overrides arrive as {modelId: knobs} or, from the response schema, as [{modelId, params}]. */
 const Overrides = z.preprocess((v) => {
-  if (!v || typeof v !== "object" || Array.isArray(v)) return {};
+  if (!v || typeof v !== "object") return {};
   const out: Record<string, Record<string, number>> = {};
-  for (const [modelId, params] of Object.entries(v as Record<string, unknown>)) {
-    out[modelId] = coerceParams(params);
+  const entries: [string, unknown][] = Array.isArray(v)
+    ? v
+        .filter((o): o is { modelId: unknown; params: unknown } => Boolean(o) && typeof o === "object" && "modelId" in o)
+        .map((o) => [String(o.modelId ?? "").trim(), o.params])
+    : Object.entries(v as Record<string, unknown>);
+  for (const [modelId, params] of entries) {
+    if (!modelId) continue;
+    out[modelId] = { ...out[modelId], ...coerceParams(params) };
   }
   return out;
 }, z.record(z.string(), z.record(z.string(), z.number())));
@@ -79,6 +93,8 @@ const Overrides = z.preprocess((v) => {
 export const PresetOut = z.object({
   name: z.string(),
   tempo: z.preprocess((v) => coerceNum(v) ?? 120, z.number()),
+  tuning: z.string().optional().default(""),
+  guitarist: z.string().optional().default(""),
   summary: z.string().optional().default(""),
   fingerprint: z.string().optional().default(""),
   originalGear: z
@@ -108,6 +124,8 @@ export const PresetOut = z.object({
         name: z.string(),
         color: z.string().optional().default("#c5c9c2"),
         enabledModelIds: z.array(z.string()).optional(),
+        sections: z.string().optional().default(""),
+        changes: z.string().optional().default(""),
         notes: z.string().optional().default(""),
         paramOverrides: Overrides.optional(),
       }),
@@ -220,7 +238,7 @@ export function toPreset(
       name: s.name || `Snap ${i + 1}`,
       color: s.color || "#c5c9c2",
       enabledBlocks: enabled,
-      notes: s.notes,
+      notes: snapshotNotes(s),
       paramOverrides: Object.keys(paramOverrides).length ? paramOverrides : undefined,
     };
   });
@@ -244,9 +262,15 @@ export function toPreset(
     });
 
   const fingerprint = (out.fingerprint ?? "").trim();
-  const summary = fingerprint && !out.summary.toLowerCase().includes(fingerprint.slice(0, 28).toLowerCase())
+  let summary = fingerprint && !out.summary.toLowerCase().includes(fingerprint.slice(0, 28).toLowerCase())
     ? `${fingerprint} ${out.summary}`.trim()
     : out.summary;
+  const guitarist = out.guitarist.trim();
+  if (guitarist && meta.source === "song" && !summary.toLowerCase().includes(guitarist.toLowerCase().split(/[\s(—,-]+/)[0])) {
+    summary = `${summary} Part: ${guitarist}.`.trim();
+  }
+  const tuning = tuningTip(out.tuning);
+  const tips = tuning && !out.tips.some((t) => sameTuningTip(t, tuning)) ? [tuning, ...out.tips] : out.tips;
 
   return sanitizeSnapshots({
     id: newId("pst"),
@@ -265,9 +289,47 @@ export function toPreset(
     snapshots,
     footswitches,
     programming: out.programming,
-    tips: out.tips,
+    tips,
     playbackTarget: meta.playbackTarget,
   });
+}
+
+/** What the player reads under a snapshot: which sections it covers and what changes. */
+function snapshotNotes(s: { sections?: string; changes?: string; notes?: string }): string {
+  const sections = (s.sections ?? "").trim();
+  const what = (s.changes ?? "").trim() || (s.notes ?? "").trim();
+  if (!sections) return what;
+  if (!what) return sections;
+  return `${sections}: ${what}`;
+}
+
+/** A model tip that already says the same retune, so it is not said twice. */
+function sameTuningTip(tip: string, ours: string): boolean {
+  const t = tip.toLowerCase();
+  if (/half step/i.test(ours)) return /half[- ]step|\beb standard\b|e♭/.test(t);
+  if (/whole step/i.test(ours)) return /whole[- ]step|\bd standard\b/.test(t);
+  if (/^drop d/i.test(ours)) return /\bdrop d\b/.test(t);
+  return /\btun(e|ed|ing)\b/.test(t);
+}
+
+/**
+ * One plain tip for a tuning that is not E standard. No pitch block is added:
+ * the player retunes the guitar.
+ */
+export function tuningTip(raw: string | undefined): string | null {
+  const t = (raw ?? "").replace(/♭/g, "b").replace(/♯/g, "#").trim();
+  if (!t) return null;
+  const lower = t.toLowerCase();
+  if (/^(standard|e standard|standard e|e)(\s*\(.*\))?$/.test(lower) || /^standard tuning/.test(lower)) return null;
+  if (/\bdrop d\b/.test(lower) && !/half|eb|d#/.test(lower)) return "Drop D: tune the low E string down to D.";
+  if (/\b(eb|d#|e flat)\b|half[- ]step|semitone down/.test(lower) && !/drop/.test(lower)) {
+    return "Tune down a half step (Eb standard), like the record.";
+  }
+  if (/\bd standard\b|whole[- ]step|full step|one step down/.test(lower) && !/drop/.test(lower)) {
+    return "Tune down a whole step (D standard), like the record.";
+  }
+  if (/standard/.test(lower) && /^e\b/.test(lower)) return null;
+  return `Tuning on the record: ${t.slice(0, 60)}.`;
 }
 
 export function overlayUserGear(preset: Preset, gear: UserGear[]): Preset {
@@ -354,13 +416,13 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"name":"<=18 chars","tempo":96,"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, real rig, HX stand-ins. Only distinctive TONE changes named. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how it was used on the record"}],"blocks":[{"modelId":"catalog-id","enabled":true,"params":{"Drive":4.5,"Bass":5.0,"Mid":6.0,"Treble":5.5,"Output":6.0,"Mic":0}}],"snapshots":[{"name":"ToneA","color":"#7d9a6a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":3.0,"Ch Vol":5.2}},"notes":"why this tone is different"},{"name":"ToneB","color":"#e24a3a","enabledModelIds":["dirt-id","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":6.2}},"notes":"loud section — not a copy of ToneA"}],"footswitches":[{"index":1,"label":"TONEA","color":"#7d9a6a","action":"snapshot","snapshotName":"ToneA"},{"index":2,"label":"TONEB","color":"#e24a3a","action":"snapshot","snapshotName":"ToneB"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"noise-gate"},{"index":5,"label":"EQ","color":"#c6e800","action":"bypass","targetModelId":"cali-q-graphic"}],"programming":["step"],"tips":["how to play it like the record"]}
-Params MUST be JSON numbers 0-10. Set EVERY factory knob. Cab Mic is 0 (SM57). Every snapshot's enabledModelIds MUST include the amp and the cab — omitting them mutes the path. Only snapshots that change the tone. If the record used a gate or dedicated EQ, include those blocks and spare FS bypass. Do not copy the example modelIds — pick from the catalog for THIS song.`;
+  return `{"guitarist":"whose part this is, e.g. 'Slash (lead guitar)'","tuning":"E standard | Eb standard | D standard | Drop D | ...","tempo":96,"originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how and where it was used on the record, with any published settings"}],"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, which player, real rig, HX stand-ins. <=240 chars","name":"<=18 chars","blocks":[{"modelId":"catalog-id","enabled":true,"params":[{"name":"Drive","value":4.5},{"name":"Bass","value":5.0},{"name":"Mid","value":6.0},{"name":"Treble","value":5.5},{"name":"Ch Vol","value":5.8}]}],"snapshots":[{"name":"Clean Intro","sections":"Intro, Verse 1","changes":"what this player's tone does here and why: dirt off, neck pickup, amp Drive down","color":"#7d9a6a","enabledModelIds":["amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":1.8},{"name":"Ch Vol","value":6.4}]}]},{"name":"Chorus","sections":"Chorus 1, Chorus 2, Outro","changes":"drive pedal on, gate on","color":"#e24a3a","enabledModelIds":["gate-id","dirt-id","amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.2},{"name":"Ch Vol","value":5.8}]}]},{"name":"Solo","sections":"Guitar solo","changes":"boost on for the lift, delay on","color":"#f5d000","enabledModelIds":["gate-id","dirt-id","kinky-boost","amp-id","cab-id","delay-id","reverb-id"],"paramOverrides":[{"modelId":"kinky-boost","params":[{"name":"Boost","value":10},{"name":"Drive","value":1.2}]}]}],"footswitches":[{"index":1,"label":"CLEAN INTRO","color":"#7d9a6a","action":"snapshot","snapshotName":"Clean Intro"},{"index":2,"label":"CHORUS","color":"#e24a3a","action":"snapshot","snapshotName":"Chorus"},{"index":3,"label":"SOLO","color":"#f5d000","action":"snapshot","snapshotName":"Solo"},{"index":4,"label":"GATE","color":"#c5c9c2","action":"bypass","targetModelId":"noise-gate"}],"programming":["step"],"tips":["pickup, pick, guitar volume, and tuning so it plays like the record"]}
+params are arrays of {"name","value"}: knob names from the catalog line for that model, values JSON numbers 0-10 (whole-number knobs like Note and Mic carry their real setting). Set every knob that shapes the tone. Cab Mic is 0 (SM57). Every snapshot's enabledModelIds MUST include the amp and the cab — omitting them mutes the path. Only snapshots that change the tone. Do not copy the example modelIds, names, or numbers — pick from the catalog and the record for THIS song.`;
 }
 
 export function jsonSchemaHintCustom() {
-  return `{"name":"<=18 chars","tempo":96,"summary":"what you built and why — not a song title. <=240 chars","originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"blocks":[{"modelId":"minotaur","enabled":true,"params":{"Drive":4.8,"Treble":5.2,"Output":6.0}}],"snapshots":[{"name":"Rhythm","color":"#c5c9c2","enabledModelIds":["minotaur","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.2,"Ch Vol":5.4}},"notes":""},{"name":"Lead","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost","amp-id","cab-id"],"paramOverrides":{"amp-id":{"Drive":4.6,"Ch Vol":6.4},"minotaur":{"Drive":5.6}},"notes":"lift, not a copied solo from a record"}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"noise-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
-Params MUST be JSON numbers 0-10. Set EVERY factory knob. Every snapshot's enabledModelIds MUST include the amp and the cab. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
+  return `{"guitarist":"custom","tuning":"E standard unless they asked","tempo":96,"originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"gear this description implies","notes":"how it is used in THIS custom rig"}],"fingerprint":"","summary":"what you built and why — not a song title. <=240 chars","name":"<=18 chars","blocks":[{"modelId":"minotaur","enabled":true,"params":[{"name":"Gain","value":4.8},{"name":"Tone","value":5.2},{"name":"Level","value":6.0}]}],"snapshots":[{"name":"Rhythm","sections":"main part","changes":"","color":"#c5c9c2","enabledModelIds":["minotaur","amp-id","cab-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.2},{"name":"Ch Vol","value":5.4}]}]},{"name":"Lead","sections":"solo","changes":"lift, not a copied solo from a record","color":"#e24a3a","enabledModelIds":["minotaur","kinky-boost","amp-id","cab-id"],"paramOverrides":[{"modelId":"kinky-boost","params":[{"name":"Boost","value":10},{"name":"Drive","value":1.2}]}]}],"footswitches":[{"index":1,"label":"RHYTHM","color":"#c5c9c2","action":"snapshot","snapshotName":"Rhythm"},{"index":4,"label":"GATE","color":"#f5d000","action":"bypass","targetModelId":"noise-gate"}],"programming":["step"],"tips":["how to play THIS sound"]}
+params are arrays of {"name","value"}: knob names from the catalog line for that model, values JSON numbers 0-10. Set every knob that shapes the tone. Every snapshot's enabledModelIds MUST include the amp and the cab. This is a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo chain.`;
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
@@ -389,7 +451,20 @@ const KNOB_RULES = `KNOBS: use the knob names listed for each model (the list is
 - On/off knobs (Boost, Bright, Peak Type): 10 = on, 0 = off.
 - Set every knob that shapes this tone. A knob you leave out keeps Line 6's factory default.`;
 
-const DELAY_RULES = `DELAY: to follow the song tempo set Note: 8 = dotted eighth (U2 / worship), 6 = quarter, 9 = eighth, 5 = dotted quarter, 12 = sixteenth, 7 = quarter triplet. For a free-running delay leave Note out and set Time. Lead and solo delay Mix ≤ 2.5 and Feedback ≤ 3.5.`;
+const DELAY_RULES = `DELAY: to follow the song tempo set Note: 8 = dotted eighth (U2 / worship), 6 = quarter, 9 = eighth, 5 = dotted quarter, 12 = sixteenth, 7 = quarter triplet. Work it out from the BPM: a quarter note is 60000 / BPM ms, a dotted eighth is 0.75 of that; if the record's repeat lands on one of those, use the Note. For a slapback or a time that does not follow the beat, leave Note out and set Time (value × 100 ms). Lead and solo delay Mix ≤ 2.5 and Feedback ≤ 3.5.`;
+
+/**
+ * Where the hand-built demos (src/data/featured.ts) sit. They A/B well on
+ * hardware, so generated presets are calibrated to the same ranges.
+ */
+const REFERENCE_LEVELS = `REFERENCE SETTINGS (from hand-built presets that A/B well on hardware — stay in these ranges unless the record or a published setting says otherwise):
+- Amp: Ch Vol 5.4–6.2, Master 4.6–5.6, Presence 3–5.5, Sag 2.8–4.2. Clean sound on any amp: Drive 0.6–1.8. Edge of breakup / chime (AC30, Deluxe, Plexi low): 2.5–3.5. Classic rock crunch (Plexi, JCM800 with no pedal): 4.5–6. Rectifier-style riff with no pedal: about 5–5.5. A high-gain amp behind a Tube Screamer: 3.4–3.8 — the pedal tightens, the amp is not dimed.
+- Tube Screamer as a tightener: Gain 1–2.5, Level 7–8, Tone 5–5.5. A distortion pedal that is the dirt into a clean amp: about noon, or the published setting.
+- Solo lift: kinky-boost with Boost 10 (its switch on) and Drive 1–1.5 — roughly +3 dB. Keep the amp's Drive and Ch Vol where the riff had them (Ch Vol +0.5 at most).
+- Delay: lead Mix 1.8–2.5, Feedback 2.5–3.5. Slapback Mix 1.5–2.5, one repeat. An ambient part whose dotted eighth is part of the sound (U2 / worship): Mix 3–4, Feedback 3–4.5 on those snapshots.
+- Reverb: a dry studio rock guitar is Room/Plate Mix 1–2, Decay 1.5–3.5. A ballad or ambient record can sit at Mix 2.5–4. Never a big hall at Mix 5+ unless the record is a wash.
+- Cab: Mic 0 (57), Distance 1.6–3, Low Cut 2–2.8, High Cut 7–8, Early Refl 2.2–4.2.
+- Gate: Threshold 1.6–1.8, Decay 2.4.`;
 
 export function systemForDevice(
   stompModel: StompModelId,
@@ -415,17 +490,19 @@ ${exportRule}
 ${KNOB_RULES}
 ${DELAY_RULES}
 
+${REFERENCE_LEVELS}
+
 This unit:
 - Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after originalGear is filled.
 - Every block must be on that recording. No spare chorus/hall/comp.
-- GATE: when the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp. Threshold 1.6–2.0, Decay about 2.4, Level 5. Bypass it on every clean or intro snapshot. Never add hard-gate. A hot threshold mutes the snapshot.
+- GATE: when the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp. Threshold 1.6–2.0, Decay about 2.4, Level 5. Bypass it on every clean snapshot. Never add hard-gate. A hot threshold mutes the snapshot.
 - EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
 - Cab Mic = 0 (57 Dynamic) unless the session used something else — a number, never a string.
 - EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
 - GAIN: never dime Drive unless the session documented it. Distortion pedals ~noon (4.5–6.5) unless a published number exists (use that). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.2–2.4 clean intro, 3–4.5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. Tight chug = TS + moderate amp Drive (3–4.5), not a wall. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
 - CLEAN OPENING: snapshot 1 matches the recorded intro. Dirt off + Drive ≤ 2.4 when the intro is clean.
-- SOLOS: kinky-boost enabled only on the lead snapshot (Boost 10 = its +boost switch on, Drive 1–2), or a real output lift. Do not only nudge Ch Vol. Do not add Drive to "make a solo."
-- NAMES: snapshot and footswitch labels are 12 characters. Abbreviate (Rhy, Crnch, Chors). Never cut a word in half.
+- SOLOS: kinky-boost enabled only on the solo snapshot (Boost 10 = its +boost switch on, Drive 1–2). Do not only nudge Ch Vol. Do not add Drive to "make a solo."
+- NAMES: name each snapshot for the song section it covers (Intro, Verse, Chorus, Bridge, Solo, Outro). Put "Clean" in the name only when that sound is clean ("Clean Intro"). Use "Solo" or "Lead" only on the solo / lead-break snapshot, never as a prefix on every snapshot. Snapshot and footswitch labels are 12 characters. Abbreviate (Chors, Crnch, Brdg). Never cut a word in half.
 - GEAR: BOSS CE-2 is chorus. BOSS CE-1 and EHX Small Clone are 70s-chorus. BOSS DS-1 is deez-one-vintage, never stupor-od. If a piece is not from a session credit, interview, or published rig, prefix its originalGear notes with "Likely —".
 - VERSE MOD: chorus/vibe that is the verse identity turns OFF for the dry anthem chorus unless the record left it on.
 - SATURATING ECHO: Echorec / tape / Memory Man tracked in front of dirt stays BEFORE the amp. Digital dotted-8th often after.
@@ -440,12 +517,14 @@ ${STAND_INS}
 Order: documented order if known. Else wah → comp → dirt → amp → cab → modulation → delay → reverb. Echorec / tape echo tracked in front of a cranked amp goes before the amp. Amp+cab as a pair.
 
 Arrangement (mandatory — this is how you miss a song):
-- Only snapshots that change the TONE. If intro and verse share the same chain and knobs, they are ONE snapshot. Do not invent a snapshot for a lyric section that sounds the same.
-- Name the recorded tone changes in order (Clean, Chorus, Solo). Drop a name when that section is not a different sound.
-- A guitar solo, lead break, or signature trick MUST be its own snapshot when the tone actually changes (boost on, delay Mix up, amp Drive or Ch Vol +1–2). A solo is almost never the rhythm tone. Put those in paramOverrides AND toggle the extra block.
+- Walk the record from the first bar to the last and note what this player's tone does in each section. Only snapshots that change the TONE. If intro and verse share the same chain and knobs, they are ONE snapshot. Do not invent a snapshot for a lyric section that sounds the same.
+- Every snapshot fills "sections" (which parts of the song use it, in order) and "changes" (what is different from the snapshot before — block on/off, pickup, Drive, delay/reverb amount — and why, from the record).
+- Snapshots go in song order (first sound first). Drop a section when it is not a different sound.
+- A guitar solo, lead break, or signature trick MUST be its own snapshot when the tone actually changes (boost on, delay on, scoop off). A solo is almost never the rhythm tone. Put those in paramOverrides AND toggle the extra block.
+- Loudness: sections should sit at the same level as on the record. A clean snapshot gets Ch Vol about +0.5–1 over the dirty one (clean sounds quieter at the same knob). A solo is a small lift (the boost), not a jump.
 - Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in that order. No TAP on FS1–3.
 
-programming = unit steps. tips = pick, pickup, and guitar volume so the player can match the record.`;
+programming = unit steps. tips = pick, pickup, guitar volume, and tuning so the player can match the record.`;
 }
 
 /** Song-specific research brief. Catalog + schema are appended by the caller. */
@@ -460,24 +539,24 @@ export function songResearchInstructions(
   const billed = (artist ?? "").trim();
   const who = billed ? `${title} by ${billed}` : title;
   return `Song: ${who}
-Instrument: ${instrument} as it was TRACKED on the record (not a cover, not a live-only tour).
+Instrument: ${instrument} as it was TRACKED on the record: the original studio album version (not a cover, a live version, a remaster with new parts, or a re-recording).
 
 If you cannot identify a real commercially released recording matching this title with high confidence — gibberish, fake titles, or not a song — do NOT invent a preset. Reply only: {"error":"unknown_song","message":"not a real song"}.
 
-Fill originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
+${guitarRolePrompt(parseGuitarRole(guitarRole), instrument, guitarArrangement(song, artist))}
+Fill guitarist (whose part), tuning, and originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Include the guitar and the pickup position used, and any published amp or pedal settings in the notes. Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
 If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.
 Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
-If the recorded opening is clean, snapshot 1 is clean — dirt pedals off, Drive 1.2–2.4, Master between 3.4 and 5.2, gate off.
+If the recorded opening is clean, snapshot 1 is clean and named with "Clean" — dirt pedals off, Drive 1.2–2.4, Master between 3.4 and 5.2, gate off. If the opening is dirty (a riff), snapshot 1 is that riff tone.
 If the session used a clean preamp as a pedal platform, pick the clean channel. The pedal is the dirty channel.
-Solos and leads: enable kinky-boost (Boost 10, Drive 1–2) on that snapshot only. Do not only nudge Ch Vol. Do not add Drive.
+Solos: enable kinky-boost (Boost 10, Drive 1–2) on the solo snapshot only. Do not only nudge Ch Vol. Do not add Drive.
 Delays: Note = 8 for a dotted eighth, 6 for a quarter, or leave Note out and set Time for a free-running delay. Lead delay Mix ≤ 2.5 and Feedback ≤ 3.5.
-Snapshot names are 12 characters. Abbreviate before you cut a word (Rhy not RHYTHM CRUNC).
-Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is almost never the rhythm tone — its own snapshot, paramOverrides so they actually export.
+Snapshot names are 12 characters and name the song section (Intro, Verse, Chorus, Solo). Abbreviate before you cut a word.
+Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is its own snapshot when the tone changes, with paramOverrides so it actually exports.
 When the chain has an amp and cab, every snapshot's enabledModelIds MUST list them. Omitting them mutes the snapshot.
-Tuning: state the record's tuning in tips (for example "Eb standard — tune down a half step" or "Drop D"). Do not add a pitch block for tuning unless asked.
+Tuning: put the record's tuning in "tuning" (E standard, Eb standard, D standard, Drop D, ...). Do not add a pitch block for tuning.
 ${instrument === "bass" ? "Bass: no noise-gate unless the record is high-gain; no kinky-boost; bass cab Low Cut 0.5–1 (35–50 Hz) so the low E stays." : ""}
-${guitarRolePrompt(parseGuitarRole(guitarRole), instrument, guitarArrangement(song, artist))}
-When the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp (Threshold 1.6–2, off on clean snapshots). Never hard-gate. Add a dedicated EQ only if the session used one. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3 or higher. Volume pedal never at 0.
+When the chain has a high-gain amp or a drive pedal, add noise-gate in front of the amp (Threshold 1.6–2, off on clean snapshots). Never hard-gate. Add a dedicated EQ only if the session used one. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3.2 or higher. Volume pedal never at 0.
 If gear is not from a session credit or published rig, prefix that originalGear note with "Likely —".
 BOSS CE-2 → chorus. CE-1 and Small Clone → 70s-chorus.
 ${wahLine ? `\n${wahLine}` : ""}`;
@@ -532,14 +611,13 @@ export function customSoundInstructions(
   description: string,
   instrument: "guitar" | "bass",
   wahLine?: string,
-  guitarRole: GuitarRole = "both",
+  _guitarRole: GuitarRole = "both",
   playerName?: string,
 ) {
   const player = (playerName ?? "").trim();
   const playerBlock = player
     ? `Optional player to evoke (not a cover of a named song): ${player}. Capture their typical guitar, amp, gain structure, and attack. Still a CUSTOM sound — do not name a real song in summary. Do not copy a featured demo.`
     : `Do not copy a player rig from memory (Cobain, Hetfield, Gilmour, Frusciante, Morello, Edge, etc.) unless the player named them.`;
-  const role = parseGuitarRole(guitarRole);
   return `CUSTOM SOUND (not a song). Instrument: ${instrument}.
 Player description:
 ${description.trim()}
@@ -549,10 +627,68 @@ ${playerBlock}
 If the description is a feeling ("warm broken-up American clean") pick the closest catalog amp and set knobs — still original, not a named-song patch.
 Listener test: would a player who typed that sentence recognize this preset as what they asked for, not as a cover of a hit?
 When the chain has an amp and cab, every snapshot's enabledModelIds MUST include them.
-${
-  role === "both"
-    ? "Build the one rig they described. Do not invent a second guitarist."
-    : guitarRolePrompt(role, instrument, "dual")
-}
+Build the one rig they described. Do not invent a second guitarist.
 ${wahLine ? `\n${wahLine}` : ""}`;
+}
+
+/** System line for the grounded look at the record (step 1 of a song build). */
+export const RECORD_NOTES_SYSTEM =
+  "Session guitarist and Line 6 preset designer doing homework before programming a patch. Search the web for the studio recording. Report facts, not a preset. Mark anything you could not confirm with 'likely'. Reply with one JSON object only, no markdown.";
+
+/**
+ * Step 1 prompt: what a session player looks up before matching a record.
+ * The answer is plain text (search grounding cannot return a JSON schema on
+ * 2.5 Flash), read loosely by parseRecordNotes.
+ */
+export function recordNotesPrompt(
+  song: string,
+  artist: string,
+  album: string,
+  instrument: "guitar" | "bass",
+  guitarRole: GuitarRole = "both",
+): string {
+  const part =
+    instrument === "bass"
+      ? "the bass part"
+      : guitarRole === "lead"
+        ? "the LEAD guitarist's part (the player with the solo and the signature lines), not the rhythm player"
+        : "the main guitar part; if the record has more than one electric guitar part, the lead / featured part";
+  return `Look up the original studio album version of "${song}" by ${artist}${album ? ` (album ${album})` : ""}. Focus on ${part}.
+Return one JSON object with short values:
+{"bpm": album tempo as a number (0 if unsure),
+ "tuning": "E standard | Eb standard | D standard | Drop D | ...",
+ "guitarist": "who played this part on the record",
+ "guitar": "guitar model and pickup position used",
+ "amp": "amp model, channel, and any published settings",
+ "pedals": "pedals in signal order, with settings and which sections they are on",
+ "cab": "cab, speakers, mic if known",
+ "gain": "clean / edge of breakup / crunch / high gain, per section",
+ "eq": "brightness, mids, scoop, any studio EQ",
+ "delay": "type, time as a note value at this tempo or in ms, how wet",
+ "reverb": "type and how wet (dry / subtle / washy)",
+ "sections": [{"section": "Intro", "tone": "what the part sounds like and what changes"}],
+ "sources": ["site names"]}
+Studio recording, not a live rig or a later tour board. If you find nothing for a field, say "unknown".`;
+}
+
+/** Loose read of the step 1 answer: a compact fact sheet for the preset prompt, plus the tempo. */
+export function parseRecordNotes(text: string | null | undefined): { notes: string; bpm: number | null } {
+  const raw = (text ?? "").trim();
+  if (!raw) return { notes: "", bpm: null };
+  let notes = raw;
+  let bpm: number | null = null;
+  try {
+    const obj = extractJson(raw) as Record<string, unknown>;
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
+      bpm = Number(obj.bpm) || null;
+      const rest = { ...obj };
+      delete rest.bpm;
+      notes = JSON.stringify(rest);
+    }
+  } catch {
+    const m = raw.match(/\b(\d{2,3}(?:\.\d+)?)\s*bpm\b/i);
+    if (m) bpm = Number(m[1]);
+  }
+  if (bpm !== null && (!Number.isFinite(bpm) || bpm < 40 || bpm > 240)) bpm = null;
+  return { notes: notes.slice(0, 3500), bpm: bpm === null ? null : Math.round(bpm) };
 }

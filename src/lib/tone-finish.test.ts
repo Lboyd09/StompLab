@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Preset } from "@/data/types.ts";
-import { finishTone } from "./tone-finish.ts";
+import { finishTone, snapshotLoudness } from "./tone-finish.ts";
 import { fitSnapshotName } from "./snapshot-sanitize.ts";
 
 function preset(partial: Partial<Preset>): Preset {
@@ -45,7 +45,7 @@ describe("finishTone", () => {
           },
         ],
         snapshots: [
-          { id: "s1", name: "Intro", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
+          { id: "s1", name: "Clean Intro", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
           { id: "s2", name: "RHYTHM CRUNCH", color: "#f00", enabledBlocks: ["d", "a", "c", "e"], notes: "" },
           { id: "s3", name: "Lead", color: "#ff0", enabledBlocks: ["d", "a", "c", "e"], notes: "" },
         ],
@@ -68,6 +68,88 @@ describe("finishTone", () => {
     assert.ok((lead?.paramOverrides?.[delay!.id]?.Feedback ?? 10) <= 3.5);
     assert.equal(out.snapshots.some((s) => s.name === "RHYTHM CRUNC"), false);
     assert.ok(out.snapshots.some((s) => s.name.length <= 12));
+  });
+
+  const chain = (): Preset["blocks"] => [
+    { id: "d", modelId: "scream-808", enabled: false, path: "main" as const, position: 0, params: { Gain: 2, Level: 8 } },
+    { id: "a", modelId: "brit-2204", enabled: true, path: "main" as const, position: 1, params: { Drive: 5, Master: 5, "Ch Vol": 6 } },
+    { id: "c", modelId: "4x12-greenback-25", enabled: true, path: "main" as const, position: 2, params: { Mic: 0 } },
+  ];
+  const boostOn = (out: Preset, name: string) => {
+    const snap = out.snapshots.find((s) => s.name === name)!;
+    return snap.enabledBlocks.some((id) => out.blocks.find((b) => b.id === id)?.modelId === "kinky-boost");
+  };
+
+  it("boosts only the solo when snapshots are named by section", () => {
+    const out = finishTone(
+      preset({
+        originalGear: [],
+        blocks: chain(),
+        snapshots: [
+          { id: "s1", name: "Verse", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
+          { id: "s2", name: "Chorus", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+          { id: "s3", name: "Solo", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+        ],
+      }),
+    );
+    assert.equal(boostOn(out, "Verse"), false);
+    assert.equal(boostOn(out, "Chorus"), false);
+    assert.equal(boostOn(out, "Solo"), true);
+  });
+
+  it("does not boost every snapshot when every name says lead", () => {
+    const out = finishTone(
+      preset({
+        originalGear: [],
+        blocks: chain(),
+        snapshots: [
+          { id: "s1", name: "Lead Verse", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
+          { id: "s2", name: "Lead Chorus", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+        ],
+      }),
+    );
+    assert.equal(out.blocks.some((b) => b.modelId === "kinky-boost"), false);
+  });
+
+  it("leaves a dirty intro dirty: only a snapshot named clean is cleaned up", () => {
+    const out = finishTone(
+      preset({
+        originalGear: [],
+        blocks: chain(),
+        snapshots: [
+          { id: "s1", name: "Intro", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+          { id: "s2", name: "Clean Verse", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+        ],
+      }),
+    );
+    const intro = out.snapshots.find((s) => s.name === "Intro")!;
+    const verse = out.snapshots.find((s) => s.name === "Clean Verse")!;
+    assert.ok(intro.enabledBlocks.includes("d"));
+    assert.equal(verse.enabledBlocks.includes("d"), false);
+    assert.ok((verse.paramOverrides?.a?.Drive ?? 10) <= 2.2);
+  });
+
+  it("level-matches snapshots: clean comes up, a solo is a small lift, not a jump", () => {
+    const out = finishTone(
+      preset({
+        originalGear: [],
+        blocks: chain(),
+        snapshots: [
+          { id: "s1", name: "Clean Intro", color: "#fff", enabledBlocks: ["a", "c"], notes: "", paramOverrides: { a: { Drive: 1.5 } } },
+          { id: "s2", name: "Riff", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "" },
+          // The model turned the solo up 2.5 on Ch Vol on top of the boost: that is a 6+ dB jump.
+          { id: "s3", name: "Solo", color: "#fff", enabledBlocks: ["d", "a", "c"], notes: "", paramOverrides: { a: { "Ch Vol": 8.5 } } },
+        ],
+      }),
+    );
+    const loud = (name: string) => snapshotLoudness(out.blocks, out.snapshots.find((s) => s.name === name)!)!;
+    const riff = loud("Riff");
+    // Clean is lifted toward the riff (capped move), solo sits a few dB over it.
+    assert.ok((out.snapshots[0].paramOverrides?.a?.["Ch Vol"] ?? 0) > 6);
+    assert.ok(Math.abs(loud("Clean Intro") - riff) < Math.abs(2 * 6 + 0.4 * 1.5 - riff));
+    const lift = loud("Solo") - riff;
+    assert.ok(lift > 1.5 && lift < 4.5, `solo lift ${lift}`);
+    for (const s of out.snapshots) assert.ok((s.paramOverrides?.a?.["Ch Vol"] ?? 6) >= 3.2);
   });
 
   it("does not reshape a featured demo besides tempo", () => {
