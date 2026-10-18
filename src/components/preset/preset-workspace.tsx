@@ -20,6 +20,7 @@ import { isAmpOrCab } from "@/lib/snapshot-sanitize";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { Link } from "@tanstack/react-router";
+import { Share2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
 import { StompUnit } from "../stomp/stomp-unit";
@@ -31,17 +32,29 @@ import { DownloadBar, EXPORT_MODE_LABEL, ExportModePicker, ImportPanel, type Exp
 import { PresetFeedbackForm } from "../layout/preset-feedback";
 import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
+import { sharePresetFn } from "@/lib/share";
+import { copyText } from "@/lib/clipboard";
+import { FREE_BUILD_LINE } from "@/lib/copy";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { WahSelect } from "../layout/wah-select";
 import { applyWahPreference, parseWahMode, type WahMode } from "@/lib/wah";
 
 export function PresetWorkspace({
   preset,
-  onChange,
+  onChange: onChangeProp,
+  readOnly = false,
+  signInToDownload,
 }: {
   preset: Preset;
-  onChange: (next: Preset) => void;
+  onChange?: (next: Preset) => void;
+  /** Shared link: no edits, no revise, no feedback. */
+  readOnly?: boolean;
+  /** Where to come back to after signing in. Set on a shared link: download needs an account. */
+  signInToDownload?: string;
 }) {
+  const onChange = (next: Preset) => {
+    if (!readOnly) onChangeProp?.(next);
+  };
   const selectedBlockId = useAppStore((s) => s.selectedBlockId);
   const selectBlock = useAppStore((s) => s.selectBlock);
   const lcdView = useAppStore((s) => s.lcdView);
@@ -63,6 +76,7 @@ export function PresetWorkspace({
   const setWahModelId = useAppStore((s) => s.setWahModelId);
   const { plan, isPending: planPending } = usePlan();
   const [copying, setCopying] = useState(false);
+  const [sharing, setSharing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
   const [exportMode, setExportMode] = useState<ExportMode>("snapshot");
@@ -75,9 +89,46 @@ export function PresetWorkspace({
   const isPodGo = preset.stompModel === "pod-go";
   const editor = isPodGo ? "POD Go Edit" : "HX Edit";
   const exportExt = isPodGo ? "pgp" : "hlx";
-  const canDownload = planPending
-    ? isDemoId(preset.id) || !isFeaturedKnownId(preset.id)
-    : canDownloadPreset(preset.id, plan);
+  const canDownload = signInToDownload
+    ? !planPending && plan.signedIn
+    : planPending
+      ? isDemoId(preset.id) || !isFeaturedKnownId(preset.id)
+      : canDownloadPreset(preset.id, plan);
+  const lockedVerb = signInToDownload ? "Sign in" : "Subscribe";
+  const canShare = !readOnly && (preset.source === "featured" || (!planPending && plan.signedIn));
+
+  async function onShare() {
+    if (sharing) return;
+    setSharing(true);
+    try {
+      let url: string;
+      if (preset.source === "featured") {
+        url = `${window.location.origin}/preset/${encodeURIComponent(preset.id)}`;
+      } else {
+        const res = await sharePresetFn({ data: { preset } });
+        if (!res.ok) {
+          toast.error(res.error);
+          return;
+        }
+        url = `${window.location.origin}/s/${res.shareId}`;
+      }
+      const title = `${preset.song || preset.name} · Stomp Lab preset for ${device.name}`;
+      if (typeof navigator !== "undefined" && typeof navigator.share === "function") {
+        try {
+          await navigator.share({ url, title });
+          return;
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        }
+      }
+      if (await copyText(url)) toast.success("Link copied");
+      else toast.error("Could not copy the link.");
+    } catch {
+      toast.error("Could not make a link. Try again.");
+    } finally {
+      setSharing(false);
+    }
+  }
 
   useEffect(() => {
     if (defaultFsMode === "snapshot") setFsMode("snapshot");
@@ -334,16 +385,38 @@ export function PresetWorkspace({
                 </>
               ) : (
                 <>
-                  <Button asChild className="h-11">
-                    <Link to="/upgrade">Subscribe to download .{exportExt}</Link>
-                  </Button>
+                  {signInToDownload ? (
+                    <Button asChild className="h-11">
+                      <Link to="/login" search={{ next: signInToDownload }}>
+                        Sign in
+                      </Link>
+                    </Button>
+                  ) : (
+                    <Button asChild className="h-11">
+                      <Link to="/upgrade">Subscribe to download .{exportExt}</Link>
+                    </Button>
+                  )}
                   <p className="max-w-[18rem] text-xs leading-relaxed text-muted-foreground sm:text-right">
-                    {isDemoId(preset.id)
+                    {signInToDownload
+                      ? `Sign in to download — ${FREE_BUILD_LINE}`
+                      : isDemoId(preset.id)
                       ? "We could not confirm your account. Reload the page and try again."
                       : "This song is for subscribers. Subscribe to download it. The demos stay free."}
                   </p>
                 </>
               )}
+              {canShare ? (
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-11 w-full sm:w-auto sm:self-end"
+                  disabled={sharing}
+                  onClick={() => void onShare()}
+                >
+                  <Share2 className="size-4" />
+                  {sharing ? "Making link" : "Share"}
+                </Button>
+              ) : null}
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>
@@ -361,13 +434,15 @@ export function PresetWorkspace({
 
         <div className="flex min-w-0 flex-col gap-6">
           <div className="order-2 grid gap-4 md:grid-cols-2">
-            <FsAssignPanel
-              preset={preset}
-              fsIndex={assignFsIndex}
-              fsMode={fsMode}
-              onAssign={assignFs}
-              onReset={original ? resetFeatured : undefined}
-            />
+            {readOnly ? null : (
+              <FsAssignPanel
+                preset={preset}
+                fsIndex={assignFsIndex}
+                fsMode={fsMode}
+                onAssign={assignFs}
+                onReset={original ? resetFeatured : undefined}
+              />
+            )}
 
         <Card className="md:col-span-2">
           <CardHeader>
@@ -633,6 +708,7 @@ export function PresetWorkspace({
                           value={s.name}
                           maxLength={12}
                           aria-label={`Snapshot ${i + 1} name`}
+                          readOnly={readOnly}
                           onChange={(e) => renameSnapshot(s.id, e.target.value)}
                           onFocus={() => {
                             setActiveSnapshot(i);
@@ -653,6 +729,7 @@ export function PresetWorkspace({
           </Card>
         ) : null}
 
+        {readOnly ? null : (
         <Card>
           <CardHeader>
             <CardTitle>Wah</CardTitle>
@@ -664,6 +741,7 @@ export function PresetWorkspace({
             <WahSelect mode={wahMode} modelId={wahModelId} onMode={onWahMode} onModel={onWahModel} />
           </CardContent>
         </Card>
+        )}
 
         <Card>
           <CardHeader>
@@ -713,7 +791,7 @@ export function PresetWorkspace({
           </CardContent>
         </Card>
 
-        {plan.signedIn ? (
+        {plan.signedIn && !readOnly ? (
           <Card>
             <CardHeader>
               <CardTitle>Revise this tone</CardTitle>
@@ -756,6 +834,7 @@ export function PresetWorkspace({
           </Card>
         ) : null}
 
+        {readOnly ? null : (
         <Card>
           <CardHeader id="preset-feedback">
             <CardTitle>After you test it</CardTitle>
@@ -767,6 +846,7 @@ export function PresetWorkspace({
             <PresetFeedbackForm song={preset.song || preset.name} />
           </CardContent>
         </Card>
+        )}
 
         {preset.tips.length ? (
           <Card>
@@ -814,11 +894,11 @@ export function PresetWorkspace({
               {fsMode === "snapshot"
                 ? canDownload
                   ? "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Download writes this onto the unit."
-                  : "Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. Subscribe to write this onto the unit."
+                  : `Snapshot — tap a numbered switch, then tap a song section. Numbers match HX Edit. ${lockedVerb} to write this onto the unit.`
                 : fsMode === "stomp"
                   ? canDownload
                     ? "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Download writes this onto the unit."
-                    : "Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. Subscribe to write this onto the unit."
+                    : `Stomp — tap a numbered switch, then tap an effect. Numbers match HX Edit. ${lockedVerb} to write this onto the unit.`
                   : "Preset — bank walking, the way the hardware sits when you aren't inside a song."}
             </p>
             <div data-tour="replica" data-tutorial="replica">
@@ -873,6 +953,7 @@ export function PresetWorkspace({
           ext={exportExt}
           mode={exportMode}
           canDownload={canDownload}
+          signInNext={signInToDownload}
           onDownload={onDownload}
           panel={
             savedFile && canDownload ? (
