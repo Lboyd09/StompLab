@@ -40,6 +40,25 @@ function isCleanName(name: string): boolean {
   return /\bclean\b/i.test(name) && !/\b(lead|solo|crunch|crnch|dist|dirty|heavy)\b/i.test(name);
 }
 
+/** Highest amp Drive that still counts as a clean sound (reference: clean 0.6–1.8). */
+const CLEAN_DRIVE = 2.4;
+
+/**
+ * Clean by name, or clean by gain staging: no drive pedal on and the amp's
+ * Drive for this snapshot at or under 2.4. A dirty intro (pedal on, or a
+ * riff on the amp) stays dirty whatever it is called.
+ */
+function isCleanSnapshot(snap: Snapshot, blocks: StompBlock[]): boolean {
+  if (isCleanName(snap.name)) return true;
+  if (isLeadName(snap.name)) return false;
+  const amp = blocks.find((b) => isAmp(b.modelId));
+  if (!amp) return false;
+  const on = new Set(snap.enabledBlocks);
+  if (blocks.some((b) => isDrive(b.modelId) && on.has(b.id))) return false;
+  const drive = snap.paramOverrides?.[amp.id]?.Drive ?? amp.params.Drive;
+  return typeof drive === "number" && drive <= CLEAN_DRIVE;
+}
+
 function needsGate(blocks: StompBlock[], bass: boolean): boolean {
   if (blocks.some((b) => b.modelId === "noise-gate" || b.modelId === "hard-gate" || b.modelId === "horizon-gate")) {
     return false;
@@ -186,11 +205,12 @@ function shapeGenerated(preset: Preset): Preset {
 
   const snapshots = next.snapshots.map((snap) => {
     let enabled = [...snap.enabledBlocks];
-    const clean = isCleanName(snap.name);
+    const clean = bass ? isCleanName(snap.name) : isCleanSnapshot(snap, blocks);
+    const drive = amp ? (snap.paramOverrides?.[amp.id]?.Drive ?? amp.params.Drive ?? 0) : 0;
     if (clean) {
       enabled = enabled.filter((id) => !dirt.some((d) => d.id === id) && id !== gate?.id);
       if (amp && !enabled.includes(amp.id)) enabled.push(amp.id);
-    } else if (gate && !enabled.includes(gate.id) && (dirt.some((d) => enabled.includes(d.id)) || (amp && (amp.params.Drive ?? 0) >= 4.5))) {
+    } else if (gate && !enabled.includes(gate.id) && (dirt.some((d) => enabled.includes(d.id)) || drive >= 4.5)) {
       enabled.push(gate.id);
     }
     let shaped: Snapshot = { ...snap, name: fitSnapshotName(snap.name), enabledBlocks: enabled };
@@ -250,16 +270,22 @@ const MAX_CHVOL = 8.5;
 /** Hand-built demos sit at Ch Vol 5.4–6.2; an amp the model left unset starts here. */
 const DEFAULT_CHVOL = 6;
 
+/** Gain staging part of the estimate (no Ch Vol): amp Drive, a drive pedal, the boost. */
+function gainOf(blocks: StompBlock[], snap: Snapshot): number {
+  const amp = blocks.find((b) => isAmp(b.modelId));
+  if (!amp) return 0;
+  const on = new Set(snap.enabledBlocks);
+  const drive = Math.min(snap.paramOverrides?.[amp.id]?.Drive ?? amp.params.Drive ?? 5, 7);
+  const dirt = blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && on.has(b.id));
+  const boost = blocks.some((b) => BOOSTS.has(b.modelId) && on.has(b.id));
+  return DB_PER_DRIVE * drive + (dirt ? DB_DIRT_ON : 0) + (boost ? DB_BOOST_ON : 0);
+}
+
 export function snapshotLoudness(blocks: StompBlock[], snap: Snapshot): number | null {
   const amp = blocks.find((b) => isAmp(b.modelId));
   if (!amp) return null;
-  const on = new Set(snap.enabledBlocks);
-  const over = snap.paramOverrides?.[amp.id] ?? {};
-  const chVol = over["Ch Vol"] ?? amp.params["Ch Vol"] ?? DEFAULT_CHVOL;
-  const drive = Math.min(over.Drive ?? amp.params.Drive ?? 5, 7);
-  const dirt = blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && on.has(b.id));
-  const boost = blocks.some((b) => BOOSTS.has(b.modelId) && on.has(b.id));
-  return DB_PER_CHVOL * chVol + DB_PER_DRIVE * drive + (dirt ? DB_DIRT_ON : 0) + (boost ? DB_BOOST_ON : 0);
+  const chVol = snap.paramOverrides?.[amp.id]?.["Ch Vol"] ?? amp.params["Ch Vol"] ?? DEFAULT_CHVOL;
+  return DB_PER_CHVOL * chVol + gainOf(blocks, snap);
 }
 
 function levelMatch(
@@ -274,8 +300,11 @@ function levelMatch(
     ampBlocks = blocks.map((b) => (b.id === amp.id ? { ...b, params: { ...b.params, "Ch Vol": DEFAULT_CHVOL } } : b));
   }
   const lead = (s: Snapshot) => liftLeads && isLeadName(s.name);
-  const base =
-    snapshots.find((s) => !lead(s) && !isCleanName(s.name)) ?? snapshots.find((s) => !lead(s));
+  // The reference is the main dirty part: the non-solo snapshot with the most
+  // gain (not just the first one, which is often a quiet intro).
+  const base = snapshots
+    .filter((s) => !lead(s))
+    .reduce<Snapshot | undefined>((best, s) => (!best || gainOf(ampBlocks, s) > gainOf(ampBlocks, best) ? s : best), undefined);
   if (!base) return { blocks: ampBlocks, snapshots };
   const baseDb = snapshotLoudness(ampBlocks, base);
   if (baseDb === null) return { blocks: ampBlocks, snapshots };

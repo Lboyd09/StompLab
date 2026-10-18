@@ -105,6 +105,8 @@ describe("preset response", () => {
   it("writes plain tuning tips and none for standard", () => {
     assert.equal(tuningTip("E standard"), null);
     assert.equal(tuningTip("Standard"), null);
+    assert.equal(tuningTip("Standard E tuning"), null);
+    assert.match(tuningTip("D# standard")!, /half step/);
     assert.match(tuningTip("E♭ standard")!, /half step/);
     assert.match(tuningTip("Drop D")!, /^Drop D/);
     assert.match(tuningTip("D standard")!, /whole step/);

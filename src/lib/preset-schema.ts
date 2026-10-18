@@ -320,9 +320,10 @@ export function tuningTip(raw: string | undefined): string | null {
   const t = (raw ?? "").replace(/♭/g, "b").replace(/♯/g, "#").trim();
   if (!t) return null;
   const lower = t.toLowerCase();
-  if (/^(standard|e standard|standard e|e)(\s*\(.*\))?$/.test(lower) || /^standard tuning/.test(lower)) return null;
+  const plain = lower.replace(/\(.*\)/g, "").replace(/\btuning\b/g, "").replace(/[^a-z#]+/g, " ").trim();
+  if (/^(e )?standard( e)?$/.test(plain) || plain === "e" || plain === "") return null;
   if (/\bdrop d\b/.test(lower) && !/half|eb|d#/.test(lower)) return "Drop D: tune the low E string down to D.";
-  if (/\b(eb|d#|e flat)\b|half[- ]step|semitone down/.test(lower) && !/drop/.test(lower)) {
+  if (/\beb\b|d#|\be flat\b|half[- ]step|semitone down/.test(lower) && !/drop/.test(lower)) {
     return "Tune down a half step (Eb standard), like the record.";
   }
   if (/\bd standard\b|whole[- ]step|full step|one step down/.test(lower) && !/drop/.test(lower)) {

@@ -152,6 +152,32 @@ describe("finishTone", () => {
     for (const s of out.snapshots) assert.ok((s.paramOverrides?.a?.["Ch Vol"] ?? 6) >= 3.2);
   });
 
+  it("treats a quiet intro as clean by its gain, whatever it is called", () => {
+    const out = finishTone(
+      preset({
+        originalGear: [],
+        blocks: [
+          { id: "a", modelId: "cali-rectifire", enabled: true, path: "main", position: 0, params: { Drive: 5.4, Master: 5, "Ch Vol": 6 } },
+          { id: "c", modelId: "4x12-cali-v30", enabled: true, path: "main", position: 1, params: { Mic: 0 } },
+        ],
+        snapshots: [
+          { id: "s1", name: "Intro", color: "#fff", enabledBlocks: ["a", "c"], notes: "", paramOverrides: { a: { Drive: 1.5 } } },
+          { id: "s2", name: "Riff", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
+          { id: "s3", name: "Solo", color: "#fff", enabledBlocks: ["a", "c"], notes: "" },
+        ],
+      }),
+    );
+    const gate = out.blocks.find((b) => b.modelId === "noise-gate")!;
+    assert.ok(gate, "a high-gain amp gets a gate");
+    const [intro, riff] = out.snapshots;
+    assert.equal(intro.enabledBlocks.includes(gate.id), false, "no gate on the quiet intro");
+    assert.ok(riff.enabledBlocks.includes(gate.id));
+    assert.ok((riff.paramOverrides?.a?.["Ch Vol"] ?? 6) >= 6, "the riff is the reference, not pulled down to the intro");
+    const loud = (i: number) => snapshotLoudness(out.blocks, out.snapshots[i])!;
+    const lift = loud(2) - loud(1);
+    assert.ok(lift > 1.5 && lift < 4.5, `solo lift ${lift}`);
+  });
+
   it("does not reshape a featured demo besides tempo", () => {
     const out = finishTone(preset({ source: "featured", tempo: 100, blocks: [], snapshots: [] }), 90);
     assert.equal(out.tempo, 90);
