@@ -150,6 +150,7 @@ export function DownloadBar({
   mode,
   onMode,
   canDownload,
+  signInNext,
   onDownload,
   panel,
 }: {
@@ -158,6 +159,8 @@ export function DownloadBar({
   mode: ExportMode;
   onMode: (mode: ExportMode) => void;
   canDownload: boolean;
+  /** Shared link: the page to return to after sign-in. Replaces Subscribe. */
+  signInNext?: string;
   onDownload: () => void;
   panel?: React.ReactNode;
 }) {
@@ -184,6 +187,12 @@ export function DownloadBar({
         {canDownload ? (
           <Button type="button" size="lg" className="h-11 shrink-0 px-5" onClick={onDownload}>
             Download .{ext}
+          </Button>
+        ) : signInNext ? (
+          <Button asChild size="lg" className="h-11 shrink-0 px-5">
+            <Link to="/login" search={{ next: signInNext }}>
+              Sign in
+            </Link>
           </Button>
         ) : (
           <Button asChild size="lg" className="h-11 shrink-0 px-5">

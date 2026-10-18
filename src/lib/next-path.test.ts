@@ -8,6 +8,8 @@ describe("parseNext", () => {
     assert.equal(parseNext("/upgrade"), "/upgrade");
     assert.equal(parseNext("/account"), "/account");
     assert.equal(parseNext("/evil"), "/");
+    assert.equal(parseNext("/s/aB3dE6gH9k"), "/s/aB3dE6gH9k");
+    assert.equal(parseNext("/s/../admin"), "/");
   });
 });
 
