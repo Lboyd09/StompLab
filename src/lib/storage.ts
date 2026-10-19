@@ -27,7 +27,15 @@ export type Settings = {
   wahMode: WahMode;
   wahModelId: string;
   guitarRole: GuitarRole;
+  /** SL-68: the player's own cab IR slot (1–128) on the unit, or null for the stock cab. */
+  irSlot: number | null;
 };
+
+/** A whole IR slot number 1–128, or null. */
+export function parseIrSlot(value: unknown): number | null {
+  const n = typeof value === "string" && value.trim() !== "" ? Number(value) : value;
+  return typeof n === "number" && Number.isInteger(n) && n >= 1 && n <= 128 ? n : null;
+}
 
 const DEFAULT_SETTINGS: Settings = {
   instrument: "guitar",
@@ -43,6 +51,7 @@ const DEFAULT_SETTINGS: Settings = {
   wahMode: "pedal",
   wahModelId: "teardrop-310",
   guitarRole: "both",
+  irSlot: null,
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -188,6 +197,7 @@ export function loadSettings(): Settings {
     wahMode: parseWahMode(raw.wahMode),
     wahModelId: parseWahModelId(raw.wahModelId),
     guitarRole: parseGuitarRole(raw.guitarRole),
+    irSlot: parseIrSlot(raw.irSlot),
   };
 }
 

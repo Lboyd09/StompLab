@@ -11,6 +11,7 @@ import { withStompModel } from "./preset-utils";
 import { applyRouting } from "./rig-routing";
 import { systemForCustomSound, systemForDevice } from "./preset-schema";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
+import { parseIrSlot } from "./storage";
 import { finishTone } from "./tone-finish";
 
 type Json = Record<string, any>;
@@ -202,5 +203,76 @@ describe("finishTone without an amp", () => {
     const gate = order.indexOf("noise-gate");
     assert.ok(gate >= 0, order.join());
     assert.ok(gate < order.indexOf(preset.blocks[1].modelId), order.join());
+  });
+});
+
+describe("SL-68 player IR slot", () => {
+  const irBlocks = (hlx: Json) => blockList(hlx).filter((b) => /ImpulseResponse/.test(b["@model"]));
+
+  it("replaces the stock cab with HX's IR block at that slot (native Index, factory level)", () => {
+    const hlx = buildHlx(sandman("hx-stomp", "frfr"), { irSlot: 5 }) as Json;
+    const ir = irBlocks(hlx);
+    assert.equal(ir.length, 1);
+    assert.equal(ir[0]["@model"], "HD2_ImpulseResponse1024");
+    assert.equal(ir[0].Index, 5);
+    assert.equal(ir[0]["@type"], 5);
+    assert.equal(ir[0].Level, -18);
+    assert.ok(!blockList(hlx).some((b) => /^HD2_Cab/.test(b["@model"])));
+    assert.ok(!Object.keys(dsp(hlx)).some((k) => /^cab\d+$/.test(k)));
+    for (const s of snapStates(hlx)) assert.equal(s[ir[0].key], true);
+    assert.deepEqual(validatePreset(hlx, { strict: true }), []);
+  });
+
+  it("an amp with its cab loses @cab and gets the IR right after it", () => {
+    const teen = { ...withStompModel(FEATURED.find((p) => p.id === "featured-teen-spirit")!, "helix-floor"), playbackTarget: "frfr" as const };
+    const hlx = buildHlx(teen, { irSlot: 128 }) as Json;
+    const list = blockList(hlx);
+    const amp = list.findIndex((b) => /^HD2_Amp/.test(b["@model"]));
+    assert.equal(list[amp]["@type"], 1);
+    assert.equal(list[amp]["@cab"], undefined);
+    const ir = list.findIndex((b) => b["@model"] === "HD2_ImpulseResponse1024");
+    assert.ok(ir > amp, "the IR sits where the cab was, after the amp");
+    assert.equal(list[ir].Index, 128);
+  });
+
+  it("every featured preset stays valid with an IR on every IR unit, and the IR is never the block dropped", () => {
+    for (const device of STOMP_DEVICES.filter((d) => d.irSlots && canExportHlx(d.id))) {
+      for (const src of FEATURED) {
+        const preset = { ...withStompModel(src, device.id), playbackTarget: "frfr" as const };
+        const hlx = buildHlx(preset, { irSlot: 42 }) as Json;
+        assert.deepEqual(validatePreset(hlx, { strict: true }), [], `${src.id} ${device.id}`);
+        if (src.blocks.some((b) => MODEL_MAP[b.modelId]?.category === "cab")) {
+          assert.equal(irBlocks(hlx).length, 1, `${src.id} ${device.id}`);
+          assert.ok(!droppedOnExport(preset, { irSlot: 42 }).some((b) => MODEL_MAP[b.modelId]?.category === "cab"));
+        }
+      }
+    }
+  });
+
+  it("no IR when the rig has no cab, on HX Effects, or with no slot set", () => {
+    assert.equal(irBlocks(buildHlx(sandman("hx-stomp", "amp-front"), { irSlot: 5 }) as Json).length, 0);
+    assert.equal(irBlocks(buildHlx(sandman("hx-stomp", "power-amp"), { irSlot: 5 }) as Json).length, 0);
+    assert.equal(irBlocks(buildHlx(sandman("hx-effects", "frfr"), { irSlot: 5 }) as Json).length, 0);
+    assert.equal(irBlocks(buildHlx(sandman("hx-stomp", "frfr")) as Json).length, 0);
+    assert.equal(irBlocks(buildHlx(sandman("hx-stomp", "frfr"), { irSlot: 0 }) as Json).length, 0);
+  });
+
+  it("POD Go puts its IR model in the fixed Cab/IR slot (no @mic, cab @type 2)", () => {
+    const hlx = buildHlx(sandman("pod-go", "frfr"), { irSlot: 12 }) as Json;
+    const ir = irBlocks(hlx);
+    assert.equal(ir.length, 1);
+    assert.equal(ir[0]["@model"], "HD2_ImpulseResponse1024Mono");
+    assert.equal(ir[0].Index, 12);
+    assert.equal(ir[0]["@mic"], undefined);
+    assert.equal(ir[0]["@type"], 2);
+    assert.deepEqual(validatePreset(hlx, { strict: true }), []);
+  });
+
+  it("reads and clamps the stored slot", () => {
+    assert.equal(parseIrSlot(7), 7);
+    assert.equal(parseIrSlot("128"), 128);
+    assert.equal(parseIrSlot(129), null);
+    assert.equal(parseIrSlot(2.5), null);
+    assert.equal(parseIrSlot(null), null);
   });
 });
