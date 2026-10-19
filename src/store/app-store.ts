@@ -8,6 +8,7 @@ import {
   loadPresets,
   loadSettings,
   loadSetlistsRaw,
+  parseIrSlot,
   patchSettings,
   saveGear,
   saveGeminiKey,
@@ -42,6 +43,7 @@ type AppState = {
   wahMode: WahMode;
   wahModelId: string;
   guitarRole: GuitarRole;
+  irSlot: number | null;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -67,6 +69,7 @@ type AppState = {
   setWahMode: (mode: WahMode) => void;
   setWahModelId: (id: string) => void;
   setGuitarRole: (role: GuitarRole) => void;
+  setIrSlot: (slot: number | null) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
@@ -105,6 +108,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   wahMode: "pedal",
   wahModelId: "teardrop-310",
   guitarRole: "both",
+  irSlot: null,
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -134,6 +138,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       wahMode: settings.wahMode,
       wahModelId: settings.wahModelId,
       guitarRole: settings.guitarRole,
+      irSlot: settings.irSlot,
       geminiKey: loadGeminiKey(),
     });
   },
@@ -199,6 +204,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   setGuitarRole: (guitarRole) => {
     persist({ guitarRole });
     set({ guitarRole });
+  },
+  setIrSlot: (slot) => {
+    const irSlot = parseIrSlot(slot);
+    persist({ irSlot });
+    set({ irSlot });
   },
   setGeminiKey: (geminiKey) => {
     saveGeminiKey(geminiKey);

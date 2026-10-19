@@ -1,6 +1,12 @@
 import { MODEL_MAP } from "@/data/catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
 import { isVolumeKnob } from "./hx-params";
+import { routeFor } from "@/data/playback";
+
+/** In front of a real amp, a snapshot with every pedal off is the amp's clean sound, not silence. */
+function dryIsAudible(preset: Preset): boolean {
+  return routeFor(preset.playbackTarget) === "pedals";
+}
 
 const ABBREV: [RegExp, string][] = [
   [/\brhythm\b/i, "Rhy"],
@@ -65,9 +71,12 @@ function isCab(modelId: string): boolean {
   return categoryOf(modelId) === "cab";
 }
 
-/** Amp + cab must stay on in every snapshot or HX Edit goes silent. */
+/**
+ * Amp + cab must stay on in every snapshot or HX Edit goes silent. On a 4-cable rig the FX Loop
+ * block is the real amp's preamp: bypassed, the amp drops out of the chain.
+ */
 export function essentialBlockIds(blocks: StompBlock[]): string[] {
-  return blocks.filter((b) => isAmpOrCab(b.modelId)).map((b) => b.id);
+  return blocks.filter((b) => isAmpOrCab(b.modelId) || b.modelId === "fx-loop").map((b) => b.id);
 }
 
 function reindex(blocks: StompBlock[]): StompBlock[] {
@@ -169,7 +178,7 @@ export function sanitizeSnapshots(preset: Preset): Preset {
     }
     // A volume pedal parked at heel, or a gate, must not be the only thing "on"
     // while the amp is bypassed — essentials already cover amp/cab.
-    if (!enabled.length) enabled.push(...(fallback.length ? fallback : dry));
+    if (!enabled.length && !dryIsAudible(preset)) enabled.push(...(fallback.length ? fallback : dry));
     const paramOverrides = snap.paramOverrides
       ? Object.fromEntries(
           Object.entries(snap.paramOverrides).map(([id, params]) => {
@@ -220,7 +229,7 @@ export function playableIssues(preset: Preset): PlayableIssue[] {
     if (cab && !on.has(cab.id)) {
       issues.push({ presetId: healed.id, snapshot: snap.name, reason: "cab bypassed" });
     }
-    if (!amp && !cab && snap.enabledBlocks.length === 0) {
+    if (!amp && !cab && snap.enabledBlocks.length === 0 && !dryIsAudible(healed)) {
       issues.push({ presetId: healed.id, snapshot: snap.name, reason: "no blocks on" });
     }
     const over = snap.paramOverrides ?? {};

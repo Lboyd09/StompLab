@@ -8,6 +8,9 @@ import { buildPgp } from "./pgp";
 import { unitSpec } from "@/components/stomp/hardware";
 import { deviceFor, sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
+import { applyRouting, removesAmp } from "./rig-routing";
+import { routeFor } from "@/data/playback";
+import { loadSettings } from "./storage";
 
 /**
  * HX Edit .hlx is L6Preset JSON. Line 6 publishes no schema; this follows real exports from every
@@ -72,13 +75,45 @@ function isAmpCategory(category: CategoryId | undefined): boolean {
   return category === "amp-guitar" || category === "amp-bass";
 }
 
-type Slot = { block: StompBlock; hid: string; cab?: { block: StompBlock; hid: string } };
+type Slot = { block: StompBlock; hid: string; cab?: { block: StompBlock; hid: string }; irIndex?: number };
+
+/** HX Edit's IR block (catalog "IR 1024", knob "Index" = IR Select 1–128). */
+export const HX_IR_MODEL = "HD2_ImpulseResponse1024";
+
+export type ExportOpts = { fsMode?: HlxFsMode; irSlot?: number | null };
+
+/**
+ * SL-68: the player's IR slot, when this unit has IR slots and the file still has a cab to
+ * replace (a rig into a real speaker has none).
+ */
+export function userIrSlot(preset: Preset, irSlot: number | null | undefined): number | undefined {
+  if (typeof irSlot !== "number" || !Number.isInteger(irSlot)) return undefined;
+  const device = exportProfile(preset.stompModel);
+  if (!device.irSlots || !device.hasAmpCab || irSlot < 1 || irSlot > device.irSlots) return undefined;
+  const routed = applyRouting(preset);
+  return routed.blocks.some((b) => MODEL_MAP[b.modelId]?.category === "cab") ? irSlot : undefined;
+}
+
+/** Stored setting, read only in the browser (export stays pure in tests and on the server). */
+function storedIrSlot(): number | null {
+  try {
+    return loadSettings().irSlot;
+  } catch {
+    return null;
+  }
+}
+
+function withStoredIr(opts?: ExportOpts): ExportOpts {
+  return opts && "irSlot" in opts ? opts : { ...opts, irSlot: storedIrSlot() };
+}
 
 /**
  * Blocks that go into the file, in signal order. An amp and the cab right after it are one slot
  * (the cab entry is not a block and does not count toward the unit's block limit).
  */
-export function exportSlots(preset: Preset): { slots: Slot[]; dropped: StompBlock[] } {
+export function exportSlots(preset: Preset, opts?: { irSlot?: number | null }): { slots: Slot[]; dropped: StompBlock[] } {
+  const irIndex = userIrSlot(preset, opts?.irSlot);
+  preset = applyRouting(preset);
   const device = exportProfile(preset.stompModel);
   const family = unitFamily(preset.stompModel);
   const dropped: StompBlock[] = [];
@@ -101,6 +136,11 @@ export function exportSlots(preset: Preset): { slots: Slot[]; dropped: StompBloc
   for (const item of usable) {
     const category = MODEL_MAP[item.block.modelId]?.category;
     const prev = slots[slots.length - 1];
+    if (category === "cab" && irIndex !== undefined && hxModelOnUnit(HX_IR_MODEL, family)) {
+      // The player's IR replaces the stock cab. It is its own block (the amp loses @cab).
+      slots.push({ block: item.block, hid: HX_IR_MODEL, irIndex });
+      continue;
+    }
     if (category === "cab" && prev && isAmpCategory(MODEL_MAP[prev.block.modelId]?.category) && !prev.cab) {
       prev.cab = item;
       continue;
@@ -110,12 +150,13 @@ export function exportSlots(preset: Preset): { slots: Slot[]; dropped: StompBloc
   const max = device.maxBlocks;
   if (slots.length > max) {
     // Keep the amp+cab; drop from the end of the effects first.
+    // Keep the amp and the player's IR; drop from the end of the effects first.
     const keep: Slot[] = [];
-    const ampIdx = slots.findIndex((s) => isAmpCategory(MODEL_MAP[s.block.modelId]?.category));
+    const essential = (s: Slot) => isAmpCategory(MODEL_MAP[s.block.modelId]?.category) || s.irIndex !== undefined;
     for (let i = 0; i < slots.length; i++) {
       const remaining = max - keep.length;
-      const ampStillAhead = ampIdx > i && !keep.includes(slots[ampIdx]);
-      if (remaining <= 0 || (remaining === 1 && ampStillAhead && i !== ampIdx)) {
+      const essentialsAhead = slots.slice(i + 1).filter(essential).length;
+      if (remaining <= 0 || (!essential(slots[i]) && remaining <= essentialsAhead)) {
         dropped.push(slots[i].block, ...(slots[i].cab ? [slots[i].cab!.block] : []));
         continue;
       }
@@ -127,8 +168,8 @@ export function exportSlots(preset: Preset): { slots: Slot[]; dropped: StompBloc
 }
 
 /** Blocks the player will not get on this unit (unknown on the unit, or over the block limit). */
-export function droppedOnExport(preset: Preset): StompBlock[] {
-  return exportSlots(preset).dropped.filter((b) => {
+export function droppedOnExport(preset: Preset, opts?: { irSlot?: number | null }): StompBlock[] {
+  return exportSlots(preset, opts).dropped.filter((b) => {
     const category = MODEL_MAP[b.modelId]?.category;
     return category !== "mic" && !SKIP_MODELS.has(b.modelId);
   });
@@ -187,20 +228,39 @@ function loadedEnabled(preset: Preset, block: StompBlock): boolean {
   return block.enabled;
 }
 
+/**
+ * IR block knobs, native: Index is the slot itself (never through the 0–10 mapping), Level and
+ * Mix stay at HX Edit's defaults, Low/High Cut carry over from the cab they replace.
+ */
+function irParams(cab: StompBlock, index: number): NativeParams {
+  const m = hxModel(HX_IR_MODEL)!;
+  const fromCab = blockNativeParams(cab);
+  const out: NativeParams = {};
+  for (const p of m.params) {
+    let v: number | boolean = p.def;
+    if ((p.key === "LowCut" || p.key === "HighCut") && typeof fromCab[p.key] === "number") {
+      v = Math.max(p.min, Math.min(p.max, fromCab[p.key] as number));
+    }
+    if (p.key === "Index") v = index;
+    out[p.key] = v;
+  }
+  return out;
+}
+
 function buildDsp(preset: Preset, slots: Slot[]) {
   const device = exportProfile(preset.stompModel);
   const dsp: HlxJson = ioBlocks(preset.stompModel);
   let cabIndex = 0;
   slots.forEach((slot, i) => {
     const model = MODEL_MAP[slot.block.modelId]!;
-    const native = blockNativeParams(slot.block, loadedOverrides(preset, slot.block));
+    const native = slot.irIndex !== undefined ? irParams(slot.block, slot.irIndex) : blockNativeParams(slot.block, loadedOverrides(preset, slot.block));
     const isAmp = isAmpCategory(model.category);
     const hlx: HlxJson = {
       "@model": slot.hid,
       "@position": i,
       "@enabled": loadedEnabled(preset, slot.block),
       "@path": 0,
-      "@type": blockType(model.category, Boolean(slot.cab)),
+      "@type": slot.irIndex !== undefined ? blockType("ir", false) : blockType(model.category, Boolean(slot.cab)),
       "@no_snapshot_bypass": false,
     };
     if (!isAmp) hlx["@stereo"] = false;
@@ -258,6 +318,7 @@ function collectAssigned(preset: Preset, slots: Slot[], snapCount: number): Map<
   const snaps = preset.snapshots.slice(0, snapCount);
   const out = new Map<number, Assigned[]>();
   slots.forEach((slot, i) => {
+    if (slot.irIndex !== undefined) return;
     const uiNames = new Set<string>();
     for (const snap of snaps) for (const n of Object.keys(snap.paramOverrides?.[slot.block.id] ?? {})) uiNames.add(n);
     const list: Assigned[] = [];
@@ -408,15 +469,17 @@ function snapshotJson(
   };
 }
 
-export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
-  preset = sanitizeSnapshots(preset);
+export function buildHlx(preset: Preset, opts?: ExportOpts): HlxJson {
+  const irSlot = userIrSlot(preset, opts?.irSlot);
+  // The player's rig (SL-62): no amp/cab in front of a real amp, an FX Loop for 4-cable, no cab into a power amp.
+  preset = sanitizeSnapshots(applyRouting(preset));
   const device = exportProfile(preset.stompModel);
   const ext = exportExtension(preset.stompModel);
   if (!ext || !device.hlxDeviceId) {
     throw new Error(`${device.name} does not use .hlx or .pgp. We will not write a fake Helix file.`);
   }
   if (ext === "pgp") return buildPgp(preset, opts);
-  const { slots } = exportSlots(preset);
+  const { slots } = exportSlots(preset, { irSlot });
   const dsp = buildDsp(preset, slots);
   const snapCount = device.snapshots;
   const tempo = Math.max(40, Math.min(240, Math.round(preset.tempo || 120)));
@@ -522,7 +585,10 @@ export function inaudibleExport(preset: Preset): string[] {
     }
   }
 
-  const ampKey = blocks.find(([, b]) => /^HD2_Amp/.test(String(b["@model"] ?? "")))?.[0];
+  // In front of a real amp the amp is bypassed on purpose (POD Go keeps its fixed amp slot, off).
+  const ampKey = removesAmp(routeFor(preset.playbackTarget))
+    ? undefined
+    : blocks.find(([, b]) => /^HD2_Amp/.test(String(b["@model"] ?? "")))?.[0];
   const cabKeys = blocks.filter(([, b]) => Number(b["@type"]) === 4).map(([k]) => k);
   for (const snapKey of Object.keys(tone).filter((k) => /^snapshot\d+$/.test(k))) {
     const snap = tone[snapKey] as { "@valid"?: boolean; "@name"?: string; blocks?: { dsp0?: Record<string, boolean> } };
@@ -546,11 +612,11 @@ export function hlxFilename(preset: Preset): string {
   return `${base}.${ext}`;
 }
 
-export function hlxJson(preset: Preset, opts?: { fsMode?: HlxFsMode }): string {
-  return JSON.stringify(buildHlx(preset, opts), null, 2);
+export function hlxJson(preset: Preset, opts?: ExportOpts): string {
+  return JSON.stringify(buildHlx(preset, withStoredIr(opts)), null, 2);
 }
 
-export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): boolean {
+export function downloadHlx(preset: Preset, opts?: ExportOpts): boolean {
   if (!canExportHlx(preset.stompModel)) return false;
   let json: string;
   try {
@@ -577,7 +643,7 @@ export function downloadHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): bool
   }
 }
 
-export async function copyHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): Promise<void> {
+export async function copyHlx(preset: Preset, opts?: ExportOpts): Promise<void> {
   if (!canExportHlx(preset.stompModel)) {
     throw new Error("This unit does not export a preset file.");
   }

@@ -7,6 +7,7 @@ import { overlayUserGear } from "./preset-schema";
 import { isDemoId, withStompModel } from "./preset-utils";
 import { matchFeatured, researchSongFn } from "./research";
 import { applyWahPreference, type WahMode } from "./wah";
+import { applyRouting } from "./rig-routing";
 
 export type SongBuildInput = {
   song: string;
@@ -47,7 +48,10 @@ export async function buildSong(
   // The server builds the lead part for two-guitar songs; nothing to pick here.
   const roleForBuild = "both" as const;
   const finish = (p: Preset) =>
-    applyWahPreference(overlayUserGear(withStompModel(p, input.stompModel), input.gear), input.wahMode, input.wahModelId);
+    applyRouting(
+      applyWahPreference(overlayUserGear(withStompModel(p, input.stompModel), input.gear), input.wahMode, input.wahModelId),
+      input.playbackTarget,
+    );
   const featuredHit = matchFeatured(song, artist || undefined, input.instrument, input.stompModel, roleForBuild);
   if (featuredHit) {
     const src = FEATURED.find((p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song);

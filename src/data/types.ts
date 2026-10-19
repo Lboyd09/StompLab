@@ -41,9 +41,19 @@ export function parseStompModelId(value: string | null | undefined, fallback: St
   return value && isStompModelId(value) ? value : fallback;
 }
 
-export type PlaybackTarget = "frfr" | "guitar-amp" | "headphones" | "pa" | "monitors";
+/** "guitar-amp" is the old "skip the cab" choice. Saved presets carry it; the select no longer offers it. */
+export const PLAYBACK_TARGET_IDS = [
+  "frfr",
+  "amp-front",
+  "amp-4cm",
+  "power-amp",
+  "guitar-amp",
+  "headphones",
+  "pa",
+  "monitors",
+] as const;
 
-export const PLAYBACK_TARGET_IDS = ["frfr", "guitar-amp", "headphones", "pa", "monitors"] as const;
+export type PlaybackTarget = (typeof PLAYBACK_TARGET_IDS)[number];
 
 export function parsePlaybackTarget(value: string | null | undefined): PlaybackTarget {
   return value && (PLAYBACK_TARGET_IDS as readonly string[]).includes(value)
@@ -105,6 +115,10 @@ export type StompDevice = {
   topology1?: "A" | 0;
   /** @fs_index of the expression pedal toe switch, when the unit has a built-in pedal. */
   toeSwitchFs?: number;
+  /** Catalog id of the unit's mono FX Loop block (4-cable method). Absent = no send/return. */
+  fxLoopModel?: string;
+  /** User IR slots on the unit (HX IR block "IR Select" 1–128). Absent = no IR block. */
+  irSlots?: number;
   notes: string[];
 };
 

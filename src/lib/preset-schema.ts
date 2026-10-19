@@ -2,7 +2,7 @@ import { z } from "zod";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
 import { helixIdFor } from "@/data/helix-ids";
-import { PLAYBACK_MAP } from "@/data/playback";
+import { PLAYBACK_MAP, routeFor } from "@/data/playback";
 import type { GearRecommendation, PlaybackTarget, Preset, StompBlock, StompModelId, UserGear } from "@/data/types";
 import { guitarArrangement } from "@/data/guitar-parts";
 import { guitarRolePrompt, parseGuitarRole, type GuitarRole } from "./guitar-role";
@@ -467,6 +467,21 @@ const REFERENCE_LEVELS = `REFERENCE SETTINGS (from hand-built presets that A/B w
 - Cab: Mic 0 (57), Distance 1.6–3, Low Cut 2–2.8, High Cut 7–8, Early Refl 2.2–4.2.
 - Gate: Threshold 1.6–1.8, Decay 2.4.`;
 
+/** What the model may put in the amp/cab spot, from the unit and the player's rig (SL-62). */
+function ampRuleFor(hasAmpCab: boolean, playbackTarget: PlaybackTarget): string {
+  if (!hasAmpCab) {
+    return "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+  }
+  const route = routeFor(playbackTarget);
+  if (route === "pedals" || route === "4cm") {
+    return "The player's real guitar amp is the amp and the speaker. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks — pedals only. Ignore any rule below about amp Drive, Ch Vol, or keeping amp and cab on: there is no amp block. Put the record's gain in drive pedals and the noise-gate after them.";
+  }
+  if (route === "no-cab") {
+    return "One amp, and NO cab, mic, or ir block: the speaker is real. Snapshot Drive/Ch Vol instead of a second amp. Ignore any rule below about the cab.";
+  }
+  return "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp.";
+}
+
 export function systemForDevice(
   stompModel: StompModelId,
   instrument: "guitar" | "bass",
@@ -474,9 +489,7 @@ export function systemForDevice(
 ) {
   const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
   const play = PLAYBACK_MAP[playbackTarget];
-  const ampRule = d.hasAmpCab
-    ? "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp."
-    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+  const ampRule = ampRuleFor(d.hasAmpCab, playbackTarget);
   const exportRule =
     d.exportFormat === "hlx"
       ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
@@ -570,9 +583,7 @@ export function systemForCustomSound(
 ) {
   const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
   const play = PLAYBACK_MAP[playbackTarget];
-  const ampRule = d.hasAmpCab
-    ? "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp."
-    : "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+  const ampRule = ampRuleFor(d.hasAmpCab, playbackTarget);
   const exportRule =
     d.exportFormat === "hlx"
       ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`

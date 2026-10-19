@@ -33,6 +33,7 @@ import { DownloadBar, EXPORT_MODE_LABEL, type ExportMode } from "./download-bar"
 import { FREE_BUILD_LINE } from "@/lib/copy";
 import { PostDownloadDialog, shouldAskAgain } from "../layout/post-download";
 import { RigDisclaimer } from "../layout/disclaimer";
+import { IrNote } from "./ir-note";
 import { revisePresetFn } from "@/lib/research";
 import { sharePresetFn } from "@/lib/share";
 import { copyText } from "@/lib/clipboard";
@@ -323,6 +324,7 @@ export function PresetWorkspace({
           instrument: preset.instrument,
           stompModel: preset.stompModel,
           note,
+          playbackTarget: preset.playbackTarget,
           current,
           userGear: [],
         },
@@ -436,6 +438,7 @@ export function PresetWorkspace({
               POD Go Edit imports .pgp JSON. File → Import. Helix .hlx will not load on this unit.
             </p>
           ) : null}
+          <IrNote preset={preset} />
           <RigDisclaimer />
         </header>
 

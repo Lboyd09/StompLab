@@ -16,6 +16,7 @@ import { notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { applyWahPreference } from "@/lib/wah";
+import { applyRouting } from "@/lib/rig-routing";
 import { buildSong } from "@/lib/song-build";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
@@ -77,10 +78,13 @@ function Home() {
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = applyWahPreference(
-      overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
-      wahMode,
-      wahModelId,
+    const preset = applyRouting(
+      applyWahPreference(
+        overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
+        wahMode,
+        wahModelId,
+      ),
+      playbackTarget,
     );
     savePreset(preset);
     void navigate({ to: "/preset/$id", params: { id: preset.id } });
@@ -202,7 +206,7 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
-          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"

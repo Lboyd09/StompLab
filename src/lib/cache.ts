@@ -4,6 +4,13 @@ import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { parseGuitarRole, type GuitarRole } from "@/lib/guitar-role";
 import { playableIssues, sanitizeSnapshots } from "@/lib/snapshot-sanitize";
+import { routeFor } from "@/data/playback";
+import { parsePlaybackTarget } from "@/data/types";
+
+function ampLessPlayback(playback: string): boolean {
+  const route = routeFor(parsePlaybackTarget(playback));
+  return route === "pedals" || route === "4cm";
+}
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -127,6 +134,9 @@ export async function lookupSongCache(opts: {
   const exact = songCacheKey(opts.song, opts.artist, opts.instrument, opts.stompModel, playback, wah, role);
   const row = await lookupCacheRaw(exact);
   if (row.hit && row.preset) return row;
+  // A pedals-only rig (front of amp / 4-cable) needs a chain voiced for a real amp. A row built
+  // for FRFR carries its gain in the amp model, which routing removes: build it fresh instead.
+  if (ampLessPlayback(playback)) return miss;
   try {
     const sql = await getSql();
     const songN = norm(opts.song);

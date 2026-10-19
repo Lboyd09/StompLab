@@ -6,6 +6,9 @@ import type { Preset, StompBlock } from "@/data/types";
 import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys } from "./hx-params";
 import { coerceNative } from "./hx-units";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { routeFor } from "@/data/playback";
+import { applyRouting, removesAmp, removesCab } from "./rig-routing";
+import { userIrSlot } from "./hlx";
 
 /**
  * POD Go Edit .pgp, laid out like the unit's own New Preset (POD Go 2.50 exports):
@@ -24,7 +27,10 @@ const TOE_SWITCH = 9;
 const FREE_SLOTS = 4;
 
 type PgpJson = Record<string, unknown>;
-type Placed = { block?: StompBlock; id: string; model: PodGoModel; role: string; enabled: boolean };
+type Placed = { block?: StompBlock; id: string; model: PodGoModel; role: string; enabled: boolean; irIndex?: number };
+
+/** POD Go Edit's IR block for the fixed Cab/IR slot ("IR 1024", Index = IR Select 1–128). */
+export const PODGO_IR_MODEL = "HD2_ImpulseResponse1024Mono";
 
 function snapshotLed(color: string): number {
   const c = color.toLowerCase();
@@ -41,6 +47,19 @@ function snapshotLed(color: string): number {
 function sanitizeLabel(s: string, max: number) {
   const clean = s.replace(/[^\w\s+\-.'&]/g, " ").replace(/\s+/g, " ").trim();
   return (clean || "Stomp Lab").slice(0, max);
+}
+
+/** The player's IR in the cab slot: Index is the slot, Level/Mix stay factory, cuts carry over from the cab. */
+function irPodParams(cab: StompBlock, model: PodGoModel, index: number) {
+  const hx = blockNativeParams(cab);
+  const out: Record<string, number | boolean> = {};
+  for (const p of model.params) {
+    let v: number | boolean = p.def;
+    if ((p.key === "LowCut" || p.key === "HighCut") && typeof hx[p.key] === "number") v = hx[p.key] as number;
+    if (p.key === "Index") v = index;
+    out[p.key] = coerceNative(p, v);
+  }
+  return out;
 }
 
 /** Native knobs for a POD Go model: the HX mapping, filtered to the keys POD Go has, with POD Go defaults. */
@@ -60,8 +79,13 @@ function enabledIn(snapIndex: number, preset: Preset, block: StompBlock): boolea
   return block.enabled;
 }
 
-export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBlock[] } {
+export function pgpLayout(preset: Preset, irIndex?: number): { slots: Placed[]; dropped: StompBlock[] } {
+  // SL-62: the amp and cab slots are fixed on POD Go, so a real-amp rig bypasses them (removing
+  // built-ins breaks POD Go presets). 4-cable turns on the unit's own FX Loop slot.
+  preset = applyRouting(preset);
+  const route = routeFor(preset.playbackTarget);
   const dropped: StompBlock[] = [];
+  let loop: StompBlock | undefined;
   let amp: StompBlock | undefined;
   let cab: StompBlock | undefined;
   let wah: StompBlock | undefined;
@@ -75,12 +99,15 @@ export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBloc
       if (m?.category !== "mic") dropped.push(b);
       continue;
     }
-    if ((m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp") && !amp) amp = b;
+    if (b.modelId === "fx-loop") {
+      if (!loop) loop = b;
+      else dropped.push(b);
+    } else if ((m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp") && !amp) amp = b;
     else if (m.category === "cab" && !cab) cab = b;
     else if (m.category === "wah" && !wah) wah = b;
     else if (b.modelId === "volume-pedal" && !vol) vol = b;
     else if (m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp" || m.category === "cab") dropped.push(b);
-    else (amp ? post : pre).push(b);
+    else (amp || loop ? post : pre).push(b);
   }
   const resolve = (b: StompBlock, stage: "pre" | "post") => {
     const id = podGoIdFor(helixIdFor(b.modelId)!, stage);
@@ -133,9 +160,17 @@ export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBloc
       ? { block: vol, ...fixed("HD2_VolPanVolStereo"), role: "vol", enabled: vol.enabled }
       : { ...fixed("HD2_VolPanVolStereo"), role: "vol", enabled: false },
     ...freePre,
-    { ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: false },
-    ampR ? { block: amp, ...ampR, role: "amp", enabled: true } : { ...fixed("HD2_AmpUSDoubleNrm"), role: "amp", enabled: true },
-    cabR ? { block: cab, ...cabR, role: "cab", enabled: true } : { ...fixed("HD2_Cab2x12DoubleC12N"), role: "cab", enabled: true },
+    loop
+      ? { block: loop, ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: true }
+      : { ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: false },
+    ampR
+      ? { block: amp, ...ampR, role: "amp", enabled: true }
+      : { ...fixed("HD2_AmpUSDoubleNrm"), role: "amp", enabled: !removesAmp(route) },
+    cab && irIndex !== undefined && podGoModel(PODGO_IR_MODEL)
+      ? { block: cab, ...fixed(PODGO_IR_MODEL), role: "cab", enabled: true, irIndex }
+      : cabR
+      ? { block: cab, ...cabR, role: "cab", enabled: true }
+      : { ...fixed("HD2_Cab2x12DoubleC12N"), role: "cab", enabled: !removesCab(route) },
     eqBlock && eqId
       ? { block: eqBlock, ...fixed(eqId), role: "eq", enabled: eqBlock.enabled }
       : { ...fixed("HD2_EQ_STATIC_ParametricStereo"), role: "eq", enabled: false },
@@ -143,7 +178,7 @@ export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBloc
   ];
   if (wah && !wahR) dropped.push(wah);
   if (amp && !ampR) dropped.push(amp);
-  if (cab && !cabR) dropped.push(cab);
+  if (cab && !cabR && irIndex === undefined) dropped.push(cab);
   return { slots, dropped };
 }
 
@@ -156,9 +191,9 @@ function blockType(p: Placed): number {
   return 0;
 }
 
-export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" | "preset" }): PgpJson {
+export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" | "preset"; irSlot?: number | null }): PgpJson {
   const device = DEVICE_MAP[preset.stompModel] ?? DEVICE_MAP["pod-go"];
-  const { slots } = pgpLayout(preset);
+  const { slots } = pgpLayout(preset, userIrSlot(preset, opts?.irSlot));
   const tempo = Math.max(40, Math.min(240, Math.round(preset.tempo || 120)));
   const snapCount = device.snapshots;
   const snaps = preset.snapshots.slice(0, snapCount);
@@ -177,8 +212,9 @@ export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" 
     };
     if (blockType(p) === 5) b["@trails"] = p.role !== "fxloop";
     if (p.role === "amp") b["@bypassvolume"] = 1;
-    if (p.role === "cab" && !p.model.byKey.Mic) b["@mic"] = p.block ? legacyMicIndex(p.block) : 5;
-    Object.assign(b, podParams(p.block, p.model, p.block ? preset.snapshots[0]?.paramOverrides?.[p.block.id] : undefined));
+    if (p.role === "cab" && p.irIndex === undefined && !p.model.byKey.Mic) b["@mic"] = p.block ? legacyMicIndex(p.block) : 5;
+    if (p.irIndex !== undefined && p.block) Object.assign(b, irPodParams(p.block, p.model, p.irIndex));
+    else Object.assign(b, podParams(p.block, p.model, p.block ? preset.snapshots[0]?.paramOverrides?.[p.block.id] : undefined));
     if (p.role === "vol" && !p.block) b.Pedal = 1;
     dsp0[`block${i}`] = b;
   });
@@ -187,7 +223,7 @@ export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" 
   // Snapshot-controlled knobs.
   const assigned = new Map<number, Array<{ uiName: string; key: string; min: number; max: number }>>();
   slots.forEach((p, i) => {
-    if (!p.block) return;
+    if (!p.block || p.irIndex !== undefined) return;
     const names = new Set<string>();
     for (const s of snaps) for (const n of Object.keys(s.paramOverrides?.[p.block.id] ?? {})) names.add(n);
     const list: Array<{ uiName: string; key: string; min: number; max: number }> = [];

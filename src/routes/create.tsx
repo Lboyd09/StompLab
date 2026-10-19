@@ -184,7 +184,7 @@ function CreatePage() {
             song replica.
           </p>
         </div>
-        <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+        <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
         <Button type="submit" disabled={busy || description.trim().length < 4 || isPending}>
           {busy ? <Loader2 className="size-4 animate-spin" /> : null}
           {busy ? "Building" : "Make the preset"}

@@ -73,6 +73,66 @@ function ToggleRow({
   );
 }
 
+/** SL-68: "I use my own cab IR: slot N". Export swaps the stock cab for that IR slot. */
+function IrSlotSection({
+  irSlot,
+  onSlot,
+  hasIr,
+  unitLabel,
+}: {
+  irSlot: number | null;
+  onSlot: (slot: number | null) => void;
+  hasIr: boolean;
+  unitLabel: string;
+}) {
+  const [draft, setDraft] = useState(irSlot ? String(irSlot) : "1");
+  useEffect(() => {
+    if (irSlot) setDraft(String(irSlot));
+  }, [irSlot]);
+  const on = irSlot !== null;
+  const commit = (raw: string) => {
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > 128) {
+      toast.error("Pick a slot from 1 to 128.");
+      return;
+    }
+    if (n !== irSlot) {
+      onSlot(n);
+      toast.success("Saved");
+    }
+  };
+  return (
+    <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+      <h2 className="font-display text-lg font-semibold">Cab IR</h2>
+      <ToggleRow
+        checked={on}
+        onChange={(v) => onSlot(v ? Number(draft) || 1 : null)}
+        title="I use my own cab IR"
+        hint={
+          hasIr
+            ? "Downloads swap the stock cab for the IR block, pointed at your slot. Rigs without a cab are left alone."
+            : `${unitLabel} has no IR slots. This applies when you build for a unit that does.`
+        }
+      />
+      {on ? (
+        <label className="flex items-center justify-between gap-4 rounded-xl bg-secondary/50 px-4 py-3">
+          <span className="text-sm font-medium">IR slot</span>
+          <input
+            type="number"
+            inputMode="numeric"
+            min={1}
+            max={128}
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            onBlur={(e) => commit(e.target.value)}
+            className="h-11 w-24 rounded-md border border-border bg-card px-3 text-base"
+          />
+        </label>
+      ) : null}
+    </section>
+  );
+}
+
 function SettingsPage() {
   const hydrate = useAppStore((s) => s.hydrate);
   const theme = useAppStore((s) => s.theme);
@@ -99,6 +159,8 @@ function SettingsPage() {
   const setWahMode = useAppStore((s) => s.setWahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
   const setWahModelId = useAppStore((s) => s.setWahModelId);
+  const irSlot = useAppStore((s) => s.irSlot);
+  const setIrSlot = useAppStore((s) => s.setIrSlot);
   const { plan, isPending: planPending } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
   const [mounted, setMounted] = useState(false);
@@ -317,6 +379,13 @@ function SettingsPage() {
           }}
         />
       </section>
+
+      <IrSlotSection
+        irSlot={irSlot}
+        onSlot={setIrSlot}
+        hasIr={Boolean(DEVICE_MAP[stompModel]?.irSlots)}
+        unitLabel={unitLabel}
+      />
 
       <section id="troubleshoot" className="space-y-4 rounded-2xl border border-border bg-card p-5">
         <h2 className="font-display text-lg font-semibold">If something isn’t working</h2>

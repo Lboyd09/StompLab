@@ -4,7 +4,7 @@ import { compactCatalogForPrompt, MODEL_MAP } from "@/data/catalog";
 import { FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
-import { STOMP_MODEL_IDS } from "@/data/types";
+import { PLAYBACK_TARGET_IDS, STOMP_MODEL_IDS } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import {
   confirmBuildSlot,
@@ -26,6 +26,7 @@ import { friendlyResearchError, geminiGroundedNotes, geminiJson, CUSTOM_SYSTEM, 
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
 import { VERIFY_EMAIL_LINE } from "./copy";
 import { finishTone } from "./tone-finish";
+import { applyRouting } from "./rig-routing";
 import {
   GearSchema,
   jsonSchemaHint,
@@ -119,7 +120,8 @@ function gearLine(gear: UserGear[]): string {
   if (!gear.length) return "";
   return `\nPlayer locker — name these in recommendedGear when they fit, and tell the player which piece to grab: ${gear
     .map((g) => `${g.kind}: ${g.name}${g.notes ? ` (${g.notes})` : ""}`)
-    .join("; ")}`;
+    .join("; ")}
+Voice every knob for the RECORD's guitar, not the locker's: the app adjusts drive and treble for the player's pickups afterwards.`;
 }
 
 export async function standingFeedbackLessons(): Promise<string> {
@@ -186,7 +188,7 @@ export type ResearchErr = {
 export type ResearchResult = ResearchOk | ResearchErr;
 
 const DeviceEnum = z.enum(STOMP_MODEL_IDS);
-const PlaybackEnum = z.enum(["frfr", "guitar-amp", "headphones", "pa", "monitors"]);
+const PlaybackEnum = z.enum(PLAYBACK_TARGET_IDS);
 
 const ResearchIn = z.object({
   song: z.string().min(1).max(200),
@@ -277,23 +279,28 @@ async function runGeminiPreset(opts: {
   );
 }
 
-function finishPreset(
-  preset: Preset,
-  gear: UserGear[],
-  wahMode: string | undefined,
-  wahModelId: string | undefined,
-  bpm?: number | null,
-): Preset {
-  return sanitizeSnapshots(
-    finishTone(
-      applyWahPreference(
-        overlayUserGear(preset, gear),
-        parseWahMode(wahMode),
-        parseWahModelId(wahModelId),
-      ),
-      bpm,
+type FinishOpts = {
+  userGear: UserGear[];
+  wahMode?: string;
+  wahModelId?: string;
+  playbackTarget?: PlaybackTarget;
+};
+
+/**
+ * Wah + gear overlay + finishTone, then the player's rig routing (SL-62) on every path — library,
+ * cache (a fallback row may be from another playback target), and a fresh build — then sanitize.
+ */
+function finishPreset(preset: Preset, opts: FinishOpts, bpm?: number | null): Preset {
+  const toned = finishTone(
+    applyWahPreference(
+      overlayUserGear(preset, opts.userGear),
+      parseWahMode(opts.wahMode),
+      parseWahModelId(opts.wahModelId),
     ),
+    bpm,
+    { userGear: opts.userGear },
   );
+  return sanitizeSnapshots(applyRouting(toned, opts.playbackTarget ?? "frfr"));
 }
 
 /** Step 1 of a song build. Never throws; empty notes when search is unavailable. */
@@ -361,7 +368,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
         { ...featuredSrc, id: newId("pst"), createdAt: Date.now() },
         data.stompModel,
       );
-      return { ok: true, preset: finishPreset(featured, data.userGear, data.wahMode, data.wahModelId), source: "library" };
+      return { ok: true, preset: finishPreset(featured, data), source: "library" };
     }
 
     // From here on a build costs money, so the plan must be readable. Fail closed.
@@ -424,7 +431,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
           { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
           data.stompModel,
         );
-        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId, bpm), source: "cache" };
+        return { ok: true, preset: finishPreset(preset, data, bpm), source: "cache" };
       }
     } catch {
       /* miss */
@@ -494,7 +501,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       } catch {
         /* cache miss next time is fine */
       }
-      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId, bpm), source: "gemini" };
+      return { ok: true, preset: finishPreset(preset, data, bpm), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
@@ -555,7 +562,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
           { ...cached.preset, id: newId("pst"), createdAt: Date.now() },
           data.stompModel,
         );
-        return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "cache" };
+        return { ok: true, preset: finishPreset(preset, data), source: "cache" };
       }
     } catch {
       /* miss */
@@ -608,7 +615,7 @@ ${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
       } catch {
         /* ignore */
       }
-      return { ok: true, preset: finishPreset(preset, data.userGear, data.wahMode, data.wahModelId), source: "gemini" };
+      return { ok: true, preset: finishPreset(preset, data), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
@@ -760,7 +767,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       });
       await confirmBuildSlot(slot.reservation);
       settled = true;
-      return { ok: true, preset: sanitizeSnapshots(finishTone(preset)), source: "gemini" };
+      return { ok: true, preset: sanitizeSnapshots(applyRouting(finishTone(preset), data.playbackTarget)), source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
