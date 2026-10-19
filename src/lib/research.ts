@@ -120,7 +120,8 @@ function gearLine(gear: UserGear[]): string {
   if (!gear.length) return "";
   return `\nPlayer locker — name these in recommendedGear when they fit, and tell the player which piece to grab: ${gear
     .map((g) => `${g.kind}: ${g.name}${g.notes ? ` (${g.notes})` : ""}`)
-    .join("; ")}`;
+    .join("; ")}
+Voice every knob for the RECORD's guitar, not the locker's: the app adjusts drive and treble for the player's pickups afterwards.`;
 }
 
 export async function standingFeedbackLessons(): Promise<string> {
@@ -297,6 +298,7 @@ function finishPreset(preset: Preset, opts: FinishOpts, bpm?: number | null): Pr
       parseWahModelId(opts.wahModelId),
     ),
     bpm,
+    { userGear: opts.userGear },
   );
   return sanitizeSnapshots(applyRouting(toned, opts.playbackTarget ?? "frfr"));
 }

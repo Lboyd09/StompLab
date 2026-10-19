@@ -1,6 +1,7 @@
 import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
-import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
+import type { CategoryId, Preset, Snapshot, StompBlock, UserGear } from "@/data/types";
+import { applyPickupOffset } from "./pickups";
 import { newId } from "./preset-utils";
 import { fitSnapshotName } from "./snapshot-sanitize";
 
@@ -335,12 +336,16 @@ function levelMatch(
   return { blocks: ampBlocks, snapshots: out };
 }
 
-/** Post-process a generated preset. Featured demos only get the name fit via sanitize. */
-export function finishTone(preset: Preset, bpm?: number | null): Preset {
+/**
+ * Post-process a generated preset. Featured demos only get the name fit via sanitize.
+ * `userGear` (SL-65): the player's guitar; a pickup unlike the record's nudges drive and treble
+ * before the clean caps run, so a clean snapshot stays clean.
+ */
+export function finishTone(preset: Preset, bpm?: number | null, opts?: { userGear?: UserGear[] }): Preset {
   const paced =
     typeof bpm === "number" && bpm >= 40 && bpm <= 240
       ? { ...preset, tempo: Math.round(bpm) }
       : preset;
   if (paced.source === "featured") return paced;
-  return shapeGenerated(paced);
+  return shapeGenerated(applyPickupOffset(paced, opts?.userGear));
 }
