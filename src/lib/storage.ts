@@ -9,6 +9,7 @@ const SETTINGS_KEY = "stomplab.settings.v1";
 const PALETTE_KEY = "stomplab.palette.v2";
 const GEMINI_KEY = "stomplab.geminiKey.v1";
 const OWNER_KEY = "stomplab.presets.owner";
+const SETLISTS_KEY = "stomplab.setlists.v1";
 
 export type ThemeId = "dark" | "light" | "system";
 export type FsModePref = "auto" | "snapshot" | "stomp";
@@ -128,6 +129,19 @@ export function deletePreset(id: string, owner = "anon"): Preset[] {
   const next = loadPresets(owner).filter((p) => p.id !== id);
   savePresets(next, owner);
   return next;
+}
+
+/** Setlists are raw JSON here; `cleanSetlists` in setlist.ts shapes them. */
+export function loadSetlistsRaw(owner = "anon"): unknown {
+  return readJson<unknown>(`${SETLISTS_KEY}.${owner}`, []);
+}
+
+export function saveSetlistsRaw(setlists: unknown, owner = "anon") {
+  try {
+    writeJson(`${SETLISTS_KEY}.${owner}`, setlists);
+  } catch {
+    /* quota: the account copy still has them */
+  }
 }
 
 export function loadGear(owner = "anon"): UserGear[] {

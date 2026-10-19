@@ -33,6 +33,7 @@ import { mailerConfigured, mailerLastError } from "./mailer";
 import { geminiConfigured } from "./gemini";
 import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
+import type { Setlist } from "./setlist";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
 import { publicOrigin } from "./site-origin";
 import { friendlyDbError, sqlNotInLower } from "./postgres-ssl";
@@ -1322,6 +1323,69 @@ export const adminMoneySetup = createServerFn({ method: "POST" })
     };
   });
 
+/** Rough Gemini cost of one researched build (two calls). An estimate, not a bill. */
+export const GEMINI_COST_PER_BUILD_USD = 0.03;
+
+function emptyFunnel() {
+  return { signups: 0, active: 0, downloaded: 0, paid: 0, downloadsAll: 0, geminiBuildsMonth: 0 };
+}
+
+const LAPSED_STATUSES_SQL = `('revoked', 'expired', 'incomplete_expired', 'refunded', 'past_due', 'unpaid', 'incomplete')`;
+
+/**
+ * Last 30 days as a cohort: accounts made in the window (owner inbox excluded),
+ * then how many of those built or downloaded, downloaded, and pay now. Visits
+ * come from the visits query. Gemini builds are new research rows plus revisions
+ * this calendar month, owner included, since those calls cost the same.
+ */
+export async function loadFunnel(sql: Awaited<ReturnType<typeof getSql>>, owners: string[]) {
+  const notOwner = sqlNotInLower("u.email", owners);
+  const rows = await sql.query<{
+    signups: number;
+    active: number;
+    downloaded: number;
+    paid: number;
+    downloads_all: number;
+    gemini_builds: number;
+  }>(
+    `with cohort as (
+       select u.id from "user" u
+       where u."createdAt" >= now() - interval '30 days' and ${notOwner.clause}
+     ),
+     built as (
+       select distinct user_id from build_events
+       where created_at >= now() - interval '30 days' and status = 'confirmed'
+     ),
+     dl as (
+       select distinct user_id from download_events
+       where created_at >= now() - interval '30 days' and user_id <> ''
+     )
+     select
+       (select count(*)::int from cohort) as signups,
+       (select count(*)::int from cohort c
+         where c.id in (select user_id from built) or c.id in (select user_id from dl)) as active,
+       (select count(*)::int from cohort c where c.id in (select user_id from dl)) as downloaded,
+       (select count(*)::int from cohort c join entitlements e on e.user_id = c.id
+         where e.paid = true
+           and coalesce(e.paid_source, '') <> 'admin'
+           and coalesce(e.subscription_status, 'active') not in ${LAPSED_STATUSES_SQL}) as paid,
+       (select count(*)::int from download_events where created_at >= now() - interval '30 days') as downloads_all,
+       ((select count(*)::int from rig_cache where created_at >= date_trunc('month', now()))
+        + (select count(*)::int from build_events
+            where kind = 'revise' and status = 'confirmed' and created_at >= date_trunc('month', now()))) as gemini_builds`,
+    notOwner.params,
+  );
+  const r = rows[0];
+  return {
+    signups: Number(r?.signups ?? 0),
+    active: Number(r?.active ?? 0),
+    downloaded: Number(r?.downloaded ?? 0),
+    paid: Number(r?.paid ?? 0),
+    downloadsAll: Number(r?.downloads_all ?? 0),
+    geminiBuildsMonth: Number(r?.gemini_builds ?? 0),
+  };
+}
+
 export const adminDashboard = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }) => {
@@ -1388,6 +1452,8 @@ export const adminDashboard = createServerFn({ method: "POST" })
       research: geminiConfigured(),
       stats: emptyAdminStats(),
       visits: { today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 },
+      funnel: emptyFunnel(),
+      geminiCostPerBuildUsd: GEMINI_COST_PER_BUILD_USD,
       dbError: "",
       queryErrors: [] as string[],
       db: {
@@ -1488,6 +1554,8 @@ async function loadAdminDashboard(empty: {
   research: boolean;
   stats: AdminStats;
   visits: { today: number; d7: number; d30: number; unique_all: number; hits: number };
+  funnel: ReturnType<typeof emptyFunnel>;
+  geminiCostPerBuildUsd: number;
   dbError: string;
   queryErrors: string[];
   db: {
@@ -1573,6 +1641,7 @@ async function loadAdminDashboard(empty: {
       entitlementsRes,
       countsRes,
       visitsRes,
+      funnelRes,
     ] = await Promise.all([
       settleQuery(
         "purchases",
@@ -1806,6 +1875,7 @@ async function loadAdminDashboard(empty: {
           ),
         [{ today: 0, d7: 0, d30: 0, unique_all: 0, hits: 0 }],
       ),
+      settleQuery("funnel", () => loadFunnel(sql, owners), emptyFunnel()),
     ]);
     let purchases = take(purchasesRes);
     let usage = take(usageRes);
@@ -1816,6 +1886,7 @@ async function loadAdminDashboard(empty: {
     let entitlements = take(entitlementsRes);
     const counts = take(countsRes)[0];
     const visitsRow = take(visitsRes)[0];
+    const funnel = take(funnelRes);
     const visits = {
       today: Number(visitsRow?.today ?? 0),
       d7: Number(visitsRow?.d7 ?? 0),
@@ -1898,6 +1969,8 @@ async function loadAdminDashboard(empty: {
       research: geminiConfigured(),
       stats,
       visits,
+      funnel,
+      geminiCostPerBuildUsd: GEMINI_COST_PER_BUILD_USD,
       dbError,
       queryErrors,
       db,
@@ -1989,6 +2062,49 @@ export const pushMyPresets = createServerFn({ method: "POST" })
         `insert into user_presets (user_id, presets, updated_at) values ($1, $2::jsonb, now())
          on conflict (user_id) do update set presets = excluded.presets, updated_at = now()`,
         [context.userId, JSON.stringify(data.presets)],
+      );
+      return { ok: true as const };
+    } catch {
+      return { ok: false as const };
+    }
+  });
+
+/** Setlists on the account. Reading is open to the owner; a lapsed subscriber keeps what they made. */
+export const pullMySetlists = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }) => {
+    try {
+      const sql = await getSql();
+      const rows = await sql<{ setlists: Setlist[] }>`
+        select setlists from user_setlists where user_id = ${context.userId} limit 1
+      `;
+      const list = rows[0]?.setlists;
+      return { ok: true as const, setlists: Array.isArray(list) ? list : [] };
+    } catch {
+      return { ok: false as const, setlists: [] as Setlist[] };
+    }
+  });
+
+/** Saving setlists is a subscriber feature. */
+export const pushMySetlists = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) =>
+    z
+      .object({
+        setlists: z.array(z.unknown()).max(30),
+      })
+      .parse(input),
+  )
+  .handler(async ({ context, data }) => {
+    try {
+      const email = await emailFor(context.userId, context.email);
+      const plan = await loadPlan(context.userId, email);
+      if (!plan.paid && !plan.admin) return { ok: false as const };
+      const sql = await getSql();
+      await sql.query(
+        `insert into user_setlists (user_id, setlists, updated_at) values ($1, $2::jsonb, now())
+         on conflict (user_id) do update set setlists = excluded.setlists, updated_at = now()`,
+        [context.userId, JSON.stringify(data.setlists)],
       );
       return { ok: true as const };
     } catch {

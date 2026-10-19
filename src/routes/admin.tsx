@@ -274,6 +274,8 @@ function AdminDashboard() {
         />
       </section>
 
+      {dash ? <Funnel dash={dash} /> : null}
+
       <section className="grid gap-6 lg:grid-cols-3">
         <Fold title="Top cached songs" count={(dash?.stats?.topSongs ?? []).length} defaultOpen={false}>
           <Table
@@ -505,6 +507,54 @@ function Table({ cols, rows }: { cols: string[]; rows: string[][] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function Funnel({ dash }: { dash: Dash }) {
+  const f = dash.funnel;
+  const steps = [
+    { label: "Visitors", n: dash.visits?.d30 ?? 0, hint: "Unique browsers" },
+    { label: "Signed up", n: f.signups, hint: "New accounts, your inbox excluded" },
+    { label: "Built or downloaded", n: f.active, hint: "Of those new accounts. Demo opens count once downloaded." },
+    { label: "Downloaded", n: f.downloaded, hint: "Of those new accounts" },
+    { label: "Paid", n: f.paid, hint: "Of those new accounts, paying now" },
+  ];
+  const top = Math.max(1, ...steps.map((s) => s.n));
+  const cost = f.geminiBuildsMonth * dash.geminiCostPerBuildUsd;
+  return (
+    <section className="space-y-4 rounded-xl border border-border bg-card p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="font-display text-lg font-semibold">Funnel, last 30 days</h2>
+        <span className="text-xs text-muted-foreground">{f.downloadsAll} downloads in all, signed out included</span>
+      </div>
+      <ol className="space-y-3">
+        {steps.map((s, i) => {
+          const prev = i > 0 ? steps[i - 1].n : 0;
+          const pct = i > 0 && prev > 0 ? Math.round((s.n / prev) * 100) : null;
+          return (
+            <li key={s.label} className="space-y-1">
+              <div className="flex items-baseline justify-between gap-3 text-sm">
+                <span className="font-medium">{s.label}</span>
+                <span className="tabular-nums">
+                  {s.n}
+                  {pct != null ? <span className="ml-2 text-xs text-muted-foreground">{pct}%</span> : null}
+                </span>
+              </div>
+              <div className="h-2 rounded-full bg-muted">
+                <div className="h-2 rounded-full bg-primary" style={{ width: `${Math.max(2, (s.n / top) * 100)}%` }} />
+              </div>
+              <p className="text-xs text-muted-foreground">{s.hint}</p>
+            </li>
+          );
+        })}
+      </ol>
+      <p className="text-sm text-muted-foreground">
+        Gemini builds this month: <span className="tabular-nums text-foreground">{f.geminiBuildsMonth}</span> ×{" "}
+        {formatUsd(dash.geminiCostPerBuildUsd)} ≈{" "}
+        <span className="tabular-nums text-foreground">{formatUsd(cost)}</span> (estimate). New research and
+        revisions, your own included. Cache hits are not counted.
+      </p>
+    </section>
   );
 }
 
