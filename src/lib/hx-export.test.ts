@@ -225,9 +225,9 @@ describe("tone finishing", () => {
     const bass = finishTone(song({ ...preset("hx-stomp", [block("a", "ampeg-svt-nrm", { Drive: 3 }, 0)]), instrument: "bass" }), 100);
     assert.equal(bass.blocks.some((b) => b.modelId === "kinky-boost"), false);
     const slap = finishTone(song(preset("hx-stomp", [block("d", "simple-delay", { Time: 1.1 }, 0)])), 100);
-    assert.equal(slap.blocks[0].params.Note, undefined);
+    assert.equal(slap.blocks.find((b) => b.modelId === "simple-delay")!.params.Note, undefined);
     const bare = finishTone(song(preset("hx-stomp", [block("d", "simple-delay", { Mix: 2 }, 0)])), 100);
-    assert.equal(bare.blocks[0].params.Note, 8);
+    assert.equal(bare.blocks.find((b) => b.modelId === "simple-delay")!.params.Note, 8);
   });
 
   it("shows the rhythm/lead choice for real two-guitar bands", async () => {

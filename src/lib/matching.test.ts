@@ -64,6 +64,12 @@ describe("shared song cache needs the artist", () => {
     assert.equal((await lookup("TLC")).hit, false);
   });
 
+  it("a pedals-only rig does not reuse a row built with an amp model", async () => {
+    assert.equal((await lookup("Radiohead", "amp-front")).hit, false);
+    assert.equal((await lookup("Radiohead", "amp-4cm")).hit, false);
+    assert.equal((await lookup("Radiohead", "power-amp")).hit, true);
+  });
+
   it("no artist means no hit", async () => {
     assert.equal((await lookup(undefined)).hit, false);
     assert.equal((await lookup("")).hit, false);

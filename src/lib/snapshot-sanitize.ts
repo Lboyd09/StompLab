@@ -65,9 +65,12 @@ function isCab(modelId: string): boolean {
   return categoryOf(modelId) === "cab";
 }
 
-/** Amp + cab must stay on in every snapshot or HX Edit goes silent. */
+/**
+ * Amp + cab must stay on in every snapshot or HX Edit goes silent. On a 4-cable rig the FX Loop
+ * block is the real amp's preamp: bypassed, the amp drops out of the chain.
+ */
 export function essentialBlockIds(blocks: StompBlock[]): string[] {
-  return blocks.filter((b) => isAmpOrCab(b.modelId)).map((b) => b.id);
+  return blocks.filter((b) => isAmpOrCab(b.modelId) || b.modelId === "fx-loop").map((b) => b.id);
 }
 
 function reindex(blocks: StompBlock[]): StompBlock[] {

@@ -7,6 +7,8 @@ import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys, type Na
 import { buildPgp } from "./pgp";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
+import { applyRouting, removesAmp } from "./rig-routing";
+import { routeFor } from "@/data/playback";
 
 /**
  * HX Edit .hlx is L6Preset JSON. Line 6 publishes no schema; this follows real exports from every
@@ -78,6 +80,7 @@ type Slot = { block: StompBlock; hid: string; cab?: { block: StompBlock; hid: st
  * (the cab entry is not a block and does not count toward the unit's block limit).
  */
 export function exportSlots(preset: Preset): { slots: Slot[]; dropped: StompBlock[] } {
+  preset = applyRouting(preset);
   const device = exportProfile(preset.stompModel);
   const family = unitFamily(preset.stompModel);
   const dropped: StompBlock[] = [];
@@ -401,7 +404,8 @@ function snapshotJson(
 }
 
 export function buildHlx(preset: Preset, opts?: { fsMode?: HlxFsMode }): HlxJson {
-  preset = sanitizeSnapshots(preset);
+  // The player's rig (SL-62): no amp/cab in front of a real amp, an FX Loop for 4-cable, no cab into a power amp.
+  preset = sanitizeSnapshots(applyRouting(preset));
   const device = exportProfile(preset.stompModel);
   const ext = exportExtension(preset.stompModel);
   if (!ext || !device.hlxDeviceId) {
@@ -514,7 +518,10 @@ export function inaudibleExport(preset: Preset): string[] {
     }
   }
 
-  const ampKey = blocks.find(([, b]) => /^HD2_Amp/.test(String(b["@model"] ?? "")))?.[0];
+  // In front of a real amp the amp is bypassed on purpose (POD Go keeps its fixed amp slot, off).
+  const ampKey = removesAmp(routeFor(preset.playbackTarget))
+    ? undefined
+    : blocks.find(([, b]) => /^HD2_Amp/.test(String(b["@model"] ?? "")))?.[0];
   const cabKeys = blocks.filter(([, b]) => Number(b["@type"]) === 4).map(([k]) => k);
   for (const snapKey of Object.keys(tone).filter((k) => /^snapshot\d+$/.test(k))) {
     const snap = tone[snapKey] as { "@valid"?: boolean; "@name"?: string; blocks?: { dsp0?: Record<string, boolean> } };

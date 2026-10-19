@@ -192,6 +192,8 @@ export const STOMP_DEVICES: StompDevice[] = [
     snapshotController: 9,
     joinPosition: 8,
     topology1: 0,
+    fxLoopModel: "fx-loop",
+    irSlots: 128,
     notes: [
       "One DSP chip — 8 blocks max, poly pitch/whammy are expensive.",
       "Three capacitive-touch footswitches with color LED rings.",
@@ -220,6 +222,8 @@ export const STOMP_DEVICES: StompDevice[] = [
     snapshotController: 12,
     joinPosition: 8,
     topology1: 0,
+    fxLoopModel: "fx-loop",
+    irSlots: 128,
     notes: [
       "Same HX engine and 8-block / 1-DSP limit as HX Stomp.",
       "Eight capacitive-touch footswitches: top row FS1–3 + MODE, bottom FS4–6 + TAP. LCD and knobs sit on the right.",
@@ -250,6 +254,8 @@ export const STOMP_DEVICES: StompDevice[] = [
     joinPosition: 8,
     topology1: "A",
     toeSwitchFs: 13,
+    fxLoopModel: "fx-loop",
+    irSlots: 128,
     notes: [
       "Dual-DSP Helix. We still write a single 8-block path so HX Edit will import.",
       "Device id 2162689. Import in HX Edit with Helix Floor connected or Helix Native in Floor mode.",
@@ -279,6 +285,8 @@ export const STOMP_DEVICES: StompDevice[] = [
     joinPosition: 8,
     topology1: "A",
     toeSwitchFs: 13,
+    fxLoopModel: "fx-loop",
+    irSlots: 128,
     notes: [
       "Same HX models as Helix Floor. Device id 2162692.",
       "Twelve numbered footswitches in two rows of six. One expression pedal on the right. No scribble strips.",
@@ -305,6 +313,7 @@ export const STOMP_DEVICES: StompDevice[] = [
     snapshotController: 10,
     joinPosition: 9,
     topology1: 0,
+    fxLoopModel: "fx-loop",
     notes: [
       "No amp, cab, preamp, or IR models. Pedals only — sit in front of a real amp or in the loop.",
       "Eight footswitches with scribble strips. Four snapshots. Up to nine blocks.",
@@ -327,6 +336,8 @@ export const STOMP_DEVICES: StompDevice[] = [
     hlxDeviceId: 2162695,
     inputModel: "HD2_AppDSPFlowInput",
     outputModel: "HD2_AppDSPFlowOutput",
+    fxLoopModel: "fx-loop",
+    irSlots: 128,
     notes: [
       "POD Go Edit imports .pgp JSON, not Helix .hlx. We write a single-DSP L6Preset with device 2162695.",
       "Eight footswitches, built-in expression pedal, four snapshots. Amp and cab are on this unit.",

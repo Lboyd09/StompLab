@@ -272,7 +272,7 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
-          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} />
+          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"

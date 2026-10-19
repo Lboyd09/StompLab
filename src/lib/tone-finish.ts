@@ -59,6 +59,19 @@ function isCleanSnapshot(snap: Snapshot, blocks: StompBlock[]): boolean {
   return typeof drive === "number" && drive <= CLEAN_DRIVE;
 }
 
+const TIME_SIDE = new Set<CategoryId>(["modulation", "delay", "reverb"]);
+
+/**
+ * Where a gate or boost goes: in front of the amp. With no amp (a pedals-only rig into a real
+ * amp), in front of the FX loop or the first modulation / delay / reverb — never after the tails.
+ */
+function frontOfAmp(blocks: StompBlock[]): number {
+  const amp = blocks.findIndex((b) => isAmp(b.modelId));
+  if (amp >= 0) return amp;
+  const loop = blocks.findIndex((b) => b.modelId === "fx-loop" || TIME_SIDE.has(categoryOf(b.modelId) as CategoryId));
+  return loop >= 0 ? loop : blocks.length;
+}
+
 function needsGate(blocks: StompBlock[], bass: boolean): boolean {
   if (blocks.some((b) => b.modelId === "noise-gate" || b.modelId === "hard-gate" || b.modelId === "horizon-gate")) {
     return false;
@@ -164,13 +177,12 @@ function shapeGenerated(preset: Preset): Preset {
   }
 
   if (needsGate(blocks, bass) && hasRoom(next, blocks) && MODEL_MAP["noise-gate"]) {
-    const ampAt = blocks.findIndex((b) => isAmp(b.modelId));
     const gate: StompBlock = {
       id: newId("blk"),
       modelId: "noise-gate",
       enabled: true,
       path: "main",
-      position: ampAt < 0 ? blocks.length : ampAt,
+      position: frontOfAmp(blocks),
       params: { Threshold: 1.8, Decay: 2.4, Level: 5 },
     };
     blocks = [...blocks.slice(0, gate.position), gate, ...blocks.slice(gate.position)].map((b, i) => ({
@@ -185,8 +197,7 @@ function shapeGenerated(preset: Preset): Preset {
   const liftLeads = leadSnaps.length > 0 && leadSnaps.length < next.snapshots.length;
   let boost = blocks.find((b) => b.modelId === "kinky-boost");
   if (liftLeads && !boost && !bass && hasRoom(next, blocks) && MODEL_MAP["kinky-boost"]) {
-    const ampAt = blocks.findIndex((b) => isAmp(b.modelId));
-    const at = ampAt < 0 ? blocks.length : ampAt;
+    const at = frontOfAmp(blocks);
     boost = {
       id: newId("blk"),
       modelId: "kinky-boost",

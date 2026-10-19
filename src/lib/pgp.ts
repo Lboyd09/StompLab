@@ -6,6 +6,8 @@ import type { Preset, StompBlock } from "@/data/types";
 import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys } from "./hx-params";
 import { coerceNative } from "./hx-units";
 import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { routeFor } from "@/data/playback";
+import { applyRouting, removesAmp, removesCab } from "./rig-routing";
 
 /**
  * POD Go Edit .pgp, laid out like the unit's own New Preset (POD Go 2.50 exports):
@@ -61,7 +63,12 @@ function enabledIn(snapIndex: number, preset: Preset, block: StompBlock): boolea
 }
 
 export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBlock[] } {
+  // SL-62: the amp and cab slots are fixed on POD Go, so a real-amp rig bypasses them (removing
+  // built-ins breaks POD Go presets). 4-cable turns on the unit's own FX Loop slot.
+  preset = applyRouting(preset);
+  const route = routeFor(preset.playbackTarget);
   const dropped: StompBlock[] = [];
+  let loop: StompBlock | undefined;
   let amp: StompBlock | undefined;
   let cab: StompBlock | undefined;
   let wah: StompBlock | undefined;
@@ -75,12 +82,15 @@ export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBloc
       if (m?.category !== "mic") dropped.push(b);
       continue;
     }
-    if ((m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp") && !amp) amp = b;
+    if (b.modelId === "fx-loop") {
+      if (!loop) loop = b;
+      else dropped.push(b);
+    } else if ((m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp") && !amp) amp = b;
     else if (m.category === "cab" && !cab) cab = b;
     else if (m.category === "wah" && !wah) wah = b;
     else if (b.modelId === "volume-pedal" && !vol) vol = b;
     else if (m.category === "amp-guitar" || m.category === "amp-bass" || m.category === "preamp" || m.category === "cab") dropped.push(b);
-    else (amp ? post : pre).push(b);
+    else (amp || loop ? post : pre).push(b);
   }
   const resolve = (b: StompBlock, stage: "pre" | "post") => {
     const id = podGoIdFor(helixIdFor(b.modelId)!, stage);
@@ -133,9 +143,15 @@ export function pgpLayout(preset: Preset): { slots: Placed[]; dropped: StompBloc
       ? { block: vol, ...fixed("HD2_VolPanVolStereo"), role: "vol", enabled: vol.enabled }
       : { ...fixed("HD2_VolPanVolStereo"), role: "vol", enabled: false },
     ...freePre,
-    { ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: false },
-    ampR ? { block: amp, ...ampR, role: "amp", enabled: true } : { ...fixed("HD2_AmpUSDoubleNrm"), role: "amp", enabled: true },
-    cabR ? { block: cab, ...cabR, role: "cab", enabled: true } : { ...fixed("HD2_Cab2x12DoubleC12N"), role: "cab", enabled: true },
+    loop
+      ? { block: loop, ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: true }
+      : { ...fixed("HD2_FXLoopMono1"), role: "fxloop", enabled: false },
+    ampR
+      ? { block: amp, ...ampR, role: "amp", enabled: true }
+      : { ...fixed("HD2_AmpUSDoubleNrm"), role: "amp", enabled: !removesAmp(route) },
+    cabR
+      ? { block: cab, ...cabR, role: "cab", enabled: true }
+      : { ...fixed("HD2_Cab2x12DoubleC12N"), role: "cab", enabled: !removesCab(route) },
     eqBlock && eqId
       ? { block: eqBlock, ...fixed(eqId), role: "eq", enabled: eqBlock.enabled }
       : { ...fixed("HD2_EQ_STATIC_ParametricStereo"), role: "eq", enabled: false },
