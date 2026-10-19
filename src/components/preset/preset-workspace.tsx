@@ -28,6 +28,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../ui/card";
 import { FsAssignPanel, stompSwitchIndices } from "./fs-assign";
+import { unitSpec } from "../stomp/hardware";
 import { DownloadBar, EXPORT_MODE_LABEL, type ExportMode } from "./download-bar";
 import { FREE_BUILD_LINE } from "@/lib/copy";
 import { PostDownloadDialog, shouldAskAgain } from "../layout/post-download";
@@ -82,6 +83,8 @@ export function PresetWorkspace({
   // One choice drives the page and the file: Stomp shows effects on the switches, Snapshot shows song parts.
   const exportMode: ExportMode = fsMode === "stomp" ? "stomp" : "snapshot";
   const stompMode = fsMode === "stomp";
+  // Snapshot N sits on a different switch per unit (XL: FS5, FS6, FS2…; Helix: FS8–11).
+  const snapFs = unitSpec(deviceFor(preset).layout).snapshotFs;
   const setExportMode = (mode: ExportMode) => {
     setFsMode(mode);
     if (mode !== "stomp") return;
@@ -694,7 +697,7 @@ export function PresetWorkspace({
                     </button>
                     <div className="min-w-0 flex-1 space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="font-mono text-[10px] text-muted-foreground">FS{i + 1}</span>
+                        <span className="font-mono text-[10px] text-muted-foreground">FS{snapFs[i] ?? i + 1}</span>
                         <input
                           value={s.name}
                           maxLength={12}
@@ -947,10 +950,10 @@ export function PresetWorkspace({
                           }`}
                         >
                           <span
-                            className="mt-0.5 grid size-6 shrink-0 place-items-center rounded-full font-mono text-xs font-semibold text-black"
+                            className="mt-0.5 grid h-6 min-w-9 shrink-0 place-items-center rounded-full px-1.5 font-mono text-[11px] font-semibold text-black"
                             style={{ background: s.color }}
                           >
-                            {i + 1}
+                            FS{snapFs[i] ?? i + 1}
                           </span>
                           <span className="min-w-0 flex-1">
                             <span className="block text-sm font-medium">{s.name || `Snapshot ${i + 1}`}</span>
