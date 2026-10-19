@@ -19,6 +19,7 @@ const SPEAKER = new Set<CategoryId>(["cab", "mic", "ir"]);
 const LOOP_SIDE = new Set<CategoryId>(["modulation", "delay", "reverb"]);
 
 export const FX_LOOP_MODEL = "fx-loop";
+const AMP_TIP_START = "This chain was built on the";
 
 function categoryOf(b: StompBlock): CategoryId | undefined {
   return MODEL_MAP[b.modelId]?.category;
@@ -40,6 +41,19 @@ function wiringTip(preset: Preset, route: Route): string | undefined {
   if (route === "pedals") return "Into the front of your amp: set the amp clean and loud enough; the pedals do the rest.";
   if (route === "no-cab") return "No cab in the file: run it into a power amp and a real guitar cab, or your amp's FX return.";
   return undefined;
+}
+
+/**
+ * A chain built around an amp model (a demo, or a cached row) loses that amp in front of a real
+ * one. Say which amp carried the record's gain so the player sets their own amp to match.
+ */
+function removedAmpTip(amp: StompBlock | undefined, route: Route): string | undefined {
+  if (!amp || !removesAmp(route)) return undefined;
+  const m = MODEL_MAP[amp.modelId];
+  if (!m) return undefined;
+  const drive = amp.params.Drive ?? amp.params.Gain;
+  const gain = typeof drive !== "number" ? "" : drive <= 2.4 ? " set clean" : drive >= 5 ? " with real gain" : " at a crunch";
+  return `${AMP_TIP_START} ${m.basedOn || m.name}${gain}. Set your amp like that; the pedals stay as on the record.`;
 }
 
 export function applyRouting(preset: Preset, target: PlaybackTarget | undefined = preset.playbackTarget): Preset {
@@ -86,7 +100,11 @@ export function applyRouting(preset: Preset, target: PlaybackTarget | undefined 
     return { ...s, enabledBlocks: enabled, paramOverrides };
   });
   const footswitches = routed.footswitches.filter((f) => !(f.action === "bypass" && f.targetBlockId && removed.has(f.targetBlockId)));
-  const tip = wiringTip(routed, route);
-  const tips = tip && !routed.tips.includes(tip) ? [...routed.tips, tip] : routed.tips;
+  const tips = [...routed.tips];
+  const ampTip = removedAmpTip(sorted[ampAt], route);
+  // "Set the amp clean" is only true for a chain voiced for a clean amp.
+  const builtOnAmp = Boolean(ampTip) || tips.some((t) => t.startsWith(AMP_TIP_START));
+  const wiring = route === "pedals" && builtOnAmp ? undefined : wiringTip(routed, route);
+  for (const tip of [wiring, ampTip]) if (tip && !tips.includes(tip)) tips.push(tip);
   return { ...routed, blocks, snapshots, footswitches, tips };
 }

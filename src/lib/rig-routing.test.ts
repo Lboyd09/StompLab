@@ -10,7 +10,7 @@ import { validatePreset } from "./hx-validate";
 import { withStompModel } from "./preset-utils";
 import { applyRouting } from "./rig-routing";
 import { systemForCustomSound, systemForDevice } from "./preset-schema";
-import { sanitizeSnapshots } from "./snapshot-sanitize";
+import { playableIssues, sanitizeSnapshots } from "./snapshot-sanitize";
 import { parseIrSlot } from "./storage";
 import { finishTone } from "./tone-finish";
 
@@ -164,6 +164,27 @@ describe("applyRouting", () => {
     assert.ok(!routed.blocks.some((b) => /^(amp|cab|preamp)/.test(MODEL_MAP[b.modelId]?.category ?? "")));
     assert.ok(routed.blocks.some((b) => b.modelId === "fx-loop"));
     assert.equal(droppedOnExport(routed).length, 0);
+  });
+
+  it("front of the amp: a snapshot that was only amp + cab stays all-off (dry into the amp), on every featured preset", () => {
+    for (const unit of ["hx-stomp", "pod-go"] as const) {
+      for (const src of FEATURED) {
+        const full = sanitizeSnapshots(withStompModel(src, unit));
+        const front = sanitizeSnapshots(applyRouting({ ...withStompModel(src, unit), playbackTarget: "amp-front" }));
+        const speaker = /^(amp-guitar|amp-bass|preamp|cab|mic|ir)$/;
+        const models = (p: Preset, ids: string[]) =>
+          ids.map((id) => p.blocks.find((b) => b.id === id)!.modelId).filter((m) => !speaker.test(MODEL_MAP[m]?.category ?? "")).sort();
+        full.snapshots.forEach((s, i) => {
+          assert.deepEqual(models(front, front.snapshots[i].enabledBlocks), models(full, s.enabledBlocks), `${src.id} ${unit} ${s.name}`);
+        });
+        assert.deepEqual(playableIssues(front), [], src.id);
+        const again = applyRouting(front);
+        assert.deepEqual(again.tips, front.tips, "tips are idempotent");
+      }
+    }
+    const sandmanFront = applyRouting(sandman("hx-stomp", "amp-front"));
+    assert.ok(sandmanFront.tips.some((t) => /built on the .*Rectifier/i.test(t)), sandmanFront.tips.join(" | "));
+    assert.ok(!sandmanFront.tips.some((t) => /set the amp clean/.test(t)));
   });
 
   it("sanitize keeps the FX Loop on in every snapshot", () => {
