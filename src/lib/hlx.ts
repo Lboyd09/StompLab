@@ -5,7 +5,8 @@ import { hxModel, hxModelOnUnit, type HxUnitFamily } from "@/data/hx-catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
 import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys, type NativeParams } from "./hx-params";
 import { buildPgp } from "./pgp";
-import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { unitSpec } from "@/components/stomp/hardware";
+import { deviceFor, sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 
 /**
@@ -349,8 +350,15 @@ function sanitizeLabel(s: string, max: number) {
 function buildFootswitch(preset: Preset, slots: Slot[]) {
   const device = exportProfile(preset.stompModel);
   const footswitch: { dsp0: HlxJson; dsp1: HlxJson } = { dsp0: {}, dsp1: {} };
+  const spec = unitSpec(deviceFor(preset).layout);
+  // TAP, MODE and the bank switches, unless the unit also uses that switch for stomps (XL FS1/FS4).
+  const reserved = new Set(
+    [spec.mode, spec.tap, spec.up, spec.down].filter((n): n is number => typeof n === "number" && !spec.stompFs.includes(n)),
+  );
   for (const fs of preset.footswitches) {
     if (fs.action !== "bypass" || !fs.targetBlockId) continue;
+    // Never put an effect on a switch the unit keeps for TAP, MODE or BANK.
+    if (reserved.has(fs.index)) continue;
     const idx = slots.findIndex((s) => s.block.id === fs.targetBlockId);
     if (idx < 0) continue;
     const model = MODEL_MAP[slots[idx].block.modelId];

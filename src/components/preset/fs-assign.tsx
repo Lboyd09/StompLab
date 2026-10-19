@@ -2,6 +2,7 @@ import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset } from "@/data/types";
 import { blockModel, deviceFor, hxEditFsNumber, sortedBlocks } from "@/lib/preset-utils";
 import { isAmpOrCab } from "@/lib/snapshot-sanitize";
+import { unitSpec } from "../stomp/hardware";
 
 type Props = {
   preset: Preset;
@@ -11,9 +12,7 @@ type Props = {
 
 /** Footswitches a player can put an effect on in Stomp mode, numbered as on the unit. */
 export function stompSwitchIndices(preset: Preset): number[] {
-  const device = deviceFor(preset);
-  const n = device.layout === "stomp" ? 3 : device.layout === "xl" ? 6 : device.footswitches;
-  return Array.from({ length: n }, (_, i) => i + 1).filter((i) => !(device.layout === "podgo" && i === 8));
+  return unitSpec(deviceFor(preset).layout).stompFs;
 }
 
 /** Stomp mode: one row per footswitch, pick the effect it turns on and off. */
@@ -46,7 +45,7 @@ export function FsAssignPanel({ preset, onAssign, onReset }: Props) {
         <div>
           <h2 className="font-display text-base font-semibold">Footswitches</h2>
           <p className="text-sm text-muted-foreground">
-            Pick the effect each switch turns on and off. Switch 1 is top-left on the {device.name}.
+            Pick the effect each switch turns on and off. Numbers match the {device.name}'s switches.
           </p>
         </div>
         {onReset ? (
