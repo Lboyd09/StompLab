@@ -7,10 +7,12 @@ import {
   loadGeminiKey,
   loadPresets,
   loadSettings,
+  loadSetlistsRaw,
   patchSettings,
   saveGear,
   saveGeminiKey,
   savePresets,
+  saveSetlistsRaw,
   storageOwnerKey,
   type FsModePref,
   type Settings,
@@ -18,6 +20,7 @@ import {
   upsertPreset,
 } from "@/lib/storage";
 import type { GuitarRole } from "@/lib/guitar-role";
+import { cleanSetlists, type Setlist } from "@/lib/setlist";
 import type { WahMode } from "@/lib/wah";
 
 type LcdView = "play" | "edit" | "tuner" | "assign";
@@ -42,6 +45,7 @@ type AppState = {
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
+  setlists: Setlist[];
   selectedBlockId: string | null;
   lcdView: LcdView;
   fsMode: FsMode;
@@ -70,6 +74,9 @@ type AppState = {
   setGear: (gear: UserGear[]) => void;
   addGear: (item: UserGear) => void;
   removeGear: (id: string) => void;
+  saveSetlist: (setlist: Setlist) => void;
+  removeSetlist: (id: string) => void;
+  replaceSetlists: (setlists: Setlist[]) => void;
   selectBlock: (id: string | null) => void;
   setLcdView: (view: LcdView) => void;
   setFsMode: (mode: FsMode) => void;
@@ -102,6 +109,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   geminiKey: "",
   presets: [],
   gear: [],
+  setlists: [],
   selectedBlockId: null,
   lcdView: "play",
   fsMode: "stomp",
@@ -137,7 +145,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     const adopted = adoptLegacyLocal(owner);
     const presets = adopted.presets.length ? adopted.presets : loadPresets(owner);
     const gear = adopted.gear.length ? adopted.gear : loadGear(owner);
-    set({ ownerId: owner, presets, gear });
+    set({ ownerId: owner, presets, gear, setlists: cleanSetlists(loadSetlistsRaw(owner)) });
     return { presets, gear };
   },
   setInstrument: (instrument) => {
@@ -215,6 +223,21 @@ export const useAppStore = create<AppState>((set, get) => ({
     const gear = get().gear.filter((g) => g.id !== id);
     saveGear(gear, get().ownerId);
     set({ gear });
+  },
+  saveSetlist: (setlist) => {
+    const setlists = cleanSetlists([setlist, ...get().setlists.filter((s) => s.id !== setlist.id)]);
+    saveSetlistsRaw(setlists, get().ownerId);
+    set({ setlists });
+  },
+  removeSetlist: (id) => {
+    const setlists = get().setlists.filter((s) => s.id !== id);
+    saveSetlistsRaw(setlists, get().ownerId);
+    set({ setlists });
+  },
+  replaceSetlists: (next) => {
+    const setlists = cleanSetlists(next);
+    saveSetlistsRaw(setlists, get().ownerId);
+    set({ setlists });
   },
   selectBlock: (id) => set({ selectedBlockId: id, lcdView: id ? "edit" : "play", paramPage: 0 }),
   setLcdView: (lcdView) => set({ lcdView }),

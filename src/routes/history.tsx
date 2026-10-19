@@ -85,6 +85,9 @@ function HistoryPage() {
       <PageHeader kicker="Your builds" title="History">
         Saved to your account, so they're here on your phone and your computer. Newest first.
       </PageHeader>
+      <Button asChild variant="secondary" className="h-11">
+        <Link to="/setlist">Setlists</Link>
+      </Button>
 
       {user.length === 0 ? (
         <div className="space-y-3 rounded-2xl border border-border bg-card p-6">

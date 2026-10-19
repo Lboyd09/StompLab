@@ -38,6 +38,8 @@ export async function wipeUser(sql: Awaited<ReturnType<typeof getSql>>, userId: 
     `delete from research_failures where user_id = $1`,
     `delete from user_gear where user_id = $1`,
     `delete from user_presets where user_id = $1`,
+    `delete from user_setlists where user_id = $1`,
+    `delete from download_events where user_id = $1`,
     `delete from feedback where user_id = $1`,
     `delete from affiliate_clicks where user_id = $1`,
     `delete from profiles where user_id = $1`,

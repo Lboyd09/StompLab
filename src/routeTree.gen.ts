@@ -23,11 +23,13 @@ import { Route as JoinRouteImport } from './routes/join'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as PrivacyRouteImport } from './routes/privacy'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
+import { Route as SetlistRouteImport } from './routes/setlist'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TermsRouteImport } from './routes/terms'
 import { Route as UpgradeRouteImport } from './routes/upgrade'
 import { Route as AdminEraseRouteImport } from './routes/admin.erase'
 import { Route as AdminUsersRouteImport } from './routes/admin.users'
+import { Route as ApiEventRouteImport } from './routes/api/event'
 import { Route as ApiKeepaliveRouteImport } from './routes/api/keepalive'
 import { Route as ApiVisitRouteImport } from './routes/api/visit'
 import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
@@ -107,6 +109,11 @@ const ResetPasswordRoute = ResetPasswordRouteImport.update({
   path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetlistRoute = SetlistRouteImport.update({
+  id: '/setlist',
+  path: '/setlist',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const SettingsRoute = SettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
@@ -131,6 +138,11 @@ const AdminUsersRoute = AdminUsersRouteImport.update({
   id: '/users',
   path: '/users',
   getParentRoute: () => AdminRoute,
+} as any)
+const ApiEventRoute = ApiEventRouteImport.update({
+  id: '/api/event',
+  path: '/api/event',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiKeepaliveRoute = ApiKeepaliveRouteImport.update({
   id: '/api/keepalive',
@@ -188,11 +200,13 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/setlist': typeof SetlistRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/admin/erase': typeof AdminEraseRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/event': typeof ApiEventRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -216,11 +230,13 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/setlist': typeof SetlistRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/admin/erase': typeof AdminEraseRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/event': typeof ApiEventRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -246,11 +262,13 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/privacy': typeof PrivacyRoute
   '/reset-password': typeof ResetPasswordRoute
+  '/setlist': typeof SetlistRoute
   '/settings': typeof SettingsRoute
   '/terms': typeof TermsRoute
   '/upgrade': typeof UpgradeRoute
   '/admin/erase': typeof AdminEraseRoute
   '/admin/users': typeof AdminUsersRoute
+  '/api/event': typeof ApiEventRoute
   '/api/keepalive': typeof ApiKeepaliveRoute
   '/api/visit': typeof ApiVisitRoute
   '/catalog/$id': typeof CatalogIdRoute
@@ -277,11 +295,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy'
     | '/reset-password'
+    | '/setlist'
     | '/settings'
     | '/terms'
     | '/upgrade'
     | '/admin/erase'
     | '/admin/users'
+    | '/api/event'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -305,11 +325,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy'
     | '/reset-password'
+    | '/setlist'
     | '/settings'
     | '/terms'
     | '/upgrade'
     | '/admin/erase'
     | '/admin/users'
+    | '/api/event'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -334,11 +356,13 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy'
     | '/reset-password'
+    | '/setlist'
     | '/settings'
     | '/terms'
     | '/upgrade'
     | '/admin/erase'
     | '/admin/users'
+    | '/api/event'
     | '/api/keepalive'
     | '/api/visit'
     | '/catalog/$id'
@@ -364,9 +388,11 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   PrivacyRoute: typeof PrivacyRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
+  SetlistRoute: typeof SetlistRoute
   SettingsRoute: typeof SettingsRoute
   TermsRoute: typeof TermsRoute
   UpgradeRoute: typeof UpgradeRoute
+  ApiEventRoute: typeof ApiEventRoute
   ApiKeepaliveRoute: typeof ApiKeepaliveRoute
   ApiVisitRoute: typeof ApiVisitRoute
   PresetIdRoute: typeof PresetIdRoute
@@ -475,6 +501,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setlist': {
+      id: '/setlist'
+      path: '/setlist'
+      fullPath: '/setlist'
+      preLoaderRoute: typeof SetlistRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/settings': {
       id: '/settings'
       path: '/settings'
@@ -509,6 +542,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/users'
       preLoaderRoute: typeof AdminUsersRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/api/event': {
+      id: '/api/event'
+      path: '/api/event'
+      fullPath: '/api/event'
+      preLoaderRoute: typeof ApiEventRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/api/keepalive': {
       id: '/api/keepalive'
@@ -609,9 +649,11 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   PrivacyRoute: PrivacyRoute,
   ResetPasswordRoute: ResetPasswordRoute,
+  SetlistRoute: SetlistRoute,
   SettingsRoute: SettingsRoute,
   TermsRoute: TermsRoute,
   UpgradeRoute: UpgradeRoute,
+  ApiEventRoute: ApiEventRoute,
   ApiKeepaliveRoute: ApiKeepaliveRoute,
   ApiVisitRoute: ApiVisitRoute,
   PresetIdRoute: PresetIdRoute,

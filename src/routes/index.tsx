@@ -12,11 +12,11 @@ import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { PlaybackTarget } from "@/data/types";
-import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
+import { notifyResearchSource } from "@/lib/notify";
 import { overlayUserGear } from "@/lib/preset-schema";
 import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { applyWahPreference } from "@/lib/wah";
-import { matchFeatured, researchSongFn } from "@/lib/research";
+import { buildSong } from "@/lib/song-build";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { PAID_BUILD_LINE } from "@/lib/copy";
@@ -88,112 +88,42 @@ function Home() {
 
   async function onResearch(e: React.FormEvent) {
     e.preventDefault();
-    if (!song.trim()) {
-      toast.error("Type a song title first.");
-      setStatus("Type a song title first.");
-      return;
-    }
-    // The server builds the lead part for two-guitar songs; nothing to pick here.
-    const roleForBuild = "both" as const;
-    const featuredHit = matchFeatured(song.trim(), artist.trim() || undefined, instrument, stompModel, roleForBuild);
-    if (featuredHit) {
-      const src = FEATURED.find(
-        (p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song,
-      );
-      if (src && isDemoId(src.id)) {
-        savePreset(applyWahPreference(overlayUserGear(withStompModel(featuredHit, stompModel), gear), wahMode, wahModelId));
-        notifyResearchSource("library");
-        await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
-        return;
-      }
-      if (src && !plan.paid) {
-        await navigate({ to: "/upgrade" });
-        return;
-      }
-      if (src && plan.paid) {
-        savePreset(applyWahPreference(overlayUserGear(withStompModel(featuredHit, stompModel), gear), wahMode, wahModelId));
-        notifyResearchSource("library");
-        await navigate({ to: "/preset/$id", params: { id: featuredHit.id } });
-        return;
-      }
-    }
-    if (planPending) {
-      toast.message("Still loading your account. Try again in a second.");
-      return;
-    }
-    if (!plan.signedIn) {
-      await navigate({ to: "/login", search: { next: "/" } });
-      return;
-    }
-    if (!plan.canResearch) {
-      if (plan.paid) {
-        toast.error("You've used this month's custom builds. Demos still work. Resets next calendar month.");
-        return;
-      }
-      await navigate({ to: "/upgrade" });
-      return;
-    }
-    setBusy(true);
-    setStatus("Researching…");
-    setProgress(8);
-    const tick = window.setInterval(() => {
-      setProgress((p) => (p >= 94 ? 94 : p + 3));
-    }, 450);
+    let tick = 0;
     try {
-      const result = await researchSongFn({
-        data: {
-          song: song.trim(),
-          artist: artist.trim() || undefined,
-          instrument,
-          stompModel,
-          playbackTarget,
-          userGear: gear,
-          wahMode,
-          wahModelId,
-          guitarRole: roleForBuild,
-        },
-      });
-      if (!result || !result.ok) {
-        const fail = result && !result.ok
-          ? result
-          : { ok: false as const, error: "Research failed. Try a demo, then try that song again." };
-        if (fail.reason === "quota") {
-          toast.error(fail.error);
-          setStatus(fail.error);
-          return;
-        }
-        if (fail.reason === "paywall") {
-          await navigate({ to: "/upgrade" });
-          return;
-        }
-        if (fail.reason === "signin") {
-          await navigate({ to: "/login", search: { next: "/" } });
-          return;
-        }
-        notifyResearchError(fail, {
+      const outcome = await buildSong(
+        { song, artist, instrument, stompModel, playbackTarget, gear, wahMode, wahModelId },
+        { plan, planPending },
+        {
+          onStart: () => {
+            setBusy(true);
+            setStatus("Researching…");
+            setProgress(8);
+            tick = window.setInterval(() => {
+              setProgress((p) => (p >= 94 ? 94 : p + 3));
+            }, 450);
+          },
           login: () => void navigate({ to: "/login" }),
           upgrade: () => void navigate({ to: "/upgrade" }),
-        });
-        setStatus(fail.error);
-        return;
-      }
-      savePreset(result.preset);
-      notifyResearchSource(result.source);
-      await refresh();
-      await navigate({ to: "/preset/$id", params: { id: result.preset.id } });
-    } catch (err) {
-      const message =
-        err instanceof Error && err.message.trim()
-          ? err.message
-          : "Could not research that song. Try a demo, then try again.";
-      if (message === "Unauthorized") {
+        },
+      );
+      if (outcome.kind === "login") {
         await navigate({ to: "/login", search: { next: "/" } });
         return;
       }
-      toast.error(message);
-      setStatus(message);
+      if (outcome.kind === "upgrade") {
+        await navigate({ to: "/upgrade" });
+        return;
+      }
+      if (outcome.kind === "stopped") {
+        if (outcome.status) setStatus(outcome.status);
+        return;
+      }
+      savePreset(outcome.preset);
+      notifyResearchSource(outcome.source);
+      if (outcome.counted) await refresh();
+      await navigate({ to: "/preset/$id", params: { id: outcome.preset.id } });
     } finally {
-      window.clearInterval(tick);
+      if (tick) window.clearInterval(tick);
       setBusy(false);
       setProgress(0);
     }

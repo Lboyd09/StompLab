@@ -31,7 +31,7 @@ import { Tutorial } from "./tutorial";
 import { UnitChip } from "./unit-chip";
 import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { pullMyPresets, pushMyPresets } from "@/lib/billing";
+import { pullMyPresets, pullMySetlists, pushMyPresets, pushMySetlists } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
 import { captureReferralCode } from "@/lib/referral-code";
 
@@ -53,6 +53,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrateOwner = useAppStore((s) => s.hydrateOwner);
   const replacePresets = useAppStore((s) => s.replacePresets);
   const presets = useAppStore((s) => s.presets);
+  const setlists = useAppStore((s) => s.setlists);
+  const replaceSetlists = useAppStore((s) => s.replaceSetlists);
   const ownerId = useAppStore((s) => s.ownerId);
   const instrument = useAppStore((s) => s.instrument);
   const setInstrument = useAppStore((s) => s.setInstrument);
@@ -76,6 +78,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [syncReady, setSyncReady] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastSynced = useRef("");
+  const [setlistSyncReady, setSetlistSyncReady] = useState(false);
+  const lastSetlistSync = useRef("");
 
   useEffect(() => {
     hydrate();
@@ -142,6 +146,48 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }, 8000);
     return () => window.clearTimeout(timer);
   }, [presets, userId, syncReady, ownerId]);
+
+  // Setlists follow the same account sync as History, on their own so one failing never blocks the other.
+  const canSyncSetlists = plan.signedIn && (plan.paid || plan.admin);
+  useEffect(() => {
+    if (authPending) return;
+    setSetlistSyncReady(false);
+    if (!userId) {
+      lastSetlistSync.current = "";
+      return;
+    }
+    hydrateOwner(userId);
+    let cancelled = false;
+    void pullMySetlists()
+      .then((res) => {
+        if (cancelled || !res.ok) return;
+        if (res.setlists.length) {
+          replaceSetlists(res.setlists);
+          lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
+        } else {
+          lastSetlistSync.current = jsonFingerprint([]);
+        }
+        setSetlistSyncReady(true);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, authPending, hydrateOwner, replaceSetlists]);
+
+  useEffect(() => {
+    if (!userId || !setlistSyncReady || !canSyncSetlists || ownerId !== userId) return;
+    if (!shouldPushSync(lastSetlistSync.current, setlists)) return;
+    const nextFp = jsonFingerprint(setlists);
+    const timer = window.setTimeout(() => {
+      void pushMySetlists({ data: { setlists } })
+        .then((res) => {
+          if (res.ok) lastSetlistSync.current = nextFp;
+        })
+        .catch(() => undefined);
+    }, 4000);
+    return () => window.clearTimeout(timer);
+  }, [setlists, userId, setlistSyncReady, canSyncSetlists, ownerId]);
 
   useEffect(() => {
     const root = document.documentElement;

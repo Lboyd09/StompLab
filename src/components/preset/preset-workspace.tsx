@@ -35,6 +35,7 @@ import { RigDisclaimer } from "../layout/disclaimer";
 import { revisePresetFn } from "@/lib/research";
 import { sharePresetFn } from "@/lib/share";
 import { copyText } from "@/lib/clipboard";
+import { trackDownload } from "@/lib/track";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { WahSelect } from "../layout/wah-select";
 import { applyWahPreference, parseWahMode, type WahMode } from "@/lib/wah";
@@ -292,6 +293,7 @@ export function PresetWorkspace({
     if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
     const ok = downloadHlx(preset, { fsMode: exportMode });
     if (ok) {
+      trackDownload();
       setSavedFile(filename);
       setAskOpen("download");
     }
@@ -414,6 +416,11 @@ export function PresetWorkspace({
                   {sharing ? "Making link" : "Share this preset"}
                 </Button>
               ) : null}
+              {readOnly ? null : (
+                <Button asChild variant="ghost" size="sm" className="h-11 w-full sm:w-auto sm:self-end">
+                  <Link to="/setlist" search={{ add: preset.id }}>Add to setlist</Link>
+                </Button>
+              )}
             </div>
           </div>
           <p className="max-w-2xl text-sm leading-relaxed text-muted-foreground">{preset.summary}</p>

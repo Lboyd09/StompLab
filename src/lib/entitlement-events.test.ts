@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { before, describe, it } from "node:test";
 import { useTestDatabase, type Sql } from "./db";
 import { findEntitlement } from "./entitlement";
-import { grantPaid, paidVerifiedFor, revokeForRefund, revokeSubscription, markSubscriptionCanceled, markSubscriptionLapsed } from "./billing";
+import { grantPaid, loadFunnel, paidVerifiedFor, revokeForRefund, revokeSubscription, markSubscriptionCanceled, markSubscriptionLapsed } from "./billing";
 import { makeTestDb } from "./test-db";
 
 let sql: Sql;
@@ -266,5 +266,31 @@ describe("paid access lifetime", () => {
     await addUser("life-3", "life-3@example.com", true);
     await addEntitlement("life-3", "life-3@example.com", { sub: "sub_life_0003", status: "active" });
     assert.equal(await paidFor("life-3", "life-3@example.com"), true);
+  });
+});
+
+describe("admin funnel", () => {
+  it("counts a 30-day cohort that only narrows, and leaves the owner inbox out", async () => {
+    const owners = ["owner-funnel@example.com"];
+    const before = await loadFunnel(sql, owners);
+    await addUser("fun-1", "fun-1@example.com", true);
+    await addUser("fun-2", "fun-2@example.com", true);
+    await addUser("fun-3", "fun-3@example.com", true);
+    await addUser("fun-own", "owner-funnel@example.com", true);
+    await sql.query(
+      `insert into build_events (user_id, kind, song, year_month, status)
+       values ('fun-1', 'song', 'x', '2026-10', 'confirmed'), ('fun-own', 'song', 'x', '2026-10', 'confirmed'),
+              ('fun-1', 'revise', 'x', '2026-10', 'confirmed')`,
+    );
+    await sql.query(`insert into download_events (user_id) values ('fun-2'), ('fun-2'), (''), ('fun-own')`);
+    await addEntitlement("fun-2", "fun-2@example.com", { sub: "sub_fun_0002", status: "active" });
+    const after = await loadFunnel(sql, owners);
+    assert.equal(after.signups - before.signups, 3);
+    assert.equal(after.active - before.active, 2);
+    assert.equal(after.downloaded - before.downloaded, 1);
+    assert.equal(after.paid - before.paid, 1);
+    assert.equal(after.downloadsAll - before.downloadsAll, 4);
+    assert.equal(after.geminiBuildsMonth - before.geminiBuildsMonth, 1);
+    assert.ok(after.signups >= after.active && after.active >= after.downloaded);
   });
 });

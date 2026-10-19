@@ -9,6 +9,7 @@ const APP_DOCUMENTS = new Set([
   "/create",
   "/gear",
   "/history",
+  "/setlist",
   "/equivalents",
   "/guide",
   "/login",

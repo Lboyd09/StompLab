@@ -33,6 +33,7 @@ describe("isScannerPath", () => {
       "/terms",
       "/privacy",
       "/equivalents",
+      "/setlist",
       "/api/auth/get-session",
       "/api/keepalive",
       "/api/polar/webhook",
