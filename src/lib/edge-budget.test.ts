@@ -15,6 +15,8 @@ describe("isScannerPath", () => {
       "/catalog",
       "/catalog/deez-one-vintage",
       "/catalog/scream-808",
+      "/s/Ab3dEf9hJk",
+      "/setlist",
       "/create",
       "/gear",
       "/guide",
