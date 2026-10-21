@@ -25,7 +25,7 @@ import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiGroundedNotes, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
 import { VERIFY_EMAIL_LINE } from "./copy";
-import { finishTone } from "./tone-finish";
+import { keepDirtyIntro, finishTone } from "./tone-finish";
 import { applyRouting } from "./rig-routing";
 import {
   GearSchema,
@@ -478,7 +478,7 @@ ${catalog}
 
 JSON schema:
 ${jsonSchemaHint()}`;
-      const preset = await runGeminiPreset({
+      const generated = await runGeminiPreset({
         prompt,
         system: `${SYSTEM}
 
@@ -491,6 +491,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
         playbackTarget: data.playbackTarget,
         userGear: data.userGear,
       });
+      const preset = keepDirtyIntro(generated, record.notes);
       await confirmBuildSlot(slot.reservation);
       settled = true;
       try {

@@ -372,7 +372,8 @@ export function PresetWorkspace({
   const activeSnap = preset.snapshots[activeSnapshot];
   // Demo notes are written for the HX Stomp's switches; name the real ones on this unit.
   const noteText = (t: string) => (preset.source === "featured" ? unitSwitchText(t, unitSpec(deviceFor(preset).layout).snapshotFs) : t);
-  const tuning = preset.tips.find((t) => /^tune /i.test(t));
+  // Standard tuning needs no badge; only a retune is worth flagging.
+  const tuning = preset.tips.find((t) => /^tune /i.test(t) && !/^tune (to )?e standard\b/i.test(t));
   const tuningName = tuning ? (tuning.match(/\(([^)]+)\)/)?.[1] ?? tuning.replace(/[.,].*$/, "")) : null;
   const otherTips = preset.tips.filter((t) => t !== tuning);
   const fs = (n: number | undefined) => (n ? `FS${n}` : "");

@@ -670,7 +670,7 @@ export function recordNotesPrompt(
 Return one JSON object with short values:
 {"bpm": album tempo as a number, taken from a tempo or chart site (SongBPM, Tunebat, Musicnotes, SongSelect, a published chart). Report the tempo the chart uses: a slow ballad or worship song is usually charted at its slow count (Oceans by Hillsong UNITED is about 67), not doubled. 0 if no source gives one,
  "bpmSource": "the site the tempo came from",
- "tuning": "E standard | Eb standard | D standard | Drop D | ...",
+ "tuning": "E standard | Eb standard | D standard | Drop D | ... — check an official tab or chart (Songsterr, Ultimate Guitar official, Musicnotes); many 90s rock records are Drop D or Eb, so don't assume E standard",
  "guitarist": "who played this part on the record",
  "guitar": "guitar model and pickup position used",
  "amp": "amp model, channel, and any published settings",

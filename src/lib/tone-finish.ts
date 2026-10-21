@@ -386,3 +386,38 @@ export function finishTone(preset: Preset, bpm?: number | null, opts?: { userGea
   if (paced.source === "featured") return paced;
   return shapeGenerated(applyPickupOffset(paced, opts?.userGear));
 }
+
+const DIRT_WORDS = /\b(distort\w*|overdriv\w*|crunch\w*|driven|fuzz\w*|high[- ]gain|heavy|dirty|saturat\w*)\b/i;
+
+/** What the step-1 notes say the intro sounds like, or "" when they don't say. */
+export function introToneFromNotes(notes: string): string {
+  const json = notes.match(/"section"\s*:\s*"intro[^"]*"\s*,\s*"tone"\s*:\s*"([^"]+)"/i);
+  if (json) return json[1];
+  const line = notes.match(/\bintro\b[^:\n]{0,20}[:\-–]\s*([^\n]+)/i);
+  return line ? line[1] : "";
+}
+
+/**
+ * The model sometimes opens a rock song on "Clean Intro" when the record opens on the driven riff.
+ * When the research notes say the intro is dirty, snapshot 1 takes the riff's tone and drops "Clean".
+ */
+export function keepDirtyIntro(preset: Preset, notes: string): Preset {
+  const first = preset.snapshots[0];
+  if (!first || !/clean/i.test(first.name)) return preset;
+  const intro = introToneFromNotes(notes);
+  if (!intro || !DIRT_WORDS.test(intro) || /\bclean\b/i.test(intro.replace(/not\s+clean/gi, ""))) return preset;
+  const riff = preset.snapshots.find((s, i) => i > 0 && !/clean|solo|lead/i.test(s.name));
+  if (!riff) return preset;
+  const name = first.name.replace(/\bclean\s*/i, "").trim() || "Intro";
+  return {
+    ...preset,
+    snapshots: preset.snapshots.map((s, i) =>
+      i === 0
+        ? { ...s, name, enabledBlocks: [...riff.enabledBlocks], paramOverrides: structuredClone(riff.paramOverrides ?? {}) }
+        : s,
+    ),
+    footswitches: preset.footswitches.map((f) =>
+      f.action === "snapshot" && f.snapshotId === first.id ? { ...f, label: name.toUpperCase() } : f,
+    ),
+  };
+}

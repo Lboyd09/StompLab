@@ -202,3 +202,22 @@ describe("delay time to note", () => {
     assert.equal(noteForTime(5.5, 126), null);
   });
 });
+
+describe("keepDirtyIntro", () => {
+  it("gives a 'Clean Intro' the riff's tone when the notes say the intro is driven", async () => {
+    const { keepDirtyIntro } = await import("./tone-finish.ts");
+    const preset = {
+      snapshots: [
+        { id: "s1", name: "Clean Intro", color: "", enabledBlocks: ["amp", "cab"], notes: "", paramOverrides: { amp: { Drive: 1.8 } } },
+        { id: "s2", name: "Main Riff", color: "", enabledBlocks: ["gate", "amp", "cab"], notes: "", paramOverrides: { amp: { Drive: 5.5 } } },
+      ],
+      footswitches: [{ index: 1, label: "CLEAN INTRO", color: "", action: "snapshot", snapshotId: "s1", notes: "" }],
+    } as never;
+    const notes = '{"sections":[{"section":"Intro","tone":"driven Rectifier riff, full distortion"}]}';
+    const out = keepDirtyIntro(preset, notes) as { snapshots: { name: string; paramOverrides: { amp: { Drive: number } } }[] };
+    assert.equal(out.snapshots[0].name, "Intro");
+    assert.equal(out.snapshots[0].paramOverrides.amp.Drive, 5.5);
+    const clean = keepDirtyIntro(preset, '{"sections":[{"section":"Intro","tone":"clean arpeggio, neck pickup"}]}') as { snapshots: { name: string }[] };
+    assert.equal(clean.snapshots[0].name, "Clean Intro");
+  });
+});
