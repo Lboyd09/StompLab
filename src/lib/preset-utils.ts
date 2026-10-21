@@ -354,3 +354,16 @@ export function withSnapshot(preset: Preset, snapshotIndex: number): Preset {
   });
   return { ...preset, blocks };
 }
+
+/**
+ * Demo notes are written for the HX Stomp, where snapshots 1–3 sit on FS1–FS3. On other units the
+ * same snapshots sit on other switches (XL: FS5, FS6, FS2), so rewrite FS1–FS3 to the real ones.
+ */
+export function unitSwitchText(text: string, snapshotFs: number[]): string {
+  if (snapshotFs[0] === 1 && snapshotFs[1] === 2 && snapshotFs[2] === 3) return text;
+  const fs = (n: number) => `FS${snapshotFs[n - 1] ?? n}`;
+  // One pass, so a rewritten number is never rewritten again.
+  return text.replace(/FS1\s*[–-]\s*FS3|\bFS([1-3])\b/g, (m, n?: string) =>
+    n ? fs(Number(n)) : `${fs(1)}, ${fs(2)}, ${fs(3)}`,
+  );
+}

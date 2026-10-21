@@ -13,6 +13,7 @@ import {
   sortedBlocks,
   withSnapshot,
   withStompModel,
+  unitSwitchText,
 } from "@/lib/preset-utils";
 import { isAmpOrCab } from "@/lib/snapshot-sanitize";
 import { usePlan } from "@/lib/use-plan";
@@ -369,6 +370,8 @@ export function PresetWorkspace({
   const selectedId = chain.some((b) => b.id === selectedBlockId) ? selectedBlockId : chain[0]?.id;
   const selectedBlock = chain.find((b) => b.id === selectedId);
   const activeSnap = preset.snapshots[activeSnapshot];
+  // Demo notes are written for the HX Stomp's switches; name the real ones on this unit.
+  const noteText = (t: string) => (preset.source === "featured" ? unitSwitchText(t, unitSpec(deviceFor(preset).layout).snapshotFs) : t);
   const tuning = preset.tips.find((t) => /^tune /i.test(t));
   const tuningName = tuning ? (tuning.match(/\(([^)]+)\)/)?.[1] ?? tuning.replace(/[.,].*$/, "")) : null;
   const otherTips = preset.tips.filter((t) => t !== tuning);
@@ -700,7 +703,7 @@ export function PresetWorkspace({
                 {preset.programming.map((step, i) => (
                   <li key={i} className="flex gap-2">
                     <span className="font-mono text-[11px] text-foreground/70">{i + 4}.</span>
-                    <span>{step}</span>
+                    <span>{noteText(step)}</span>
                   </li>
                 ))}
               </ol>
@@ -763,7 +766,7 @@ export function PresetWorkspace({
                 <div className="space-y-2">
                   {preset.tips.map((t) => (
                     <p key={t} className="text-sm leading-relaxed text-muted-foreground">
-                      {t}
+                      {noteText(t)}
                     </p>
                   ))}
                 </div>

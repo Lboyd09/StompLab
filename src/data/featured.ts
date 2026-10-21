@@ -84,15 +84,15 @@ export const FEATURED: Preset[] = [
       { index: 3, label: "HELLO", color: "#2ec8ff", action: "snapshot", snapshotId: "s3", notes: "A little chorus. Not a wash." },
     ],
     programming: [
-      "SNAPSHOT MODE. After import the scribbles should say CLEAN / VERSE / HELLO on FS1–FS3. If they still say CLEAN / HELLO / CHORUS, you imported the old file — download this one again.",
+      "SNAPSHOT MODE. After import the scribbles say CLEAN / VERSE / HELLO on FS1–FS3.",
       "Path: Deez One Vintage (DS-1) → 70s Chorus (Small Clone, light) → Cali IV Rhythm 1 → Cali Q Graphic → 4x12 1960 T75. No gate.",
       "Clean (FS1): DS-1 OFF, chorus OFF, Drive ~1.2. Dry clean intro.",
       "Verse (FS2): DS-1 ON (Drive 7 / Tone 4 / Level 10), chorus OFF.",
-      "Hello (FS3): chorus ON but Mix ~2.8 and Depth ~3. DS-1 OFF. This is a hint of chorus, not the old heavy Small Clone.",
+      "Hello (FS3): chorus ON but Mix ~2.8 and Depth ~3. DS-1 OFF. A hint of chorus, not a heavy wash.",
       "Download the .hlx. HX Edit: File → Import. The unit should open in Snapshot mode.",
     ],
     tips: [
-      "FS1 is dry. No chorus on the intro. If it shimmers, you still have the old preset on the unit.",
+      "FS1 is dry. No chorus on the intro.",
       "FS2 is the distorted verse. Chorus stays off.",
       "FS3 is only a little chorus. If it sounds watery, Mix is too high — turn it down on the preset page before you download.",
     ],

@@ -35,8 +35,12 @@ export function UnitChip({ className }: { className?: string }) {
         className="inline-flex h-11 max-w-full items-center gap-1 rounded-full bg-secondary px-3 text-sm font-medium"
       >
         <span className="truncate">
-          {device.name} · <span className="sm:hidden">{instrument === "bass" ? "Bass" : "Gtr"}</span>
-          <span className="hidden capitalize sm:inline">{instrument}</span>
+          {device.name}
+          {/* Long unit names have no room for the instrument on a phone; bass is the one worth flagging. */}
+          <span className={device.name.length > 8 && instrument === "guitar" ? "hidden sm:inline" : ""}>
+            {" · "}
+            <span className="capitalize">{instrument === "bass" ? "Bass" : "Guitar"}</span>
+          </span>
         </span>
         <ChevronDown className="size-4 text-muted-foreground" aria-hidden />
       </button>

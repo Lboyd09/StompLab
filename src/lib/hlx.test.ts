@@ -957,3 +957,11 @@ describe("Stomp mode footswitch assignment", () => {
     assert.equal(hits.length, 1, "exactly one block on FS2");
   });
 });
+
+describe("demo notes name the real switches", () => {
+  it("rewrites FS1–FS3 to the XL's snapshot switches in one pass", async () => {
+    const { unitSwitchText } = await import("./preset-utils.ts");
+    assert.equal(unitSwitchText("FS1–FS3 are Intro, Rhythm, Lead. Hit FS1.", [5, 6, 2, 3]), "FS5, FS6, FS2 are Intro, Rhythm, Lead. Hit FS5.");
+    assert.equal(unitSwitchText("Hit FS1.", [1, 2, 3]), "Hit FS1.");
+  });
+});
