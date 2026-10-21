@@ -15,6 +15,18 @@ The per-unit switch map lives in `src/components/stomp/hardware.ts`. If this tab
 | Hold MODE for Pedal Edit, Looper modes, Scroll mode | Not modelled | Not part of what a downloaded preset sets up |
 | Tuner reads the guitar | Tuner screen shows "Play a string" | The page hears nothing |
 | Signal-flow blocks on the screen are selected with the knob or joystick | You can also tap a block on the screen | Mobile |
+| HX Stomp, XL, POD Go and Helix LT print nothing under a switch except the silkscreen | A small label under each cap says what it does right now (the snapshot or effect name) | The screen is small on a phone; the label is in the switch's color when it is lit |
+| Switch caps carry no numbers | The cap shows its FS number (Settings can hide it) | The page talks about FS5, FS6… |
+| On a phone the units are drawn at real proportions only where they fit | HX Stomp XL: the screen panel moves above ▲ C D. Helix: the screen, buttons and knobs stack | No sideways scroll at 390px, every control at least 44px |
+
+## Look, from the line6.com product photos
+
+- Black chassis with a fine sparkle. Helix LT is a flatter dark grey.
+- Footswitches: a chrome cap inside a colored LED ring. A lit ring is full color; an assigned but bypassed one is the same color, dimmer; an unassigned one is dark.
+- Knobs are black and knurled with a white pointer line.
+- XL and POD Go Play view: one solid tile per switch in its color with black text; an off switch is a grey tile. HX Stomp Play view prints each label in the switch color over a small switch icon.
+- Silkscreen is bold white: XL above each switch; POD Go and Helix LT between the two rows; Helix Floor in the scribble-strip row; HX Effects at the right end of each strip row.
+- Helix Floor and HX Effects scribble strips are monochrome (white text on a dark strip). The color is on the LED ring.
 
 ## HX Stomp
 
@@ -50,12 +62,13 @@ The per-unit switch map lives in `src/components/stomp/hardware.ts`. If this tab
 
 4 snapshots per preset. 128 presets (32 × A–D). 2.4" color LCD. No built-in pedal. VOLUME is on the rear panel; it pushes in to recess. 8 capacitive switches with LED rings and no scribble strips; the LCD Play view shows their labels.
 
-Layout, 4 + 4:
+Layout, 3 + 5 (checked against the line6.com product top view):
 
-- Top row: FS1 (BANK ▲), FS2 (C), FS3 (D), MODE (EDIT/EXIT).
-- Bottom row: FS4 (BANK ▼), FS5 (A), FS6 (B), TAP (TUNER).
+- Top row, left three-fifths: FS1 (▲), FS2 (C), FS3 (D). The screen panel (LCD, Knobs 1–3 under it, VIEW/ACTION and PAGE frames to its right) fills the right two-fifths.
+- Bottom row, on a raised strip: FS4 (▼), FS5 (A), FS6 (B), MODE (EDIT / EXIT under it), TAP (TUNER under it).
+- C sits over A and D over B. The big white letters are printed above each switch.
 
-That MODE sits on the top row and TAP on the bottom is **unverified** from a photo. It matches the HX Effects and POD Go diagrams.
+An earlier version of this doc put MODE on the top row; the photo shows both MODE and TAP on the bottom row.
 
 The controls are the same as HX Stomp: VIEW, ACTION, SAVE, upper and lower knobs, ‹PAGE / PAGE› and Knobs 1–3. On the XL, MODE changes the footswitch mode.
 
@@ -163,3 +176,4 @@ Hold TAP 1 s for the tuner.
 - HX Effects 3.80 Owner's Manual (Top Panel p.6–7; Stomp and All Bypass p.11; Snapshots p.31–32)
 - POD Go 2.50 Owner's Manual (Top Panel p.6–7; modes p.12; Snapshots p.35)
 - https://line6.com/support/manuals/ and https://kb.line6.com/helix-lt-comparison
+- Product top views on line6.com: /hx-stomp-xl/, /hx-stomp/, /podgo/, /hx-effects/, /helix/helix-floor.html, /helix/helix-lt.html (checked 21 Oct 2026)
