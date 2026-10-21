@@ -298,51 +298,34 @@ html.sl-touring nav {
   container-name: replica;
 }
 
-/* ───────── Line 6 replica (src/components/stomp). Layouts follow docs/replica-controls.md. ───────── */
+/* ───────── Line 6 replica (src/components/stomp). Layouts follow docs/replica-controls.md and the line6.com top views. ───────── */
 
 .hx-replica-scroll {
   overflow-x: auto;
   overflow-y: visible;
-  padding: 12px 0 28px;
+  padding: 8px 0 20px;
   width: 100%;
   max-width: 100%;
 }
 
+/* Black powder-coat with a fine sparkle, as on every current Line 6 floor unit. */
 .hx-chassis {
   position: relative;
-  background:
-    radial-gradient(circle at 18% 12%, color-mix(in oklab, #fff 8%, transparent), transparent 28%),
-    linear-gradient(165deg, #2c3036 0%, #16181c 34%, #0c0d10 72%, #07080a 100%);
-  border: 1px solid #3a3e44;
-  border-radius: 8px;
-  padding: 12px 12px 18px;
+  background: #141518;
+  border: 1px solid #2c2e33;
+  border-radius: 10px;
+  padding: 12px 10px 14px;
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 16%, transparent),
-    inset 0 -10px 16px color-mix(in oklab, #000 70%, transparent),
-    0 1px 0 #4a4e54,
-    0 32px 56px -30px #000;
-  color: #c5c9c2;
+    inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent),
+    inset 0 -6px 12px color-mix(in oklab, #000 60%, transparent),
+    0 24px 44px -26px #000;
+  color: #f2f2f0;
 }
 
 .hx-chassis > *:not(.hx-sparkle) {
   position: relative;
   z-index: 1;
 }
-
-.hx-chassis::before,
-.hx-chassis::after {
-  content: "";
-  position: absolute;
-  top: 8px;
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: radial-gradient(circle at 32% 32%, #6a7076, #1a1c20 68%);
-  box-shadow: inset 0 0 0 1px #0a0b0d;
-  z-index: 1;
-}
-.hx-chassis::before { left: 8px; }
-.hx-chassis::after { right: 8px; }
 
 .hx-sparkle {
   pointer-events: none;
@@ -351,83 +334,112 @@ html.sl-touring nav {
   z-index: 0;
   border-radius: inherit;
   background-image:
-    radial-gradient(circle at 12% 22%, color-mix(in oklab, #fff 18%, transparent) 0 1px, transparent 1.6px),
-    radial-gradient(circle at 68% 40%, color-mix(in oklab, #fff 12%, transparent) 0 1px, transparent 1.4px),
-    radial-gradient(circle at 40% 78%, color-mix(in oklab, #fff 10%, transparent) 0 1px, transparent 1.5px);
-  background-size: 42px 42px, 58px 58px, 36px 36px;
-  opacity: 0.22;
+    radial-gradient(circle at 12% 22%, color-mix(in oklab, #fff 22%, transparent) 0 0.6px, transparent 1px),
+    radial-gradient(circle at 68% 40%, color-mix(in oklab, #fff 16%, transparent) 0 0.6px, transparent 1px),
+    radial-gradient(circle at 40% 78%, color-mix(in oklab, #fff 14%, transparent) 0 0.6px, transparent 1px);
+  background-size: 9px 9px, 13px 13px, 7px 7px;
+  opacity: 0.35;
 }
 
 /* Real proportions cap the width on a desktop; on a phone every unit fills the column. */
-.hx-chassis-stomp { max-width: 540px; }
-.hx-chassis-xl { max-width: 640px; }
-.hx-chassis-podgo { max-width: 700px; }
-.hx-chassis-effects { max-width: 640px; }
-.hx-chassis-floor { max-width: 1100px; background: linear-gradient(180deg, #2a2e34 0%, #121416 48%, #08090b 100%); }
-.hx-chassis-lt { max-width: 1000px; background: linear-gradient(180deg, #1c1e22 0%, #101214 50%, #08090b 100%); }
+.hx-chassis-stomp { max-width: 560px; }
+.hx-chassis-xl { max-width: 820px; }
+.hx-chassis-podgo { max-width: 760px; }
+.hx-chassis-effects { max-width: 680px; }
+.hx-chassis-floor { max-width: 1100px; }
+.hx-chassis-lt { max-width: 1000px; background: #1b1c1f; }
 
+/* Logo: boxed LINE 6 mark, then the model name in the thin wide face Line 6 prints. */
 .hx-brand {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  padding: 0 10px 8px;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px 8px;
+  pointer-events: none;
 }
-
-.hx-brand-mark {
-  font-family: var(--font-mono);
+.hx-logo {
+  padding: 1px 4px;
+  border: 1.5px solid #f2f2f0;
+  border-radius: 3px;
+  font-family: var(--font-sans, system-ui);
   font-size: 9px;
-  letter-spacing: 0.22em;
+  font-weight: 900;
+  font-style: italic;
+  letter-spacing: 0.02em;
   text-transform: uppercase;
-  color: #7a7e78;
+  line-height: 1.1;
+  color: #f2f2f0;
+}
+.hx-model {
+  font-family: var(--font-sans, system-ui);
+  font-size: 15px;
+  font-weight: 300;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #f2f2f0;
+  white-space: nowrap;
 }
 
 .hx-silk {
-  font-family: var(--font-mono);
+  font-family: var(--font-sans, system-ui);
   font-size: 8px;
-  letter-spacing: 0.12em;
+  font-weight: 600;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  color: #7a7e78;
+  color: #d8d9d6;
 }
 
-/* Hardware buttons: 44px minimum so they are thumb-sized. */
+/* Hardware buttons: black rubber with white print, 44px minimum so they are thumb-sized. */
 .hx-hw-btn {
   display: inline-grid;
   place-items: center;
   min-height: 44px;
   min-width: 44px;
   padding: 0 4px;
-  border-radius: 4px;
-  font-family: var(--font-mono);
+  border-radius: 3px;
+  font-family: var(--font-sans, system-ui);
   font-size: 8px;
+  font-weight: 700;
   letter-spacing: 0.04em;
   text-transform: uppercase;
-  color: #a6aca6;
-  background: linear-gradient(180deg, #2a2d32, #16181c);
-  border: 1px solid #3a3e44;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent), 0 2px 0 #050607;
+  color: #f2f2f0;
+  background: linear-gradient(180deg, #1d1e21, #0d0e10);
+  border: 1px solid #34363b;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 8%, transparent), 0 1px 0 #000;
   touch-action: manipulation;
 }
-.hx-hw-btn:hover { color: #e8e6df; }
-.hx-hw-btn:active { transform: translateY(1px); box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 6%, transparent); }
-.hx-hw-btn[aria-pressed="true"] { color: #fff; border-color: #6a6e74; }
+.hx-hw-btn:hover { border-color: #55585e; }
+.hx-hw-btn:active { transform: translateY(1px); }
+.hx-hw-btn[aria-pressed="true"] { border-color: #8a8d92; }
 
+/* Knob caps are black, knurled, with a white pointer line. */
 .hx-knob {
-  background: radial-gradient(circle at 32% 26%, #e8eaee, #9aa0a8 38%, #3a3e44 68%, #121416);
+  background:
+    repeating-conic-gradient(from 0deg, #1a1b1e 0deg 6deg, #0b0c0e 6deg 12deg);
   box-shadow:
-    inset 0 1px 0 color-mix(in oklab, #fff 40%, transparent),
-    0 0 0 2px #0a0b0d,
-    0 0 0 3px #5a5e64,
-    0 3px 6px #000;
+    inset 0 0 0 3px #101114,
+    inset 0 2px 3px color-mix(in oklab, #fff 14%, transparent),
+    0 0 0 1px #2e3035,
+    0 3px 5px #000;
 }
-.hx-knob-tick { background: #f4f6f8; }
+.hx-knob::after {
+  content: "";
+  position: absolute;
+  inset: 22%;
+  border-radius: 50%;
+  background: radial-gradient(circle at 40% 30%, #2c2e32, #121316 70%);
+  pointer-events: none;
+}
+.hx-knob > span { z-index: 1; }
+.hx-knob-tick { background: #f4f4f2; }
 
 .hx-deco-knob {
   display: block;
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 26%, #c8ccd2, #6a7078 40%, #24272c 70%, #0e0f12);
-  box-shadow: 0 0 0 2px #0a0b0d, 0 0 0 3px #4a4e54, 0 3px 6px #000;
+  background: repeating-conic-gradient(from 0deg, #1a1b1e 0deg 6deg, #0b0c0e 6deg 12deg);
+  box-shadow: inset 0 0 0 7px #131417, 0 0 0 1px #2e3035, 0 3px 5px #000;
 }
 .hx-deco-knob-big { width: 52px; height: 52px; }
 
@@ -435,108 +447,117 @@ html.sl-touring nav {
   display: flex;
   flex-wrap: nowrap;
   align-items: flex-start;
-  justify-content: center;
-  gap: 12px;
+  justify-content: space-around;
+  gap: 6px;
 }
-.hx-knob-row-5 { gap: 8px; }
-.hx-knob-row-6 { gap: 6px; }
 .hx-knob-row > * { min-width: 0; }
+.hx-knob-row .hx-silk { color: #b8bab6; }
 
 .hx-knobs-under { margin-top: 10px; }
 
-/* ── Main LCD ── */
+/* ── Main LCD: glossy black bezel around a bright color screen ── */
 .hx-lcd {
   display: flex;
   flex-direction: column;
   width: 100%;
-  min-height: 150px;
+  /* About 4:3 like the 2.4" screen, but never shorter than its tiles. */
+  min-height: 112px;
   overflow: hidden;
-  background: #05070a;
-  border: 1px solid #000;
-  border-radius: 3px;
+  background: #000;
+  border: 4px solid #050506;
+  border-radius: 4px;
   box-shadow:
-    inset 0 0 0 1px #1a221c,
-    0 0 0 3px #0a0c0e,
-    0 0 0 4px #2c3036;
-  font-family: var(--font-mono);
-  color: #e8e6df;
+    0 0 0 1px #3a3c41,
+    inset 0 0 0 1px #111;
+  font-family: var(--font-sans, system-ui);
+  color: #fff;
 }
-.hx-lcd-wide { min-height: 168px; }
+.hx-lcd-wide { aspect-ratio: 5 / 3; min-height: 150px; }
 
 .hx-lcd-head {
   display: flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 5px 2px;
+  padding: 3px 5px 2px;
   min-width: 0;
   font-size: 9px;
 }
-.hx-lcd-slot {
-  flex-shrink: 0;
-  padding: 0 3px;
-  border-radius: 2px;
-  background: #e8e6df;
-  color: #0a0b0d;
-  font-weight: 600;
-}
+.hx-lcd-slot { flex-shrink: 0; font-weight: 800; }
 .hx-lcd-name { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
-.hx-lcd-meta { display: flex; flex-shrink: 0; gap: 5px; color: #8a8e88; font-size: 8px; text-transform: uppercase; }
+.hx-lcd-meta { display: flex; flex-shrink: 0; gap: 5px; color: #9a9c98; font-size: 8px; text-transform: uppercase; }
 
+/* Play view: big preset number and name, then the switch tiles. */
 .hx-lcd-play {
   display: flex;
-  flex: 1;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 6px 6px 4px;
+  padding: 3px 4px 1px;
   text-align: center;
   min-width: 0;
 }
-.hx-lcd-play-slot { font-size: 9px; color: #8a8e88; letter-spacing: 0.1em; }
-.hx-lcd-play-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 16px; font-weight: 600; line-height: 1.2; }
-.hx-lcd-play-snap { font-size: 9px; text-transform: uppercase; letter-spacing: 0.1em; }
+.hx-lcd-play-slot { font-size: 8px; color: #b0b2ae; letter-spacing: 0.06em; }
+.hx-lcd-play-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 13px; font-weight: 500; line-height: 1.15; }
+.hx-lcd-play-snap { font-size: 8px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; }
 
-.hx-lcd-boxes { display: flex; flex-direction: column; gap: 2px; padding: 0 2px 2px; }
-.hx-lcd-facegrid { display: grid; gap: 2px; }
-.hx-lcd-facegrid-big { flex: 1; padding: 4px; gap: 3px; }
+.hx-lcd-boxes { display: flex; flex: 1; flex-direction: column; gap: 2px; padding: 0 2px 2px; }
+.hx-lcd-facegrid { display: grid; flex: 1; gap: 2px; }
+.hx-lcd-facegrid-big { padding: 4px; gap: 3px; }
+/* XL / POD Go: a lit switch is a solid tile in its color with dark text; an unlit one is grey. */
 .hx-lcd-face {
   display: flex;
   min-width: 0;
-  min-height: 30px;
+  min-height: 22px;
   flex-direction: column;
   align-items: stretch;
   overflow: hidden;
-  border: 1px solid #1c2024;
   border-radius: 2px;
-  background: #0c0f12;
+  background: #3a3c40;
 }
 .hx-lcd-facegrid-big .hx-lcd-face { min-height: 40px; }
-.hx-lcd-face-bar { height: 3px; background: color-mix(in oklab, var(--face) 40%, #0c0f12); }
-.hx-lcd-face-on { background: color-mix(in oklab, var(--face) 26%, #0c0f12); border-color: color-mix(in oklab, var(--face) 70%, #000); }
-.hx-lcd-face-on .hx-lcd-face-bar { background: var(--face); }
-.hx-lcd-face-empty .hx-lcd-face-label { color: #4a4e54; }
+.hx-lcd-face-bar { display: none; }
+.hx-lcd-face-on { background: var(--face); }
+.hx-lcd-face-on .hx-lcd-face-label { color: #000; }
+.hx-lcd-face-empty { background: #16171a; }
+.hx-lcd-face-empty .hx-lcd-face-label { color: #55575c; }
 .hx-lcd-face-label {
   display: grid;
   flex: 1;
   place-items: center;
   padding: 1px 2px;
   font-size: 8px;
-  line-height: 1.1;
+  font-weight: 600;
+  line-height: 1.05;
   text-align: center;
-  text-transform: uppercase;
   word-break: keep-all;
   overflow-wrap: normal;
-  color: #dcdad3;
+  color: #c9cbc7;
 }
 .hx-lcd-facegrid-big .hx-lcd-face-label { font-size: 9px; }
 
-.hx-lcd-flow { display: flex; align-items: center; gap: 2px; padding: 2px 3px; flex: 1; min-height: 52px; }
-.hx-lcd-io { font-size: 7px; color: #6a6e68; text-transform: uppercase; }
+/* HX Stomp Play view: no tiles, the label is printed in the switch color over a small switch icon. */
+.hx-lcd-stomp .hx-lcd-face { background: none; border-top: 1px solid #2a2c30; border-radius: 0; }
+.hx-lcd-stomp .hx-lcd-face-label { color: var(--face); font-size: 9px; }
+.hx-lcd-stomp .hx-lcd-face:not(.hx-lcd-face-on) .hx-lcd-face-label { color: color-mix(in oklab, var(--face) 55%, #555); }
+.hx-lcd-stomp .hx-lcd-face-empty .hx-lcd-face-label { color: #55575c; }
+.hx-lcd-stomp .hx-lcd-face-bar {
+  display: block;
+  order: 2;
+  width: 14px;
+  height: 6px;
+  margin: 0 auto 3px;
+  border-radius: 3px;
+  background: color-mix(in oklab, var(--face) 45%, #222);
+}
+.hx-lcd-stomp .hx-lcd-face-on .hx-lcd-face-bar { background: var(--face); }
+
+.hx-lcd-flow { display: flex; align-items: center; gap: 2px; padding: 2px 3px; flex: 1; min-height: 40px; }
+.hx-lcd-io { font-size: 7px; color: #8a8c88; text-transform: uppercase; }
 @container replica (max-width: 420px) {
   .hx-lcd-io { display: none; }
 }
 .hx-lcd-flow-row { position: relative; display: flex; flex: 1; min-width: 0; align-items: center; justify-content: center; }
-.hx-path-line { position: absolute; inset-inline: 0; top: 50%; height: 1px; background: color-mix(in oklab, #e8e6df 22%, transparent); }
+.hx-path-line { position: absolute; inset-inline: 0; top: 50%; height: 1px; background: color-mix(in oklab, #fff 35%, transparent); }
 .hx-lcd-chip-hit {
   position: relative;
   display: grid;
@@ -550,85 +571,126 @@ html.sl-touring nav {
 .hx-lcd-chip {
   display: flex;
   width: 100%;
-  height: 26px;
+  height: 20px;
   margin: 0 1px;
   flex-direction: column;
   overflow: hidden;
   border: 1px solid #000;
   border-radius: 2px;
-  background: #151a1e;
+  background: #1c1e22;
 }
-
-.hx-lcd-chip-static { height: 30px; }
+.hx-lcd-chip-static { height: 26px; }
 .hx-lcd-chip-sel { border-color: #fff; box-shadow: 0 0 0 1px #fff; }
-.hx-lcd-chip-off { opacity: 0.38; }
+.hx-lcd-chip-off { opacity: 0.4; }
 .hx-lcd-chip-bar { height: 3px; flex-shrink: 0; }
-.hx-lcd-chip-text { display: grid; flex: 1; place-items: center; font-size: 7px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; }
+.hx-lcd-chip-text { display: grid; flex: 1; place-items: center; font-size: 6.5px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.02em; white-space: nowrap; overflow: hidden; }
 
-.hx-lcd-params { margin-top: auto; padding: 2px 4px 4px; border-top: 1px solid #1a1e22; }
-.hx-lcd-params-head { display: flex; align-items: center; gap: 4px; padding: 2px 0; font-size: 9px; min-width: 0; }
+.hx-lcd-params { margin-top: auto; padding: 2px 4px 3px; border-top: 1px solid #222428; }
+.hx-lcd-params-head { display: flex; align-items: center; gap: 4px; padding: 1px 0; font-size: 8px; min-width: 0; }
 .hx-lcd-params-row { display: grid; gap: 2px; }
 .hx-lcd-param { display: flex; min-width: 0; flex-direction: column; align-items: center; }
-.hx-lcd-param-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; text-transform: uppercase; color: #7a7e78; }
-.hx-lcd-param-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 10px; font-variant-numeric: tabular-nums; }
+.hx-lcd-param-label { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 7px; color: #b0b2ae; }
+.hx-lcd-param-value { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 9px; font-weight: 600; font-variant-numeric: tabular-nums; }
 
-.hx-lcd-tuner { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 6px; padding: 8px; }
-.hx-lcd-tuner-note { font-size: 28px; font-weight: 600; line-height: 1; }
-.hx-lcd-tuner-scale { display: flex; align-items: flex-end; gap: 5px; height: 16px; }
-.hx-lcd-tuner-scale span { width: 2px; height: 8px; background: #3a3e44; }
-.hx-lcd-tuner-scale .hx-lcd-tuner-mid { height: 16px; background: #22e06a; }
-.hx-lcd-tuner-hint { font-size: 8px; color: #8a8e88; text-transform: uppercase; letter-spacing: 0.08em; }
+.hx-lcd-tuner { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: center; gap: 5px; padding: 6px; }
+.hx-lcd-tuner-note { font-size: 24px; font-weight: 600; line-height: 1; }
+.hx-lcd-tuner-scale { display: flex; align-items: flex-end; gap: 4px; height: 14px; }
+.hx-lcd-tuner-scale span { width: 2px; height: 7px; background: #3a3e44; }
+.hx-lcd-tuner-scale .hx-lcd-tuner-mid { height: 14px; background: #22e06a; }
+.hx-lcd-tuner-hint { font-size: 7px; color: #9a9c98; text-transform: uppercase; letter-spacing: 0.06em; text-align: center; }
 
-html[data-lcd="bright"] .hx-lcd {
-  box-shadow:
-    inset 0 0 0 1px #2a4a32,
-    0 0 0 3px #0a0c0e,
-    0 0 0 4px #2c3036,
-    0 0 28px #7dff9a44;
-  color: #f2fff4;
+html[data-lcd="bright"] .hx-lcd { box-shadow: 0 0 0 1px #3a3c41, 0 0 24px #ffffff22; }
+
+/* ── Raised panels and the footswitch step ── */
+.hx-panel {
+  border-radius: 8px;
+  background: #17181b;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 9%, transparent), 0 0 0 1px #2a2c31, 0 4px 10px -4px #000;
+  padding: 8px;
+}
+.hx-panel-screen { display: flex; min-width: 0; flex-direction: column; gap: 8px; }
+.hx-step {
+  margin: 12px -10px -14px;
+  padding: 10px 10px 12px;
+  border-top: 1px solid #2c2e33;
+  border-radius: 0 0 10px 10px;
+  background: linear-gradient(180deg, #18191c, #111214);
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 7%, transparent);
 }
 
-/* ── HX Stomp / XL / POD Go: screen top-left, VIEW-ACTION-PAGE cluster and VOLUME to the right ── */
-.hx-top {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 10px;
-  align-items: start;
-}
-.hx-top-right { display: flex; flex-direction: column; align-items: center; gap: 6px; }
-.hx-vol { align-self: flex-end; }
-
+/* VIEW · knob · ACTION over SAVE, then ‹PAGE · knob · PAGE› — each row in its own outlined frame. */
 .hx-well {
   display: grid;
   grid-template-columns: repeat(3, 44px);
   place-items: center;
-  gap: 2px 4px;
-  padding: 6px;
-  background: #08090b;
-  border-radius: 6px;
-  box-shadow: inset 0 2px 6px #000, 0 0 0 1px #2a2d32;
+  gap: 2px 3px;
+  align-self: start;
 }
-.hx-well-save { grid-column: 1 / -1; font-size: 7px; letter-spacing: 0.22em; }
+.hx-well > :nth-child(-n + 3),
+.hx-well > :nth-child(n + 5) { position: relative; }
+.hx-well-save { grid-column: 1 / -1; font-size: 7px; letter-spacing: 0.2em; margin: 0 0 6px; border-top: 1px solid #4a4c52; width: 70%; text-align: center; padding-top: 1px; }
 .hx-lower-knob {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
-  background: radial-gradient(circle at 32% 26%, #c8ccd2, #6a7078 40%, #24272c 70%, #0e0f12);
-  box-shadow: 0 0 0 2px #0a0b0d, 0 0 0 3px #4a4e54;
+  background: repeating-conic-gradient(from 0deg, #1a1b1e 0deg 6deg, #0b0c0e 6deg 12deg);
+  box-shadow: inset 0 0 0 7px #131417, 0 0 0 1px #2e3035, 0 3px 5px #000;
+}
+.hx-vol { display: flex; justify-content: center; }
+
+/* ── HX Stomp XL ── */
+.hx-xl-upper { display: flex; flex-direction: column-reverse; gap: 12px; }
+.hx-xl-left { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; }
+.hx-xl-panel { display: grid; grid-template-columns: minmax(150px, 1fr) auto; gap: 10px; align-items: start; }
+.hx-row5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; align-items: start; }
+.hx-row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; align-items: start; }
+.hx-xl .hx-brand { padding-bottom: 4px; }
+@container replica (min-width: 600px) {
+  /* Real arrangement: ▲ C D across the left three-fifths, the screen panel across the right two. */
+  .hx-xl-upper { display: grid; grid-template-columns: minmax(0, 3fr) minmax(min-content, 2fr); flex-direction: row; gap: 4px; }
+  .hx-xl-left .hx-row5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .hx-xl-left { padding-right: 4px; }
+  .hx-xl .hx-model { font-size: 18px; }
 }
 
-/* ── Footswitches ── */
-.hx-switches {
-  display: grid;
-  grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr));
-  gap: 14px 6px;
-  margin-top: 16px;
-  justify-items: center;
-  align-items: start;
+/* ── HX Stomp / POD Go top half: screen, then the VIEW/PAGE frames and VOLUME ── */
+.hx-compact-upper { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.hx-compact-side { display: flex; flex-direction: column; align-items: flex-end; justify-content: space-between; gap: 8px; height: 100%; }
+.hx-compact-side-top { display: flex; align-items: flex-start; gap: 6px; }
+.hx-stomp .hx-brand { padding: 0; gap: 6px; }
+.hx-stomp .hx-model { font-size: 13px; }
+.hx-step-stomp { display: flex; justify-content: space-between; padding-inline: 8px; }
+.hx-step-stomp .hx-switch-cell { width: 76px; }
+@container replica (max-width: 420px) {
+  /* Phone: VOLUME drops under the frames so the screen keeps its width. */
+  .hx-compact-side-top { flex-direction: column; align-items: center; }
+  .hx-stomp .hx-brand { flex-direction: column; align-items: flex-end; gap: 2px; }
+  .hx-stomp .hx-model { font-size: 11px; }
 }
-.hx-switch-cell { display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: center; gap: 6px; }
-.hx-scribble-spacer { height: 30px; }
+
+/* ── POD Go ── */
+.hx-podgo-upper { grid-template-areas: "lcd side" "knobs knobs" "brand brand"; }
+.hx-podgo-upper > .hx-panel-screen { grid-area: lcd; }
+.hx-podgo-upper > .hx-compact-side { grid-area: side; }
+.hx-podgo-knobs { grid-area: knobs; }
+.hx-podgo-brand { grid-area: brand; display: flex; justify-content: flex-end; }
+.hx-podgo-brand .hx-brand { padding: 0; }
+.hx-podgo-brand .hx-model { font-weight: 800; letter-spacing: 0.02em; }
+@container replica (min-width: 600px) {
+  /* Real proportions: the screen is about a third of the HX Stomp's width and two-fifths of the POD Go's. */
+  .hx-podgo-upper { grid-template-columns: minmax(0, 360px) 1fr; grid-template-areas: "lcd side" "knobs brand"; }
+  .hx-podgo-upper > .hx-compact-side { align-items: flex-end; }
+  .hx-podgo-brand { align-items: center; }
+  .hx-stomp .hx-compact-upper { grid-template-columns: minmax(0, 250px) 1fr; }
+  .hx-stomp .hx-compact-side-top { width: 100%; justify-content: space-between; }
+}
+.hx-podgo-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; margin-top: 12px; }
+.hx-podgo-plate { margin: 0 0 -14px -10px; border-radius: 0 0 0 10px; display: flex; flex-direction: column; gap: 10px; }
+.hx-podgo .hx-exp { margin-bottom: -4px; }
+
+/* ── Footswitches: chrome cap inside a colored LED ring ── */
+.hx-switch-cell { display: flex; width: 100%; min-width: 0; flex-direction: column; align-items: center; gap: 4px; }
 
 .hx-footswitch {
   display: flex;
@@ -637,97 +699,136 @@ html[data-lcd="bright"] .hx-lcd {
   min-height: 44px;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 6px 0 0;
+  gap: 4px;
+  padding: 2px 0 0;
   background: none;
   touch-action: manipulation;
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
 }
-.hx-fs-cap {
+.hx-fs-ring {
   position: relative;
   display: grid;
-  width: min(56px, calc(100% - 10px));
+  width: min(46px, calc(100% - 8px));
   aspect-ratio: 1;
   place-items: center;
   border-radius: 50%;
-  border: 1px solid #2a2d32;
-  background: radial-gradient(circle at 38% 28%, #5a5e64, #1c1e22 62%, #0a0b0d);
-  box-shadow: inset 0 2px 0 color-mix(in oklab, #fff 18%, transparent), 0 5px 0 #07080a;
+  background: var(--ring, #2a2c30);
+  box-shadow: 0 0 0 1px #000, inset 0 0 0 1px color-mix(in oklab, #fff 18%, transparent);
 }
-/* The LED ring around the cap. */
-.hx-fs-cap::after {
+.hx-fs-cap {
+  display: grid;
+  width: 62%;
+  aspect-ratio: 1;
+  place-items: center;
+  border-radius: 50%;
+  background: radial-gradient(circle at 38% 30%, #ffffff, #d6d9dd 28%, #9ba0a6 58%, #5c6167 86%);
+  box-shadow: 0 0 0 1.5px #1a1b1e, 0 2px 3px color-mix(in oklab, #000 70%, transparent), inset 0 -2px 2px color-mix(in oklab, #000 25%, transparent);
+}
+/* Unassigned: a dark translucent ring. Assigned but off: the color, dimmed. Lit: full color with glow. */
+.hx-led-off { --ring: #2b2d31; }
+.hx-led-dim { --ring: color-mix(in oklab, var(--led) 48%, #1c1d20); }
+.hx-led-lit { --ring: var(--led); }
+.hx-led-lit { box-shadow: 0 0 0 1px #000, 0 0 12px color-mix(in oklab, var(--led) 70%, transparent), inset 0 0 6px color-mix(in oklab, #fff 40%, transparent); }
+/* TAP flashes its ring (not the chrome cap) at the tempo. */
+.hx-fs-cap { position: relative; z-index: 1; }
+.hx-led-blink::before {
   content: "";
   position: absolute;
-  inset: -5px;
+  inset: 0;
   border-radius: 50%;
-  border: 3px solid var(--ring, #23262a);
-  pointer-events: none;
+  background: #141518;
+  opacity: 0;
+  animation: hx-tap-blink var(--beat, 0.5s) steps(1, end) infinite;
 }
-.hx-led-off { --ring: #23262a; }
-.hx-led-dim { --ring: color-mix(in oklab, var(--led) 34%, #16181b); }
-.hx-led-lit { --ring: var(--led); }
-.hx-led-lit::after { box-shadow: 0 0 12px var(--led), inset 0 0 6px color-mix(in oklab, var(--led) 60%, transparent); }
-.hx-led-blink::after { animation: hx-tap-blink var(--beat, 0.5s) steps(1, end) infinite; }
 @keyframes hx-tap-blink {
-  0% { opacity: 1; }
-  30% { opacity: 0.25; }
+  0% { opacity: 0; }
+  30% { opacity: 0.6; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .hx-led-blink::after { animation: none; }
+  .hx-led-blink::before { animation: none; }
 }
-html[data-motion="reduce"] .hx-led-blink::after { animation: none; }
+html[data-motion="reduce"] .hx-led-blink::before { animation: none; }
 
-.hx-footswitch:active .hx-fs-cap { transform: translateY(2px); box-shadow: inset 0 2px 0 color-mix(in oklab, #fff 12%, transparent), 0 3px 0 #07080a; }
-.hx-footswitch-sel .hx-fs-cap { outline: 1px dashed color-mix(in oklab, #e8e6df 55%, transparent); outline-offset: 8px; }
-.hx-fs-num { font-family: var(--font-mono); font-size: 10px; font-weight: 600; color: #c9ccd0; }
+.hx-footswitch:active .hx-fs-cap { transform: translateY(1px) scale(0.97); }
+.hx-footswitch-sel .hx-fs-ring { outline: 1px dashed color-mix(in oklab, #fff 60%, transparent); outline-offset: 4px; }
+.hx-footswitch:focus-visible { outline: 2px solid #fff; outline-offset: 2px; border-radius: 6px; }
+.hx-fs-num { font-family: var(--font-mono); font-size: 9px; font-weight: 700; color: #26282c; }
+/* App aid, not printed on the unit: what the switch does right now. */
 .hx-fs-label {
   max-width: 100%;
-  min-height: 2.3em;
-  font-family: var(--font-mono);
+  min-height: 2.2em;
+  font-family: var(--font-sans, system-ui);
   font-size: 9px;
-  line-height: 1.15;
-  letter-spacing: 0.03em;
+  font-weight: 600;
+  line-height: 1.1;
   text-align: center;
   text-transform: uppercase;
   word-break: keep-all;
   overflow-wrap: normal;
-  color: #d6d8d2;
+  color: #8e918d;
 }
-.hx-fs-label-empty { color: #4a4e54; }
-.hx-fs-silk { margin-top: 2px; font-size: 7px; }
+.hx-fs-label-on { color: color-mix(in oklab, var(--led) 70%, #fff); }
+.hx-fs-label-empty { color: #4a4c50; }
 
-html[data-controls="large"] .hx-fs-cap { width: min(68px, calc(100% - 10px)); }
+/* Silkscreen beside a switch: big white letter or word, small line under it. */
+.hx-fs-silk { display: flex; flex-direction: column; align-items: center; line-height: 1; pointer-events: none; }
+/* Same height whether or not there is a second line, so caps in a row stay level. */
+.hx-fs-silk-above { min-height: 25px; justify-content: flex-end; }
+.hx-fs-silk-below { min-height: 25px; justify-content: flex-start; }
+.hx-row5 .hx-fs-silk-below, .hx-board-helix .hx-fs-silk-below { min-height: 0; }
+.hx-silk-main {
+  font-family: var(--font-sans, system-ui);
+  font-size: 15px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.01em;
+  color: #f4f4f2;
+}
+.hx-silk-sub {
+  margin-top: 2px;
+  font-family: var(--font-sans, system-ui);
+  font-size: 7px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #d8d9d6;
+  white-space: nowrap;
+}
+
+html[data-controls="large"] .hx-fs-ring { width: min(58px, calc(100% - 8px)); }
 html[data-controls="large"] .hx-hw-btn { min-height: 52px; min-width: 52px; }
 html[data-controls="large"] .hx-well { grid-template-columns: repeat(3, 52px); }
 
-/* ── Scribble strips (Helix Floor, HX Effects) ── */
+/* ── Scribble strips (Helix Floor, HX Effects): monochrome LCD strips with white text ── */
 .hx-scribble {
   display: grid;
   width: 100%;
-  max-width: 92px;
-  min-height: 30px;
+  max-width: 120px;
+  min-height: 26px;
   place-items: center;
-  padding: 2px 3px 4px;
-  border: 1px solid #000;
+  padding: 2px 3px;
   border-radius: 2px;
-  background: #06090a;
-  box-shadow: inset 0 0 0 1px #1a2a1c, inset 0 -3px 0 color-mix(in oklab, var(--face, #3a3e44) 45%, #06090a);
-  font-family: var(--font-mono);
+  background: #23272e;
+  box-shadow: inset 0 0 0 1px #0a0b0d;
+  font-family: var(--font-sans, system-ui);
   font-size: 8px;
+  font-weight: 600;
   line-height: 1.1;
-  letter-spacing: 0.02em;
   text-align: center;
   text-transform: uppercase;
   word-break: keep-all;
   overflow-wrap: normal;
-  color: #e8e6df;
+  color: #dfe6ee;
 }
-.hx-scribble-on { background: color-mix(in oklab, var(--face) 22%, #06090a); box-shadow: inset 0 0 0 1px #1a2a1c, inset 0 -3px 0 var(--face); }
-.hx-scribble-dim { color: #5a5e62; }
-.hx-scribble-sel { outline: 1px solid #fff; outline-offset: 1px; }
+.hx-scribble-on { color: #fff; }
+.hx-scribble-dim { color: #6c7178; }
+.hx-scribble-sel { box-shadow: inset 0 0 0 1px #fff; }
 .hx-scribble-btn { min-height: 44px; }
+.hx-silk-strip { display: flex; min-height: 26px; flex-direction: column; align-items: center; justify-content: center; text-align: center; }
+.hx-silk-strip .hx-silk-main { font-size: 11px; }
+.hx-silk-strip .hx-silk-sub { white-space: normal; }
 
 /* ── Helix Floor / LT ── */
 .hx-helix-top {
@@ -743,71 +844,76 @@ html[data-controls="large"] .hx-well { grid-template-columns: repeat(3, 52px); }
 .hx-helix-vols { display: flex; gap: 8px; }
 .hx-helix-nav { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 4px; }
 .hx-joystick-wrap { display: flex; align-items: center; }
-.hx-joy-arrow { display: grid; width: 44px; height: 44px; place-items: center; font-family: var(--font-mono); color: #8a8e88; background: none; }
+.hx-joy-arrow { display: grid; width: 44px; height: 44px; place-items: center; font-family: var(--font-mono); color: #d8d9d6; background: none; }
 .hx-joystick {
   display: block;
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
-  border: 1px solid #3a3e44;
-  background: radial-gradient(circle at 35% 30%, #5c6168, #1c1e22 60%, #0a0b0d);
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 18%, transparent), 0 2px 4px #000;
+  background: repeating-conic-gradient(from 0deg, #1a1b1e 0deg 6deg, #0b0c0e 6deg 12deg);
+  box-shadow: inset 0 0 0 6px #131417, 0 0 0 1px #2e3035, 0 3px 5px #000;
 }
 .hx-helix-bottom { display: flex; flex-direction: column; gap: 14px; margin-top: 14px; }
 .hx-helix-switches { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 14px; }
-.hx-helix-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; }
+.hx-helix-row { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
 .hx-helix-cell { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 6px; }
 .hx-board-helix .hx-fs-label { font-size: 8px; }
+.hx-board-helix .hx-silk-main { font-size: 13px; }
 .hx-board-helix .hx-exp { align-self: flex-end; }
 @container replica (max-width: 759px) {
   .hx-board-helix .hx-exp { width: auto; flex-direction: row; align-items: center; gap: 10px; }
   .hx-board-helix .hx-exp-tread { height: 72px; }
   .hx-board-helix .hx-exp-strip { width: 92px; }
+  .hx-board-helix .hx-silk-strip .hx-silk-main { font-size: 9px; }
+  .hx-board-helix .hx-silk-sub { font-size: 6px; }
 }
 
 @container replica (min-width: 760px) {
+  /* The 6.2" screen sits in a recessed island about a third of the unit's width. */
   .hx-helix-top {
-    grid-template-columns: auto minmax(0, 1fr) auto;
+    grid-template-columns: auto minmax(0, 440px) auto;
     grid-template-areas: "left lcd right";
+    justify-content: center;
+    gap: 14px 22px;
     align-items: start;
   }
+  .hx-knobs-helix { max-width: 560px; margin-inline: auto; }
   .hx-helix-left { flex-direction: column; flex-wrap: nowrap; }
   .hx-helix-right { flex-direction: column; flex-wrap: nowrap; }
   .hx-helix-nav { display: grid; grid-template-columns: repeat(2, auto); justify-items: center; }
   .hx-helix-nav .hx-joystick-wrap { grid-column: 1 / -1; }
   .hx-helix-bottom { flex-direction: row; align-items: flex-end; }
-  .hx-helix-lcd .hx-lcd { min-height: 200px; }
+  .hx-helix-lcd .hx-lcd { min-height: 0; }
 }
 
-/* ── POD Go ── */
-.hx-podgo-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: end; }
-.hx-podgo-bottom .hx-switches { margin-top: 16px; }
-
-/* ── HX Effects ── */
+/* ── HX Effects: control strip on top, then two bands of scribble strips over the switches ── */
 .hx-fx-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; }
 .hx-fx-left, .hx-fx-right { display: flex; align-items: center; gap: 4px; }
 .hx-fx-right { flex-wrap: wrap; justify-content: flex-end; }
 .hx-fx-big { display: flex; flex-direction: column; align-items: center; gap: 4px; max-width: 100px; text-align: center; }
-.hx-switches-fx .hx-switch-cell { gap: 4px; }
+.hx-fx-plate { display: flex; flex-direction: column; gap: 10px; }
+.hx-fx-section { display: flex; flex-direction: column; gap: 8px; }
+.hx-fx-band { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; padding: 5px 4px; margin-inline: -4px; background: #0b0c0e; border-radius: 3px; }
+.hx-fx-band-cell { display: flex; min-width: 0; justify-content: center; }
 
 /* ── Expression pedal (Helix Floor, Helix LT, POD Go) ── */
-.hx-exp { display: flex; width: 76px; flex-shrink: 0; flex-direction: column; align-items: center; gap: 6px; }
+.hx-exp { display: flex; width: 72px; flex-shrink: 0; flex-direction: column; align-items: center; gap: 6px; }
 .hx-exp-strip { min-height: 26px; font-size: 7px; }
 .hx-exp-leds { display: grid; grid-template-columns: auto auto; align-items: center; gap: 2px 4px; }
 .hx-exp-led { width: 7px; height: 7px; border-radius: 50%; background: color-mix(in oklab, var(--led) 25%, #111); }
 .hx-exp-led-on { background: var(--led); box-shadow: 0 0 6px var(--led); }
 .hx-exp-tread {
-  width: 64px;
-  height: 112px;
-  border-radius: 8px 8px 10px 10px;
-  background: repeating-linear-gradient(180deg, #2e3238 0 7px, #1a1c20 7px 14px);
-  border: 1px solid #3a3e44;
-  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 12%, transparent), 0 8px 0 #0a0b0d, 0 12px 18px #000;
+  width: 62px;
+  height: 120px;
+  border-radius: 6px;
+  background: repeating-linear-gradient(180deg, #1e1f22 0 9px, #141517 9px 11px);
+  border: 1px solid #34363b;
+  box-shadow: inset 0 1px 0 color-mix(in oklab, #fff 10%, transparent), 0 6px 0 #08090a, 0 10px 16px #000;
   transform: perspective(280px) rotateX(var(--tilt, 0deg));
   touch-action: none;
   cursor: ns-resize;
 }
-.hx-exp-toe { min-width: 64px; }
+.hx-exp-toe { min-width: 62px; }
 
 @media (prefers-reduced-motion: reduce) {
   * {

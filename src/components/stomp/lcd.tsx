@@ -110,7 +110,7 @@ export function LcdScreen({
   }
 
   return (
-    <div className={cn("hx-lcd", helix && "hx-lcd-wide")} data-view={view}>
+    <div className={cn("hx-lcd", `hx-lcd-${spec.layout}`, helix && "hx-lcd-wide")} data-view={view}>
       {view === "play" && !helix ? null : header}
       {body}
     </div>

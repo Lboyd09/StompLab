@@ -28,20 +28,59 @@ export type UnitSpec = {
   stompFs: number[];
   /** Knobs under the screen; also the parameter page size. */
   knobs: number;
-  /** Silkscreen under each switch. */
-  silk: Record<number, string>;
+  /** Silkscreen printed next to each switch on the top panel (white, as on the unit). */
+  silk: Record<number, Silk>;
   scribbles: "lcd" | "strips" | "performance";
   pedal: boolean;
 };
 
-const QUAD_SILK = { 1: "Bank ▲", 2: "C", 3: "D", 4: "Bank ▼", 5: "A", 6: "B", 7: "Mode · Edit/Exit", 8: "Tap · Tuner" };
+/**
+ * `main` is the big label, `sub` the small line under it; `pos` is which side of the switch it sits on.
+ * `split`: `main` above the switch and `sub` below it (XL: MODE over the cap, EDIT / EXIT under it).
+ */
+export type Silk = { main: string; sub?: string; pos: "above" | "below"; split?: boolean };
 
-const quad = (layout: DeviceLayout, knobs: number, pedal: boolean, scribbles: UnitSpec["scribbles"]): UnitSpec => ({
-  layout,
-  rows: [
+const above = (main: string, sub?: string): Silk => ({ main, sub, pos: "above" });
+const below = (main: string, sub?: string): Silk => ({ main, sub, pos: "below" });
+
+// HX Stomp XL (line6.com product photo): ▲ C D sit top-left beside the screen; ▼ A B MODE TAP run along the bottom.
+const XL_SILK: Record<number, Silk> = {
+  1: above("▲"),
+  2: above("C"),
+  3: above("D"),
+  4: above("▼"),
+  5: above("A"),
+  6: above("B"),
+  7: { main: "Mode", sub: "Edit / Exit", pos: "above", split: true },
+  8: { main: "Tap", sub: "Tuner", pos: "above", split: true },
+};
+// POD Go: the labels sit between the two rows — under the top row, over the bottom row.
+const PODGO_SILK: Record<number, Silk> = {
+  1: below("▲"),
+  2: below("C"),
+  3: below("D"),
+  7: below("Mode", "Edit / Exit"),
+  4: above("▼"),
+  5: above("A"),
+  6: above("B"),
+  8: above("Tap", "Tuner"),
+};
+// HX Effects: FS1–6 have scribble strips; MODE and TAP are printed at the right end of each strip row.
+const FX_SILK: Record<number, Silk> = { 7: above("Mode", "Edit / Exit"), 8: above("Tap", "Tuner") };
+
+const quad = (
+  layout: DeviceLayout,
+  knobs: number,
+  pedal: boolean,
+  scribbles: UnitSpec["scribbles"],
+  silk: Record<number, Silk>,
+  rows: number[][] = [
     [1, 2, 3, 7],
     [4, 5, 6, 8],
   ],
+): UnitSpec => ({
+  layout,
+  rows,
   mode: 7,
   tap: 8,
   up: 1,
@@ -55,7 +94,7 @@ const quad = (layout: DeviceLayout, knobs: number, pedal: boolean, scribbles: Un
   },
   stompFs: [1, 2, 3, 4, 5, 6],
   knobs,
-  silk: QUAD_SILK,
+  silk,
   scribbles,
   pedal,
 });
@@ -85,8 +124,23 @@ const helix = (layout: DeviceLayout, scribbles: UnitSpec["scribbles"]): UnitSpec
   knobs: 6,
   silk:
     layout === "lt"
-      ? { 1: "Bank ▲", 6: "Mode", 7: "Bank ▼", 8: "A", 9: "B", 10: "C", 11: "D", 12: "Tap · Tuner" }
-      : { 1: "Bank ▲", 6: "Preset / Stomp", 7: "Bank ▼", 12: "Tap" },
+      ? {
+          1: below("▲"),
+          6: below("Mode", "Hold to edit"),
+          7: above("▼"),
+          8: above("A"),
+          9: above("B"),
+          10: above("C"),
+          11: above("D"),
+          12: above("Tap", "Tuner"),
+        }
+      : // Floor: printed in the scribble-strip row above the switch.
+        {
+          1: above("Bank ▲"),
+          6: above("Preset Stomp", "Hold to edit"),
+          7: above("Bank ▼"),
+          12: above("Tap", "Hold for tuner"),
+        },
   scribbles,
   pedal: true,
 });
@@ -100,13 +154,18 @@ export const UNIT_SPECS: Record<DeviceLayout, UnitSpec> = {
     presetFs: { 1: { bank: 0, letter: "A" }, 2: { bank: 0, letter: "B" }, 3: { bank: 0, letter: "C" } },
     stompFs: [1, 2],
     knobs: 3,
-    silk: { 3: "Tap / Tuner" },
+    // Nothing is printed by the switches; FS3's TAP/TUNER label is on the screen.
+    silk: {},
     scribbles: "lcd",
     pedal: false,
   },
-  xl: quad("xl", 3, false, "lcd"),
-  effects: quad("effects", 3, false, "strips"),
-  podgo: quad("podgo", 5, true, "lcd"),
+  // Three switches on the top row (the screen takes the right side), five on the bottom.
+  xl: quad("xl", 3, false, "lcd", XL_SILK, [
+    [1, 2, 3],
+    [4, 5, 6, 7, 8],
+  ]),
+  effects: quad("effects", 3, false, "strips", FX_SILK),
+  podgo: quad("podgo", 5, true, "lcd", PODGO_SILK),
   floor: helix("floor", "strips"),
   lt: helix("lt", "performance"),
 };

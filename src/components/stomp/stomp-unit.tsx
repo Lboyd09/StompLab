@@ -5,7 +5,7 @@ import type { Preset } from "@/data/types";
 import { blockModel, deviceFor, paramEntries, sortedBlocks, type ParamEntry } from "@/lib/preset-utils";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
-import { fitSwitchLabel, pedalTargets, switchFaces, unitSpec, type FsMode, type LcdView, type SwitchFace, type UnitSpec } from "./hardware";
+import { fitSwitchLabel, pedalTargets, switchFaces, unitSpec, type FsMode, type LcdView, type Silk, type SwitchFace, type UnitSpec } from "./hardware";
 import { Knob } from "./knob";
 import { LcdScreen } from "./lcd";
 
@@ -172,16 +172,19 @@ export function StompUnit({
     else pressFace(face);
   }
 
-  function renderSwitch(index: number, opts?: { label?: boolean }) {
+  function renderSwitch(index: number, opts?: { label?: boolean; silk?: boolean }) {
     const face = faces.find((f) => f.index === index);
     if (!face) return null;
+    const silk = opts?.silk === false ? undefined : spec.silk[index];
+    // The printed silkscreen already says ▲ / ▼ / MODE / TAP; don't repeat it under the cap.
+    const silkSaysIt = Boolean(silk) && ["up", "down", "tap", "mode"].includes(face.kind);
     return (
       <Footswitch
         key={index}
         face={face}
-        silk={spec.silk[index]?.toLowerCase() === face.label.toLowerCase() ? undefined : spec.silk[index]}
+        silk={silk}
         number={showFsNumbers && index !== spec.mode && index !== spec.tap ? index : undefined}
-        showLabel={opts?.label ?? true}
+        showLabel={!(opts?.label ?? true) ? false : !silkSaysIt ? true : silk?.pos === "below" && !silk.split ? "blank" : false}
         selected={fsMode === "stomp" && assignFsIndex === index && spec.stompFs.includes(index)}
         tunerOn={view === "tuner" && face.kind === "tap"}
         tempo={tempo}
@@ -202,7 +205,7 @@ export function StompUnit({
         value={p?.value ?? 0}
         display={p?.display}
         {...range}
-        size={perPage > 3 ? "sm" : largeControls ? "lg" : "md"}
+        size={largeControls && perPage <= 3 ? "md" : "sm"}
         disabled={!p || !selected}
         onChange={
           p && selected
@@ -308,45 +311,87 @@ export function StompUnit({
 
   const brand = (
     <div className="hx-brand" aria-hidden>
-      <span className="hx-brand-mark">Line 6</span>
-      <span className="hx-brand-mark">{BRAND[layout]}</span>
+      <span className="hx-logo">Line 6</span>
+      <span className="hx-model">{BRAND[layout]}</span>
+    </div>
+  );
+  const cell = (index: number) => (
+    <div key={index} className="hx-switch-cell">
+      {renderSwitch(index)}
+    </div>
+  );
+  const volKnob = (
+    <div className="hx-vol">
+      <Knob label="Volume" value={volume} onChange={setVolume} size="sm" />
     </div>
   );
 
   let board: ReactNode;
-  if (layout === "stomp" || layout === "xl") {
+  if (layout === "xl") {
+    // line6.com top view: ▲ C D on the left of the top half, the screen panel on the right,
+    // then a raised strip with ▼ A B MODE TAP. On a phone the screen panel sits above the switches.
     board = (
-      <div className={cn("hx-board-compact", layout === "xl" && "hx-board-xl")}>
-        <div className="hx-top">
-          <div className="hx-top-lcd">{lcd}</div>
-          <div className="hx-top-right">
-            {layout === "stomp" ? (
-              <div className="hx-vol">
-                <Knob label="Volume" value={volume} onChange={setVolume} size="sm" />
-              </div>
-            ) : null}
-            {well}
+      <div className="hx-xl">
+        <div className="hx-xl-upper">
+          <div className="hx-xl-left">
+            {brand}
+            <div className="hx-row5">{[1, 2, 3].map(cell)}</div>
           </div>
-        </div>
-        <div className="hx-knobs-under">{knobRow}</div>
-        <SwitchGrid spec={spec} render={(i) => renderSwitch(i)} />
-      </div>
-    );
-  } else if (layout === "podgo") {
-    board = (
-      <div className="hx-board-compact hx-board-podgo">
-        <div className="hx-top">
-          <div className="hx-top-lcd">{lcd}</div>
-          <div className="hx-top-right">
-            <div className="hx-vol">
-              <Knob label="Volume" value={volume} onChange={setVolume} size="sm" />
+          <div className="hx-panel hx-xl-panel">
+            <div className="hx-panel-screen">
+              {lcd}
+              {knobRow}
             </div>
             {well}
           </div>
         </div>
-        <div className="hx-knobs-under">{knobRow}</div>
+        <div className="hx-step">
+          <div className="hx-row5">{[4, 5, 6, 7, 8].map(cell)}</div>
+        </div>
+      </div>
+    );
+  } else if (layout === "stomp") {
+    // Screen top-left, VIEW/ACTION and PAGE frames beside it, VOLUME top-right; three switches on the front strip.
+    board = (
+      <div className="hx-stomp">
+        <div className="hx-compact-upper">
+          <div className="hx-panel-screen">
+            {lcd}
+            {knobRow}
+          </div>
+          <div className="hx-compact-side">
+            <div className="hx-compact-side-top">
+              {well}
+              {volKnob}
+            </div>
+            {brand}
+          </div>
+        </div>
+        <div className="hx-step hx-step-stomp">{[1, 2, 3].map(cell)}</div>
+      </div>
+    );
+  } else if (layout === "podgo") {
+    board = (
+      <div className="hx-podgo">
+        <div className="hx-compact-upper hx-podgo-upper">
+          <div className="hx-panel-screen">{lcd}</div>
+          <div className="hx-compact-side">
+            <div className="hx-compact-side-top">
+              {well}
+              {volKnob}
+            </div>
+          </div>
+          <div className="hx-podgo-knobs">{knobRow}</div>
+          <div className="hx-podgo-brand">{brand}</div>
+        </div>
         <div className="hx-podgo-bottom">
-          <SwitchGrid spec={spec} render={(i) => renderSwitch(i)} />
+          <div className="hx-step hx-podgo-plate">
+            {spec.rows.map((row, r) => (
+              <div key={r} className="hx-row4">
+                {row.map(cell)}
+              </div>
+            ))}
+          </div>
           <ExpPedal preset={preset} layout={layout} onToggle={toggle} />
         </div>
       </div>
@@ -366,7 +411,7 @@ export function StompUnit({
         onAction={onActionBtn}
         onPage={(d) => onParamPage(page + d)}
         knobs={knobRow}
-        renderSwitch={(i) => renderSwitch(i, { label: false })}
+        renderSwitch={(i) => renderSwitch(i, { label: false, silk: false })}
         tunerOn={view === "tuner"}
       />
     );
@@ -424,8 +469,14 @@ export function StompUnit({
               <div key={r} className="hx-helix-row">
                 {row.map((index) => (
                   <div key={index} className="hx-helix-cell">
-                    {layout === "floor" ? <Scribble face={faces.find((f) => f.index === index)} /> : null}
-                    {renderSwitch(index, { label: layout === "lt" })}
+                    {layout === "floor" ? (
+                      spec.silk[index] ? (
+                        <SilkStrip silk={spec.silk[index]} />
+                      ) : (
+                        <Scribble face={faces.find((f) => f.index === index)} />
+                      )
+                    ) : null}
+                    {renderSwitch(index, { label: layout === "lt", silk: layout === "lt" })}
                   </div>
                 ))}
               </div>
@@ -441,21 +492,29 @@ export function StompUnit({
     <div className="hx-replica-scroll min-w-0">
       <div className={cn("hx-chassis mx-auto w-full", `hx-chassis-${layout}`)} data-layout={layout}>
         <div className="hx-sparkle" aria-hidden />
-        {brand}
+        {/* HX Stomp, XL and POD Go place the logo inside their own layout. */}
+        {layout === "floor" || layout === "lt" || layout === "effects" ? brand : null}
         {board}
       </div>
     </div>
   );
 }
 
-function SwitchGrid({ spec, render }: { spec: UnitSpec; render: (index: number) => ReactNode }) {
+function SilkText({ silk, side }: { silk: Silk; side: "above" | "below" }) {
   return (
-    <div className="hx-switches" style={{ ["--cols" as string]: spec.rows[0].length }}>
-      {spec.rows.flat().map((i) => (
-        <div key={i} className="hx-switch-cell">
-          {render(i)}
-        </div>
-      ))}
+    <span className={cn("hx-fs-silk", `hx-fs-silk-${side}`)} aria-hidden>
+      <span className="hx-silk-main">{silk.main}</span>
+      {silk.sub ? <span className="hx-silk-sub">{silk.sub}</span> : null}
+    </span>
+  );
+}
+
+/** Silkscreen printed where a scribble strip would be (Helix Floor BANK / MODE / TAP, HX Effects MODE / TAP). */
+function SilkStrip({ silk }: { silk: Silk }) {
+  return (
+    <div className="hx-silk-strip" aria-hidden>
+      <span className="hx-silk-main">{silk.main}</span>
+      {silk.sub ? <span className="hx-silk-sub">{silk.sub}</span> : null}
     </div>
   );
 }
@@ -553,11 +612,23 @@ function EffectsBoard({
         </div>
       </div>
       <div className="hx-knobs-under">{knobs}</div>
-      <div className="hx-switches hx-switches-fx" style={{ ["--cols" as string]: 4 }}>
-        {spec.rows.flat().map((i) => (
-          <div key={i} className="hx-switch-cell">
-            {stripFs.includes(i) ? strip(i) : <div className="hx-scribble-spacer" />}
-            {renderSwitch(i)}
+      <div className="hx-step hx-fx-plate">
+        {spec.rows.map((row, r) => (
+          <div key={r} className="hx-fx-section">
+            <div className="hx-fx-band">
+              {row.map((i) => (
+                <div key={i} className="hx-fx-band-cell">
+                  {stripFs.includes(i) ? strip(i) : spec.silk[i] ? <SilkStrip silk={spec.silk[i]} /> : null}
+                </div>
+              ))}
+            </div>
+            <div className="hx-row4">
+              {row.map((i) => (
+                <div key={i} className="hx-switch-cell">
+                  {renderSwitch(i)}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
@@ -596,9 +667,9 @@ function Footswitch({
   onHold,
 }: {
   face: SwitchFace;
-  silk?: string;
+  silk?: Silk;
   number?: number;
-  showLabel: boolean;
+  showLabel: boolean | "blank";
   selected?: boolean;
   tunerOn?: boolean;
   tempo: number;
@@ -656,14 +727,33 @@ function Footswitch({
         onPress();
       }}
     >
+      {silk?.split ? <SilkText silk={{ ...silk, sub: undefined }} side="above" /> : silk?.pos === "above" ? <SilkText silk={silk} side="above" /> : null}
       <span
-        className={cn("hx-fs-cap", `hx-led-${face.led}`, blink && "hx-led-blink", tunerOn && "hx-led-lit")}
+        className={cn("hx-fs-ring", `hx-led-${face.led}`, blink && "hx-led-blink", tunerOn && "hx-led-lit")}
         style={{ ["--led" as string]: face.color, ["--beat" as string]: `${60 / Math.max(40, tempo)}s` }}
       >
-        {number ? <span className="hx-fs-num">{number}</span> : null}
+        <span className="hx-fs-cap">{number ? <span className="hx-fs-num">{number}</span> : null}</span>
       </span>
-      {showLabel ? <span className={cn("hx-fs-label", !label && "hx-fs-label-empty")}>{label || "—"}</span> : null}
-      {silk ? <span className="hx-silk hx-fs-silk">{silk}</span> : null}
+      {showLabel === "blank" ? (
+        // Keeps the silkscreen under it level with its neighbours.
+        <span className="hx-fs-label invisible" aria-hidden>
+          —
+        </span>
+      ) : showLabel ? (
+        <span
+          className={cn("hx-fs-label", !label && "hx-fs-label-empty", face.led === "lit" && "hx-fs-label-on")}
+          style={{ ["--led" as string]: face.color }}
+        >
+          {label || "—"}
+        </span>
+      ) : null}
+      {silk?.split && silk.sub ? (
+        <span className="hx-fs-silk hx-fs-silk-below" aria-hidden>
+          <span className="hx-silk-sub">{silk.sub}</span>
+        </span>
+      ) : !silk?.split && silk?.pos === "below" ? (
+        <SilkText silk={silk} side="below" />
+      ) : null}
     </button>
   );
 }
