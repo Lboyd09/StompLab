@@ -116,6 +116,16 @@ export async function lookupCacheRaw(key: string) {
  * needs the same title AND the same artist: a title alone is a different song
  * ("Creep" by TLC is not Radiohead's rig).
  */
+/** HX units with an amp and at least as many snapshots as `model`, whose cached chain can be reused for it. */
+export function hxDonorsFor(model: string): string[] {
+  const snaps: Record<string, number> = { "hx-stomp": 3, "hx-stomp-xl": 4, "helix-floor": 8, "helix-lt": 8 };
+  const own = snaps[model];
+  if (!own) return [];
+  return Object.entries(snaps)
+    .filter(([id, n]) => id !== model && n >= own)
+    .map(([id]) => id);
+}
+
 export async function lookupSongCache(opts: {
   song: string;
   artist?: string;
@@ -158,9 +168,24 @@ export async function lookupSongCache(opts: {
         updated_at desc
       limit 1
     `;
-    const found = rows[0];
-    const preset = playablePreset(found?.preset);
-    if (!found || !preset) return miss;
+    let found = rows[0];
+    let preset = playablePreset(found?.preset);
+    if (!found || !preset) {
+      // Same song built for a bigger HX amp unit: the chain carries over (the caller converts it
+      // with withStompModel, which trims snapshots), so it needs no new Gemini call.
+      const donors = hxDonorsFor(opts.stompModel);
+      if (!donors.length) return miss;
+      const more = await sql.query<{ preset: Preset | null; hit_count: number; cache_key: string; bpm: number | null }>(
+        `select preset, hit_count, cache_key, bpm from rig_cache
+         where kind = 'song' and lower(trim(song)) = $1 and lower(trim(artist)) = $2 and instrument = $3
+           and cache_key like $4 and cache_key like $5 and stomp_model = any($6::text[])
+         order by hit_count desc, updated_at desc limit 1`,
+        [songN, artistN, opts.instrument, `song|v11|%|${role}`, `%|${playback}|${wah}|%`, donors],
+      );
+      found = more[0];
+      preset = playablePreset(found?.preset);
+      if (!found || !preset) return miss;
+    }
     await sql`update rig_cache set hit_count = hit_count + 1, updated_at = now() where cache_key = ${found.cache_key}`;
     return {
       hit: true as const,
@@ -254,3 +279,46 @@ export const listSharedLibrary = createServerFn({ method: "GET" })
 
 /** Hidden from visitors — kept so old imports compile. */
 export const listCachedSongs = listSharedLibrary;
+
+/**
+ * Step-1 research notes depend on the recording, not the unit or the rig, so one search
+ * serves every unit and every Playing through choice for that song.
+ */
+export function notesCacheKey(song: string, artist: string, instrument: string, role: string): string {
+  const norm = (s: string) => s.trim().toLowerCase().replace(/\s+/g, " ");
+  return `notes|v1|${norm(instrument)}|${norm(role)}|${norm(song)}|${norm(artist)}`;
+}
+
+export async function lookupNotesCache(key: string): Promise<{ notes: string; bpm: number | null } | null> {
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ matches: { notes?: string } | null; bpm: number | null }>(
+      `select matches, bpm from rig_cache where cache_key = $1 and kind = 'notes' limit 1`,
+      [key],
+    );
+    const row = rows[0];
+    const notes = row?.matches?.notes;
+    if (!row || typeof notes !== "string" || !notes.trim()) return null;
+    return { notes, bpm: typeof row.bpm === "number" && row.bpm >= 40 && row.bpm <= 240 ? row.bpm : null };
+  } catch {
+    return null;
+  }
+}
+
+export async function persistNotesCache(
+  key: string,
+  data: { song: string; artist: string; instrument: string; notes: string; bpm: number | null },
+): Promise<void> {
+  if (!data.notes.trim()) return;
+  try {
+    const sql = await getSql();
+    await sql.query(
+      `insert into rig_cache (cache_key, kind, song, artist, instrument, matches, bpm, updated_at)
+       values ($1, 'notes', $2, $3, $4, $5::jsonb, $6, now())
+       on conflict (cache_key) do update set matches = excluded.matches, bpm = coalesce(excluded.bpm, rig_cache.bpm), updated_at = now()`,
+      [key, data.song, data.artist, data.instrument, JSON.stringify({ notes: data.notes }), cachedBpm(data.bpm)],
+    );
+  } catch {
+    /* fail soft: the next build searches again */
+  }
+}

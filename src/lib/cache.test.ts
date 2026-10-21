@@ -13,3 +13,14 @@ describe("songCacheKey", () => {
     assert.notEqual(a, songCacheKeyV8("Sandman", "Metallica", "guitar", "hx-stomp", "frfr", "pedal"));
   });
 });
+
+describe("hxDonorsFor", () => {
+  it("reuses a chain only from an HX amp unit with at least as many snapshots", async () => {
+    const { hxDonorsFor } = await import("./cache.ts");
+    assert.deepEqual(hxDonorsFor("hx-stomp").sort(), ["helix-floor", "helix-lt", "hx-stomp-xl"]);
+    assert.deepEqual(hxDonorsFor("hx-stomp-xl").sort(), ["helix-floor", "helix-lt"]);
+    assert.deepEqual(hxDonorsFor("helix-floor"), ["helix-lt"]);
+    assert.deepEqual(hxDonorsFor("pod-go"), []);
+    assert.deepEqual(hxDonorsFor("hx-effects"), []);
+  });
+});

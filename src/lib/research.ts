@@ -18,7 +18,7 @@ import {
 } from "@/lib/billing";
 import type { Plan } from "./plan";
 import { getSql } from "@/lib/db";
-import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache } from "./cache";
+import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache, lookupNotesCache, notesCacheKey, persistNotesCache } from "./cache";
 import { libraryServesFeatured, parseGuitarRole, songBuildRole, type GuitarRole } from "./guitar-role";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
@@ -311,8 +311,13 @@ async function researchRecord(
   instrument: "guitar" | "bass",
   role: GuitarRole,
 ): Promise<{ notes: string; bpm: number | null }> {
+  const key = notesCacheKey(song, artist, instrument, role);
+  const cached = await lookupNotesCache(key);
+  if (cached) return cached;
   const text = await geminiGroundedNotes(recordNotesPrompt(song, artist, album, instrument, role), RECORD_NOTES_SYSTEM);
-  return parseRecordNotes(text);
+  const parsed = parseRecordNotes(text);
+  void persistNotesCache(key, { song, artist, instrument, notes: parsed.notes, bpm: parsed.bpm });
+  return parsed;
 }
 
 async function lookupBpm(song: string, artist: string, album: string): Promise<number | null> {
