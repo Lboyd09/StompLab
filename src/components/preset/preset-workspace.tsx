@@ -947,7 +947,7 @@ function BlockKnobs({
   const locked = isAmpOrCab(block.modelId);
   const knobs = paramEntries(block);
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-background p-3 sm:p-4" aria-labelledby={`knobs-${block.id}`}>
+    <div role="group" className="space-y-4 rounded-xl border border-border bg-background p-3 sm:p-4" aria-labelledby={`knobs-${block.id}`}>
       <div className="flex items-start gap-3">
         <span aria-hidden className="mt-1 size-3 shrink-0 rounded-full" style={{ background: cat.lcd }} />
         <div className="min-w-0 flex-1">

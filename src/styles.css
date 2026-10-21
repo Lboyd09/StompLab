@@ -678,7 +678,12 @@ html[data-lcd="bright"] .hx-lcd { box-shadow: 0 0 0 1px #3a3c41, 0 0 24px #fffff
 .hx-podgo-brand .hx-brand { padding: 0; }
 .hx-podgo-brand .hx-model { font-weight: 800; letter-spacing: 0.02em; }
 @container replica (min-width: 600px) {
-  .hx-podgo-upper { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "lcd side" "knobs brand"; }
+  /* Real proportions: the screen is about a third of the HX Stomp's width and two-fifths of the POD Go's. */
+  .hx-podgo-upper { grid-template-columns: minmax(0, 360px) 1fr; grid-template-areas: "lcd side" "knobs brand"; }
+  .hx-podgo-upper > .hx-compact-side { align-items: flex-end; }
+  .hx-podgo-brand { align-items: center; }
+  .hx-stomp .hx-compact-upper { grid-template-columns: minmax(0, 250px) 1fr; }
+  .hx-stomp .hx-compact-side-top { width: 100%; justify-content: space-between; }
 }
 .hx-podgo-bottom { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: stretch; margin-top: 12px; }
 .hx-podgo-plate { margin: 0 0 -14px -10px; border-radius: 0 0 0 10px; display: flex; flex-direction: column; gap: 10px; }
