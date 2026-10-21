@@ -10,7 +10,7 @@ import { isOwnerAccount } from "@/lib/plan";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
-const ICON_V = "sl21";
+const ICON_V = "sl22";
 
 /** Applies the saved theme before first paint so a light-theme player never sees a dark flash. */
 const THEME_BOOT = `try{var t="dark";var r=JSON.parse(localStorage.getItem("stomplab.settings.v1")||"{}");if(r&&(r.theme==="light"||r.theme==="system"||r.theme==="dark"))t=r.theme;var d=t==="system"?matchMedia("(prefers-color-scheme: dark)").matches:t!=="light";var c=document.documentElement.classList;c.toggle("dark",d);c.toggle("light",!d)}catch(e){}`;
@@ -26,8 +26,8 @@ export const Route = createRootRoute({
         content: "Type a song. Get that guitar rig. Unofficial Line 6 presets from recorded guitar and bass tones.",
       },
       { name: "theme-color", content: "#0B0D12" },
-      { name: "apple-mobile-web-app-title", content: "StompLab" },
-      { name: "application-name", content: "StompLab" },
+      { name: "apple-mobile-web-app-title", content: "Stomp Lab" },
+      { name: "application-name", content: "Stomp Lab" },
     ],
     links: [
       { rel: "icon", type: "image/png", sizes: "32x32", href: `/favicon-32.png?v=${ICON_V}` },
