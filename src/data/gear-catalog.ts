@@ -1,4 +1,12 @@
 /** Common instruments, amps, and pedals for the locker — names players actually own. */
+import { GEAR_PASS } from "./gear-catalog-gear-pass.ts";
+import { GEAR_PASS_2 } from "./gear-catalog-gear-pass-2.ts";
+import { GEAR_PASS_3 } from "./gear-catalog-gear-pass-3.ts";
+import { GEAR_PASS_4 } from "./gear-catalog-gear-pass-4.ts";
+import { GEAR_PASS_5 } from "./gear-catalog-gear-pass-5.ts";
+import { GEAR_PASS_6 } from "./gear-catalog-gear-pass-6.ts";
+import { GEAR_PASS_7 } from "./gear-catalog-gear-pass-7.ts";
+
 export type GearKind = "guitar" | "bass" | "amp" | "cab" | "pedal" | "pickup";
 
 export type GearSuggestion = {
@@ -6,6 +14,8 @@ export type GearSuggestion = {
   brand: string;
   model: string;
   name: string;
+  /** Guitars, basses and pickups: what pickups it carries, where that is clear. */
+  pickups?: GearPickups;
 };
 
 type CatalogRow = [kind: GearKind, brand: string, models: readonly string[]];
@@ -2751,26 +2761,134 @@ const LOCKER_LAUNCH: Array<[GearKind, string, string[]]> = [
   ["pickup", "DiMarzio", ["Titan", "D Activator", "Transition", "Steve Morse"]],
 ];
 
+/** Brand spellings folded into one display brand (compared case-insensitively). */
+const BRAND_FOLD: Record<string, string> = {
+  "ltd": "ESP",
+  "esp ltd": "ESP",
+  "sterling": "Sterling by Music Man",
+  "tom anderson": "Anderson",
+  "hofner": "Höfner",
+  "boss": "BOSS",
+  "eqd": "EarthQuaker Devices",
+  "caroline": "Caroline Guitar Company",
+  "benson": "Benson Amps",
+  "dunlop fuzz face": "Dunlop",
+  "jim dunlop": "Dunlop",
+  "engl": "ENGL",
+  "mesa boogie": "Mesa/Boogie",
+  "mesa": "Mesa/Boogie",
+  "bc rich": "B.C. Rich",
+  "ehx": "Electro-Harmonix",
+  "electro harmonix": "Electro-Harmonix",
+  "walrus": "Walrus Audio",
+  "earthquaker": "EarthQuaker Devices",
+  "music-man": "Music Man",
+  "gibson usa": "Gibson",
+  "fender usa": "Fender",
+};
+
 function canonicalBrand(brand: string): string {
   const b = brand.trim().replace(/\s+/g, " ");
-  if (b === "LTD" || b === "ESP LTD") return "ESP";
-  if (b === "Sterling") return "Sterling by Music Man";
-  if (b === "Tom Anderson") return "Anderson";
-  return b;
+  return BRAND_FOLD[b.toLowerCase()] ?? b;
+}
+
+/** What pickups a guitar or bass carries, where that is clear. "mixed" depends on the switch position. */
+export type GearPickups = "single-coil" | "p90" | "humbucker" | "active" | "mixed";
+
+const TAGS: Record<string, GearPickups> = {
+  sc: "single-coil",
+  p90: "p90",
+  hb: "humbucker",
+  act: "active",
+  mix: "mixed",
+};
+
+/** Models end in ` ~hb` / `~sc` / `~p90` / `~act` / `~mix` to say what pickups they carry. */
+function splitTag(model: string): { model: string; pickups?: GearPickups } {
+  const m = model.match(/^(.*?)\s*~(\w+)\s*$/);
+  if (!m) return { model };
+  return { model: m[1], pickups: TAGS[m[2]] };
+}
+
+const ACOUSTIC_BRAND = /^(taylor|martin|takamine|ovation|seagull|breedlove|alvarez|collings|godin)$/i;
+const ACOUSTIC_MODEL =
+  /acoustic|acoustasonic|nylon|classical|\bcd-?\d|\bcc-?\d|\bfa-125|\bj-(45|50|35|150|185|200)\b|\bsj-(100|200)\b|hummingbird|\bdove\b|\bl-(00|1)\b|\blg-2|songwriter|newporter|malibu|redondo|dreadnought|gs mini/i;
+
+/** Name rules for older entries that carry no tag. Only families whose pickups are not in doubt. */
+function pickupsFromRules(kind: GearKind, brand: string, model: string): GearPickups | undefined {
+  const s = `${brand} ${model}`.toLowerCase();
+  if (kind === "pickup") {
+    if (/emg|fluence|blackout|active/.test(s)) return "active";
+    if (/p-?90|soapbar|dog ?ear/.test(s)) return "p90";
+    if (/humbucker|\bsh-\d|\bjb\b|jazz sh|super distortion|pearly gates|burstbucker|\b49[08][rt]\b|'57 classic|\bpaf\b|bluesbucker|tone zone|nailbomb|aftermath|juggernaut|\bmule\b|black hawk|riff raff|cold sweat|painkiller|warpig|holy diver/.test(s)) return "humbucker";
+    if (/texas special|vintage noiseless|fat '50s|vintage blonde|\bstrat\b|\btele\b|telecaster|stratocaster|quarter pound|vintage staggered/.test(s)) return "single-coil";
+    return undefined;
+  }
+  if (kind !== "guitar" && kind !== "bass") return undefined;
+  if (ACOUSTIC_BRAND.test(brand) || ACOUSTIC_MODEL.test(model)) return undefined;
+  if (/\bhss\b|\bhsh\b|\bssh\b|\bhh\/s|\bhs\b/.test(s)) return "mixed";
+  if (/\bemg\b|fluence|blackouts?\b|\bactive\b/.test(s)) return "active";
+  if (kind === "bass") {
+    if (/jazz bass|\bjazz\b/.test(s) && /fender|squier/.test(s)) return "single-coil";
+    if (/stingray/.test(s) && /music man/.test(s)) return "humbucker";
+    return undefined;
+  }
+  if (/p-?90|soapbar|dog ?ear|les paul (junior|special|jr)|sg (junior|special)|\bes-330\b|\bcasino\b/.test(s)) return "p90";
+  if (/humbucker|\bhh\b|filter'?tron|wide ?range/.test(s)) return "humbucker";
+  if (/single[- ]coil|\bsss\b/.test(s)) return "single-coil";
+  if (/telecaster deluxe|tele deluxe|starcaster/.test(s)) return "humbucker";
+  if (/thinline|telecaster custom/.test(s)) return undefined;
+  if (/^(fender|squier)\b/.test(s) && /stratocaster|telecaster|jazzmaster|jaguar|mustang|duo-sonic/.test(s)) return "single-coil";
+  if (/^(gibson|epiphone)\b/.test(s) && /les paul|\bsg\b|\bes-3[345]\d?\b|explorer|flying v|firebird|\bdot\b|sheraton/.test(s)) return "humbucker";
+  if (/^prs\b/.test(s)) return /silver sky/.test(s) ? "single-coil" : "humbucker";
+  return undefined;
+}
+
+/** Looser key so `TS-9` and `TS9`, or `Höfner` and `Hofner`, are one entry. */
+function looseKey(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, "");
 }
 
 function expand(): GearSuggestion[] {
   const out: GearSuggestion[] = [];
-  const seen = new Set<string>();
-  for (const [kind, brand, models] of [...CATALOG, ...EXTRA, ...MORE, ...COMMON_PLUS, ...LOCKER_MORE, ...LOCKER_LAUNCH]) {
+  const seen = new Map<string, GearSuggestion>();
+  const rows = [
+    ...CATALOG,
+    ...EXTRA,
+    ...MORE,
+    ...COMMON_PLUS,
+    ...LOCKER_MORE,
+    ...LOCKER_LAUNCH,
+    ...(GEAR_PASS as readonly CatalogRow[]),
+    ...(GEAR_PASS_2 as readonly CatalogRow[]),
+    ...(GEAR_PASS_3 as readonly CatalogRow[]),
+    ...(GEAR_PASS_4 as readonly CatalogRow[]),
+    ...(GEAR_PASS_5 as readonly CatalogRow[]),
+    ...(GEAR_PASS_6 as readonly CatalogRow[]),
+    ...(GEAR_PASS_7 as readonly CatalogRow[]),
+  ];
+  for (const [kind, brand, models] of rows) {
     const canon = canonicalBrand(brand);
-    for (const model of models) {
-      const trimmed = model.trim().replace(/\s+/g, " ");
+    for (const raw of models) {
+      const tagged = splitTag(raw);
+      const trimmed = tagged.model.trim().replace(/\s+/g, " ");
       if (!trimmed) continue;
-      const key = `${kind}|${canon.toLowerCase()}|${trimmed.toLowerCase()}`;
-      if (seen.has(key)) continue;
-      seen.add(key);
-      out.push({ kind, brand: canon, model: trimmed, name: `${canon} ${trimmed}` });
+      const key = `${kind}|${looseKey(canon)}|${looseKey(trimmed)}`;
+      const have = seen.get(key);
+      if (have) {
+        // The same model listed twice: an explicit pickup tag on either copy sticks.
+        if (tagged.pickups) have.pickups = tagged.pickups;
+        continue;
+      }
+      const pickups = tagged.pickups ?? pickupsFromRules(kind, canon, trimmed);
+      const item: GearSuggestion = { kind, brand: canon, model: trimmed, name: `${canon} ${trimmed}` };
+      if (pickups) item.pickups = pickups;
+      seen.set(key, item);
+      out.push(item);
     }
   }
   return out;
@@ -2791,6 +2909,16 @@ export function brandsFor(kind: GearKind): string[] {
   return brands;
 }
 
+/** The brands with the most models first: the chips a player is most likely to want. */
+export function topBrandsFor(kind: GearKind, n = 10): string[] {
+  const counts = new Map<string, number>();
+  for (const g of GEAR_SUGGESTIONS) if (g.kind === kind) counts.set(g.brand, (counts.get(g.brand) ?? 0) + 1);
+  return [...counts.entries()]
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, n)
+    .map(([b]) => b);
+}
+
 export function modelsFor(kind: GearKind, brand: string, q = ""): GearSuggestion[] {
   const needle = q.trim().toLowerCase();
   return GEAR_SUGGESTIONS.filter((g) => {
@@ -2800,20 +2928,153 @@ export function modelsFor(kind: GearKind, brand: string, q = ""): GearSuggestion
   });
 }
 
-export function suggestionsFor(kind: GearSuggestion["kind"], q: string): GearSuggestion[] {
-  const needle = q.trim().toLowerCase();
-  const pool = GEAR_SUGGESTIONS.filter((g) => g.kind === kind);
-  if (!needle) return pool.slice(0, 24);
-  return pool.filter((g) => g.name.toLowerCase().includes(needle) || g.brand.toLowerCase().includes(needle)).slice(0, 24);
+// ---- Search -------------------------------------------------------------------------------
+
+/** Extra words a player types for a model (checked against the full display name). */
+const ALIAS_RULES: ReadonlyArray<[RegExp, string]> = [
+  [/\bles paul\b/, "lp"],
+  [/\bstratocaster\b/, "strat"],
+  [/\btelecaster\b/, "tele"],
+  [/\bjazzmaster\b/, "jm"],
+  [/\bjaguar\b/, "jag"],
+  [/\bflying v\b/, "v"],
+  [/\bsg\b/, "sg gibson"],
+  [/\bes-3\d\d\b/, "semi hollow"],
+  [/\bts(9|808|10|7|mini)\b|tube screamer/, "tubescreamer screamer green"],
+  [/\bsilver sky\b/, "ss john mayer"],
+  [/electro-harmonix/, "ehx"],
+  [/mesa\/boogie/, "mesa boogie"],
+  [/rectifier/, "recto dual rec"],
+  [/\bbig muff\b/, "muff"],
+  [/stingray/, "sting ray"],
+  [/precision/, "p bass pbass"],
+  [/jazz bass/, "j bass jbass"],
+  [/marshall .*(jcm|jvm|dsl)/, "marshall plexi"],
+  [/plexi|\b1959\b|\b1987\b/, "plexi"],
+  [/\bklon\b|centaur|\bktr\b/, "klon centaur"],
+  [/pro ?co.*\brat\b|\brat\b/, "rat distortion"],
+  [/cry ?baby/, "crybaby wah"],
+  [/\bwah\b/, "wah"],
+  [/\bdeluxe reverb\b/, "dr"],
+  [/\btwin reverb\b/, "twin"],
+  [/\bac30\b/, "ac 30"],
+  [/\b5150\b|6505/, "5150 6505"],
+  [/\bboss\b/, "boss"],
+  [/\bkatana\b/, "katana"],
+  [/\bseymour duncan\b/, "sd"],
+  [/\bdimarzio\b/, "dim"],
+  [/\bmusic man\b/, "ernie ball mm"],
+  [/\bmartin\b|\btaylor\b/, "acoustic"],
+  [/\bepiphone\b/, "epi"],
+  [/\bibanez\b/, "ibby"],
+  [/\bgibson\b/, "gibby"],
+];
+
+type Indexed = { g: GearSuggestion; words: string[]; compact: string; full: string };
+
+function normText(s: string): string {
+  return s
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
 }
 
-export function searchGear(q: string, kind?: GearKind): GearSuggestion[] {
-  const needle = q.trim().toLowerCase();
-  if (!needle) return kind ? GEAR_SUGGESTIONS.filter((g) => g.kind === kind).slice(0, 24) : [];
-  return GEAR_SUGGESTIONS.filter((g) => {
-    if (kind && g.kind !== kind) return false;
-    return g.name.toLowerCase().includes(needle) || g.brand.toLowerCase().includes(needle);
-  }).slice(0, 80);
+let INDEX: Indexed[] | null = null;
+function index(): Indexed[] {
+  if (INDEX) return INDEX;
+  INDEX = GEAR_SUGGESTIONS.map((g) => {
+    const lower = g.name.toLowerCase();
+    const extra = ALIAS_RULES.filter(([re]) => re.test(lower)).map(([, a]) => a).join(" ");
+    const full = normText(`${g.name} ${extra}`);
+    return { g, words: full.split(" "), compact: full.replace(/ /g, ""), full };
+  });
+  return INDEX;
+}
+
+function within1(a: string, b: string): boolean {
+  if (a === b) return true;
+  if (Math.abs(a.length - b.length) > 1 || a[0] !== b[0]) return false;
+  let i = 0;
+  while (i < a.length && i < b.length && a[i] === b[i]) i++;
+  if (a.length === b.length) return a.slice(i + 1) === b.slice(i + 1) || (a[i] === b[i + 1] && a[i + 1] === b[i] && a.slice(i + 2) === b.slice(i + 2));
+  return a.length > b.length ? a.slice(i + 1) === b.slice(i) : b.slice(i + 1) === a.slice(i);
+}
+
+function tokenScore(t: string, e: Indexed): number {
+  let best = 0;
+  for (const w of e.words) {
+    if (w === t) return 4;
+    if (w.startsWith(t)) best = Math.max(best, 3);
+    else if (t.length >= 4 && w.length >= 4 && within1(t, w)) best = Math.max(best, 1.5);
+    else if (t.length >= 5 && w.length > t.length && within1(t, w.slice(0, t.length))) best = Math.max(best, 1.5);
+  }
+  if (best >= 3) return best;
+  if (t.length >= 4 && e.compact.includes(t)) best = Math.max(best, 2);
+  return best;
+}
+
+let POPULAR_SET: Set<string> | null = null;
+function popularSet(): Set<string> {
+  if (!POPULAR_SET) POPULAR_SET = new Set([...Object.values(POPULAR_NAMES).flat(), ...Object.values(POPULAR_MORE).flat()]);
+  return POPULAR_SET;
+}
+
+/**
+ * Search brand, model and the words players use for them: "lp" finds Les Paul, "strat" the Stratocasters,
+ * "ts9", "klon" and "rat" the pedals. Every word must match (whole word, start of a word, inside a word of
+ * four or more letters, or one typo away). Better matches and popular picks come first.
+ */
+export function searchGear(q: string, kind?: GearKind, limit = 80): GearSuggestion[] {
+  const text = normText(q);
+  if (!text) return kind ? GEAR_SUGGESTIONS.filter((g) => g.kind === kind).slice(0, 24) : [];
+  const tokens = text.split(" ");
+  const joined = tokens.join("");
+  const pop = popularSet();
+  const scored: Array<{ g: GearSuggestion; score: number; i: number }> = [];
+  index().forEach((e, i) => {
+    if (kind && e.g.kind !== kind) return;
+    let total = 0;
+    for (const t of tokens) {
+      const s = tokenScore(t, e);
+      if (!s) {
+        total = 0;
+        break;
+      }
+      total += s;
+    }
+    // "ts 9" typed with a gap still finds TS9
+    if (!total && tokens.length > 1) total = tokenScore(joined, e);
+    if (!total) return;
+    if (e.full.startsWith(text)) total += 3;
+    if (normText(e.g.model).startsWith(text)) total += 2;
+    if (pop.has(e.g.name)) total += 2.5;
+    total -= Math.min(e.words.length, 14) * 0.05;
+    scored.push({ g: e.g, score: total, i });
+  });
+  scored.sort((a, b) => b.score - a.score || a.i - b.i);
+  return scored.slice(0, limit).map((s) => s.g);
+}
+
+export function suggestionsFor(kind: GearSuggestion["kind"], q: string): GearSuggestion[] {
+  return searchGear(q, kind, 24);
+}
+
+// ---- Pickups from a name ------------------------------------------------------------------
+
+let PICKUP_MAP: Map<string, GearPickups> | null = null;
+
+/**
+ * The pickups of the catalog guitar, bass or pickup with exactly this name (punctuation and case ignored).
+ * Used by src/lib/pickups.ts for a locker item that was added from the catalog.
+ */
+export function catalogPickupsFor(name: string): GearPickups | null {
+  if (!PICKUP_MAP) {
+    PICKUP_MAP = new Map();
+    for (const g of GEAR_SUGGESTIONS) if (g.pickups) PICKUP_MAP.set(looseKey(g.name), g.pickups);
+  }
+  return PICKUP_MAP.get(looseKey(name)) ?? null;
 }
 
 const POPULAR_NAMES: Record<GearKind, string[]> = {
@@ -2883,12 +3144,21 @@ const POPULAR_NAMES: Record<GearKind, string[]> = {
   ],
 };
 
+const POPULAR_MORE: Record<GearKind, string[]> = {
+  guitar: ["Fender Stratocaster Player", "Gibson ES-335", "Gibson Les Paul Studio", "Gibson Les Paul Junior", "Squier Classic Vibe Telecaster", "PRS Silver Sky", "PRS SE Custom 24", "Ibanez RG421", "Fender Jaguar", "Fender Mustang", "Epiphone SG Standard", "Rickenbacker 330", "Schecter Hellraiser C-1", "Jackson Soloist", "Martin D-28", "Taylor 214ce"],
+  bass: ["Music Man StingRay Special", "Ibanez SR300E", "Warwick Corvette $$", "Spector NS Ethos", "Gibson Thunderbird"],
+  amp: ["Marshall DSL40CR", "Fender Blues Junior IV", "Fender Princeton Reverb", "Vox AC15C1", "Mesa/Boogie Mark V", "Orange Tiny Terror", "Friedman BE-100", "Ampeg SVT Classic", "Line 6 Catalyst 100"],
+  cab: ["Celestion Vintage 30", "Marshall 1960AV", "Fender Deluxe Reverb 1x12", "Vox V212C"],
+  pedal: ["Ibanez TS808", "BOSS BD-2", "BOSS CE-2W", "BOSS NS-2", "MXR Phase 90", "MXR Dyna Comp", "Strymon Timeline", "JHS Morning Glory V4", "Wampler Tumnus", "Electro-Harmonix Memory Man", "Dunlop Fuzz Face Mini Distortion"],
+  pickup: ["Seymour Duncan Jazz SH-2", "Seymour Duncan Custom SH-5", "DiMarzio PAF Pro", "EMG 85", "Bare Knuckle Warpig", "Lollar Imperial", "Gibson Burstbucker 2"],
+};
+
 export function popularFor(kind: GearKind): GearSuggestion[] {
-  const names = POPULAR_NAMES[kind] ?? [];
+  const names = [...(POPULAR_NAMES[kind] ?? []), ...(POPULAR_MORE[kind] ?? [])];
   const out: GearSuggestion[] = [];
   for (const name of names) {
     const hit = GEAR_SUGGESTIONS.find((g) => g.kind === kind && g.name === name);
-    if (hit) out.push(hit);
+    if (hit && !out.includes(hit)) out.push(hit);
   }
   return out;
 }

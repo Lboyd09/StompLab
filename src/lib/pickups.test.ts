@@ -93,3 +93,17 @@ describe("SL-65 finishTone", () => {
     assert.equal(out.snapshots[1].paramOverrides?.amp?.Drive, 2.5);
   });
 });
+
+describe("catalog pickups reach the tone", () => {
+  it("a PRS SE Silver Sky (single coils) gets the same push as a Strat on a Les Paul record", () => {
+    const silverSky: UserGear = { id: "g3", kind: "guitar", name: "PRS SE Silver Sky Stoptail", notes: "" };
+    const out = finishTone(generated("Gibson Les Paul Standard"), null, { userGear: [silverSky] });
+    assert.equal(amp(out).params.Drive, 5.6);
+    assert.ok(out.tips.some((t) => /PRS SE Silver Sky Stoptail has single coils; the record used humbuckers/.test(t)));
+  });
+  it("a Les Paul Junior Tribute DC on a humbucker record gets P-90 treatment", () => {
+    const junior: UserGear = { id: "g4", kind: "guitar", name: "Gibson Les Paul Junior Tribute DC", notes: "" };
+    const out = finishTone(generated("Gibson Les Paul Standard"), null, { userGear: [junior] });
+    assert.ok(out.tips.some((t) => /has P-90s; the record used humbuckers/.test(t)));
+  });
+});
