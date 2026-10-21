@@ -460,8 +460,8 @@ html.sl-touring nav {
   display: flex;
   flex-direction: column;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  min-height: 0;
+  /* About 4:3 like the 2.4" screen, but never shorter than its tiles. */
+  min-height: 112px;
   overflow: hidden;
   background: #000;
   border: 4px solid #050506;
@@ -473,7 +473,6 @@ html.sl-touring nav {
   color: #fff;
 }
 .hx-lcd-wide { aspect-ratio: 5 / 3; min-height: 150px; }
-.hx-lcd-podgo { aspect-ratio: 16 / 9; }
 
 .hx-lcd-head {
   display: flex;
@@ -643,13 +642,13 @@ html[data-lcd="bright"] .hx-lcd { box-shadow: 0 0 0 1px #3a3c41, 0 0 24px #fffff
 /* ── HX Stomp XL ── */
 .hx-xl-upper { display: flex; flex-direction: column-reverse; gap: 12px; }
 .hx-xl-left { display: flex; min-width: 0; flex-direction: column; justify-content: space-between; }
-.hx-xl-panel { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: start; }
+.hx-xl-panel { display: grid; grid-template-columns: minmax(150px, 1fr) auto; gap: 10px; align-items: start; }
 .hx-row5 { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 4px; align-items: start; }
 .hx-row4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; align-items: start; }
 .hx-xl .hx-brand { padding-bottom: 4px; }
 @container replica (min-width: 600px) {
   /* Real arrangement: ▲ C D across the left three-fifths, the screen panel across the right two. */
-  .hx-xl-upper { display: grid; grid-template-columns: 3fr 2fr; flex-direction: row; gap: 4px; }
+  .hx-xl-upper { display: grid; grid-template-columns: minmax(0, 3fr) minmax(min-content, 2fr); flex-direction: row; gap: 4px; }
   .hx-xl-left .hx-row5 { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hx-xl-left { padding-right: 4px; }
   .hx-xl .hx-model { font-size: 18px; }
