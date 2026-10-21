@@ -45,7 +45,8 @@ function Home() {
   const [song, setSong] = useState(search.q ?? "");
   const [artist, setArtist] = useState("");
   const [picked, setPicked] = useState(false);
-  const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
+  const playbackTarget = useAppStore((s) => s.playbackTarget);
+  const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
   const [busy, setBusy] = useState(false);
   const [status, setStatus] = useState("");
   const [progress, setProgress] = useState(0);
@@ -225,6 +226,12 @@ function Home() {
             </p>
           ) : null}
           {busy ? <ResearchProgress pct={progress} /> : null}
+          <p className="text-sm text-muted-foreground">
+            Want a sound, not a song?{" "}
+            <Link to="/create" className="text-primary underline underline-offset-2">
+              Describe it
+            </Link>
+          </p>
           {gear.length ? (
             <p className="text-xs text-muted-foreground">
               Using your gear: {gear.length} piece{gear.length === 1 ? "" : "s"} from your locker.

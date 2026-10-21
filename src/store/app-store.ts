@@ -1,3 +1,4 @@
+import type { PlaybackTarget } from "@/data/types";
 import { create } from "zustand";
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import {
@@ -44,6 +45,7 @@ type AppState = {
   wahModelId: string;
   guitarRole: GuitarRole;
   irSlot: number | null;
+  playbackTarget: PlaybackTarget;
   geminiKey: string;
   presets: Preset[];
   gear: UserGear[];
@@ -70,6 +72,7 @@ type AppState = {
   setWahModelId: (id: string) => void;
   setGuitarRole: (role: GuitarRole) => void;
   setIrSlot: (slot: number | null) => void;
+  setPlaybackTarget: (target: PlaybackTarget) => void;
   setGeminiKey: (key: string) => void;
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
@@ -109,6 +112,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   wahModelId: "teardrop-310",
   guitarRole: "both",
   irSlot: null,
+  playbackTarget: "frfr",
   confirmDownload: false,
   geminiKey: "",
   presets: [],
@@ -139,6 +143,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       wahModelId: settings.wahModelId,
       guitarRole: settings.guitarRole,
       irSlot: settings.irSlot,
+      playbackTarget: settings.playbackTarget,
       geminiKey: loadGeminiKey(),
     });
   },
@@ -204,6 +209,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setGuitarRole: (guitarRole) => {
     persist({ guitarRole });
     set({ guitarRole });
+  },
+  setPlaybackTarget: (playbackTarget) => {
+    persist({ playbackTarget });
+    set({ playbackTarget });
   },
   setIrSlot: (slot) => {
     const irSlot = parseIrSlot(slot);

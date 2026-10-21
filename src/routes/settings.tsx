@@ -1,3 +1,4 @@
+import { PlaybackSelect } from "@/components/layout/playback-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
@@ -161,6 +162,8 @@ function SettingsPage() {
   const setWahModelId = useAppStore((s) => s.setWahModelId);
   const irSlot = useAppStore((s) => s.irSlot);
   const setIrSlot = useAppStore((s) => s.setIrSlot);
+  const playbackTarget = useAppStore((s) => s.playbackTarget);
+  const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
   const { plan, isPending: planPending } = usePlan();
   const { user, isPending: authPending } = useCurrentUserState();
   const [mounted, setMounted] = useState(false);
@@ -375,6 +378,18 @@ function SettingsPage() {
           }}
           onModel={(id) => {
             setWahModelId(id);
+            toast.success("Saved");
+          }}
+        />
+      </section>
+
+      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
+        <h2 className="font-display text-lg font-semibold">Your rig</h2>
+        <PlaybackSelect
+          stompModel={stompModel}
+          value={playbackTarget}
+          onChange={(v) => {
+            setPlaybackTarget(v);
             toast.success("Saved");
           }}
         />

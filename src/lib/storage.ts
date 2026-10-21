@@ -1,3 +1,5 @@
+import type { PlaybackTarget } from "@/data/types";
+import { PLAYBACK_TARGETS } from "@/data/playback";
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import { parseStompModelId } from "@/data/types";
 import { parseGuitarRole, type GuitarRole } from "./guitar-role";
@@ -30,7 +32,14 @@ export type Settings = {
   guitarRole: GuitarRole;
   /** SL-68: the player's own cab IR slot (1–128) on the unit, or null for the stock cab. */
   irSlot: number | null;
+  /** What the player plays through. The Lab form starts on this every time. */
+  playbackTarget: PlaybackTarget;
 };
+
+const PLAYBACK_IDS = new Set(PLAYBACK_TARGETS.map((t) => t.id));
+function parsePlaybackTarget(value: unknown): PlaybackTarget {
+  return typeof value === "string" && PLAYBACK_IDS.has(value as PlaybackTarget) ? (value as PlaybackTarget) : "frfr";
+}
 
 /** A whole IR slot number 1–128, or null. */
 export function parseIrSlot(value: unknown): number | null {
@@ -53,6 +62,7 @@ const DEFAULT_SETTINGS: Settings = {
   wahModelId: "teardrop-310",
   guitarRole: "both",
   irSlot: null,
+  playbackTarget: "frfr",
 };
 
 function readJson<T>(key: string, fallback: T): T {
@@ -212,6 +222,7 @@ export function loadSettings(): Settings {
     wahModelId: parseWahModelId(raw.wahModelId),
     guitarRole: parseGuitarRole(raw.guitarRole),
     irSlot: parseIrSlot(raw.irSlot),
+    playbackTarget: parsePlaybackTarget(raw.playbackTarget),
   };
 }
 

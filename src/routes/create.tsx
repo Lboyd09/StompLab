@@ -41,7 +41,8 @@ function CreatePage() {
   const { plan, refresh, isPending } = usePlan();
   const [description, setDescription] = useState("");
   const [playerName, setPlayerName] = useState("");
-  const [playbackTarget, setPlaybackTarget] = useState<PlaybackTarget>("frfr");
+  const playbackTarget = useAppStore((s) => s.playbackTarget);
+  const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState(0);
 

@@ -263,7 +263,7 @@ function SetlistEditor({ set }: { set: Setlist }) {
     setStatus("");
     try {
       const outcome = await buildSong(
-        { song, artist, instrument, stompModel, playbackTarget: "frfr", gear, wahMode, wahModelId },
+        { song, artist, instrument, stompModel, playbackTarget: useAppStore.getState().playbackTarget, gear, wahMode, wahModelId },
         { plan, planPending },
         {
           onStart: () => {

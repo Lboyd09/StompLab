@@ -4,6 +4,7 @@ import {
   Clock,
   Guitar,
   Library,
+  ListMusic,
   Lock,
   Search,
   Settings,
@@ -38,13 +39,14 @@ import { captureReferralCode } from "@/lib/referral-code";
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
   { to: "/catalog", label: "Catalog", icon: Library },
-  { to: "/create", label: "Create", icon: Sparkles },
+  { to: "/setlist", label: "Setlists", icon: ListMusic },
   { to: "/gear", label: "Gear", icon: Wrench },
   { to: "/history", label: "History", icon: Clock },
 ] as const;
 
 const DESKTOP_NAV = [
   ...NAV,
+  { to: "/create", label: "Create", icon: Sparkles },
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
 
@@ -436,7 +438,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       >
         <div className="grid grid-cols-5">
           {NAV.map((item) => {
-            const locked = item.to === "/create" && !plan.paid && !planPending;
+            const locked = item.to === "/setlist" && !plan.paid && !plan.admin && !planPending;
             return (
               <Link
                 key={item.to}
