@@ -36,3 +36,15 @@ describe("song check", () => {
     assert.equal(isCompilationAlbum("Core"), false);
   });
 });
+
+describe("rankSongHits originals first", () => {
+  it("puts the album original above single covers and acoustic versions", async () => {
+    const { rankSongHits } = await import("./song-check.ts");
+    const ranked = rankSongHits("Sweet Child O' Mine", [
+      { song: "Sweet Child O' Mine", album: "Sweet Child O' Mine - Single" },
+      { song: "Sweet Child O' mine (Acoustic)", album: "Some Older Ones - EP" },
+      { song: "Sweet Child O' Mine", album: "Appetite for Destruction" },
+    ]);
+    assert.equal(ranked[0].album, "Appetite for Destruction");
+  });
+});

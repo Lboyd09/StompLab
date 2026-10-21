@@ -192,3 +192,13 @@ describe("fitSnapshotName", () => {
     assert.ok(fitSnapshotName("RHYTHM CRUNCH").length <= 12);
   });
 });
+
+describe("delay time to note", () => {
+  it("turns a time that is an eighth at the song tempo into a tempo-synced eighth", async () => {
+    const { noteForTime } = await import("./tone-finish.ts");
+    assert.equal(noteForTime(2.4, 124), 9);
+    assert.equal(noteForTime(6.7, 67), 8);
+    assert.equal(noteForTime(1.1, 120), null);
+    assert.equal(noteForTime(5.5, 126), null);
+  });
+});

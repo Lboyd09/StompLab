@@ -102,5 +102,12 @@ function scoreHit(want: string, hit: { song: string; album?: string }): number {
   const title = normTitle(hit.song);
   const exact = title === want ? 0 : 1;
   const comp = hit.album && isCompilationAlbum(hit.album) ? 2 : 0;
-  return exact * 10 + comp;
+  // Covers usually come out as singles, or say what they are; the original sits on an album.
+  const single = hit.album && /\s-\s(single|ep)$/i.test(hit.album) ? 1 : 0;
+  const cover = /\b(karaoke|tribute|cover|instrumental|acoustic|lullaby|piano version|made famous)\b/i.test(
+    `${hit.song} ${hit.album ?? ""}`,
+  )
+    ? 3
+    : 0;
+  return exact * 10 + comp + single + cover;
 }

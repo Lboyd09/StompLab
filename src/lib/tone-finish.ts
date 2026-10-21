@@ -81,7 +81,39 @@ function needsGate(blocks: StompBlock[], bass: boolean): boolean {
   const highGainAmp = amp && !CLEAN_CHANNEL.test(amp.modelId) && HIGH_GAIN_AMP.test(amp.modelId);
   if (amp && ((amp.params.Drive ?? 0) >= 4.5 || highGainAmp)) return true;
   if (bass) return false;
-  return blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId));
+  // A low-gain overdrive or Klon on a clean amp needs no gate; only a hot drive or fuzz does.
+  return blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && driveGain(b) >= 6);
+}
+
+/** The pedal's gain knob on 0–10. Unknown names count as hot, which keeps the old behaviour. */
+function driveGain(block: StompBlock): number {
+  const vals = ["Gain", "Drive", "Fuzz", "Sustain", "Distortion", "Dist"]
+    .map((k) => block.params[k])
+    .filter((v): v is number => typeof v === "number");
+  return vals.length ? Math.max(...vals) : 10;
+}
+
+/** Note values the exporter writes, as beats: 6 quarter, 8 dotted eighth, 9 eighth, 5 dotted quarter, 12 sixteenth, 7 quarter triplet. */
+const NOTE_BEATS: [number, number][] = [
+  [6, 1],
+  [8, 0.75],
+  [9, 0.5],
+  [5, 1.5],
+  [12, 0.25],
+  [7, 2 / 3],
+];
+
+/** A delay Time (value × 100 ms) that lands within 8% of a note at the song tempo becomes that note. */
+export function noteForTime(time: number, bpm: number): number | null {
+  const ms = time * 100;
+  if (!(ms >= 150) || !(bpm >= 40 && bpm <= 240)) return null;
+  const beat = 60000 / bpm;
+  let best: [number, number] | null = null;
+  for (const [note, beats] of NOTE_BEATS) {
+    const err = Math.abs(ms - beat * beats) / (beat * beats);
+    if (err <= 0.08 && (!best || err < best[1])) best = [note, err];
+  }
+  return best ? best[0] : null;
 }
 
 /** Block slots the unit spends: an amp and the cab after it are one block on HX. */
@@ -173,8 +205,13 @@ function shapeGenerated(preset: Preset): Preset {
   for (const block of blocks) {
     if (!isDelay(block.modelId)) continue;
     if ((block.params.Time ?? 0) >= 9) block.params.Time = 4.2;
-    // No time and no note: follow the song tempo on the dotted eighth. A Time the model chose stays free-running.
+    // No time and no note: follow the song tempo on the dotted eighth.
     if (block.params.Note === undefined && block.params.Time === undefined && (block.params.Scale ?? 0) <= 0) block.params.Note = 8;
+    // A Time that is really a note at this tempo follows the tempo; a slapback or off-beat time stays free.
+    if (block.params.Note === undefined && typeof block.params.Time === "number") {
+      const note = noteForTime(block.params.Time, next.tempo);
+      if (note !== null) block.params.Note = note;
+    }
   }
 
   if (needsGate(blocks, bass) && hasRoom(next, blocks) && MODEL_MAP["noise-gate"]) {
