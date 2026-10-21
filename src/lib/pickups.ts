@@ -1,4 +1,5 @@
 import { MODEL_MAP } from "@/data/catalog";
+import { catalogPickupsFor } from "@/data/gear-catalog";
 import type { Preset, UserGear } from "@/data/types";
 
 /**
@@ -23,7 +24,8 @@ const MAX_DRIVE_MOVE = 1.2;
 /** finishTone's clean-by-gain-staging line. */
 const CLEAN_AMP_DRIVE = 2.4;
 
-export function classifyPickup(raw: string): PickupKind | null {
+/** `name` is the locker item's own name: a catalog guitar with exactly that name carries its pickups. */
+export function classifyPickup(raw: string, name?: string): PickupKind | null {
   const s = ` ${raw.toLowerCase()} `;
   if (/acoustic|acoustasonic|nylon|classical|\bcd-60/.test(s)) return null;
   if (/\bemg\b|fluence|blackouts?\b|\bactive\b/.test(s)) return "active";
@@ -31,6 +33,9 @@ export function classifyPickup(raw: string): PickupKind | null {
   if (/humbucker|\bhh\b|wide ?range|filter'?tron|\bpaf\b/.test(s)) return "humbucker";
   if (/\bp-?90s?\b|soapbar|dog ?ear|les paul (junior|special|jr)|sg (junior|special)|\bes-330\b|\bcasino\b/.test(s)) return "p90";
   if (/single[- ]coils?|\bsss\b/.test(s)) return "single-coil";
+  // A model added from the locker catalog carries its pickups (a mixed HSS-style guitar is skipped).
+  const listed = name ? catalogPickupsFor(name) : null;
+  if (listed) return listed === "mixed" ? null : listed;
   if (/telecaster deluxe|tele deluxe/.test(s)) return "humbucker";
   if (/telecaster custom|thinline/.test(s)) return null; // both pickup kinds were made under these names
   if (/strat|telecaster|\btele\b|jazzmaster|jaguar|mustang|duo-sonic|rickenbacker|danelectro/.test(s)) return "single-coil";
@@ -42,12 +47,12 @@ export function classifyPickup(raw: string): PickupKind | null {
 export function playerPickup(gear: UserGear[] | undefined, record?: PickupKind): { kind: PickupKind; name: string } | null {
   if (!gear?.length) return null;
   for (const g of gear.filter((g) => g.kind === "pickup")) {
-    const kind = classifyPickup(`${g.name} ${g.notes}`);
+    const kind = classifyPickup(`${g.name} ${g.notes}`, g.name);
     if (kind) return { kind, name: g.name };
   }
   const guitars = gear
     .filter((g) => g.kind === "guitar")
-    .map((g) => ({ kind: classifyPickup(`${g.name} ${g.notes}`), name: g.name }))
+    .map((g) => ({ kind: classifyPickup(`${g.name} ${g.notes}`, g.name), name: g.name }))
     .filter((g): g is { kind: PickupKind; name: string } => g.kind !== null);
   if (!guitars.length) return null;
   // Owns a guitar like the record's: they'll grab that one (the gear tips say so).
