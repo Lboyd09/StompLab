@@ -2,6 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import {
   canonicalEmail,
+  INVITE_PENDING_LINE,
+  isPermanentInviteError,
   invitePath,
   inviteUrl,
   normalizeReferralCode,
@@ -36,5 +38,12 @@ describe("referral codes", () => {
     assert.equal(canonicalEmail("a@icloud.com"), "a@icloud.com");
     assert.equal(canonicalEmail("stomplab1+friend@gmail.com"), "stomplab1@gmail.com");
     assert.equal(canonicalEmail("Stomp.Lab1@gmail.com"), "stomplab1@gmail.com");
+  });
+});
+
+describe("invite typed before the email is confirmed", () => {
+  it("stops the sign-up retry loop", () => {
+    assert.equal(isPermanentInviteError(INVITE_PENDING_LINE), true);
+    assert.equal(isPermanentInviteError("Could not apply that invite. Try again in a minute."), false);
   });
 });

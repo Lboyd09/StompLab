@@ -2,7 +2,7 @@ import type { Sql } from "./db";
 
 /**
  * The security migrations (0014 to 0021), plus the setlist and download tables
- * (0022, 0023), as idempotent single statements. The
+ * (0022, 0023) and pending invites (0024), as idempotent single statements. The
  * migration files are the source of truth; this list runs the same DDL once per
  * process so a host that never ran `npm run db:migrate` still has the columns
  * the quota, webhook and feedback code reads. Keep it in step with those files.
@@ -49,6 +49,11 @@ export const SECURITY_SCHEMA_STATEMENTS: string[] = [
    )`,
   `create index if not exists download_events_created_idx on download_events (created_at)`,
   `create index if not exists download_events_user_idx on download_events (user_id, created_at)`,
+  `create table if not exists referral_pending (
+     user_id text primary key,
+     code text not null,
+     created_at timestamptz not null default now()
+   )`,
   `update entitlements e
    set user_id = m.id, updated_at = now()
    from (

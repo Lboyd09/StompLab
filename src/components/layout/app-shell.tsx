@@ -28,6 +28,7 @@ import { LegalFooter } from "./legal-footer";
 import { BrandLockup } from "./mark";
 import { Onboarding } from "./onboarding";
 import { PageWash } from "./page-wash";
+import { PendingInviteClaim } from "./pending-invite";
 import { Tutorial } from "./tutorial";
 import { UnitChip } from "./unit-chip";
 import { usePlan } from "@/lib/use-plan";
@@ -429,6 +430,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <LegalFooter className="mt-16 pb-4" />
       </main>
 
+      <PendingInviteClaim />
       <Onboarding onFinished={() => setShowTutorial(true)} />
       <Tutorial force={showTutorial} onClose={() => setShowTutorial(false)} />
 
