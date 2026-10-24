@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { useTestDatabase, type Sql } from "./db";
-import { checkoutReplayState, grantPaid, paidVerifiedFor, revokeForRefund } from "./billing";
+import { checkoutReplayState, grantPaid, paidVerifiedFor, revokeForRefund, songQuery } from "./billing";
 import { findEntitlement } from "./entitlement";
 import { makeTestDb } from "./test-db";
 
@@ -111,5 +111,14 @@ describe("an old /upgrade?checkout_id link", () => {
     assert.equal(applied, false);
     const ent = await findEntitlement(sql, ["replay-1"], "replay1@example.com", true);
     assert.equal(await paidVerifiedFor("replay-1", "replay1@example.com", ent), false);
+  });
+});
+
+describe("the song the free limit stopped", () => {
+  it("rides the checkout return URL, encoded and capped", () => {
+    assert.equal(songQuery("Everlong", "Foo Fighters"), "&song=Everlong&artist=Foo%20Fighters");
+    assert.equal(songQuery("  ", "x"), "");
+    assert.equal(songQuery("A&B=C"), "&song=A%26B%3DC");
+    assert.equal(songQuery("x".repeat(300)).length, "&song=".length + 120);
   });
 });

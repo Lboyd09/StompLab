@@ -280,7 +280,10 @@ function SetlistEditor({ set }: { set: Setlist }) {
         return;
       }
       if (outcome.kind === "upgrade") {
-        await navigate({ to: "/upgrade" });
+        await navigate({
+          to: "/upgrade",
+          search: outcome.reason === "limit" ? { song: song.trim(), artist: artist.trim() || undefined } : {},
+        });
         return;
       }
       if (outcome.kind === "stopped") {

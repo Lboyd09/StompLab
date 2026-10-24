@@ -8,9 +8,9 @@ import { InviteCard } from "@/components/layout/invite-card";
 import { authClient, authEnabled, signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { FORGOT_PASSWORD_COPY, FREE_BUILD_LINE } from "@/lib/copy";
-import { openCustomerPortal, cancelMySubscription } from "@/lib/billing";
+import { openCustomerPortal, cancelMySubscription, resumeMySubscription } from "@/lib/billing";
 import { requestAccountDelete } from "@/lib/account-delete";
-import { PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd, canceledCopy, subscriptionCanceled } from "@/lib/plan";
+import { PRICE_MONTHLY_USD, buildsUsedCopy, formatUsd, canceledCopy, subscriptionCanceled, subscriptionLapsed } from "@/lib/plan";
 import { requestResetMail } from "@/lib/reset-mail";
 import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES, SESSION_DAYS } from "@/lib/password-policy";
 import { DELETE_HOLD_DAYS } from "@/lib/closed-accounts";
@@ -21,12 +21,13 @@ export const Route = createFileRoute("/account")({ component: AccountPage });
 
 function AccountPage() {
   const { user, isPending } = useCurrentUserState();
-  const { plan, isPending: planPending } = usePlan();
+  const { plan, refresh, isPending: planPending } = usePlan();
   const [busy, setBusy] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
   const [revoking, setRevoking] = useState(false);
   const [portalBusy, setPortalBusy] = useState(false);
   const [cancelBusy, setCancelBusy] = useState(false);
+  const [resumeBusy, setResumeBusy] = useState(false);
   const [deleteBusy, setDeleteBusy] = useState(false);
   const [deleteSent, setDeleteSent] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState("");
@@ -132,7 +133,27 @@ function AccountPage() {
     }
   }
 
+  async function onResumeSubscription() {
+    setError("");
+    setMessage("");
+    setResumeBusy(true);
+    try {
+      const res = await resumeMySubscription();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      await refresh();
+      setMessage("Resumed. Your plan renews as before.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resume.");
+    } finally {
+      setResumeBusy(false);
+    }
+  }
+
   const canceled = subscriptionCanceled(plan);
+  const lapsed = plan.polarLinked && subscriptionLapsed(plan);
 
   return (
     <div className="mx-auto max-w-lg space-y-8">
@@ -145,6 +166,11 @@ function AccountPage() {
         {canceled ? (
           <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-foreground">{canceledCopy(plan)}</p>
         ) : null}
+        {lapsed ? (
+          <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-foreground">
+            Your last payment didn't go through. Update your card under Manage subscription to keep your plan.
+          </p>
+        ) : null}
         {plan.admin ? (
           <p className="text-sm text-muted-foreground">This account has no monthly build cap.</p>
         ) : plan.paid ? (
@@ -154,9 +180,11 @@ function AccountPage() {
             <p className="text-sm text-muted-foreground">
               {FREE_BUILD_LINE} Catalog browse is free. Create and locker sync are paid.
             </p>
-            <Button asChild>
-              <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
-            </Button>
+            {lapsed ? null : (
+              <Button asChild>
+                <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
+              </Button>
+            )}
           </>
         )}
         {import.meta.env.DEV && plan.admin && !plan.polarLinked ? (
@@ -169,6 +197,11 @@ function AccountPage() {
             <Button type="button" variant="secondary" disabled={portalBusy} onClick={() => void onManageSubscription()}>
               {portalBusy ? "Opening Polar…" : "Manage subscription"}
             </Button>
+            {plan.polarLinked && canceled && plan.paid ? (
+              <Button type="button" disabled={resumeBusy} onClick={() => void onResumeSubscription()}>
+                {resumeBusy ? "Resuming…" : "Resume plan"}
+              </Button>
+            ) : null}
             {plan.polarLinked && !canceled ? (
               <Button type="button" variant="outline" disabled={cancelBusy} onClick={() => void onCancelSubscription()}>
                 {cancelBusy ? "Canceling…" : "Cancel subscription"}

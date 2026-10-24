@@ -19,6 +19,10 @@ import {
   polarDiscountId,
   polarReferralDiscountId,
   polarSubHitFromItem,
+  polarChangeProductBody,
+  polarResumeBody,
+  resumePolarSubscription,
+  switchPolarSubscriptionToYearly,
 } from "./polar.ts";
 
 describe("polarEventIsPaid", () => {
@@ -488,5 +492,46 @@ describe("polarAdminStatsFromLists", () => {
     assert.equal(empty.revenueCents, 0);
     assert.equal(empty.subscribedCount, 0);
     assert.equal(empty.source, "polar");
+  });
+});
+
+describe("subscription PATCH requests", () => {
+  async function capture(run: () => Promise<unknown>) {
+    const calls: { url: string; method?: string; body: unknown }[] = [];
+    const realFetch = globalThis.fetch;
+    const env = { ...process.env };
+    process.env.POLAR_ACCESS_TOKEN = "polar_test_token";
+    process.env.POLAR_PRODUCT_ID_YEARLY = "prod_yearly_1";
+    delete process.env.POLAR_API_URL;
+    delete process.env.POLAR_SERVER;
+    globalThis.fetch = (async (url: string, init?: RequestInit) => {
+      calls.push({ url: String(url), method: init?.method, body: JSON.parse(String(init?.body ?? "{}")) });
+      return new Response(JSON.stringify({ current_period_end: "2026-11-24T00:00:00Z" }), { status: 200 });
+    }) as typeof fetch;
+    try {
+      const result = await run();
+      return { calls, result };
+    } finally {
+      globalThis.fetch = realFetch;
+      process.env = env;
+    }
+  }
+
+  it("resume clears cancel_at_period_end on that subscription", async () => {
+    const { calls, result } = await capture(() => resumePolarSubscription("sub_abc12345"));
+    assert.deepEqual(result, { ok: true, periodEnd: "2026-11-24T00:00:00Z" });
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0].method, "PATCH");
+    assert.equal(calls[0].url, "https://api.polar.sh/v1/subscriptions/sub_abc12345");
+    assert.deepEqual(calls[0].body, { cancel_at_period_end: false });
+  });
+
+  it("switch to yearly sends the yearly product and invoices the difference", async () => {
+    const { calls, result } = await capture(() => switchPolarSubscriptionToYearly("sub_abc12345"));
+    assert.deepEqual(result, { ok: true, periodEnd: "2026-11-24T00:00:00Z" });
+    assert.equal(calls[0].method, "PATCH");
+    assert.deepEqual(calls[0].body, { product_id: "prod_yearly_1", proration_behavior: "invoice" });
+    assert.deepEqual(polarChangeProductBody("p"), { product_id: "p", proration_behavior: "invoice" });
+    assert.deepEqual(polarResumeBody(), { cancel_at_period_end: false });
   });
 });

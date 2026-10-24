@@ -268,6 +268,12 @@ export function subscriptionCanceled(plan: Plan): boolean {
   return /canceled|cancelled/i.test(plan.subscriptionStatus);
 }
 
+/** Polar could not take the last payment (past_due, unpaid, incomplete). The card needs fixing, not a new plan. */
+export function subscriptionLapsed(plan: Pick<Plan, "subscriptionStatus">): boolean {
+  const s = plan.subscriptionStatus.trim().toLowerCase();
+  return s === "past_due" || s === "unpaid" || s === "incomplete";
+}
+
 export function formatPeriodEnd(iso: string | null | undefined): string {
   if (!iso) return "the end of the period you already paid for";
   const d = new Date(iso);

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
@@ -247,5 +247,15 @@ describe("prices", () => {
     assert.equal(planFingerprint(a), planFingerprint(b));
     assert.notEqual(planFingerprint(a), planFingerprint(c));
     assert.notEqual(planFingerprint(a), planFingerprint(emptyPlan()));
+  });
+});
+
+describe("subscriptionLapsed", () => {
+  it("is a failed payment, not an ended or canceled plan", () => {
+    assert.equal(subscriptionLapsed({ subscriptionStatus: "past_due" }), true);
+    assert.equal(subscriptionLapsed({ subscriptionStatus: "unpaid" }), true);
+    assert.equal(subscriptionLapsed({ subscriptionStatus: "canceled" }), false);
+    assert.equal(subscriptionLapsed({ subscriptionStatus: "incomplete_expired" }), false);
+    assert.equal(subscriptionLapsed({ subscriptionStatus: "active" }), false);
   });
 });

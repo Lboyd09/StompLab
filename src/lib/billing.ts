@@ -27,12 +27,14 @@ import {
   cancelPolarAtPeriodEnd,
   lookupPolarSubscription,
   polarEventTime,
+  resumePolarSubscription,
+  switchPolarSubscriptionToYearly,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { friendCheckoutGetsReferralDiscount } from "./referral-rules";
 import { mailerConfigured, mailerLastError } from "./mailer";
 import { geminiConfigured } from "./gemini";
-import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails, subscriptionCanceled, subscriptionLapsed } from "./plan";
 import type { Preset, UserGear } from "@/data/types";
 import type { Setlist } from "./setlist";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -777,9 +779,26 @@ export async function markSubscriptionLapsed(opts: {
   return true;
 }
 
+/** "&song=…&artist=…" for the checkout return URLs, or "". */
+export function songQuery(song?: string, artist?: string): string {
+  const s = (song ?? "").trim().slice(0, 120);
+  if (!s) return "";
+  const a = (artist ?? "").trim().slice(0, 120);
+  return `&song=${encodeURIComponent(s)}${a ? `&artist=${encodeURIComponent(a)}` : ""}`;
+}
+
 export const startCheckout = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
-  .validator((input: unknown) => z.object({ interval: z.enum(["month", "year"]) }).parse(input))
+  .validator((input: unknown) =>
+    z
+      .object({
+        interval: z.enum(["month", "year"]),
+        /** The song the free limit stopped. Checkout returns to the Lab with it filled in. */
+        song: z.string().max(120).optional(),
+        artist: z.string().max(120).optional(),
+      })
+      .parse(input),
+  )
   .handler(async ({ context, data }) => {
     const email = await emailFor(context.userId, context.email);
     if (!email) {
@@ -787,7 +806,14 @@ export const startCheckout = createServerFn({ method: "POST" })
     }
     const plan = await loadPlan(context.userId, email);
     if (plan.paid && plan.polarLinked && !plan.admin) {
+      if (subscriptionCanceled(plan)) {
+        return { ok: false as const, resume: true, error: "Your plan is still running. Tap Resume to keep it." };
+      }
       return { ok: false as const, error: "This account is already subscribed." };
+    }
+    if (plan.polarLinked && !plan.admin && subscriptionLapsed(plan)) {
+      // A second subscription would bill twice. Fix the card on the one they have.
+      return { ok: false as const, portal: true, error: "Your last payment didn't go through. Update your card to keep your plan." };
     }
     if (plan.admin && plan.polarLinked) {
       return { ok: false as const, error: "This admin account already has a Polar subscription. Cancel it from Account to test again." };
@@ -808,8 +834,8 @@ export const startCheckout = createServerFn({ method: "POST" })
       email,
       userId: context.userId,
       interval: data.interval,
-      successUrl: `${origin}/upgrade?checkout_id={CHECKOUT_ID}`,
-      returnUrl: `${origin}/upgrade`,
+      successUrl: `${origin}/upgrade?checkout_id={CHECKOUT_ID}${songQuery(data.song, data.artist)}`,
+      returnUrl: `${origin}/upgrade${songQuery(data.song, data.artist).replace(/^&/, "?")}`,
       discountId,
     });
   });
@@ -1020,60 +1046,79 @@ export async function markSubscriptionCanceled(opts: {
   return true;
 }
 
+type MySubscription = {
+  email: string | null;
+  ids: string[];
+  polarEmail: string | null;
+  sub: string;
+  status: string;
+  periodEnd: string | null;
+  customerId: string;
+  interval: string;
+};
+
+/** The Polar subscription stored for this signed-in player (and their same-email accounts). */
+async function storedSubscription(context: { userId: string; email?: string | null }): Promise<MySubscription> {
+  const email = await emailFor(context.userId, context.email);
+  const sql = await getSql();
+  const ids = await siblingUserIds(context.userId, email);
+  const verified = await emailVerifiedFor(sql, context.userId);
+  const polarEmail = verified ? email : "";
+  const scope = entitlementScope(ids, email, verified);
+  const out: MySubscription = { email, ids, polarEmail, sub: "", status: "", periodEnd: null, customerId: "", interval: "" };
+  try {
+    const rows = await sql.query<{
+      polar_subscription_id: string | null;
+      polar_customer_id: string | null;
+      subscription_status: string | null;
+      current_period_end: Date | string | null;
+      plan_interval: string | null;
+    }>(
+      `select polar_subscription_id, polar_customer_id, subscription_status, current_period_end, plan_interval
+       from entitlements
+       where ${scope.where}
+       order by updated_at desc
+       limit 8`,
+      scope.params,
+    );
+    const row =
+      rows.find((r) => String(r.polar_subscription_id ?? "").trim()) ??
+      rows.find((r) => String(r.polar_customer_id ?? "").trim()) ??
+      rows[0];
+    out.sub = String(row?.polar_subscription_id ?? "").trim();
+    out.customerId = String(row?.polar_customer_id ?? "").trim();
+    out.status = String(row?.subscription_status ?? "").trim().toLowerCase();
+    out.periodEnd = isoOrNull(row?.current_period_end);
+    out.interval = String(row?.plan_interval ?? "").trim().toLowerCase();
+  } catch {
+    try {
+      const rows = await sql<{
+        polar_subscription_id: string | null;
+        polar_customer_id: string | null;
+        subscription_status: string | null;
+      }>`
+        select polar_subscription_id, polar_customer_id, subscription_status
+        from entitlements where user_id = ${context.userId} limit 1
+      `;
+      out.sub = String(rows[0]?.polar_subscription_id ?? "").trim();
+      out.customerId = String(rows[0]?.polar_customer_id ?? "").trim();
+      out.status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
+    } catch {
+      out.sub = "";
+    }
+  }
+  return out;
+}
+
 export const cancelMySubscription = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .handler(async ({ context }): Promise<
     { ok: true; already: boolean; periodEnd: string | null } | { ok: false; error: string }
   > => {
-    const email = await emailFor(context.userId, context.email);
+    const mine = await storedSubscription(context);
+    const { email, ids, polarEmail, customerId } = mine;
     const sql = await getSql();
-    const ids = await siblingUserIds(context.userId, email);
-    const verified = await emailVerifiedFor(sql, context.userId);
-    const polarEmail = verified ? email : "";
-    const scope = entitlementScope(ids, email, verified);
-    let sub = "";
-    let status = "";
-    let periodEnd: string | null = null;
-    let customerId = "";
-    try {
-      const rows = await sql.query<{
-        polar_subscription_id: string | null;
-        polar_customer_id: string | null;
-        subscription_status: string | null;
-        current_period_end: Date | string | null;
-      }>(
-        `select polar_subscription_id, polar_customer_id, subscription_status, current_period_end
-         from entitlements
-         where ${scope.where}
-         order by updated_at desc
-         limit 8`,
-        scope.params,
-      );
-      const row =
-        rows.find((r) => String(r.polar_subscription_id ?? "").trim()) ??
-        rows.find((r) => String(r.polar_customer_id ?? "").trim()) ??
-        rows[0];
-      sub = String(row?.polar_subscription_id ?? "").trim();
-      customerId = String(row?.polar_customer_id ?? "").trim();
-      status = String(row?.subscription_status ?? "").trim().toLowerCase();
-      periodEnd = isoOrNull(row?.current_period_end);
-    } catch {
-      try {
-        const rows = await sql<{
-          polar_subscription_id: string | null;
-          polar_customer_id: string | null;
-          subscription_status: string | null;
-        }>`
-          select polar_subscription_id, polar_customer_id, subscription_status
-          from entitlements where user_id = ${context.userId} limit 1
-        `;
-        sub = String(rows[0]?.polar_subscription_id ?? "").trim();
-        customerId = String(rows[0]?.polar_customer_id ?? "").trim();
-        status = String(rows[0]?.subscription_status ?? "").trim().toLowerCase();
-      } catch {
-        sub = "";
-      }
-    }
+    let { sub, status, periodEnd } = mine;
     if (!sub) {
       const looked = await lookupPolarSubscription({
         email: polarEmail,
@@ -1155,6 +1200,68 @@ export const cancelMySubscription = createServerFn({ method: "POST" })
     }
     invalidatePlanCache(context.userId);
     return { ok: true, already: cancelled.already, periodEnd: end };
+  });
+
+/** Undo a cancel while the paid period still runs. After it ends, Subscribe starts a new plan. */
+export const resumeMySubscription = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<{ ok: true; periodEnd: string | null } | { ok: false; error: string }> => {
+    const mine = await storedSubscription(context);
+    if (!mine.sub) return { ok: false, error: "No Polar subscription on this account." };
+    if (mine.status !== "canceled" && mine.status !== "cancelled") {
+      return { ok: true, periodEnd: mine.periodEnd };
+    }
+    if (!subscriptionGrantsAccess({ status: mine.status, currentPeriodEnd: mine.periodEnd })) {
+      return { ok: false, error: "That plan has ended. Subscribe again to get the full Lab back." };
+    }
+    const res = await resumePolarSubscription(mine.sub);
+    if (!res.ok) {
+      return { ok: false, error: "Polar could not resume it yet. Use Manage subscription, or email support." };
+    }
+    const sql = await getSql();
+    try {
+      await sql.query(
+        `update entitlements set subscription_status = 'active', updated_at = now()
+         where polar_subscription_id = $1 and subscription_status in ('canceled', 'cancelled')`,
+        [mine.sub],
+      );
+    } catch {
+      /* subscription.updated from Polar brings it back too */
+    }
+    invalidatePlanCache(context.userId);
+    return { ok: true, periodEnd: res.periodEnd || mine.periodEnd };
+  });
+
+/** Monthly payer moves to the yearly plan. Polar charges the prorated year now. */
+export const switchMyPlanToYearly = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async ({ context }): Promise<{ ok: true } | { ok: false; error: string }> => {
+    const mine = await storedSubscription(context);
+    if (!mine.sub) return { ok: false, error: "No Polar subscription on this account." };
+    if (mine.interval === "year") return { ok: true };
+    if (!subscriptionGrantsAccess({ status: mine.status, currentPeriodEnd: mine.periodEnd })) {
+      return { ok: false, error: "That plan has ended. Subscribe again and pick Yearly." };
+    }
+    if (mine.status === "canceled" || mine.status === "cancelled") {
+      const resumed = await resumePolarSubscription(mine.sub);
+      if (!resumed.ok) return { ok: false, error: "Polar could not switch the plan yet. Try again in a minute." };
+    }
+    const res = await switchPolarSubscriptionToYearly(mine.sub);
+    if (!res.ok) return { ok: false, error: "Polar could not switch the plan yet. Try again in a minute." };
+    const sql = await getSql();
+    try {
+      await sql.query(
+        `update entitlements
+         set plan_interval = 'year', subscription_status = 'active',
+             current_period_end = coalesce(nullif($2, '')::timestamptz, current_period_end), updated_at = now()
+         where polar_subscription_id = $1`,
+        [mine.sub, res.periodEnd ?? ""],
+      );
+    } catch {
+      /* subscription.updated from Polar carries the new interval */
+    }
+    invalidatePlanCache(context.userId);
+    return { ok: true };
   });
 
 /** A build that is already settled (a cache hit has no model call to wait for). */

@@ -1043,6 +1043,66 @@ export async function cancelPolarAtPeriodEnd(
   return { ok: false, periodEnd: null, already: false };
 }
 
+/** PATCH body that undoes a cancel-at-period-end (Polar SubscriptionCancel). */
+export function polarResumeBody(): Record<string, unknown> {
+  return { cancel_at_period_end: false };
+}
+
+/**
+ * PATCH body that moves a subscription to another product (Polar
+ * SubscriptionUpdateProduct). "invoice" charges the prorated difference now, so
+ * a monthly payer switching to yearly pays the year today.
+ */
+export function polarChangeProductBody(productId: string): Record<string, unknown> {
+  return { product_id: productId, proration_behavior: "invoice" };
+}
+
+async function patchPolarSubscription(
+  subscriptionId: string,
+  body: Record<string, unknown>,
+): Promise<{ ok: boolean; json: Record<string, unknown> }> {
+  const token = polarToken();
+  const sub = subscriptionId.trim();
+  if (!token || !sub) return { ok: false, json: {} };
+  try {
+    const res = await fetch(`${polarBase()}/v1/subscriptions/${encodeURIComponent(sub)}`, {
+      method: "PATCH",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(body),
+    });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    return { ok: res.ok, json };
+  } catch {
+    return { ok: false, json: {} };
+  }
+}
+
+/** Keep a canceled subscription: it renews again at period end. */
+export async function resumePolarSubscription(
+  subscriptionId: string,
+): Promise<{ ok: boolean; periodEnd: string | null }> {
+  const res = await patchPolarSubscription(subscriptionId, polarResumeBody());
+  if (!res.ok) return { ok: false, periodEnd: null };
+  const periodEnd = String(res.json.current_period_end ?? res.json.currentPeriodEnd ?? "").trim() || null;
+  return { ok: true, periodEnd };
+}
+
+/** Move a monthly subscription to the yearly product. */
+export async function switchPolarSubscriptionToYearly(
+  subscriptionId: string,
+): Promise<{ ok: boolean; periodEnd: string | null }> {
+  const product = polarProductId("year");
+  if (!product) return { ok: false, periodEnd: null };
+  const res = await patchPolarSubscription(subscriptionId, polarChangeProductBody(product));
+  if (!res.ok) return { ok: false, periodEnd: null };
+  const periodEnd = String(res.json.current_period_end ?? res.json.currentPeriodEnd ?? "").trim() || null;
+  return { ok: true, periodEnd };
+}
+
 /** Best-effort Polar cancel when someone deletes their Lab account. Period-end, not an immediate revoke. */
 export async function cancelPolarSubscription(subscriptionId: string): Promise<boolean> {
   const res = await cancelPolarAtPeriodEnd(subscriptionId);
