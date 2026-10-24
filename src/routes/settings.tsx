@@ -1,5 +1,6 @@
 import { PlaybackSelect } from "@/components/layout/playback-select";
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { ChevronDown } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { replayTutorial } from "@/components/layout/tutorial";
@@ -7,8 +8,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
-import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
+import { FREE_BUILD_LINE } from "@/lib/copy";
+import { PRICE_MONTHLY_USD, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -240,29 +241,7 @@ function SettingsPage() {
       </section>
 
       <section className="space-y-5 rounded-2xl border border-border bg-card p-5">
-        <div className="flex flex-wrap items-start justify-between gap-3">
-          <h2 className="font-display text-lg font-semibold">Look and feel</h2>
-          <Button type="button" variant="secondary" size="sm" onClick={() => replayTutorial()}>
-            Replay tutorial
-          </Button>
-        </div>
-
-        <div className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Theme</p>
-          <div className="flex flex-wrap gap-2">
-            {(
-              [
-                ["dark", "Dark"],
-                ["light", "Light"],
-                ["system", "Match device"],
-              ] as const
-            ).map(([id, label]) => (
-              <Chip key={id} active={theme === id} onClick={() => setTheme(id satisfies ThemeId)}>
-                {label}
-              </Chip>
-            ))}
-          </div>
-        </div>
+        <h2 className="font-display text-lg font-semibold">Basics</h2>
 
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Instrument</p>
@@ -299,6 +278,67 @@ function SettingsPage() {
           </div>
         </div>
 
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Playing through</p>
+          <PlaybackSelect
+            stompModel={stompModel}
+            value={playbackTarget}
+            onChange={(v) => {
+              setPlaybackTarget(v);
+            }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Wah</p>
+          <p className="text-xs text-muted-foreground">
+            Default after you build. If you already own a wah, leave it on Pedal.
+          </p>
+          <WahSelect
+            mode={wahMode}
+            modelId={wahModelId}
+            onMode={(mode) => {
+              setWahMode(mode);
+            }}
+            onModel={(id) => {
+              setWahModelId(id);
+            }}
+          />
+        </div>
+      </section>
+
+      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <h2 className="font-display text-lg font-semibold">Theme</h2>
+          <Button type="button" variant="secondary" size="sm" onClick={() => replayTutorial()}>
+            Replay tutorial
+          </Button>
+        </div>
+        <div className="space-y-2">
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["dark", "Dark"],
+                ["light", "Light"],
+                ["system", "Match device"],
+              ] as const
+            ).map(([id, label]) => (
+              <Chip key={id} active={theme === id} onClick={() => setTheme(id satisfies ThemeId)}>
+                {label}
+              </Chip>
+            ))}
+          </div>
+        </div>
+
+      </section>
+
+      <details className="group rounded-2xl border border-border bg-card">
+        <summary className="flex min-h-14 cursor-pointer list-none items-center justify-between gap-3 px-5 py-2.5 [&::-webkit-details-marker]:hidden">
+          <span className="font-display text-lg font-semibold">Advanced</span>
+          <ChevronDown className="size-5 shrink-0 transition-transform group-open:rotate-180" aria-hidden />
+        </summary>
+        <div className="space-y-5 px-5 pb-5">
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">When a rig opens</p>
           <div className="flex flex-wrap gap-2">
@@ -315,10 +355,6 @@ function SettingsPage() {
             ))}
           </div>
         </div>
-      </section>
-
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Replica</h2>
         <div className="space-y-2">
           <ToggleRow
             checked={showDsp}
@@ -357,110 +393,25 @@ function SettingsPage() {
             hint="Extra tap so a misclick doesn’t save a file."
           />
         </div>
-      </section>
 
-      <section className="space-y-4 rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Wah</h2>
-        <p className="text-sm text-muted-foreground">
-          Default after you build. If you already own a wah, leave it on Pedal — it stays in front of the
-          unit.
-        </p>
-        <WahSelect
-          mode={wahMode}
-          modelId={wahModelId}
-          onMode={(mode) => {
-            setWahMode(mode);
-          }}
-          onModel={(id) => {
-            setWahModelId(id);
-          }}
-        />
-      </section>
+          <IrSlotSection
+            irSlot={irSlot}
+            onSlot={setIrSlot}
+            hasIr={Boolean(DEVICE_MAP[stompModel]?.irSlots)}
+            unitLabel={unitLabel}
+          />
+        </div>
+      </details>
 
-      <section className="space-y-3 rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">Your rig</h2>
-        <PlaybackSelect
-          stompModel={stompModel}
-          value={playbackTarget}
-          onChange={(v) => {
-            setPlaybackTarget(v);
-          }}
-        />
-      </section>
-
-      <IrSlotSection
-        irSlot={irSlot}
-        onSlot={setIrSlot}
-        hasIr={Boolean(DEVICE_MAP[stompModel]?.irSlots)}
-        unitLabel={unitLabel}
-      />
-
-      <section id="troubleshoot" className="space-y-4 rounded-2xl border border-border bg-card p-5">
-        <h2 className="font-display text-lg font-semibold">If something isn’t working</h2>
-        <details className="group border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium">Sign in or forgot password</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Email and a password of 12+ characters on new accounts. Forgot it? Request a reset from{" "}
-            <Link to="/login" className="text-primary underline underline-offset-2">
-              Sign in
-            </Link>{" "}
-            or Account. The link expires in 15 minutes.
-          </p>
-        </details>
-        <details className="group border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium">Research is busy</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Wait a minute and try again. The three demos still work.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium">HX Edit doesn’t recognize the preset</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            File → Import — don’t drag onto a setlist. Firmware 3.80 or newer. After import, press PAGE
-            until the screen says SNAP or STOMP.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium">Snapshots don’t change the sound</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Tap Snapshot above the replica. On the unit, PAGE until it says SNAP. Switches 1–3 then
-            recall verse / chorus / solo.
-          </p>
-        </details>
-        <details className="border-b border-border pb-3">
-          <summary className="cursor-pointer text-sm font-medium">The wah doesn’t sweep</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Default: your real wah lives in front of the unit. To use the modeler’s wah, pick Helix wah
-            above, then re-open the preset.
-          </p>
-        </details>
-        <details>
-          <summary className="cursor-pointer text-sm font-medium">DSP is in the red</summary>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Drop a cab, a second delay, or a heavy amp. The percentage is a guide — the unit is the
-            authority.
-          </p>
-        </details>
-      </section>
-
-      {!plan.paid && !plan.admin && !accountPending ? (
-        <section className="space-y-3 rounded-2xl bg-primary p-5 text-primary-foreground">
-          <h2 className="sl-hero-title text-2xl">Unlock every song</h2>
-          <p className="text-sm text-primary-foreground/80">
-            {FREE_BUILD_LINE} Then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
-            {formatUsd(PRICE_YEARLY_USD)}/yr. {PAID_BUILD_LINE}
-          </p>
-          <Button asChild variant="secondary">
-            <Link to="/upgrade">Subscribe</Link>
-          </Button>
-        </section>
-      ) : (
-        <p className="text-sm text-muted-foreground">
-          <Link to="/" className="text-primary underline underline-offset-2">
-            Back to the Lab
-          </Link>
-        </p>
-      )}
+      <p className="text-sm text-muted-foreground">
+        <Link to="/" className="text-primary underline underline-offset-2">
+          Back to the Lab
+        </Link>
+        {" · "}
+        <Link to="/guide" className="text-primary underline underline-offset-2">
+          Help
+        </Link>
+      </p>
     </div>
   );
 }

@@ -138,6 +138,29 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
         <div className="min-h-0 flex-1 space-y-5 overflow-y-auto overscroll-contain py-6">
           {current === "unit" ? (
             <>
+              <div className="space-y-3 rounded-xl bg-secondary/60 p-4">
+                <p className="text-sm font-medium">Type a song, get a preset file for your unit.</p>
+                <div className="flex flex-wrap items-center gap-1.5" aria-label="Example signal chain: Drive, Amp, Cab, Delay, with the Chorus snapshot">
+                  {[
+                    ["Drive", "bg-orange-500/20 text-orange-300"],
+                    ["Amp", "bg-red-500/20 text-red-300"],
+                    ["Cab", "bg-zinc-500/25 text-zinc-300"],
+                    ["Delay", "bg-sky-500/20 text-sky-300"],
+                  ].map(([label, tone], i) => (
+                    <span key={label} className="flex items-center gap-1.5">
+                      {i ? <span className="text-xs text-muted-foreground" aria-hidden>›</span> : null}
+                      <span className={cn("rounded-md px-2 py-1 text-xs font-semibold", tone)}>{label}</span>
+                    </span>
+                  ))}
+                </div>
+                <div className="flex gap-1.5 text-[11px] font-medium" aria-hidden>
+                  {["Verse", "Chorus", "Solo"].map((n, i) => (
+                    <span key={n} className={cn("rounded-full px-2.5 py-1", i === 1 ? "bg-primary text-primary-foreground" : "bg-background text-muted-foreground")}>
+                      {n}
+                    </span>
+                  ))}
+                </div>
+              </div>
               <div className="space-y-2">
                 <h1 id="setup-title" className="sl-hero-title text-3xl">Which Line 6 do you have?</h1>
                 <p className="text-sm text-muted-foreground">Every file is built for this unit: its blocks, its switches, its file type.</p>
