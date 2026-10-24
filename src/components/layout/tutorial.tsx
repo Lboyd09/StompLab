@@ -66,12 +66,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
     }
     try {
       if (window.localStorage.getItem(TUTORIAL_KEY)) return setOpen(false);
-      // v19 is left out on purpose: everyone who saw the old setup sees this one once.
-      const prior = ["v18", "v17", "v16", "v15", "v14", "v13", "v12", "v11", "v10", "v9", "v8", "v7", "v6", "v5"];
-      if (prior.some((v) => window.localStorage.getItem(`stomplab.tutorial.${v}`))) {
-        window.localStorage.setItem(TUTORIAL_KEY, "1");
-        return setOpen(false);
-      }
+      // No older key counts: everyone who saw an earlier setup sees this one once.
       setOpen(window.location.pathname === "/");
     } catch {
       setOpen(window.location.pathname === "/");
