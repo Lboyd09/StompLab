@@ -35,7 +35,7 @@ import { toast } from "sonner";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pullMySetlists, pushMyPresets, pushMySetlists } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
-import { mergeHistory } from "@/lib/storage";
+import { accountIsBehind, mergeHistory } from "@/lib/storage";
 import { captureReferralCode } from "@/lib/referral-code";
 
 const NAV = [
@@ -149,11 +149,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       // Merge, don't replace: a build saved here in the last few seconds may not be on the account yet.
       const merged = mergeHistory(useAppStore.getState().presets, res.presets);
       replacePresets(merged);
-      const remoteFp = jsonFingerprint(res.presets);
-      const mergedFp = jsonFingerprint(merged);
-      lastSynced.current = remoteFp;
-      if (mergedFp !== remoteFp) {
-        lastSynced.current = mergedFp;
+      lastSynced.current = jsonFingerprint(merged);
+      if (accountIsBehind(merged, res.presets)) {
         void pushMyPresets({ data: { presets: merged } }).catch(() => undefined);
       }
       handledTick.current = useAppStore.getState().syncTick;

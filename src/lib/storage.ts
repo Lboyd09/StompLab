@@ -232,9 +232,22 @@ export function mergeHistory(local: Preset[], remote: Preset[]): Preset[] {
   for (const p of local) {
     if (!p || typeof p !== "object" || !p.id) continue;
     const other = byId.get(p.id);
-    if (!other || stamp(p) >= stamp(other)) byId.set(p.id, p);
+    if (!other || stamp(p) > stamp(other)) byId.set(p.id, p);
   }
   return dedupeHistory([...byId.values()]);
+}
+
+/**
+ * The merged history has something the account lacks: a preset it doesn't have, or a newer save.
+ * Decided by content, not by comparing JSON (the database reorders keys), so a plain reload never pushes.
+ */
+export function accountIsBehind(merged: Preset[], remote: Preset[]): boolean {
+  const remoteStamp = new Map<string, number>();
+  for (const p of remote) if (p && typeof p === "object" && p.id) remoteStamp.set(p.id, stamp(p));
+  return merged.some((p) => {
+    const theirs = remoteStamp.get(p.id);
+    return theirs === undefined || stamp(p) > theirs;
+  });
 }
 
 /** Setlists are raw JSON here; `cleanSetlists` in setlist.ts shapes them. */

@@ -31,8 +31,7 @@ function PresetPage() {
   // A link opens at the unit it names (a friend's Helix link stays Helix); the player's own
   // unit setting is never changed by opening a link.
   const urlModel = stompModelFromId(id);
-  const exact = presets.find((p) => p.id === id);
-  const model = urlModel ?? exact?.stompModel ?? stompModel;
+  const model = urlModel ?? stompModel;
 
   const preset = useMemo(() => {
     const resolved = resolveNamedPreset(id, model, presets);

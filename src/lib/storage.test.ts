@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import type { Preset } from "@/data/types";
-import { HISTORY_CAP, mergeHistory, storageOwnerKey, upsertInto, writeHistoryWithTrim } from "./storage.ts";
+import { accountIsBehind, HISTORY_CAP, mergeHistory, storageOwnerKey, upsertInto, writeHistoryWithTrim } from "./storage.ts";
 
 describe("history isolation", () => {
   it("scopes local history to the signed-in user id", () => {
@@ -49,6 +49,17 @@ describe("history merge with the account", () => {
   it("keeps account rows this device never had", () => {
     const merged = mergeHistory([row("a", "Old", 100)], [row("b", "Other", 200), row("a", "Old", 100)]);
     assert.deepEqual(merged.map((p) => p.id).sort(), ["a", "b"]);
+  });
+  it("a plain reload does not push, even when the account reordered keys", () => {
+    const local = [row("a", "Song", 100, { updatedAt: 400 })];
+    const remote = [JSON.parse(JSON.stringify(Object.fromEntries(Object.entries(local[0]).reverse())))];
+    const merged = mergeHistory(local, remote);
+    assert.equal(accountIsBehind(merged, remote), false);
+  });
+  it("pushes when this device has a newer save or a preset the account lacks", () => {
+    const remote = [row("a", "Song", 100, { updatedAt: 400 })];
+    assert.equal(accountIsBehind(mergeHistory([row("a", "Song", 100, { updatedAt: 500 })], remote), remote), true);
+    assert.equal(accountIsBehind(mergeHistory([row("b", "New", 600)], remote), remote), true);
   });
   it("the newer save of the same preset wins", () => {
     const remote = [row("a", "Song", 100, { updatedAt: 400, tempo: 120 })];
