@@ -26,6 +26,7 @@ import {
   ensureReferralDiscountId,
   cancelPolarAtPeriodEnd,
   lookupPolarSubscription,
+  polarEventTime,
 } from "./polar";
 import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDiscounts } from "./referral-subscribe";
 import { friendCheckoutGetsReferralDiscount } from "./referral-rules";
@@ -813,6 +814,42 @@ export const startCheckout = createServerFn({ method: "POST" })
     });
   });
 
+const ENDED_STATUSES = new Set(["revoked", "refunded", "expired", "incomplete_expired"]);
+
+/**
+ * Whether an /upgrade?checkout_id link may grant again. "recorded": this checkout
+ * was already applied (webhook or an earlier visit), so show the current plan and
+ * grant nothing. "stale": the plan ended (revoked, refunded, expired) after this
+ * checkout, so an old link must not bring it back. null: grant.
+ */
+export async function checkoutReplayState(
+  sql: Awaited<ReturnType<typeof getSql>>,
+  opts: { ids: string[]; checkoutId: string; checkoutAt: string | null },
+): Promise<"recorded" | "stale" | null> {
+  const checkoutId = opts.checkoutId.trim();
+  let recorded = false;
+  if (checkoutId) {
+    const hit = await sql.query(`select 1 from purchases where polar_checkout_id = $1 limit 1`, [checkoutId]);
+    recorded = hit.length > 0;
+  }
+  const rows = await sql.query<{ subscription_status: string | null; state_at: string | null }>(
+    `select subscription_status, coalesce(polar_event_at, updated_at)::text as state_at
+     from entitlements where user_id = any($1::text[])
+     order by updated_at desc limit 8`,
+    [opts.ids],
+  );
+  const ended = rows.find((r) => ENDED_STATUSES.has(String(r.subscription_status ?? "").trim().toLowerCase()));
+  if (!ended) return recorded ? "recorded" : null;
+  if (recorded) return "stale";
+  // A new checkout made after the plan ended is a real resubscribe.
+  const checkoutAt = opts.checkoutAt ? Date.parse(opts.checkoutAt) : NaN;
+  const endedAt = ended.state_at ? Date.parse(ended.state_at) : NaN;
+  if (Number.isFinite(checkoutAt) && Number.isFinite(endedAt) && checkoutAt > endedAt) return null;
+  return "stale";
+}
+
+const USED_CHECKOUT_ERROR = "This payment link was already used and that plan has ended. Subscribe again to get the full Lab back.";
+
 export const confirmCheckout = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => z.object({ checkoutId: z.string().min(4).max(120) }).parse(input))
@@ -867,20 +904,32 @@ export const confirmCheckout = createServerFn({ method: "POST" })
         return { ok: false as const, error: "That checkout belongs to a different email." };
       }
     }
-    await grantPaid({
-      userId: context.userId,
-      email: email || order.email,
-      orderId: order.orderId,
+    const replay = await checkoutReplayState(await getSql(), {
+      ids,
       checkoutId: data.checkoutId,
-      amountCents: order.amount,
-      customerId,
-      raw: { type: "checkout.updated", ...checkout },
-      subscriptionId,
-      interval: order.interval,
-      subscriptionStatus: "active",
+      checkoutAt: polarEventTime(checkout) || null,
     });
+    if (replay === "stale") return { ok: false as const, error: USED_CHECKOUT_ERROR };
+    if (replay === null) {
+      await grantPaid({
+        userId: context.userId,
+        email: email || order.email,
+        orderId: order.orderId,
+        checkoutId: data.checkoutId,
+        amountCents: order.amount,
+        customerId,
+        raw: { type: "checkout.updated", ...checkout },
+        subscriptionId,
+        interval: order.interval,
+        subscriptionStatus: "active",
+        // Without a time, an old checkout could overwrite a newer revoke or refund.
+        eventAt: polarEventTime(checkout) || null,
+      });
+    }
     invalidatePlanCache(context.userId);
-    return { ok: true as const, plan: await loadPlan(context.userId, email) };
+    const plan = await loadPlan(context.userId, email);
+    if (!plan.paid) return { ok: false as const, error: USED_CHECKOUT_ERROR };
+    return { ok: true as const, plan };
   });
 
 export const openCustomerPortal = createServerFn({ method: "POST" })
