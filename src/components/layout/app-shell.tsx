@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
-import { searchModels } from "@/data/catalog";
+import type { HxModel } from "@/data/types";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { StompModelId } from "@/data/types";
 import { overlayUserGear } from "@/lib/preset-schema";
@@ -215,10 +215,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     root.dataset.motion = reduceMotion ? "reduce" : "ok";
   }, [lcdBright, largeControls, reduceMotion]);
 
-  const modelHits = useMemo(
-    () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 6) : []),
-    [q, instrument],
-  );
+  // The model catalog is a big chunk; load it on the first real search, not with every page.
+  const [modelHits, setModelHits] = useState<HxModel[]>([]);
+  useEffect(() => {
+    if (q.trim().length < 2) {
+      setModelHits([]);
+      return;
+    }
+    let live = true;
+    void import("@/data/catalog").then((m) => {
+      if (live) setModelHits(m.searchModels(q, instrument).slice(0, 6));
+    });
+    return () => {
+      live = false;
+    };
+  }, [q, instrument]);
   const songHits = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (needle.length < 2) return [];
@@ -311,7 +322,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
               <button
                 type="button"
-                className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
+                className="grid size-11 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
                 aria-label={open ? "Close search" : "Search"}
                 data-tour="search"
                 onClick={() => {
@@ -326,7 +337,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 to="/settings"
                 aria-label="Settings"
                 className={cn(
-                  "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+                  "relative grid size-11 shrink-0 place-items-center rounded-md border border-border bg-card transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                   pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -482,11 +493,11 @@ function SearchResults({
   onResearch,
 }: {
   songHits: typeof FEATURED;
-  modelHits: ReturnType<typeof searchModels>;
+  modelHits: HxModel[];
   q: string;
   paid: boolean;
   onSong: (p: (typeof FEATURED)[number]) => void;
-  onModel: (m: ReturnType<typeof searchModels>[number]) => void;
+  onModel: (m: HxModel) => void;
   onResearch: () => void;
 }) {
   return (

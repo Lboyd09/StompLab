@@ -32,7 +32,6 @@ function Chip({
       type="button"
       onClick={() => {
         onClick();
-        toast.success("Saved");
       }}
       className={cn(
         "h-11 rounded-full px-4 text-sm font-medium transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
@@ -67,7 +66,6 @@ function ToggleRow({
         checked={checked}
         onChange={(e) => {
           onChange(e.target.checked);
-          toast.success("Saved");
         }}
       />
     </label>
@@ -99,7 +97,6 @@ function IrSlotSection({
     }
     if (n !== irSlot) {
       onSlot(n);
-      toast.success("Saved");
     }
   };
   return (
@@ -288,7 +285,6 @@ function SettingsPage() {
                 type="button"
                 onClick={() => {
                   setStompModel(d.id);
-                  toast.success("Saved");
                 }}
                 className={cn(
                   "h-12 rounded-xl px-3 text-left text-sm font-medium",
@@ -374,11 +370,9 @@ function SettingsPage() {
           modelId={wahModelId}
           onMode={(mode) => {
             setWahMode(mode);
-            toast.success("Saved");
           }}
           onModel={(id) => {
             setWahModelId(id);
-            toast.success("Saved");
           }}
         />
       </section>
@@ -390,7 +384,6 @@ function SettingsPage() {
           value={playbackTarget}
           onChange={(v) => {
             setPlaybackTarget(v);
-            toast.success("Saved");
           }}
         />
       </section>

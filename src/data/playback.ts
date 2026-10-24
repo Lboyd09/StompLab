@@ -25,7 +25,7 @@ export const PLAYBACK_TARGETS: PlaybackOption[] = [
     label: "FRFR / powered cab",
     hint: "Full-range speaker or modeler cab. Keep the cab/IR on.",
     detail:
-      "Use this when the Stomp is the whole amp: Headrush, Powercab, FRFR wedge, or a PA-style speaker. The preset keeps the cab block so the speaker is already in the file.",
+      "Use this when the unit is the whole amp: Headrush, Powercab, FRFR wedge, or a PA-style speaker. The preset keeps the cab block so the speaker is already in the file.",
     prompt:
       "Playback: FRFR / powered cab. Keep cab (or IR) on. Honest mix — do not scoop the cab to fake a guitar speaker.",
     route: "full",

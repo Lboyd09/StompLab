@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Share2, X } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -85,6 +85,37 @@ export function PostDownloadDialog({
   const [changed, setChanged] = useState("");
   const [busy, setBusy] = useState(false);
   const [canShare, setCanShare] = useState(false);
+  const panel = useRef<HTMLDivElement>(null);
+
+  // Fresh form each time it opens for a preset. A re-ask uses the one "later" it was given.
+  useEffect(() => {
+    if (!open) return;
+    setRating(undefined);
+    setTags([]);
+    setSnapshot("");
+    setChanged("");
+    if (!showImport) writeLocal(LATER_KEY(preset.id), null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, preset.id]);
+
+  // Escape closes, focus moves into the dialog, and the page behind it stops scrolling.
+  useEffect(() => {
+    if (!open) return;
+    const prevFocus = document.activeElement as HTMLElement | null;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    panel.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") dismiss();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prevOverflow;
+      prevFocus?.focus?.();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
 
   useEffect(() => {
     if (!open || !filename || !showImport) return;
@@ -102,8 +133,15 @@ export function PostDownloadDialog({
   const song = preset.song || preset.name;
   const hasAnswer = Boolean(rating) || tags.length > 0 || changed.trim().length >= 4;
 
+  /** X, Escape, Close: done for good. */
+  function dismiss() {
+    writeLocal(LATER_KEY(preset.id), null);
+    onClose();
+  }
+
+  /** "After I play": ask once more, and only after the first ask. */
   function later() {
-    writeLocal(LATER_KEY(preset.id), String(Date.now()));
+    if (showImport) writeLocal(LATER_KEY(preset.id), String(Date.now()));
     onClose();
   }
 
@@ -148,7 +186,7 @@ export function PostDownloadDialog({
 
   return createPortal(
     <div className="fixed inset-0 z-[80] flex flex-col bg-background/90 p-3 backdrop-blur-sm sm:p-6" role="dialog" aria-modal="true" aria-labelledby="post-dl-title">
-      <div className="mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
+      <div ref={panel} tabIndex={-1} className="outline-none mx-auto flex h-full min-h-0 w-full max-w-md flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-lg">
         <div className="flex shrink-0 items-start justify-between gap-3 px-5 pt-5">
           <div className="min-w-0">
             <p className="text-[11px] uppercase tracking-[0.2em] text-muted-foreground">{showImport ? "Downloaded" : "You played it"}</p>
@@ -156,7 +194,7 @@ export function PostDownloadDialog({
               {showImport ? "Import it, play it, tell us" : `How close was ${song}?`}
             </h2>
           </div>
-          <button type="button" onClick={later} className="-mr-2 grid size-11 shrink-0 place-items-center text-muted-foreground" aria-label="Close">
+          <button type="button" onClick={dismiss} className="-mr-2 grid size-11 shrink-0 place-items-center text-muted-foreground" aria-label="Close">
             <X className="size-5" />
           </button>
         </div>
@@ -252,7 +290,7 @@ export function PostDownloadDialog({
               <p className="text-sm font-medium">Want a song you actually play?</p>
               <p className="text-sm text-muted-foreground">{FREE_BUILD_LINE}</p>
               <Button asChild className="h-11 w-full">
-                <Link to="/login" search={{ mode: "up" }} onClick={onClose}>
+                <Link to="/login" search={{ mode: "up" }} onClick={dismiss}>
                   Create a free account
                 </Link>
               </Button>
@@ -271,7 +309,7 @@ export function PostDownloadDialog({
               </button>
             </>
           ) : (
-            <button type="button" onClick={onClose} className="block min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-2">
+            <button type="button" onClick={dismiss} className="block min-h-11 w-full text-center text-sm text-muted-foreground underline underline-offset-2">
               Close
             </button>
           )}

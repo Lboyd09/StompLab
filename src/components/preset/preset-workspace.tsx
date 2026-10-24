@@ -408,7 +408,7 @@ export function PresetWorkspace({
             {tuningName ? (
               <>
                 <span aria-hidden>·</span>
-                <span className="font-medium text-amber-300">{tuningName}</span>
+                <span className="font-medium text-amber-700 [.dark_&]:text-amber-300">{tuningName}</span>
               </>
             ) : null}
             {showDsp ? (

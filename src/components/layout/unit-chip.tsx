@@ -37,7 +37,7 @@ export function UnitChip({ className }: { className?: string }) {
         <span className="truncate">
           {device.name}
           {/* Long unit names have no room for the instrument on a phone; bass is the one worth flagging. */}
-          <span className={device.name.length > 8 && instrument === "guitar" ? "hidden sm:inline" : ""}>
+          <span className={instrument === "guitar" ? "hidden sm:inline" : ""}>
             {" · "}
             <span className="capitalize">{instrument === "bass" ? "Bass" : "Guitar"}</span>
           </span>

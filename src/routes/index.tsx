@@ -2,7 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { PlaybackSelect } from "@/components/layout/playback-select";
+import { PlaybackLine } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { ResearchProgress } from "@/components/layout/research-progress";
@@ -138,17 +138,17 @@ function Home() {
 
   return (
     <div className="space-y-10 md:space-y-14">
-      <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
-        <div className="relative space-y-5">
-          <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
-          <h1 className="sl-hero-title text-[clamp(2.6rem,9vw,5.2rem)]">
+      <section className="relative mx-auto max-w-3xl space-y-4 sm:space-y-6" data-tutorial="lab">
+        <div className="relative space-y-2 sm:space-y-5">
+          <p className="sl-kicker sl-enter sl-enter-1 hidden sm:block">For Line 6</p>
+          <h1 className="sl-hero-title text-[clamp(2rem,9vw,5.2rem)]">
             <span className="sl-enter sl-enter-2 block">Type a song.</span>
-            <span className="sl-enter sl-enter-3 mt-2 block text-primary">
+            <span className="sl-enter sl-enter-3 mt-1 block text-primary sm:mt-2">
               Get that {instrument === "bass" ? "bass" : "guitar"} rig.
             </span>
           </h1>
-          <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
-          <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <span className="sl-enter sl-enter-3 sl-hero-rule hidden sm:block" aria-hidden />
+          <p className="sl-enter sl-enter-4 hidden max-w-lg text-base leading-relaxed text-muted-foreground sm:block sm:text-lg">
             We research the gear on the record and build a preset for your {unit}: the chain, the knobs, and a
             switch for each part of the song.
           </p>
@@ -186,8 +186,8 @@ function Home() {
           </div>
         ) : null}
 
-        <form id="lab-form" noValidate onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6" data-tutorial="lab-form">
-          <span className="sl-form-bar" aria-hidden />
+        <form id="lab-form" noValidate onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" data-tutorial="lab-form">
+          <span className="sl-form-bar rounded-t-2xl" aria-hidden />
           <SongTypeahead
             song={song}
             artist={artist}
@@ -207,7 +207,7 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
-          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
+          <PlaybackLine value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"
