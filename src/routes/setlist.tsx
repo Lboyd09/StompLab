@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaywallCard } from "@/components/layout/paywall-card";
+import { PaywallSample } from "@/components/layout/paywall-sample";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { Button } from "@/components/ui/button";
@@ -59,10 +60,13 @@ function SetlistPage() {
   if (isPending) return <p className="text-sm text-muted-foreground">Loading…</p>;
   if (!subscribed) {
     return (
-      <PaywallCard
-        title="Setlists"
-        body="Put Sunday's songs in order and download the whole set as one file, ready for HX Edit. Setlists come with a subscription."
-      />
+      <div className="mx-auto max-w-lg space-y-2 pb-16">
+        <PaywallCard
+          title="Setlists"
+          body="Put Sunday's songs in order and download the whole set as one file, ready for HX Edit. Setlists come with a subscription."
+        />
+        <PaywallSample />
+      </div>
     );
   }
 

@@ -346,7 +346,11 @@ function UpgradePage() {
           <Link to="/" className="text-primary underline underline-offset-2">
             Try the free demos
           </Link>
-          : Enter Sandman, Teen Spirit, Comfortably Numb.
+          : Enter Sandman, Teen Spirit, Comfortably Numb. Or{" "}
+          <Link to="/setlist/demo" className="text-primary underline underline-offset-2">
+            see a sample setlist
+          </Link>
+          .
         </p>
       </div>
     </div>
