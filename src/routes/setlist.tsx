@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { PageHeader } from "@/components/layout/page-header";
 import { PaywallCard } from "@/components/layout/paywall-card";
-import { SampleSetlist } from "@/components/layout/paywall-sample";
+import { PaywallSample } from "@/components/layout/paywall-sample";
 import { ResearchProgress } from "@/components/layout/research-progress";
 import { SongTypeahead } from "@/components/layout/song-typeahead";
 import { Button } from "@/components/ui/button";
@@ -61,7 +61,7 @@ function SetlistPage() {
     return (
       <PaywallCard
         title="Setlists"
-        sample={<SampleSetlist />}
+        sample={<PaywallSample />}
         body="Put Sunday's songs in order and download the whole set as one file, ready for HX Edit. Setlists come with a subscription."
       />
     );
