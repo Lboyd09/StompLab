@@ -26,7 +26,7 @@ import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiGroundedNotes, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
-import { VERIFY_EMAIL_LINE } from "./copy";
+import { PAID_BUILD_LINE, VERIFY_EMAIL_LINE } from "./copy";
 import { keepDirtyIntro, finishTone } from "./tone-finish";
 import { applyRouting } from "./rig-routing";
 import {
@@ -257,7 +257,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
   return {
     ok: false,
     reason: "paywall",
-    error: "0 free custom builds left. Subscribe for 50 custom builds a month. Demos stay free.",
+    error: `You've used your free custom builds. Subscribe: ${PAID_BUILD_LINE} Demos stay free.`,
   };
 }
 

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed, priceLine, firstMonthUsd } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
@@ -257,5 +257,13 @@ describe("subscriptionLapsed", () => {
     assert.equal(subscriptionLapsed({ subscriptionStatus: "canceled" }), false);
     assert.equal(subscriptionLapsed({ subscriptionStatus: "incomplete_expired" }), false);
     assert.equal(subscriptionLapsed({ subscriptionStatus: "active" }), false);
+  });
+});
+
+describe("priceLine", () => {
+  it("is one sentence with the launch or invite first month", () => {
+    assert.equal(priceLine(), "$5.59 first month, then $6.99/mo. Or $69/yr.");
+    assert.equal(priceLine({ inviteHalf: true }), "$3.50 first month, then $6.99/mo. Or $69/yr.");
+    assert.equal(firstMonthUsd({ inviteHalf: true }), priceMonthlyReferralUsd());
   });
 });

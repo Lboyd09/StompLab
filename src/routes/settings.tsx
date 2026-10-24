@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
 import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
-import { PRICE_MONTHLY_USD, PRICE_YEARLY_USD, formatUsd } from "@/lib/plan";
+import { firstMonthUsd, formatUsd, priceLine } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -218,7 +218,7 @@ function SettingsPage() {
               </Button>
               {!plan.paid ? (
                 <Button asChild>
-                  <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
+                  <Link to="/upgrade">Subscribe — {formatUsd(firstMonthUsd())} first month</Link>
                 </Button>
               ) : null}
             </div>
@@ -454,8 +454,7 @@ function SettingsPage() {
         <section className="space-y-3 rounded-2xl bg-primary p-5 text-primary-foreground">
           <h2 className="sl-hero-title text-2xl">Unlock every song</h2>
           <p className="text-sm text-primary-foreground/80">
-            {FREE_BUILD_LINE} Then {formatUsd(PRICE_MONTHLY_USD)}/mo or{" "}
-            {formatUsd(PRICE_YEARLY_USD)}/yr. {PAID_BUILD_LINE}
+            {FREE_BUILD_LINE} {priceLine()} {PAID_BUILD_LINE}
           </p>
           <Button asChild variant="secondary">
             <Link to="/upgrade">Subscribe</Link>

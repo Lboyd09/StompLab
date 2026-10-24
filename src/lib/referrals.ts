@@ -9,7 +9,7 @@ import {
   USER_CREATED_AT_QUERY,
   decideRedeem,
   mapRedeemSqlError,
-  referrerCountsAsPaid,
+  referrerGivesHalfOff,
 } from "@/lib/referral-rules";
 import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
@@ -116,8 +116,8 @@ export const invitePerkForCode = createServerFn({ method: "POST" })
     if (code.length < 4) return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
     try {
       const sql = await getSql();
-      const rows = await sql<{ paid: boolean | null; email: string | null }>`
-        select e.paid, coalesce(u.email, e.email, '') as email
+      const rows = await sql<{ paid: boolean | null; email: string | null; plan_interval: string | null }>`
+        select e.paid, coalesce(u.email, e.email, '') as email, e.plan_interval
         from referrals r
         left join entitlements e on e.user_id = r.user_id
         left join "user" u on u.id = r.user_id
@@ -126,7 +126,7 @@ export const invitePerkForCode = createServerFn({ method: "POST" })
         limit 1
       `;
       const row = rows[0];
-      const paid = referrerCountsAsPaid({ paid: row?.paid, email: row?.email });
+      const paid = referrerGivesHalfOff({ paid: row?.paid, email: row?.email, planInterval: row?.plan_interval });
       return { ok: true, paid, percent: REFERRAL_SUBSCRIBE_PERCENT };
     } catch {
       return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };

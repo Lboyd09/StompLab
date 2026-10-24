@@ -30,6 +30,18 @@ export function priceYearlyLaunchUsd() {
 }
 
 
+/**
+ * The one price sentence. Monthly first invoice is the launch price, or half off
+ * with an invite from a paying monthly account; yearly is always the full $69.
+ */
+export function firstMonthUsd(opts: { inviteHalf?: boolean } = {}): number {
+  return opts.inviteHalf ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd();
+}
+
+export function priceLine(opts: { inviteHalf?: boolean } = {}): string {
+  return `${formatUsd(firstMonthUsd(opts))} first month, then ${formatUsd(PRICE_MONTHLY_USD)}/mo. Or ${formatUsd(PRICE_YEARLY_USD)}/yr.`;
+}
+
 /** @deprecated aliases so leftover one-time copy still compiles */
 export const PRICE_USD = PRICE_YEARLY_USD;
 export const LAUNCH_USD = PRICE_MONTHLY_USD;
