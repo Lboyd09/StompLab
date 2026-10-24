@@ -241,6 +241,8 @@ export function findEquivalents(query: string, limit = 8): EquivalentHit[] {
   });
 }
 
+const PROMPT_LEGACY_IDS = new Set(["echo-platter-legacy"]);
+
 export function compactCatalogForPrompt(
   instrument?: Instrument,
   deviceId?: StompModelId,
@@ -256,7 +258,8 @@ export function compactCatalogForPrompt(
       continue;
     }
     let models = modelsByCategory(cat.id).filter((m) => {
-      if (m.io === "legacy") return false;
+      // Legacy models stay out, except the Binson Echorec stand-in the stand-in list names.
+      if (m.io === "legacy" && !PROMPT_LEGACY_IDS.has(m.id)) return false;
       if (!helixIdFor(m.id)) return false;
       if (deviceId === "pod-go" && String(HELIX_IDS[m.id] ?? "").startsWith("L6SPB_")) return false;
       if (!instrument || instrument === "both") return true;
