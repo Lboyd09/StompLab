@@ -15,11 +15,10 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
-import { searchModels } from "@/data/catalog";
+import type { HxModel } from "@/data/types";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { StompModelId } from "@/data/types";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { isDemoId, withStompModel } from "@/lib/preset-utils";
+import { isDemoId } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
@@ -28,12 +27,16 @@ import { LegalFooter } from "./legal-footer";
 import { BrandLockup } from "./mark";
 import { Onboarding } from "./onboarding";
 import { PageWash } from "./page-wash";
+import { PendingInviteClaim } from "./pending-invite";
 import { Tutorial } from "./tutorial";
 import { UnitChip } from "./unit-chip";
 import { usePlan } from "@/lib/use-plan";
+import { useOpenFeatured } from "@/lib/use-open-featured";
+import { toast } from "sonner";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pullMySetlists, pushMyPresets, pushMySetlists } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
+import { accountIsBehind, mergeHistory } from "@/lib/storage";
 import { captureReferralCode } from "@/lib/referral-code";
 
 const NAV = [
@@ -50,10 +53,29 @@ const DESKTOP_NAV = [
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
 
+const PULL_RETRY_MS = [0, 2000, 6000, 15000];
+
+/** A pull that returns null on failure, tried a few times with growing waits. Null if all fail. */
+async function pullWithRetry<T>(pull: () => Promise<T | null>, cancelled: () => boolean): Promise<T | null> {
+  for (const wait of PULL_RETRY_MS) {
+    if (wait) await new Promise((r) => window.setTimeout(r, wait));
+    if (cancelled()) return null;
+    try {
+      const res = await pull();
+      if (res) return res;
+    } catch {
+      /* try again */
+    }
+  }
+  return null;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
   const hydrateOwner = useAppStore((s) => s.hydrateOwner);
   const replacePresets = useAppStore((s) => s.replacePresets);
+  const setHistoryReady = useAppStore((s) => s.setHistoryReady);
+  const syncTick = useAppStore((s) => s.syncTick);
   const presets = useAppStore((s) => s.presets);
   const setlists = useAppStore((s) => s.setlists);
   const replaceSetlists = useAppStore((s) => s.replaceSetlists);
@@ -62,8 +84,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
-  const gear = useAppStore((s) => s.gear);
-  const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const theme = useAppStore((s) => s.theme);
   const lcdBright = useAppStore((s) => s.lcdBright);
   const largeControls = useAppStore((s) => s.largeControls);
@@ -80,6 +101,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [syncReady, setSyncReady] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastSynced = useRef("");
+  const handledTick = useRef(0);
   const [setlistSyncReady, setSetlistSyncReady] = useState(false);
   const lastSetlistSync = useRef("");
 
@@ -109,45 +131,54 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authPending) return;
     setSyncReady(false);
-    const local = hydrateOwner(userId);
+    setHistoryReady(false);
+    hydrateOwner(userId);
     if (!userId) {
       lastSynced.current = "";
       setSyncReady(true);
+      setHistoryReady(true);
       return;
     }
     let cancelled = false;
-    void pullMyPresets()
-      .then((res) => {
-        if (cancelled) return;
-        if (res.presets.length) {
-          replacePresets(res.presets);
-          lastSynced.current = jsonFingerprint(res.presets);
-        } else if (local.presets.length) {
-          lastSynced.current = jsonFingerprint(local.presets);
-          void pushMyPresets({ data: { presets: local.presets } }).catch(() => undefined);
-        } else {
-          lastSynced.current = jsonFingerprint(local.presets);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSyncReady(true);
-      });
+    void pullWithRetry(() => pullMyPresets().then((r) => (r.ok ? r : null)), () => cancelled).then((res) => {
+      if (cancelled) return;
+      // Never push without a good pull: the account row is the whole list, a blind push would erase it.
+      if (!res) {
+        setHistoryReady(true);
+        return;
+      }
+      // Merge, don't replace: a build saved here in the last few seconds may not be on the account yet.
+      const merged = mergeHistory(useAppStore.getState().presets, res.presets);
+      replacePresets(merged);
+      lastSynced.current = jsonFingerprint(merged);
+      if (accountIsBehind(merged, res.presets)) {
+        void pushMyPresets({ data: { presets: merged } }).catch(() => undefined);
+      }
+      handledTick.current = useAppStore.getState().syncTick;
+      setHistoryReady(true);
+      setSyncReady(true);
+    });
     return () => {
       cancelled = true;
     };
-  }, [userId, authPending, hydrateOwner, replacePresets]);
+  }, [userId, authPending, hydrateOwner, replacePresets, setHistoryReady]);
 
   useEffect(() => {
     if (!userId || !syncReady || ownerId !== userId) return;
-    if (!shouldPushSync(lastSynced.current, presets)) return;
-    const nextFp = jsonFingerprint(presets);
-    const timer = window.setTimeout(() => {
-      lastSynced.current = nextFp;
-      void pushMyPresets({ data: { presets } }).catch(() => undefined);
-    }, 8000);
+    // A build, an open or a delete goes up right away; knob turns wait for a quiet moment.
+    const urgent = syncTick !== handledTick.current;
+    const timer = window.setTimeout(
+      () => {
+        handledTick.current = syncTick;
+        const next = useAppStore.getState().presets;
+        if (!shouldPushSync(lastSynced.current, next)) return;
+        lastSynced.current = jsonFingerprint(next);
+        void pushMyPresets({ data: { presets: next } }).catch(() => undefined);
+      },
+      urgent ? 300 : 8000,
+    );
     return () => window.clearTimeout(timer);
-  }, [presets, userId, syncReady, ownerId]);
+  }, [presets, syncTick, userId, syncReady, ownerId]);
 
   // Setlists follow the same account sync as History, on their own so one failing never blocks the other.
   const canSyncSetlists = plan.signedIn && (plan.paid || plan.admin);
@@ -160,18 +191,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     hydrateOwner(userId);
     let cancelled = false;
-    void pullMySetlists()
-      .then((res) => {
-        if (cancelled || !res.ok) return;
-        if (res.setlists.length) {
-          replaceSetlists(res.setlists);
-          lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
-        } else {
-          lastSetlistSync.current = jsonFingerprint([]);
-        }
-        setSetlistSyncReady(true);
-      })
-      .catch(() => undefined);
+    void pullWithRetry(
+      () => pullMySetlists().then((res) => (res.ok ? res : null)),
+      () => cancelled,
+    ).then((res) => {
+      if (cancelled) return;
+      if (!res) {
+        // Still unreachable after retries: only push once this device changes a setlist, so a stale
+        // copy here never overwrites the account just because it loaded.
+        lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
+      } else if (res.setlists.length) {
+        replaceSetlists(res.setlists);
+        lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
+      } else {
+        lastSetlistSync.current = jsonFingerprint([]);
+      }
+      setSetlistSyncReady(true);
+    });
     return () => {
       cancelled = true;
     };
@@ -215,10 +251,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     root.dataset.motion = reduceMotion ? "reduce" : "ok";
   }, [lcdBright, largeControls, reduceMotion]);
 
-  const modelHits = useMemo(
-    () => (q.trim().length >= 2 ? searchModels(q, instrument).slice(0, 6) : []),
-    [q, instrument],
-  );
+  // The model catalog is a big chunk; load it on the first real search, not with every page.
+  const [modelHits, setModelHits] = useState<HxModel[]>([]);
+  useEffect(() => {
+    if (q.trim().length < 2) {
+      setModelHits([]);
+      return;
+    }
+    let live = true;
+    void import("@/data/catalog").then((m) => {
+      if (live) setModelHits(m.searchModels(q, instrument).slice(0, 6));
+    });
+    return () => {
+      live = false;
+    };
+  }, [q, instrument]);
   const songHits = useMemo(() => {
     const needle = q.trim().toLowerCase();
     if (needle.length < 2) return [];
@@ -239,15 +286,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   function openSong(p: (typeof FEATURED)[number]) {
     const demo = isDemoId(p.id) || (DEMO_IDS as readonly string[]).includes(p.id);
-    if (!demo && !plan.paid) {
+    if (!demo && !plan.paid && !plan.admin) {
       closeSearch();
+      if (planPending) {
+        toast.message("Still loading your account. Try again in a second.");
+        return;
+      }
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = overlayUserGear(withStompModel({ ...p, createdAt: Date.now() }, stompModel), gear);
-    savePreset(preset);
+    const preset = openFeaturedPreset(p.id);
     closeSearch();
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   const results = open && q.trim().length >= 2;
@@ -286,7 +336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   songHits={songHits}
                   modelHits={modelHits}
                   q={q}
-                  paid={plan.paid}
+                  paid={plan.paid || plan.admin || planPending}
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();
@@ -311,7 +361,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </Link>
               <button
                 type="button"
-                className="grid size-10 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
+                className="grid size-11 place-items-center rounded-md border border-border bg-card text-muted-foreground hover:text-foreground md:hidden"
                 aria-label={open ? "Close search" : "Search"}
                 data-tour="search"
                 onClick={() => {
@@ -326,7 +376,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 to="/settings"
                 aria-label="Settings"
                 className={cn(
-                  "relative grid size-10 shrink-0 place-items-center rounded-md border border-border bg-card transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
+                  "relative grid size-11 shrink-0 place-items-center rounded-md border border-border bg-card transition-colors duration-[var(--motion-quick)] ease-[var(--ease-out)]",
                   pathname === "/settings" ? "text-foreground" : "text-muted-foreground hover:text-foreground",
                 )}
               >
@@ -352,7 +402,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   songHits={songHits}
                   modelHits={modelHits}
                   q={q}
-                  paid={plan.paid}
+                  paid={plan.paid || plan.admin || planPending}
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();
@@ -429,6 +479,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <LegalFooter className="mt-16 pb-4" />
       </main>
 
+      <PendingInviteClaim />
       <Onboarding onFinished={() => setShowTutorial(true)} />
       <Tutorial force={showTutorial} onClose={() => setShowTutorial(false)} />
 
@@ -482,11 +533,11 @@ function SearchResults({
   onResearch,
 }: {
   songHits: typeof FEATURED;
-  modelHits: ReturnType<typeof searchModels>;
+  modelHits: HxModel[];
   q: string;
   paid: boolean;
   onSong: (p: (typeof FEATURED)[number]) => void;
-  onModel: (m: ReturnType<typeof searchModels>[number]) => void;
+  onModel: (m: HxModel) => void;
   onResearch: () => void;
 }) {
   return (

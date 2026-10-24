@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
-import { FREE_BUILDS, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, priceMonthlyLaunchUsd, formatUsd, type Plan } from "@/lib/plan";
+import { FREE_BUILDS, firstMonthUsd, priceLine, formatUsd, type Plan } from "@/lib/plan";
 
 export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean }) {
   if (pending || plan.paid || plan.admin) return null;
@@ -17,11 +17,11 @@ export function UpgradeBanner({ plan, pending }: { plan: Plan; pending?: boolean
     >
       <span className="min-w-0">
         <span className="block sl-hero-title text-2xl">
-          Subscribe — {formatUsd(priceMonthlyLaunchUsd())} first month
+          Subscribe — {formatUsd(firstMonthUsd())} first month
         </span>
         <span className="mt-1.5 block text-sm text-primary-foreground/75">
           {plan.signedIn ? `${lead}. ` : `${lead} `}
-          Then {formatUsd(PRICE_MONTHLY_USD)}/mo or {formatUsd(PRICE_YEARLY_USD)}/yr · {PAID_BUILD_LINE}
+          {priceLine()} {PAID_BUILD_LINE}
         </span>
       </span>
       <span className="inline-flex h-12 shrink-0 items-center justify-center rounded-full bg-primary-foreground px-6 text-sm font-semibold text-primary sm:px-6">

@@ -1,8 +1,8 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { PlaybackSelect } from "@/components/layout/playback-select";
+import { PlaybackLine } from "@/components/layout/playback-select";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { GeminiHint } from "@/components/layout/gemini-hint";
 import { ResearchProgress } from "@/components/layout/research-progress";
@@ -13,11 +13,9 @@ import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { PlaybackTarget } from "@/data/types";
 import { notifyResearchSource } from "@/lib/notify";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { isDemoId, withStompModel } from "@/lib/preset-utils";
-import { applyWahPreference } from "@/lib/wah";
-import { applyRouting } from "@/lib/rig-routing";
+import { isDemoId } from "@/lib/preset-utils";
 import { buildSong } from "@/lib/song-build";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { PAID_BUILD_LINE } from "@/lib/copy";
@@ -26,8 +24,9 @@ import { looksLikeRealSong } from "@/lib/song-check";
 import { takeInviteResult } from "@/lib/referral-code";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (s: Record<string, unknown>): { q?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { q?: string; artist?: string } => ({
     q: typeof s.q === "string" && s.q.length ? s.q : undefined,
+    artist: typeof s.artist === "string" && s.artist.length ? s.artist.slice(0, 120) : undefined,
   }),
   component: Home,
 });
@@ -40,16 +39,28 @@ function Home() {
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
   const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const search = Route.useSearch();
+  const router = useRouter();
   const { plan, refresh, isPending: planPending } = usePlan();
-  const [song, setSong] = useState(search.q ?? "");
-  const [artist, setArtist] = useState("");
+  // A build keeps running if the player leaves the Lab; coming back shows it, not an empty form.
+  const labBuild = useAppStore((s) => s.labBuild);
+  const setLabBuild = useAppStore((s) => s.setLabBuild);
+  const [song, setSong] = useState(search.q ?? labBuild?.song ?? "");
+  const [artist, setArtist] = useState(labBuild?.artist ?? "");
   const [picked, setPicked] = useState(false);
   const playbackTarget = useAppStore((s) => s.playbackTarget);
   const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
-  const [busy, setBusy] = useState(false);
+  const busy = Boolean(labBuild);
   const [status, setStatus] = useState("");
-  const [progress, setProgress] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const progress = labBuild ? Math.min(94, 8 + Math.floor((now - labBuild.startedAt) / 450) * 3) : 0;
+
+  useEffect(() => {
+    if (!labBuild) return;
+    const tick = window.setInterval(() => setNow(Date.now()), 450);
+    return () => window.clearInterval(tick);
+  }, [labBuild]);
 
   const featured = FEATURED.filter((p) => p.instrument === instrument);
   const demos = featured.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
@@ -60,7 +71,12 @@ function Home() {
 
   useEffect(() => {
     if (search.q) setSong(search.q);
-  }, [search.q]);
+    // Back from checkout with the song they tried to build: ready to press Build.
+    if (search.q && search.artist) {
+      setArtist(search.artist);
+      setPicked(true);
+    }
+  }, [search.q, search.artist]);
 
   useEffect(() => {
     const hit = takeInviteResult();
@@ -75,37 +91,32 @@ function Home() {
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return;
-    if (!isDemoId(src.id) && !plan.paid) {
+    if (!isDemoId(src.id) && !subscribed) {
+      if (planPending) {
+        toast.message("Still loading your account. Try again in a second.");
+        return;
+      }
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = applyRouting(
-      applyWahPreference(
-        overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
-        wahMode,
-        wahModelId,
-      ),
-      playbackTarget,
-    );
-    savePreset(preset);
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    const preset = openFeaturedPreset(id);
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   async function onResearch(e: React.FormEvent) {
     e.preventDefault();
-    let tick = 0;
+    if (useAppStore.getState().labBuild) return;
+    let started = false;
     try {
       const outcome = await buildSong(
         { song, artist, instrument, stompModel, playbackTarget, gear, wahMode, wahModelId },
         { plan, planPending },
         {
           onStart: () => {
-            setBusy(true);
+            started = true;
             setStatus("Researching…");
-            setProgress(8);
-            tick = window.setInterval(() => {
-              setProgress((p) => (p >= 94 ? 94 : p + 3));
-            }, 450);
+            setNow(Date.now());
+            setLabBuild({ song: song.trim(), artist: artist.trim(), startedAt: Date.now() });
           },
           login: () => void navigate({ to: "/login" }),
           upgrade: () => void navigate({ to: "/upgrade" }),
@@ -116,7 +127,10 @@ function Home() {
         return;
       }
       if (outcome.kind === "upgrade") {
-        await navigate({ to: "/upgrade" });
+        await navigate({
+          to: "/upgrade",
+          search: outcome.reason === "limit" ? { song: song.trim(), artist: artist.trim() || undefined } : {},
+        });
         return;
       }
       if (outcome.kind === "stopped") {
@@ -124,13 +138,20 @@ function Home() {
         return;
       }
       savePreset(outcome.preset);
-      notifyResearchSource(outcome.source);
-      if (outcome.counted) await refresh();
-      await navigate({ to: "/preset/$id", params: { id: outcome.preset.id } });
+      if (outcome.counted) void refresh().catch(() => undefined);
+      const id = outcome.preset.id;
+      // Only jump to the preset if the player is still on the Lab; elsewhere, offer it.
+      if (router.state.location.pathname === "/") {
+        notifyResearchSource(outcome.source);
+        await router.navigate({ to: "/preset/$id", params: { id } });
+      } else {
+        toast.success(`Your ${outcome.preset.song || outcome.preset.name} preset is ready.`, {
+          duration: 12000,
+          action: { label: "Open", onClick: () => void router.navigate({ to: "/preset/$id", params: { id } }) },
+        });
+      }
     } finally {
-      if (tick) window.clearInterval(tick);
-      setBusy(false);
-      setProgress(0);
+      if (started) setLabBuild(null);
     }
   }
 
@@ -138,17 +159,17 @@ function Home() {
 
   return (
     <div className="space-y-10 md:space-y-14">
-      <section className="relative mx-auto max-w-3xl space-y-6" data-tutorial="lab">
-        <div className="relative space-y-5">
-          <p className="sl-kicker sl-enter sl-enter-1">For Line 6</p>
-          <h1 className="sl-hero-title text-[clamp(2.6rem,9vw,5.2rem)]">
+      <section className="relative mx-auto max-w-3xl space-y-4 sm:space-y-6" data-tutorial="lab">
+        <div className="relative space-y-2 sm:space-y-5">
+          <p className="sl-kicker sl-enter sl-enter-1 hidden sm:block">For Line 6</p>
+          <h1 className="sl-hero-title text-[clamp(2rem,9vw,5.2rem)]">
             <span className="sl-enter sl-enter-2 block">Type a song.</span>
-            <span className="sl-enter sl-enter-3 mt-2 block text-primary">
+            <span className="sl-enter sl-enter-3 mt-1 block text-primary sm:mt-2">
               Get that {instrument === "bass" ? "bass" : "guitar"} rig.
             </span>
           </h1>
-          <span className="sl-enter sl-enter-3 sl-hero-rule" aria-hidden />
-          <p className="sl-enter sl-enter-4 max-w-lg text-base leading-relaxed text-muted-foreground sm:text-lg">
+          <span className="sl-enter sl-enter-3 sl-hero-rule hidden sm:block" aria-hidden />
+          <p className="sl-enter sl-enter-4 hidden max-w-lg text-base leading-relaxed text-muted-foreground sm:block sm:text-lg">
             We research the gear on the record and build a preset for your {unit}: the chain, the knobs, and a
             switch for each part of the song.
           </p>
@@ -186,8 +207,8 @@ function Home() {
           </div>
         ) : null}
 
-        <form id="lab-form" noValidate onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 overflow-hidden rounded-2xl border border-border bg-card p-5 sm:p-6" data-tutorial="lab-form">
-          <span className="sl-form-bar" aria-hidden />
+        <form id="lab-form" noValidate onSubmit={(e) => void onResearch(e)} className="sl-tour-target relative space-y-4 rounded-2xl border border-border bg-card p-4 sm:p-6" data-tutorial="lab-form">
+          <span className="sl-form-bar rounded-t-2xl" aria-hidden />
           <SongTypeahead
             song={song}
             artist={artist}
@@ -207,7 +228,7 @@ function Home() {
               if (hit.featuredId) openFeatured(hit.featuredId);
             }}
           />
-          <PlaybackSelect value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
+          <PlaybackLine value={playbackTarget} onChange={setPlaybackTarget} stompModel={stompModel} />
           <div className="flex flex-wrap gap-3">
             <Button
               type="submit"
@@ -274,7 +295,7 @@ function Home() {
         </div>
       </section>
 
-      {!subscribed ? (
+      {!subscribed && !planPending ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
@@ -299,12 +320,12 @@ function Home() {
               <h2 className="sl-hero-title text-3xl">More songs</h2>
             </div>
             <span className="text-xs text-muted-foreground">
-              {subscribed ? `${instrument} · replica` : "Subscribe to open"}
+              {subscribed || planPending ? `${instrument} · replica` : "Subscribe to open"}
             </span>
           </div>
           <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((p) => {
-              const locked = !subscribed;
+              const locked = !subscribed && !planPending;
               return (
                 <button
                   key={p.id}

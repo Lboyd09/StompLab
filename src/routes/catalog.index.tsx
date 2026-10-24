@@ -17,7 +17,7 @@ import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
-type Search = { q: string; cat: string; tab: string; unit: string };
+type Search = { q: string; cat: string; tab: string; unit: string; page?: number };
 
 export const Route = createFileRoute("/catalog/")({
   validateSearch: (s: Record<string, unknown>): Search => ({
@@ -25,9 +25,10 @@ export const Route = createFileRoute("/catalog/")({
     cat: typeof s.cat === "string" ? s.cat : "",
     tab: s.tab === "find" ? "find" : "browse",
     unit: typeof s.unit === "string" && isStompModelId(s.unit) ? s.unit : "",
+    page: Number.isInteger(Number(s.page)) && Number(s.page) > 1 ? Number(s.page) : undefined,
   }),
   search: {
-    middlewares: [stripSearchParams({ q: "", cat: "", tab: "browse", unit: "" })],
+    middlewares: [stripSearchParams({ q: "", cat: "", tab: "browse", unit: "", page: undefined })],
   },
   component: CatalogPage,
 });
@@ -46,7 +47,6 @@ function CatalogPage() {
   const [aiHits, setAiHits] = useState<{ modelId: string; closeness: string; how: string }[] | null>(
     null,
   );
-  const [page, setPage] = useState(1);
   const cat = (search.cat as CategoryId | "") || "";
   const tab = search.tab === "find" ? "find" : "browse";
   const unit = (search.unit as StompModelId | "") || "";
@@ -62,12 +62,13 @@ function CatalogPage() {
     [search.q, cat, unit, instrument],
   );
 
+  // The box follows the URL (Back, a shared link) unless the player is the one typing.
   useEffect(() => {
-    setPage(1);
-  }, [search.q, cat, unit, instrument]);
+    setLocalQ(search.q);
+  }, [search.q]);
 
   const pageCount = Math.max(1, Math.ceil(models.length / PAGE_SIZE));
-  const safePage = Math.min(page, pageCount);
+  const safePage = Math.min(search.page ?? 1, pageCount);
   const pageStart = (safePage - 1) * PAGE_SIZE;
   const pageModels = models.slice(pageStart, pageStart + PAGE_SIZE);
   const showingFrom = models.length === 0 ? 0 : pageStart + 1;
@@ -232,7 +233,7 @@ function CatalogPage() {
             value={localQ}
             onChange={(e) => {
               setLocalQ(e.target.value);
-              void setSearch({ search: (prev) => ({ ...prev, q: e.target.value }) });
+              void setSearch({ search: (prev) => ({ ...prev, q: e.target.value, page: undefined }), replace: true });
             }}
             placeholder="Filter by name, Boss, Marshall, Big Muff…"
             aria-label="Filter catalog"
@@ -242,7 +243,7 @@ function CatalogPage() {
             <CatChip
               active={!unit}
               label="All units"
-              onClick={() => setSearch({ search: (p) => ({ ...p, unit: "" }) })}
+              onClick={() => setSearch({ search: (p) => ({ ...p, unit: "", page: undefined }), replace: true })}
             />
             {STOMP_DEVICES.map((d) => (
               <CatChip
@@ -250,7 +251,7 @@ function CatalogPage() {
                 active={unit === d.id}
                 label={d.short}
                 onClick={() =>
-                  setSearch({ search: (p) => ({ ...p, unit: p.unit === d.id ? "" : d.id }) })
+                  setSearch({ search: (p) => ({ ...p, unit: p.unit === d.id ? "" : d.id, page: undefined }), replace: true })
                 }
               />
             ))}
@@ -260,7 +261,7 @@ function CatalogPage() {
             <CatChip
               active={!cat}
               label="All"
-              onClick={() => setSearch({ search: (p) => ({ ...p, cat: "" }) })}
+              onClick={() => setSearch({ search: (p) => ({ ...p, cat: "", page: undefined }), replace: true })}
             />
             {CATEGORIES.map((c) => (
               <CatChip
@@ -269,7 +270,7 @@ function CatalogPage() {
                 label={c.label}
                 color={c.lcd}
                 onClick={() =>
-                  setSearch({ search: (p) => ({ ...p, cat: p.cat === c.id ? "" : c.id }) })
+                  setSearch({ search: (p) => ({ ...p, cat: p.cat === c.id ? "" : c.id, page: undefined }), replace: true })
                 }
               />
             ))}
@@ -294,7 +295,7 @@ function CatalogPage() {
                   type="button"
                   variant="secondary"
                   disabled={safePage <= 1}
-                  onClick={() => setPage(Math.max(1, safePage - 1))}
+                  onClick={() => setSearch({ search: (p) => ({ ...p, page: safePage - 1 > 1 ? safePage - 1 : undefined }) })}
                 >
                   Previous
                 </Button>
@@ -302,7 +303,7 @@ function CatalogPage() {
                   type="button"
                   variant="secondary"
                   disabled={safePage >= pageCount}
-                  onClick={() => setPage(Math.min(pageCount, safePage + 1))}
+                  onClick={() => setSearch({ search: (p) => ({ ...p, page: Math.min(pageCount, safePage + 1) }) })}
                 >
                   Next
                 </Button>
@@ -317,7 +318,7 @@ function CatalogPage() {
                 className="text-primary underline underline-offset-2"
                 onClick={() => {
                   setLocalQ("");
-                  void setSearch({ search: (p) => ({ ...p, q: "", cat: "", unit: "" }) });
+                  void setSearch({ search: (p) => ({ ...p, q: "", cat: "", unit: "", page: undefined }), replace: true });
                 }}
               >
                 Clear it

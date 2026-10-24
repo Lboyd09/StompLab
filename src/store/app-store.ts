@@ -3,12 +3,12 @@ import { create } from "zustand";
 import type { Preset, StompModelId, UserGear } from "@/data/types";
 import {
   adoptLegacyLocal,
-  deletePreset,
   loadGear,
   loadGeminiKey,
   loadPresets,
   loadSettings,
   loadSetlistsRaw,
+  mergeHistory,
   parseIrSlot,
   patchSettings,
   saveGear,
@@ -19,7 +19,7 @@ import {
   type FsModePref,
   type Settings,
   type ThemeId,
-  upsertPreset,
+  upsertInto,
 } from "@/lib/storage";
 import type { GuitarRole } from "@/lib/guitar-role";
 import { cleanSetlists, type Setlist } from "@/lib/setlist";
@@ -28,9 +28,19 @@ import type { WahMode } from "@/lib/wah";
 type LcdView = "play" | "edit" | "tuner" | "assign";
 type FsMode = "stomp" | "snapshot" | "preset";
 
+/** A Lab build that is still researching. Kept here so leaving the Lab doesn't lose it. */
+export type LabBuild = { song: string; artist: string; startedAt: number };
+
 type AppState = {
   hydrated: boolean;
   ownerId: string;
+  /** History for `ownerId` has been read from this browser. Before that, saves stay in memory. */
+  ownerLoaded: boolean;
+  /** History for the current account is settled (local read plus the account merge, or signed out). */
+  historyReady: boolean;
+  /** Bumped when a save should reach the account now instead of on the slow debounce. */
+  syncTick: number;
+  labBuild: LabBuild | null;
   instrument: "guitar" | "bass";
   stompModel: StompModelId;
   theme: ThemeId;
@@ -74,9 +84,12 @@ type AppState = {
   setIrSlot: (slot: number | null) => void;
   setPlaybackTarget: (target: PlaybackTarget) => void;
   setGeminiKey: (key: string) => void;
+  /** A build, an open, a revise: saved now and pushed to the account right away. */
   savePreset: (preset: Preset) => void;
   removePreset: (id: string) => void;
   replacePresets: (presets: Preset[]) => void;
+  setHistoryReady: (ready: boolean) => void;
+  setLabBuild: (build: LabBuild | null) => void;
   setGear: (gear: UserGear[]) => void;
   addGear: (item: UserGear) => void;
   removeGear: (id: string) => void;
@@ -89,16 +102,61 @@ type AppState = {
   setParamPage: (page: number) => void;
   setActiveSnapshot: (index: number) => void;
   setAssignFsIndex: (index: number) => void;
+  /** A knob turn: memory now, disk a moment later (one write per drag, not per tick). */
   patchCurrent: (preset: Preset) => void;
+  flushPresets: () => void;
 };
 
 function persist(partial: Partial<Settings>) {
   return patchSettings(partial);
 }
 
-export const useAppStore = create<AppState>((set, get) => ({
+const PERSIST_DELAY_MS = 400;
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let persistOwner: string | null = null;
+
+function cancelPersist() {
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = null;
+  persistOwner = null;
+}
+
+export const useAppStore = create<AppState>((set, get) => {
+  /** Write the in-memory history for `owner`, now. Skipped until that owner's history was read. */
+  const writeNow = (owner: string) => {
+    const state = get();
+    if (!state.ownerLoaded || state.ownerId !== owner) return;
+    savePresets(state.presets, owner);
+  };
+  const flushPresets = () => {
+    const owner = persistOwner;
+    cancelPersist();
+    if (owner) writeNow(owner);
+  };
+  const schedulePersist = () => {
+    const owner = get().ownerId;
+    if (persistOwner && persistOwner !== owner) flushPresets();
+    persistOwner = owner;
+    if (persistTimer) clearTimeout(persistTimer);
+    persistTimer = setTimeout(flushPresets, PERSIST_DELAY_MS);
+  };
+  const persistNow = () => {
+    cancelPersist();
+    writeNow(get().ownerId);
+  };
+  if (typeof window !== "undefined") {
+    window.addEventListener("pagehide", flushPresets);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") flushPresets();
+    });
+  }
+  return {
   hydrated: false,
   ownerId: "anon",
+  ownerLoaded: false,
+  historyReady: false,
+  syncTick: 0,
+  labBuild: null,
   instrument: "guitar",
   stompModel: "hx-stomp",
   theme: "dark",
@@ -149,13 +207,18 @@ export const useAppStore = create<AppState>((set, get) => ({
   },
   hydrateOwner: (userId) => {
     const owner = storageOwnerKey(userId);
-    if (get().ownerId === owner && get().hydrated) {
+    if (get().ownerId === owner && get().ownerLoaded) {
       return { presets: get().presets, gear: get().gear };
     }
+    flushPresets();
+    // Anything saved before the first history read (a demo opened while the account was loading).
+    const early = get().ownerLoaded ? [] : get().presets;
     const adopted = adoptLegacyLocal(owner);
-    const presets = adopted.presets.length ? adopted.presets : loadPresets(owner);
+    const stored = adopted.presets.length ? adopted.presets : loadPresets(owner);
+    const presets = early.length ? mergeHistory(early, stored) : stored;
     const gear = adopted.gear.length ? adopted.gear : loadGear(owner);
-    set({ ownerId: owner, presets, gear, setlists: cleanSetlists(loadSetlistsRaw(owner)) });
+    set({ ownerId: owner, ownerLoaded: true, presets, gear, setlists: cleanSetlists(loadSetlistsRaw(owner)) });
+    if (early.length) savePresets(presets, owner);
     return { presets, gear };
   },
   setInstrument: (instrument) => {
@@ -223,12 +286,20 @@ export const useAppStore = create<AppState>((set, get) => ({
     saveGeminiKey(geminiKey);
     set({ geminiKey });
   },
-  savePreset: (preset) => set({ presets: upsertPreset(preset, get().ownerId) }),
-  removePreset: (id) => set({ presets: deletePreset(id, get().ownerId) }),
-  replacePresets: (presets) => {
-    savePresets(presets, get().ownerId);
-    set({ presets });
+  savePreset: (preset) => {
+    set({ presets: upsertInto(get().presets, { ...preset, updatedAt: Date.now() }), syncTick: get().syncTick + 1 });
+    persistNow();
   },
+  removePreset: (id) => {
+    set({ presets: get().presets.filter((p) => p.id !== id), syncTick: get().syncTick + 1 });
+    persistNow();
+  },
+  replacePresets: (presets) => {
+    set({ presets });
+    persistNow();
+  },
+  setHistoryReady: (historyReady) => set({ historyReady }),
+  setLabBuild: (labBuild) => set({ labBuild }),
   setGear: (gear) => {
     saveGear(gear, get().ownerId);
     set({ gear });
@@ -264,5 +335,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   setParamPage: (paramPage) => set({ paramPage }),
   setActiveSnapshot: (activeSnapshot) => set({ activeSnapshot }),
   setAssignFsIndex: (assignFsIndex) => set({ assignFsIndex }),
-  patchCurrent: (preset) => set({ presets: upsertPreset(preset, get().ownerId) }),
-}));
+  patchCurrent: (preset) => {
+    set({ presets: upsertInto(get().presets, { ...preset, updatedAt: Date.now() }) });
+    schedulePersist();
+  },
+  flushPresets,
+  };
+});

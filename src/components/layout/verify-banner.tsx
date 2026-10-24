@@ -26,18 +26,18 @@ export function VerifyBanner({ plan }: { plan: Plan }) {
   }
 
   return (
-    <div className="flex items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-4">
+    <div className="flex items-start gap-3 rounded-2xl border border-primary/40 bg-primary/10 p-3 sm:p-4">
       <MailCheck className="mt-0.5 size-5 shrink-0 text-primary" aria-hidden />
-      <div className="min-w-0 flex-1 space-y-2">
+      <div className="min-w-0 flex-1 space-y-1 sm:space-y-2">
         <p className="text-sm font-medium text-foreground">Confirm your email to start building</p>
-        <p className="break-words text-sm text-muted-foreground">
+        <p className="hidden break-words text-sm text-muted-foreground sm:block">
           We sent a link to {user.primaryEmail ?? "your inbox"}. Tap it and your free builds are ready. Demos work now.
         </p>
         <button
           type="button"
           disabled={sending}
           onClick={() => void resend()}
-          className="min-h-11 text-sm font-medium text-primary underline underline-offset-2 disabled:opacity-60"
+          className="min-h-11 text-sm font-medium sm:min-h-11 text-primary underline underline-offset-2 disabled:opacity-60"
         >
           {sending ? "Sending…" : "Send it again"}
         </button>

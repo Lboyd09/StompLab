@@ -4,13 +4,13 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 export function AuthSlot() {
   const { user, isPending } = useCurrentUserState();
   if (isPending) {
-    return <div className="size-10 shrink-0 animate-pulse rounded-md bg-secondary" />;
+    return <div className="size-11 shrink-0 animate-pulse rounded-md bg-secondary" />;
   }
   if (!user) {
     return (
       <Link
         to="/login"
-        className="grid h-10 shrink-0 place-items-center rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
+        className="grid h-11 shrink-0 place-items-center rounded-full bg-primary px-4 text-xs font-medium text-primary-foreground transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
       >
         Sign in
       </Link>
@@ -21,10 +21,10 @@ export function AuthSlot() {
     <Link
       to="/account"
       aria-label="Account"
-      className="grid size-10 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-card text-sm font-medium transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
+      className="grid size-11 shrink-0 place-items-center overflow-hidden rounded-full border border-border bg-card text-sm font-medium transition-opacity duration-[var(--motion-quick)] ease-[var(--ease-out)] hover:opacity-90"
     >
       {user.profileImageUrl ? (
-        <img src={user.profileImageUrl} alt="" className="size-10 object-cover" />
+        <img src={user.profileImageUrl} alt="" className="size-11 object-cover" />
       ) : (
         letter
       )}

@@ -3,11 +3,12 @@ import { ArrowLeft, ArrowRight, Check, X } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { demosFor, welcomeDemo } from "@/components/onboarding/demo-rig";
-import { demoForRig } from "@/components/onboarding/open-demo";
 import { DemoReel, TryRig, UnitArt } from "@/components/onboarding/rig-visual";
 import { STOMP_DEVICES } from "@/data/categories";
 import { playbackOptionsFor } from "@/data/playback";
 import { FREE_BUILD_LINE } from "@/lib/copy";
+import { isDemoId } from "@/lib/preset-utils";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { Mark } from "./mark";
@@ -45,10 +46,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   const setStompModel = useAppStore((s) => s.setStompModel);
   const playbackTarget = useAppStore((s) => s.playbackTarget);
   const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
-  const gear = useAppStore((s) => s.gear);
-  const wahMode = useAppStore((s) => s.wahMode);
-  const wahModelId = useAppStore((s) => s.wahModelId);
-  const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const [open, setOpen] = useState(Boolean(force));
   const [step, setStep] = useState(0);
   const [snap, setSnap] = useState(0);
@@ -83,6 +81,8 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   useLayoutEffect(() => {
     function replay() {
       setStep(0);
+      setSnap(0);
+      setTried(new Set([0]));
       setOpen(true);
       if (window.location.pathname !== "/") void navigate({ to: "/" });
     }
@@ -125,11 +125,10 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   }
 
   function openDemo(id: string) {
-    const preset = demoForRig(id, { stompModel, gear, wahMode, wahModelId, playbackTarget });
-    if (!preset) return finish();
-    savePreset(preset);
+    // Only the free demos open from here; a paid featured rig never slips past the paywall.
+    const preset = isDemoId(id) ? openFeaturedPreset(id) : null;
     finish();
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   function pickSnap(i: number) {

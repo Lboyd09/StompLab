@@ -15,8 +15,11 @@ import {
   recordFailure,
   releaseBuildSlot,
   reserveBuildSlot,
+  tooManyFailedBuilds,
 } from "@/lib/billing";
-import type { Plan } from "./plan";
+import { rateLimited } from "./rate-limit";
+import { monthlyCapLine, type Plan } from "./plan";
+import { REFERRAL_BONUS } from "./referral-code";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache, lookupNotesCache, notesCacheKey, persistNotesCache } from "./cache";
 import { libraryServesFeatured, parseGuitarRole, songBuildRole, type GuitarRole } from "./guitar-role";
@@ -24,7 +27,7 @@ import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { standingRulesBlock } from "./research-lessons";
 import { friendlyResearchError, geminiGroundedNotes, geminiJson, CUSTOM_SYSTEM, SYSTEM, PRESET_RESPONSE_SCHEMA, BPM_RESPONSE_SCHEMA } from "./gemini";
 import { confirmReleasedSong, SONG_NOT_FOUND } from "./song-verify";
-import { VERIFY_EMAIL_LINE } from "./copy";
+import { PAID_BUILD_LINE, VERIFY_EMAIL_LINE } from "./copy";
 import { keepDirtyIntro, finishTone } from "./tone-finish";
 import { applyRouting } from "./rig-routing";
 import {
@@ -165,6 +168,15 @@ export async function standingFeedbackLessons(): Promise<string> {
   }
 }
 
+const FAILED_TODAY: ResearchErr = {
+  ok: false,
+  reason: "busy",
+  error: "Too many builds failed today. Try again tomorrow, or open a demo.",
+};
+
+/** Pedal matching calls the model on every cache miss. Per player, per hour. */
+export const EQ_LOOKUPS_PER_HOUR = 30;
+
 const researchHits = new Map<string, number[]>();
 function tooManyResearches(userId: string) {
   const now = Date.now();
@@ -240,13 +252,13 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
     return {
       ok: false,
       reason: "quota",
-      error: "You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.",
+      error: monthlyCapLine(REFERRAL_BONUS),
     };
   }
   return {
     ok: false,
     reason: "paywall",
-    error: "0 free custom builds left. Subscribe for 50 custom builds a month. Demos stay free.",
+    error: `You've used your free custom builds. Subscribe: ${PAID_BUILD_LINE} Demos stay free.`,
   };
 }
 
@@ -442,6 +454,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       /* miss */
     }
 
+    if (!plan.admin && (await tooManyFailedBuilds(context.userId))) return FAILED_TODAY;
     // Reserve the slot before the model call, so two builds in flight cannot
     // both take the last one. It is confirmed on success and released on failure.
     const slot = await reserveBuildSlot({
@@ -469,11 +482,11 @@ export const researchSongFn = createServerFn({ method: "POST" })
 
 Confirmed recording: "${confirmed.song}" by ${confirmed.artist}${confirmed.album ? `, album ${confirmed.album}` : ""}.
 ${bpm ? `Studio tempo is ${bpm} BPM. Set the preset tempo to ${bpm}.` : "Set tempo to the recording's real BPM. Do not use 120 unless the song is actually about 120."}
-${record.notes ? `\nResearch notes from a web search of this recording. Use these facts over memory when they are specific; mark gear the notes call likely as "Likely —"; ignore anything that is about a live rig or a different song:\n${record.notes}\n` : ""}
+${record.notes ? `\nResearch notes from a web search of this recording. Use these facts over memory when they are specific; ignore anything about a live rig or a different song:\n${record.notes}\n` : ""}
 ${songResearchInstructions(confirmed.song, confirmed.artist, data.instrument, wah, role)}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:
@@ -501,7 +514,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
           artist: confirmed.artist,
           instrument: data.instrument,
           stompModel: data.stompModel,
-          preset: publicPreset(preset),
+          preset: publicPreset(preset, data.userGear),
           bpm,
         });
       } catch {
@@ -591,7 +604,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
       const prompt = `${customSoundInstructions(data.description, data.instrument, wah, parseGuitarRole(data.guitarRole), player)}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:
@@ -616,7 +629,7 @@ ${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
           artist: "custom",
           instrument: data.instrument,
           stompModel: data.stompModel,
-          preset: publicPreset(preset),
+          preset: publicPreset(preset, data.userGear),
         });
       } catch {
         /* ignore */
@@ -669,6 +682,9 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
     } catch {
       /* miss */
     }
+    if (!plan.admin && (await rateLimited(getSql, `eq:${context.userId}`, EQ_LOOKUPS_PER_HOUR, 3600))) {
+      return { ok: false, reason: "busy", error: "That's a lot of pedal lookups this hour. Try again later." };
+    }
 
     try {
       const catalog = compactCatalogForPrompt();
@@ -704,7 +720,68 @@ const ReviseIn = z.object({
   note: z.string().min(2).max(240),
   current: z.string().max(2000),
   userGear: z.array(GearSchema).max(40).optional().default([]),
+  // The preset as the player has it now, so a revise changes only what the note asks.
+  blocks: z
+    .array(
+      z.object({
+        id: z.string().max(60),
+        modelId: z.string().max(60),
+        enabled: z.boolean(),
+        position: z.number().int().min(0).max(40),
+        params: z.record(z.string().max(40), z.number().finite()),
+      }),
+    )
+    .max(16)
+    .optional()
+    .default([]),
+  snapshots: z
+    .array(
+      z.object({
+        name: z.string().max(40),
+        enabledBlocks: z.array(z.string().max(60)).max(16),
+        paramOverrides: z.record(z.string().max(60), z.record(z.string().max(40), z.number().finite())).optional(),
+        notes: z.string().max(300).optional(),
+      }),
+    )
+    .max(8)
+    .optional()
+    .default([]),
+  tempo: z.number().min(40).max(240).optional(),
+  wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
+  wahModelId: z.string().max(40).optional().default("teardrop-310"),
 });
+
+const fmtKnobs = (params: Record<string, number>) =>
+  Object.entries(params)
+    .slice(0, 24)
+    .map(([k, v]) => `${oneLine(k, 40)} ${Math.round(v * 10) / 10}`)
+    .join(", ");
+
+/** The player's current preset as prompt text: every block with its knobs, then each snapshot. */
+function reviseCurrentText(d: z.infer<typeof ReviseIn>): string {
+  if (!d.blocks.length) return `Current path: ${oneLine(d.current, 2000)}`;
+  const names = new Map<string, string>();
+  const lines = [...d.blocks]
+    .sort((a, b) => a.position - b.position)
+    .map((b) => {
+      const name = MODEL_MAP[b.modelId]?.name ?? b.modelId;
+      names.set(b.id, name);
+      return `- id ${oneLine(b.id, 60)} | ${oneLine(b.modelId, 60)} (${name})${b.enabled ? "" : " OFF"} | ${fmtKnobs(b.params)}`;
+    });
+  const snaps = d.snapshots.map((s, i) => {
+    const on = s.enabledBlocks.map((id) => names.get(id) ?? id).join(", ");
+    const over = Object.entries(s.paramOverrides ?? {})
+      .map(([id, knobs]) => `${names.get(id) ?? id}: ${fmtKnobs(knobs)}`)
+      .join("; ");
+    return `- Snapshot ${i + 1} "${oneLine(s.name, 40)}": on ${on || "none"}${over ? ` | knobs ${over}` : ""}${s.notes ? ` | ${oneLine(s.notes, 300)}` : ""}`;
+  });
+  return [
+    `Current preset${d.tempo ? ` (tempo ${Math.round(d.tempo)} BPM)` : ""}:`,
+    "Blocks in order:",
+    ...lines,
+    ...(snaps.length ? ["Snapshots:", ...snaps] : []),
+  ].join("\n");
+}
 
 export const revisePresetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -732,6 +809,7 @@ export const revisePresetFn = createServerFn({ method: "POST" })
     if (tooManyResearches(context.userId)) {
       return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
     }
+    if (!plan.admin && (await tooManyFailedBuilds(context.userId))) return FAILED_TODAY;
     const slot = await reserveBuildSlot({
       userId: context.userId,
       email,
@@ -746,14 +824,14 @@ export const revisePresetFn = createServerFn({ method: "POST" })
       const lessons = await standingFeedbackLessons();
       const prompt = `${lessons}
 
-Revise this ${DEVICE_MAP[data.stompModel].name} path so it is closer to the RECORD. Keep factory model ids. Only change what the note asks.
+Revise this ${DEVICE_MAP[data.stompModel].name} preset so it is closer to the RECORD. Keep factory model ids. Only change what the note asks: return every block, block id, knob, snapshot and the tempo exactly as given below unless the note asks to change it.
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
-Current path: ${data.current}
+${reviseCurrentText(data)}
 Note from the player: ${data.note}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:
@@ -773,7 +851,17 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       });
       await confirmBuildSlot(slot.reservation);
       settled = true;
-      return { ok: true, preset: sanitizeSnapshots(applyRouting(finishTone(preset), data.playbackTarget)), source: "gemini" };
+      const finished = finishPreset(
+        preset,
+        {
+          userGear: data.userGear,
+          wahMode: data.wahMode,
+          wahModelId: data.wahModelId,
+          playbackTarget: data.playbackTarget,
+        },
+        data.tempo,
+      );
+      return { ok: true, preset: finished, source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {

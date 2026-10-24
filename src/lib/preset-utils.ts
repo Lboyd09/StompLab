@@ -1,13 +1,14 @@
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { MODEL_MAP } from "@/data/catalog";
 import { DEVICE_MAP } from "@/data/categories";
-import type { CategoryId, FootswitchAssign, Preset, StompBlock, StompModelId } from "@/data/types";
+import type { CategoryId, FootswitchAssign, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
+import { routeFor } from "@/data/playback";
 import { STOMP_MODEL_IDS } from "@/data/types";
 import { helixIdFor } from "@/data/helix-ids";
 import { hxModel, SYNC_NOTES } from "@/data/hx-catalog";
 import { nativeFor, resolveParamKeys, syncNoteFor } from "./hx-params";
 import { formatNative, nativeToUi } from "./hx-units";
-import { sanitizeSnapshots } from "./snapshot-sanitize";
+import { keepSnapshots, sanitizeSnapshots } from "./snapshot-sanitize";
 
 export function blockModel(block: StompBlock) {
   return MODEL_MAP[block.modelId];
@@ -246,7 +247,8 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   const device = DEVICE_MAP[model] ?? DEVICE_MAP["hx-stomp"];
   const maxSnaps = device.snapshots;
   let blocks: StompBlock[] = preset.blocks;
-  let snapshots = preset.snapshots.slice(0, maxSnaps);
+  // A cached Floor/XL donor trimmed to a Stomp keeps its solo; a middle section goes instead.
+  let snapshots = keepSnapshots(preset.snapshots, maxSnaps);
 
   if (!device.hasAmpCab) {
     const ampCab = new Set<CategoryId>(["amp-guitar", "amp-bass", "preamp", "cab", "mic", "ir"]);
@@ -261,13 +263,10 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
       .map((b, i) => ({ ...b, position: i }))
       .slice(0, device.maxBlocks);
     snapshots = snapshots.map((s) => {
-      const enabled = s.enabledBlocks.filter((id) => kept.has(id));
-      const audible = enabled.length
-        ? enabled
-        : blocks.filter((b) => !isGateBlock(b.modelId)).map((b) => b.id);
+      // In front of a real amp, a snapshot that only had the amp and cab on is every pedal off.
       return {
         ...s,
-        enabledBlocks: audible.length ? audible : blocks.map((b) => b.id),
+        enabledBlocks: s.enabledBlocks.filter((id) => kept.has(id)),
         paramOverrides: s.paramOverrides
           ? Object.fromEntries(Object.entries(s.paramOverrides).filter(([id]) => kept.has(id)))
           : undefined,
@@ -278,22 +277,17 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   }
 
   const snapIds = new Set(snapshots.map((s) => s.id));
+  // A switch for a snapshot that was trimmed goes first, so its index is free for the kept ones.
   let fs = preset.footswitches.filter(
-    (f) => f.index >= 1 && f.index <= device.footswitches && f.action !== "mode" && f.action !== "tap",
+    (f) =>
+      f.index >= 1 &&
+      f.index <= device.footswitches &&
+      f.action !== "mode" &&
+      f.action !== "tap" &&
+      (f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId))),
   );
-
-  if (device.footswitches <= 3) {
-    const low = fs.filter((f) => f.index <= 3);
-    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
-  } else {
-    const low = fs.filter((f) => f.index <= 3);
-    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    if (!low.length && high.length) {
-      fs = high.map((f) => ({ ...f, index: f.index - 3 }));
-    } else {
-      fs = [...low, ...high.filter((h) => h.action !== "snapshot" || !low.some((l) => l.index === h.index - 3))];
-    }
+  // Snapshot N on switch N when that switch is free and the snapshot has none (a kept solo).
+  const fillSnapshotSwitches = () => {
     for (let i = 0; i < Math.min(snapshots.length, Math.min(device.footswitches, 8)); i++) {
       const index = i + 1;
       const snap = snapshots[i];
@@ -311,6 +305,22 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
         },
       ];
     }
+  };
+
+  if (device.footswitches <= 3) {
+    const low = fs.filter((f) => f.index <= 3);
+    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
+    fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
+    fillSnapshotSwitches();
+  } else {
+    const low = fs.filter((f) => f.index <= 3);
+    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
+    if (!low.length && high.length) {
+      fs = high.map((f) => ({ ...f, index: f.index - 3 }));
+    } else {
+      fs = [...low, ...high.filter((h) => h.action !== "snapshot" || !low.some((l) => l.index === h.index - 3))];
+    }
+    fillSnapshotSwitches();
     fs = assignUtilityBypassFs(blocks, fs, device);
     if (device.layout === "xl") {
       fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
@@ -325,13 +335,25 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   return { ...preset, id, stompModel: model, blocks, footswitches: fs, snapshots };
 }
 
-export function resolveNamedPreset(id: string, model: StompModelId, stored: Preset[]): Preset | null {
+/**
+ * The stored copy wins over the featured catalog: the exact id, else this rig saved for `model`.
+ * `anyUnitEdits` (setlist export) also takes the player's edited copy from another unit; a shared
+ * link leaves it off so a friend's link never shows your own edits.
+ */
+export function resolveNamedPreset(
+  id: string,
+  model: StompModelId,
+  stored: Preset[],
+  opts: { anyUnitEdits?: boolean } = {},
+): Preset | null {
   const featured = featuredOriginal(id);
   const fromStore =
     stored.find((p) => p.id === id) ??
-    (featured ? stored.find((p) => featuredBaseId(p.id) === featured.id) : undefined);
-  const edited = fromStore?.userEdited ? fromStore : undefined;
-  const source = edited ?? (featured && featured.source === "featured" ? featured : fromStore ?? featured);
+    (featured
+      ? (stored.find((p) => featuredBaseId(p.id) === featured.id && p.stompModel === model) ??
+        (opts.anyUnitEdits ? stored.find((p) => featuredBaseId(p.id) === featured.id && p.userEdited) : undefined))
+      : undefined);
+  const source = fromStore ?? featured;
   if (!source) return null;
   return withStompModel({ ...source, createdAt: fromStore?.createdAt ?? Date.now() }, model);
 }
@@ -340,11 +362,26 @@ export function newId(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 9)}`;
 }
 
+/** Pedals into a real amp: HX Effects, or any unit set to play in front of an amp. */
+export function pedalsOnlyRig(preset: Preset): boolean {
+  return DEVICE_MAP[preset.stompModel]?.hasAmpCab === false || routeFor(preset.playbackTarget) === "pedals";
+}
+
+/**
+ * Whether a snapshot turns a block on. An empty list means "every pedal off" on a pedals-only
+ * rig (the real amp still sounds); elsewhere it means the blocks' own on/off.
+ */
+export function snapshotEnables(preset: Preset, snap: Snapshot | undefined, block: StompBlock): boolean {
+  if (snap?.enabledBlocks?.length) return snap.enabledBlocks.includes(block.id);
+  if (snap && pedalsOnlyRig(preset)) return false;
+  return block.enabled;
+}
+
 export function withSnapshot(preset: Preset, snapshotIndex: number): Preset {
   const snap = preset.snapshots[snapshotIndex];
   if (!snap) return preset;
   const blocks = preset.blocks.map((b) => {
-    const enabled = snap.enabledBlocks.length ? snap.enabledBlocks.includes(b.id) : b.enabled;
+    const enabled = snapshotEnables(preset, snap, b);
     const over = snap.paramOverrides?.[b.id];
     return {
       ...b,

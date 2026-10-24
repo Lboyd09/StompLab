@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { suggestSongsFn, type SongHit } from "@/lib/songs";
@@ -30,6 +30,9 @@ export function SongTypeahead({
   const picked = useRef("");
   const lastPick = useRef(0);
   const gen = useRef(0);
+  const listId = useId();
+  const optId = (i: number) => `${listId}-opt-${i}`;
+  const showList = open && hits.length > 0;
 
   function pick(hit: SongHit) {
     const now = Date.now();
@@ -72,11 +75,11 @@ export function SongTypeahead({
         });
     }, 180);
     return () => window.clearTimeout(handle);
-  }, [song, artist, instrument]);
+  }, [song, instrument]);
 
   return (
     <div className="grid gap-3 sm:grid-cols-[1fr_180px]" data-tour="song">
-      <div className="relative space-y-1.5" ref={box}>
+      <div className="relative scroll-mt-20 space-y-1.5" ref={box}>
         <Label htmlFor="song" className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">
           Song
         </Label>
@@ -88,7 +91,16 @@ export function SongTypeahead({
             onSong(e.target.value);
             setOpen(true);
           }}
-          onFocus={() => hits.length && !picked.current && setOpen(true)}
+          role="combobox"
+          aria-expanded={showList}
+          aria-controls={listId}
+          aria-autocomplete="list"
+          aria-activedescendant={showList ? optId(hi) : undefined}
+          onFocus={() => {
+            if (hits.length && !picked.current) setOpen(true);
+            // Lift the field so the list sits above the phone keyboard and the bottom nav.
+            window.setTimeout(() => box.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 250);
+          }}
           onBlur={() => {
             window.setTimeout(() => {
               if (!ignoreBlur.current) setOpen(false);
@@ -113,18 +125,25 @@ export function SongTypeahead({
           autoComplete="off"
           className="h-12 placeholder:font-normal placeholder:text-muted-foreground/50"
         />
-        {open && hits.length ? (
+        {showList ? (
           <ul
-            className="sl-menu mt-1 max-h-60 w-full overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
+            id={listId}
+            role="listbox"
+            aria-label="Song suggestions"
+            className="sl-menu absolute inset-x-0 top-full z-30 mt-1 max-h-60 overflow-auto rounded-lg border border-border bg-card py-1 shadow-lg"
             onMouseDown={(e) => e.preventDefault()}
             onPointerDown={() => {
               ignoreBlur.current = true;
             }}
           >
             {hits.map((h, i) => (
-              <li key={h.id}>
+              <li key={h.id} role="presentation">
                 <button
                   type="button"
+                  id={optId(i)}
+                  role="option"
+                  aria-selected={i === hi}
+                  tabIndex={-1}
                   className={`flex min-h-11 w-full items-center gap-3 px-3 py-2.5 text-left ${
                     i === hi ? "bg-secondary" : "hover:bg-secondary"
                   }`}

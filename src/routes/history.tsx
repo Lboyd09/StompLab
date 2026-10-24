@@ -12,6 +12,7 @@ import { canExportHlx, downloadHlx, exportExtension, hlxFilename } from "@/lib/h
 import type { Preset } from "@/data/types";
 import { HISTORY_CAP } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 
@@ -21,6 +22,7 @@ function HistoryPage() {
   const presets = useAppStore((s) => s.presets);
   const removePreset = useAppStore((s) => s.removePreset);
   const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const stompModel = useAppStore((s) => s.stompModel);
   const { plan, isPending } = usePlan();
   const [q, setQ] = useState("");
@@ -220,12 +222,7 @@ function HistoryPage() {
                   params={{ id }}
                   className="block rounded-xl border border-border bg-card p-4"
                   onClick={() => {
-                    savePreset({
-                      ...p,
-                      id,
-                      stompModel,
-                      createdAt: Date.now(),
-                    });
+                    openFeaturedPreset(p.id);
                   }}
                 >
                   <div className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">{p.artist}</div>

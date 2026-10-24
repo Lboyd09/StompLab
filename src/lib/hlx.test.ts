@@ -92,19 +92,19 @@ describe("buildHlx Teen Spirit", () => {
     assert.equal(dsp0.block0.Mix, undefined);
   });
 
-  it("Clean is dry, Verse is the DS-1, Hello is a light chorus", () => {
+  it("Verse is clean with the Small Clone, Pre-Chorus is a light chorus, Riff/Chorus is the DS-1", () => {
     const snap0 = tone.snapshot0 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap1 = tone.snapshot1 as { "@name": string; blocks: { dsp0: Record<string, boolean> } };
     const snap2 = tone.snapshot2 as { "@name": string; "@pedalstate": number; blocks: { dsp0: Record<string, boolean> } };
-    assert.equal(snap0["@name"], "CLEAN");
+    assert.equal(snap0["@name"], "VERSE");
     assert.equal(snap0.blocks.dsp0.block0, false);
-    assert.equal(snap0.blocks.dsp0.block1, false);
-    assert.equal(snap1["@name"], "VERSE");
-    assert.equal(snap1.blocks.dsp0.block0, true);
-    assert.equal(snap1.blocks.dsp0.block1, false);
-    assert.equal(snap2["@name"], "HELLO");
-    assert.equal(snap2.blocks.dsp0.block0, false);
-    assert.equal(snap2.blocks.dsp0.block1, true);
+    assert.equal(snap0.blocks.dsp0.block1, true);
+    assert.equal(snap1["@name"], "PRE-CHORUS");
+    assert.equal(snap1.blocks.dsp0.block0, false);
+    assert.equal(snap1.blocks.dsp0.block1, true);
+    assert.equal(snap2["@name"], "RIFF CHORUS");
+    assert.equal(snap2.blocks.dsp0.block0, true);
+    assert.equal(snap2.blocks.dsp0.block1, false);
     assert.ok(Number(dsp0.block1.Mix) <= 0.4, `chorus Mix ${dsp0.block1.Mix} is still a wash`);
     assert.ok(Number(dsp0.block1.ChorusIntensity) <= 0.4);
     assert.equal(snap2["@pedalstate"], 0);
@@ -191,7 +191,7 @@ describe("buildHlx Enter Sandman", () => {
     };
     const tsKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_DistScream808")?.[0];
     const gateKey = Object.entries(dsp0).find(([, b]) => b["@model"] === "HD2_GateNoiseGate")?.[0];
-    assert.equal(snap1["@name"], "RHYTHM");
+    assert.equal(snap1["@name"], "RIFF");
     assert.ok(tsKey);
     assert.ok(gateKey);
     assert.equal(snap1.blocks.dsp0[tsKey!], true);
@@ -276,16 +276,16 @@ describe("visual FS map", () => {
     );
   });
 
-  it("puts Teen Spirit Clean first; three tones only — solo shares Hello", () => {
+  it("puts Teen Spirit Verse first; three tones only — solo shares Riff/Chorus", () => {
     const src = featured("featured-teen-spirit");
-    assert.equal(src.snapshots[0]?.name, "Clean");
-    assert.equal(src.snapshots.map((s) => s.name).join("/"), "Clean/Verse/Hello");
+    assert.equal(src.snapshots[0]?.name, "Verse");
+    assert.equal(src.snapshots.map((s) => s.name).join("/"), "Verse/Pre-Chorus/Riff/Chorus");
     assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-1"), true);
     assert.equal(src.blocks.some((b) => b.modelId === "cali-iv-rhythm-2"), false);
     assert.equal(src.footswitches[0]?.action, "snapshot");
     const stomp = withStompModel(src, "hx-stomp");
     assert.equal(stomp.snapshots.length, 3);
-    assert.equal(stomp.snapshots[0]?.name, "Clean");
+    assert.equal(stomp.snapshots[0]?.name, "Verse");
     const xl = withStompModel(src, "hx-stomp-xl");
     assert.equal(xl.snapshots.length, 3);
     assert.equal(xl.snapshots.some((s) => /solo/i.test(s.name)), false);
@@ -343,7 +343,7 @@ describe("visual FS map", () => {
     // Snapshots sit on their switches by order; real snapshots carry no @fs_index/@fs_label.
     const snap0 = tone.snapshot0 as Record<string, unknown>;
     const snap3 = tone.snapshot3 as Record<string, unknown>;
-    assert.equal(snap0["@name"], "CLEAN");
+    assert.equal(snap0["@name"], "VERSE");
     assert.equal(snap0["@fs_index"], undefined);
     assert.ok(snap3);
     assert.equal(tone.snapshot4, undefined);
@@ -899,6 +899,7 @@ describe("audible demos", () => {
     assert.equal(dsp0[recto!]["@type"], 1);
     assert.equal(dsp0[cab!]["@type"], 4);
     assert.ok(Number(dsp0[graphic!]["750Hz"]) < -2, "Mesa V scoop");
+    assert.equal(dsp0[boost!].Bright, false, "Kinky Boost Bright switch stays off");
     const intro = tone.snapshot0 as { blocks: { dsp0: Record<string, boolean> } };
     const rhythm = tone.snapshot1 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };
     const lead = tone.snapshot2 as { "@valid": boolean; blocks: { dsp0: Record<string, boolean> } };

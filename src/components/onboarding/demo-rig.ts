@@ -3,8 +3,14 @@ import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { Preset } from "@/data/types";
 import { blockModel, sortedBlocks } from "@/lib/preset-utils";
 
-/** The demo the first-run screens show. Its three switches turn different pedals on, so tapping one shows the point. */
-export const WELCOME_DEMO_ID = "featured-teen-spirit";
+/**
+ * The demo the first-run screens show. Intro, Riff and Solo each light a different chain
+ * (amp only; Screamer, gate and scoop; boost and delay), so one tap shows the point.
+ */
+export const WELCOME_DEMO_ID = "featured-sandman";
+
+/** Whole-number knobs carry a setting, not a 0–10 position; a dial would misread them. */
+const STEPPED = new Set(["Note", "Mic", "Interval", "Mode", "Clipping"]);
 
 export type RigBlock = {
   id: string;
@@ -15,7 +21,7 @@ export type RigBlock = {
   on: boolean;
 };
 
-export type RigKnob = { block: string; name: string; value: number; changed: boolean };
+export type RigKnob = { block: string; short: string; name: string; value: number; changed: boolean };
 
 export function welcomeDemo(): Preset {
   return FEATURED.find((p) => p.id === WELCOME_DEMO_ID) ?? FEATURED[0];
@@ -54,12 +60,16 @@ export function rigKnobs(preset: Preset, snapshot: number, previous?: number): R
   for (const [blockId, params] of Object.entries(snap.paramOverrides)) {
     const block = preset.blocks.find((b) => b.id === blockId);
     if (!block || !snap.enabledBlocks.includes(blockId)) continue;
-    const name = blockModel(block)?.name ?? block.modelId;
+    const model = blockModel(block);
+    const name = model?.name ?? block.modelId;
+    const short = model ? (CATEGORY_MAP[model.category]?.short ?? "") : "";
     for (const [knob, value] of Object.entries(params)) {
+      if (STEPPED.has(knob)) continue;
       const before = prev ? (prev.paramOverrides?.[blockId]?.[knob] ?? block.params[knob]) : value;
       const wasOn = prev ? prev.enabledBlocks.includes(blockId) : true;
-      out.push({ block: name, name: knob, value, changed: Boolean(prev) && (!wasOn || before !== value) });
+      out.push({ block: name, short, name: knob, value, changed: Boolean(prev) && (!wasOn || before !== value) });
     }
   }
-  return out;
+  // What moved comes first, so a short list still shows the change.
+  return out.sort((a, b) => Number(b.changed) - Number(a.changed));
 }

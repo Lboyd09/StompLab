@@ -20,24 +20,13 @@ const GOOGLE_GENERATE = `https://generativelanguage.googleapis.com/v1beta/models
 const GENERATE_MS = 50000;
 const BUSY = "Research is busy. Try again in a minute.";
 export const SYSTEM =
-  "Session tech. One job: a Line 6 Helix-family preset that A/Bs against THIS record (brightness, dirt, mids, pick attack, room). JSON object only. No markdown. Never a generic genre patch. " +
-  "Do the research in thinking BEFORE any modelId. Fill originalGear with REAL product names first — 'tube amp' or 'distortion pedal' means you have not finished. " +
-  "Protocol (Guitar Chalk tone-language + Guitar World / session-credit method): " +
-  "1) album, year, studio, producer, which player — studio album beats a later live version. " +
-  "2) one-sentence tone fingerprint of the recorded guitar/bass (put it first in summary). " +
-  "3) guitar + pickups + selector + volume/tone + tuning as tracked. " +
-  "4) amp + channel + published Drive/Bass/Mid/Treble/Presence/Master — published numbers beat guesses. Unknown rock ≠ Dual Rectifier. Unknown Fender ≠ Deluxe. Twin Reverb is not a Deluxe. " +
-  "5) pedal order on THAT session, not a later tour board. Distortion ~noon unless a published number exists. " +
-  "6) cab + speakers + mic + distance; close and dry unless the record is roomy. " +
-  "7) technique in tips (pick, palm mute, guitar volume as a gain stage). " +
-  "8) arrangement by TONE not lyrics — walk the song section by section (intro, verse, chorus, bridge, solo, outro) and write down what the player's tone does in each: dirt on/off, pickup, guitar volume, delay/reverb amount, modulation. Sections that share a chain are one snapshot; a solo is its own snapshot only if the tone changes. One player's part, never two players mashed into one snapshot. Amp + cab stay ON in every snapshot. " +
-  "9) time effects from the tempo: name the delay as a note value (dotted eighth, quarter) when it follows the beat, or in ms for a slapback; say how wet the delay and reverb sit in the mix. " +
-  "10) THEN map each real piece to a catalog modelId, and copy published settings onto the matching knobs. " +
-  "Session credits beat a simplified 'use a Twin' guide. Tracking rig beats a later tour rig. Guitar Chalk is good for tone language; credits win on gear. " +
-  "Listener test: album in one ear, this preset in the other. " +
-  "If the opening is clean, snapshot 1 is clean (dirt OFF, Drive 1.2–2.4). If a clean head is a pedal platform, use the clean channel — the pedal is the dirty channel. " +
-  "Solos: kinky-boost switched on for the solo snapshot, not extra amp Drive and not only a Ch Vol nudge. Verse chorus/mod turns off for a dry anthem chorus unless the record left it on. " +
-  "Saturating echo (Echorec, tape) goes before the amp. Singing muffs (Big Muff: Sustain, Tone, Level only — no Mid knob) keep Tone near 4–5. Tight chug = TS tightener + moderate amp Drive, not a wall.";
+  "Session tech matching THIS record (brightness, dirt, mids, pick attack, room), never a generic genre patch. One JSON object, no markdown. " +
+  "Research in thinking BEFORE any modelId. Fill originalGear with REAL product names (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). " +
+  "Session credits beat a simplified guide; Guitar Chalk is good for tone language, credits win on gear. Tracking rig beats a later tour rig. Published knob numbers beat guesses. " +
+  "Protocol: 1) album, year, studio, producer, which player (studio album, not live). 2) one-sentence tone fingerprint. 3) guitar, pickup, selector, volume/tone, tuning as tracked. " +
+  "4) amp, channel, published settings. 5) pedal order on THAT session. 6) cab, speakers, mic; close and dry unless the record is roomy. 7) technique for tips (pick, palm mute, guitar volume). " +
+  "8) arrangement by TONE, not lyrics: what this player's tone does in each section (dirt, pickup, volume, delay/reverb, modulation). " +
+  "9) delay as a note value from the tempo, or ms for a slapback; how wet delay and reverb sit. 10) THEN map each piece to a catalog modelId and copy published settings onto its knobs.";
 export const CUSTOM_SYSTEM =
   "You are a session tech. Invent one original Line 6 Helix-family preset from a player's description. This is a custom sound, not a song replica. Do not copy a famous player's documented rig or a similar recorded song unless they named that song. Reply with a single JSON object. No markdown.";
 

@@ -20,8 +20,8 @@ function readReduced(): boolean {
   return document.documentElement.dataset.motion === "reduce" || Boolean(window.matchMedia?.("(prefers-reduced-motion: reduce)").matches);
 }
 
-function firstSentence(text: string): string {
-  const m = text.match(/^[^.!?]+[.!?]/);
+function lead(text: string): string {
+  const m = text.match(/^(?:[^.!?]+[.!?]\s*){1,2}/);
   return (m ? m[0] : text).trim();
 }
 
@@ -171,7 +171,7 @@ export function DemoReel({ preset, onTry }: { preset: Preset; onTry?: () => void
   const query = `${preset.song}`;
   const facts = useMemo(
     () =>
-      ["Guitar", "Amp", "Pedal"]
+      ["Pedal", "Amp", "Cab", "Guitar"]
         .map((role) => preset.originalGear.find((g) => g.role === role))
         .filter((g): g is NonNullable<typeof g> => Boolean(g))
         .slice(0, 3),
@@ -298,7 +298,7 @@ export function TryRig({ preset, active, onPick, tried }: { preset: Preset; acti
           <span className="font-medium" style={{ color: snap?.color }}>
             {snap?.name}:
           </span>{" "}
-          {snap ? firstSentence(snap.notes) : ""}
+          {snap ? lead(snap.notes) : ""}
         </p>
         <ul className="mt-3 grid grid-cols-3 gap-x-2 gap-y-2 sm:grid-cols-6">
           {knobs.map((k) => (
@@ -307,7 +307,8 @@ export function TryRig({ preset, active, onPick, tried }: { preset: Preset; acti
                 <Dial value={k.value} changed={k.changed} />
                 <span className={cn("absolute text-[11px] font-medium tabular-nums", k.changed ? "text-[#5ce1e6]" : "text-white")}>{k.value.toFixed(1)}</span>
               </span>
-              <span className="mt-0.5 w-full truncate text-[10px] text-white/55">{k.name}</span>
+              <span className="mt-0.5 w-full truncate text-[10px] text-white/70">{k.name}</span>
+              <span className="w-full truncate font-mono text-[9px] uppercase tracking-[0.12em] text-white/35">{k.short}</span>
             </li>
           ))}
         </ul>

@@ -38,17 +38,16 @@ export function libraryServesFeatured(isDemo: boolean, paid: boolean): boolean {
 }
 
 const LEAD_PART = [
-  "LEAD GUITARIST'S PART, THE WHOLE SONG. This record has more than one guitar part. Build the lead player's part: the player who plays the solo, the signature lines, and the hooks.",
-  "Research THAT player's guitar, pickup, amp and channel, and pedals on this session.",
-  "Snapshots follow that one player through the song: their intro, their verse, their chorus, their solo. Add a snapshot only where their tone changes. If they play rhythm under the vocal, that is their verse tone, on their rig.",
-  "Never the rhythm guitarist's chain. Never a blend of two players in one preset or one snapshot.",
-  "Example: Guns N' Roses is Slash's Les Paul and Marshall, not Izzy Stradlin's rig.",
+  "LEAD GUITARIST'S PART, THE WHOLE SONG. This record has more than one guitar part: build the player with the solo, the signature lines, and the hooks (Guns N' Roses is Slash's Les Paul and Marshall, not Izzy Stradlin's rig).",
+  "Research THAT player's guitar, pickup, amp, channel, and pedals on this session.",
+  "Snapshots are that player's tone changes in song order, within the unit's snapshot limit, and their solo always keeps one. Rhythm they play under the vocal is their verse tone, on their rig.",
+  "Never the rhythm guitarist's chain. Never two players blended in one preset or snapshot.",
 ].join(" ");
 
 const ONE_PART = [
   "Build the part of the guitarist who carries this song, through the whole song.",
-  "If the record has more than one electric guitar part (a rhythm bed under a lead line, a second player, ambient swells over chords), build the LEAD part: the one with the solo, the melodic lines, and the hooks. Never the rhythm-only part, never a blend of two players.",
-  "Snapshots are that one player's tone changes (clean vs dirty, the solo), not a second guitarist.",
+  "If the record has more than one electric guitar part (a rhythm bed under a lead line, a second player, ambient swells over chords), build the LEAD part: the solo, the melodic lines, the hooks. Never the rhythm-only part, never two players blended.",
+  "Snapshots are that one player's tone changes, within the unit's snapshot limit; the solo always keeps one.",
 ].join(" ");
 
 /**

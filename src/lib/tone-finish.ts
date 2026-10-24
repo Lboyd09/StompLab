@@ -1,6 +1,7 @@
 import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock, UserGear } from "@/data/types";
+import { blockNativeParams, liftSnapshotSwitches } from "./hx-params";
 import { applyPickupOffset } from "./pickups";
 import { newId } from "./preset-utils";
 import { fitSnapshotName } from "./snapshot-sanitize";
@@ -68,18 +69,26 @@ const TIME_SIDE = new Set<CategoryId>(["modulation", "delay", "reverb"]);
  */
 function frontOfAmp(blocks: StompBlock[]): number {
   const amp = blocks.findIndex((b) => isAmp(b.modelId));
-  if (amp >= 0) return amp;
+  if (amp >= 0) {
+    // A pre-amp echo (Echorec, SDD) keeps its repeats: the gate or boost goes ahead of it.
+    const echo = blocks.slice(0, amp).findIndex((b) => isDelay(b.modelId) || categoryOf(b.modelId) === "reverb");
+    return echo >= 0 ? echo : amp;
+  }
   const loop = blocks.findIndex((b) => b.modelId === "fx-loop" || TIME_SIDE.has(categoryOf(b.modelId) as CategoryId));
   return loop >= 0 ? loop : blocks.length;
 }
 
-function needsGate(blocks: StompBlock[], bass: boolean): boolean {
+function needsGate(blocks: StompBlock[], bass: boolean, snapshots: Snapshot[]): boolean {
   if (blocks.some((b) => b.modelId === "noise-gate" || b.modelId === "hard-gate" || b.modelId === "horizon-gate")) {
     return false;
   }
   const amp = blocks.find((b) => isAmp(b.modelId));
   const highGainAmp = amp && !CLEAN_CHANNEL.test(amp.modelId) && HIGH_GAIN_AMP.test(amp.modelId);
-  if (amp && ((amp.params.Drive ?? 0) >= 4.5 || highGainAmp)) return true;
+  // A clean base with a heavy chorus snapshot still needs the gate: the hottest Drive counts.
+  const drive = amp
+    ? Math.max(amp.params.Drive ?? 0, ...snapshots.map((s) => s.paramOverrides?.[amp.id]?.Drive ?? 0))
+    : 0;
+  if (amp && (drive >= 4.5 || highGainAmp)) return true;
   if (bass) return false;
   // A low-gain overdrive or Klon on a clean amp needs no gate; only a hot drive or fuzz does.
   return blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && driveGain(b) >= 6);
@@ -214,7 +223,7 @@ function shapeGenerated(preset: Preset): Preset {
     }
   }
 
-  if (needsGate(blocks, bass) && hasRoom(next, blocks) && MODEL_MAP["noise-gate"]) {
+  if (needsGate(blocks, bass, next.snapshots) && hasRoom(next, blocks) && MODEL_MAP["noise-gate"]) {
     const gate: StompBlock = {
       id: newId("blk"),
       modelId: "noise-gate",
@@ -242,7 +251,8 @@ function shapeGenerated(preset: Preset): Preset {
       enabled: false,
       path: "main",
       position: at,
-      params: { Drive: 1.2, Treble: 5.2, Output: 7 },
+      // Output 7 is the Boost switch on; Bright stays off (a Treble knob of 5+ would flip it on).
+      params: { Drive: 1.2, Output: 7, Bright: 0 },
     };
     blocks = [...blocks.slice(0, at), boost, ...blocks.slice(at)].map((b, i) => ({ ...b, position: i }));
   }
@@ -292,7 +302,10 @@ function shapeGenerated(preset: Preset): Preset {
     return { ...f, label: label.slice(0, 12) };
   });
 
-  const leveled = bass ? { blocks, snapshots } : levelMatch(blocks, snapshots, liftLeads);
+  // The Boost switch a solo turns on lives on the block (the file cannot switch it per snapshot),
+  // so levelMatch sees the boost the player will hear.
+  const switched = liftSnapshotSwitches({ blocks, snapshots });
+  const leveled = bass ? switched : levelMatch(switched.blocks, switched.snapshots, liftLeads);
   return { ...next, blocks: leveled.blocks, snapshots: leveled.snapshots, footswitches };
 }
 
@@ -319,6 +332,15 @@ const MAX_CHVOL = 8.5;
 /** Hand-built demos sit at Ch Vol 5.4–6.2; an amp the model left unset starts here. */
 const DEFAULT_CHVOL = 6;
 
+/**
+ * A Kinky Boost with its Boost switch off is barely a lift. Switches are written on the block
+ * (liftSnapshotSwitches), so the block's own value is what the file plays.
+ */
+function boostSwitchOn(block: StompBlock): boolean {
+  const native = blockNativeParams(block);
+  return typeof native.Boost === "boolean" ? native.Boost : true;
+}
+
 /** Gain staging part of the estimate (no Ch Vol): amp Drive, a drive pedal, the boost. */
 function gainOf(blocks: StompBlock[], snap: Snapshot): number {
   const amp = blocks.find((b) => isAmp(b.modelId));
@@ -326,7 +348,7 @@ function gainOf(blocks: StompBlock[], snap: Snapshot): number {
   const on = new Set(snap.enabledBlocks);
   const drive = Math.min(snap.paramOverrides?.[amp.id]?.Drive ?? amp.params.Drive ?? 5, 7);
   const dirt = blocks.some((b) => isDrive(b.modelId) && !BASS_DI.test(b.modelId) && on.has(b.id));
-  const boost = blocks.some((b) => BOOSTS.has(b.modelId) && on.has(b.id));
+  const boost = blocks.some((b) => BOOSTS.has(b.modelId) && on.has(b.id) && boostSwitchOn(b));
   return DB_PER_DRIVE * drive + (dirt ? DB_DIRT_ON : 0) + (boost ? DB_BOOST_ON : 0);
 }
 

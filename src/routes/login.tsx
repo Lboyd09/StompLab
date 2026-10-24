@@ -61,12 +61,12 @@ function LoginPage() {
   });
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [name, setName] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [agreed, setAgreed] = useState(false);
   const [resetSent, setResetSent] = useState(false);
   const [invite, setInvite] = useState("");
+  const [showInvite, setShowInvite] = useState(false);
   const [paidInvite, setPaidInvite] = useState(search.perk === "half");
   const next = parseNext(search.next);
   const checkoutId = parseCheckoutId(search.checkout_id);
@@ -80,7 +80,10 @@ function LoginPage() {
     }
     if (search.ref) captureReferralCode(search.ref);
     const existing = peekReferralCode();
-    if (existing) setInvite(existing);
+    if (existing) {
+      setInvite(existing);
+      setShowInvite(true);
+    }
     if (search.mode === "up" || search.ref || existing) setMode("up");
     if (search.mode === "reset") setMode("reset");
     const code = search.ref || existing;
@@ -206,7 +209,7 @@ function LoginPage() {
         const { error: err } = await authClient.signUp.email({
           email: trimmed,
           password,
-          name: name.trim() || trimmed.split("@")[0] || "Player",
+          name: trimmed.split("@")[0] || "Player",
         });
         if (err) {
           if (/already/i.test(err.message || "")) {
@@ -310,18 +313,6 @@ function LoginPage() {
           <p className="text-sm text-muted-foreground">Sign-in is disabled on this copy.</p>
         ) : (
           <form onSubmit={(e) => void onSubmit(e)} className="space-y-3">
-            {mode === "up" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="name">Name</Label>
-                <Input
-                  id="name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  autoComplete="name"
-                  placeholder="Your name"
-                />
-              </div>
-            ) : null}
             <div className="space-y-1.5">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -351,20 +342,28 @@ function LoginPage() {
               </div>
             ) : null}
             {mode === "up" ? (
-              <div className="space-y-1.5">
-                <Label htmlFor="invite">Invite code (optional)</Label>
-                <Input
-                  id="invite"
-                  value={invite}
-                  onChange={(e) => setInvite(e.target.value.toUpperCase())}
-                  autoComplete="off"
-                  placeholder="From a friend"
-                  maxLength={12}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Got a code from a friend? You both get 3 extra custom builds.
-                </p>
-              </div>
+              showInvite || invite || search.ref ? (
+                <div className="space-y-1.5">
+                  <Label htmlFor="invite">Invite code</Label>
+                  <Input
+                    id="invite"
+                    value={invite}
+                    onChange={(e) => setInvite(e.target.value.toUpperCase())}
+                    autoComplete="off"
+                    placeholder="From a friend"
+                    maxLength={12}
+                  />
+                  <p className="text-xs text-muted-foreground">You both get 3 extra custom builds.</p>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="flex min-h-11 items-center text-sm text-muted-foreground underline underline-offset-2 hover:text-foreground"
+                  onClick={() => setShowInvite(true)}
+                >
+                  Have an invite code?
+                </button>
+              )
             ) : null}
             {error ? <p className="text-sm text-destructive">{error}</p> : null}
             {resetSent ? (
@@ -428,13 +427,14 @@ function LoginPage() {
         ) : null}
         </div>
 
+        {error ? (
         <div className="space-y-2 rounded-xl border border-border bg-card p-4 text-sm">
           <p className="text-[11px] uppercase tracking-[0.16em] text-muted-foreground">Help</p>
           <details>
             <summary className="cursor-pointer font-medium">Sign-in isn't working</summary>
             <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
               <li>Use the email you typed when you created the account — not a nickname.</li>
-              <li>Existing passwords still work. New passwords need {MIN_PASSWORD_LENGTH}+ characters.</li>
+              <li>New passwords need {MIN_PASSWORD_LENGTH}+ characters.</li>
               <li>Refresh the page once and try again. A stuck session is the usual culprit.</li>
               <li>This is email + password only. There is no Google or X button.</li>
             </ul>
@@ -451,6 +451,7 @@ function LoginPage() {
             </ul>
           </details>
         </div>
+        ) : null}
 
         <p className="text-xs text-muted-foreground">
           {FREE_BUILD_LINE}{" "}

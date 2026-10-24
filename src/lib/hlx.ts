@@ -3,10 +3,10 @@ import { MODEL_MAP } from "@/data/catalog";
 import { helixIdFor, isHxStompModelId, UNEXPORTABLE_MODELS } from "@/data/helix-ids";
 import { hxModel, hxModelOnUnit, type HxUnitFamily } from "@/data/hx-catalog";
 import type { CategoryId, Preset, Snapshot, StompBlock, StompModelId } from "@/data/types";
-import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys, type NativeParams } from "./hx-params";
+import { blockNativeParams, legacyMicIndex, liftSnapshotSwitches, nativeFor, resolveParamKeys, type NativeParams } from "./hx-params";
 import { buildPgp } from "./pgp";
 import { unitSpec } from "@/components/stomp/hardware";
-import { deviceFor, sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { deviceFor, snapshotEnables, sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { sanitizeSnapshots } from "./snapshot-sanitize";
 import { applyRouting, removesAmp } from "./rig-routing";
 import { routeFor } from "@/data/playback";
@@ -90,8 +90,11 @@ export function userIrSlot(preset: Preset, irSlot: number | null | undefined): n
   if (typeof irSlot !== "number" || !Number.isInteger(irSlot)) return undefined;
   const device = exportProfile(preset.stompModel);
   if (!device.irSlots || !device.hasAmpCab || irSlot < 1 || irSlot > device.irSlots) return undefined;
+  // A guitar IR on a bass rig loses the low end: bass presets keep their bass cab.
+  if (preset.instrument === "bass") return undefined;
   const routed = applyRouting(preset);
-  return routed.blocks.some((b) => MODEL_MAP[b.modelId]?.category === "cab") ? irSlot : undefined;
+  const cab = routed.blocks.find((b) => MODEL_MAP[b.modelId]?.category === "cab");
+  return cab && MODEL_MAP[cab.modelId]?.instrument !== "bass" ? irSlot : undefined;
 }
 
 /** Stored setting, read only in the browser (export stays pure in tests and on the server). */
@@ -148,6 +151,14 @@ export function exportSlots(preset: Preset, opts?: { irSlot?: number | null }): 
     slots.push({ block: item.block, hid: item.hid });
   }
   const max = device.maxBlocks;
+  // The player's IR is its own block, so a full rig can run one over. Give up the noise gate
+  // first: the reverb or delay is part of the record's sound, the gate is not.
+  while (slots.length > max && irIndex !== undefined) {
+    const gate = slots.findIndex((s) => s.block.modelId === "noise-gate" || s.block.modelId === "hard-gate");
+    if (gate < 0) break;
+    dropped.push(slots[gate].block);
+    slots.splice(gate, 1);
+  }
   if (slots.length > max) {
     // Keep the amp+cab; drop from the end of the effects first.
     // Keep the amp and the player's IR; drop from the end of the effects first.
@@ -223,9 +234,7 @@ function loadedOverrides(preset: Preset, block: StompBlock): Record<string, numb
 }
 
 function loadedEnabled(preset: Preset, block: StompBlock): boolean {
-  const snap = preset.snapshots[0];
-  if (snap?.enabledBlocks?.length) return snap.enabledBlocks.includes(block.id);
-  return block.enabled;
+  return snapshotEnables(preset, preset.snapshots[0], block);
 }
 
 /**
@@ -300,10 +309,10 @@ function buildDsp(preset: Preset, slots: Slot[]) {
   return dsp;
 }
 
-function snapshotBlockStates(snap: Snapshot | undefined, slots: Slot[]): Record<string, boolean> {
+function snapshotBlockStates(preset: Preset, snap: Snapshot | undefined, slots: Slot[]): Record<string, boolean> {
   const states: Record<string, boolean> = {};
   slots.forEach((slot, i) => {
-    states[`block${i}`] = snap?.enabledBlocks?.length ? snap.enabledBlocks.includes(slot.block.id) : slot.block.enabled;
+    states[`block${i}`] = snapshotEnables(preset, snap, slot.block);
   });
   return states;
 }
@@ -472,7 +481,8 @@ function snapshotJson(
 export function buildHlx(preset: Preset, opts?: ExportOpts): HlxJson {
   const irSlot = userIrSlot(preset, opts?.irSlot);
   // The player's rig (SL-62): no amp/cab in front of a real amp, an FX Loop for 4-cable, no cab into a power amp.
-  preset = sanitizeSnapshots(applyRouting(preset));
+  // A boost switch a solo turns on is written on the block (switches are not snapshot knobs).
+  preset = liftSnapshotSwitches(sanitizeSnapshots(applyRouting(preset)));
   const device = exportProfile(preset.stompModel);
   const ext = exportExtension(preset.stompModel);
   if (!ext || !device.hlxDeviceId) {
@@ -517,7 +527,7 @@ export function buildHlx(preset: Preset, opts?: ExportOpts): HlxJson {
         true,
         snapshotLed(snap.color),
         tempo,
-        snapshotBlockStates(snap, slots),
+        snapshotBlockStates(preset, snap, slots),
         snapshotControllers(snap, slots, assigned),
       );
     } else {
@@ -527,7 +537,7 @@ export function buildHlx(preset: Preset, opts?: ExportOpts): HlxJson {
         false,
         0,
         tempo,
-        snapshotBlockStates(real[0], slots),
+        snapshotBlockStates(preset, real[0], slots),
         snapshotControllers(real[0], slots, assigned),
       );
     }

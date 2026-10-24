@@ -42,7 +42,9 @@ async function referrerEmail(referrerId: string, fallback: string | null): Promi
   }
 }
 
-async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boolean; monthlySubId: string }> {
+async function referrerPaidMonthlySub(
+  referrerId: string,
+): Promise<{ paid: boolean; monthlySubId: string; admin?: boolean }> {
   try {
     const sql = await getSql();
     const rows = await sql<{
@@ -82,6 +84,7 @@ async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boole
 
     return {
       paid: true,
+      admin: isAdminEmail(email),
       monthlySubId: resolveMonthlySubId({
         planInterval: row?.plan_interval,
         polarSubscriptionId: row?.polar_subscription_id,
@@ -97,7 +100,7 @@ async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boole
         const monthlySubId = resolveMonthlySubId({
           lookup: hit ? { id: hit.id, interval: hit.interval, status: hit.status } : null,
         });
-        return { paid: true, monthlySubId };
+        return { paid: true, monthlySubId, admin: true };
       }
     } catch {
       /* ignore */
@@ -110,8 +113,9 @@ async function referrerPaidMonthlySub(referrerId: string): Promise<{ paid: boole
 export async function referredUserGetsMonthOff(userId: string): Promise<boolean> {
   const row = await redemptionFor(userId);
   if (!row) return false;
-  const { paid } = await referrerPaidMonthlySub(row.referrer_user_id);
-  return paid;
+  // Half off only comes from a paying monthly account (or the admin inbox), never a yearly one.
+  const { paid, monthlySubId, admin } = await referrerPaidMonthlySub(row.referrer_user_id);
+  return paid && (Boolean(monthlySubId) || Boolean(admin));
 }
 
 /**
