@@ -80,13 +80,13 @@ describe("every snapshot's on/off reaches the file", () => {
 
   it("POD Go turns on the pedals a demo starts with bypassed", () => {
     const sandman = exported(unit("featured-sandman", "pod-go"));
-    const lead = snapIndex(sandman.prep, /lead/i);
-    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "kinky-boost")), true, "Sandman lead boost");
-    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "scream-808")), true, "Sandman lead screamer");
-    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "simple-delay")), true, "Sandman lead delay");
+    const lead = snapIndex(sandman.prep, /solo/i);
+    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "kinky-boost")), true, "Sandman solo boost");
+    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "scream-808")), true, "Sandman solo screamer");
+    assert.equal(onIn(sandman, lead, blockId(sandman.prep, "simple-delay")), true, "Sandman solo delay");
     assert.equal(onIn(sandman, 0, blockId(sandman.prep, "kinky-boost")), false, "Sandman intro stays clean");
     const teen = exported(unit("featured-teen-spirit", "pod-go"));
-    assert.equal(onIn(teen, snapIndex(teen.prep, /verse/i), blockId(teen.prep, "deez-one-vintage")), true, "Teen Spirit verse DS-1");
+    assert.equal(onIn(teen, snapIndex(teen.prep, /riff/i), blockId(teen.prep, "deez-one-vintage")), true, "Teen Spirit riff DS-1");
     const numb = exported(unit("featured-numb", "pod-go"));
     assert.equal(onIn(numb, snapIndex(numb.prep, /solo/i), blockId(numb.prep, "bighorn-fuzz")), true, "Numb solo Muff");
   });

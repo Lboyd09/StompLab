@@ -136,20 +136,6 @@ function slotsUsed(blocks: StompBlock[]): number {
   return n;
 }
 
-/**
- * The player's IR (Settings, browser only) replaces the stock cab as its own block, so the amp
- * and cab stop sharing a slot. The preset is cached and shared, so count it whenever the unit
- * takes IRs and there is a cab to replace (bass presets keep their cab).
- */
-function irSlotsUsed(preset: Preset, blocks: StompBlock[]): number {
-  const device = DEVICE_MAP[preset.stompModel];
-  if (!device?.irSlots || !device.hasAmpCab || preset.instrument === "bass") return 0;
-  const fusedCab = blocks.some(
-    (b, i) => categoryOf(b.modelId) === "cab" && i > 0 && isAmp(blocks[i - 1].modelId) && MODEL_MAP[b.modelId]?.instrument !== "bass",
-  );
-  return fusedCab ? 1 : 0;
-}
-
 function hasRoom(preset: Preset, blocks: StompBlock[]): boolean {
   if (preset.stompModel === "pod-go") {
     // POD Go: four free effect blocks beside its built-in wah, volume, amp, cab and EQ.
@@ -160,7 +146,7 @@ function hasRoom(preset: Preset, blocks: StompBlock[]): boolean {
     return free.length < 4;
   }
   const max = DEVICE_MAP[preset.stompModel]?.maxBlocks ?? 8;
-  return slotsUsed(blocks) + irSlotsUsed(preset, blocks) < max;
+  return slotsUsed(blocks) < max;
 }
 
 const GEAR_SWAP: { gear: RegExp; from: string; to: string }[] = [

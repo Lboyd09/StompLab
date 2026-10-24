@@ -151,6 +151,14 @@ export function exportSlots(preset: Preset, opts?: { irSlot?: number | null }): 
     slots.push({ block: item.block, hid: item.hid });
   }
   const max = device.maxBlocks;
+  // The player's IR is its own block, so a full rig can run one over. Give up the noise gate
+  // first: the reverb or delay is part of the record's sound, the gate is not.
+  while (slots.length > max && irIndex !== undefined) {
+    const gate = slots.findIndex((s) => s.block.modelId === "noise-gate" || s.block.modelId === "hard-gate");
+    if (gate < 0) break;
+    dropped.push(slots[gate].block);
+    slots.splice(gate, 1);
+  }
   if (slots.length > max) {
     // Keep the amp+cab; drop from the end of the effects first.
     // Keep the amp and the player's IR; drop from the end of the effects first.
