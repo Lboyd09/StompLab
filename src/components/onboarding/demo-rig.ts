@@ -23,6 +23,13 @@ export type RigBlock = {
 
 export type RigKnob = { block: string; short: string; name: string; value: number; changed: boolean };
 
+/** Category label for a tile, with the two that read wrong as their category (a boost is not a "Drive", a gate is not "Dyn"). */
+function tileLabel(name: string, category: string): string {
+  if (/boost/i.test(name)) return "Boost";
+  if (/gate/i.test(name)) return "Gate";
+  return CATEGORY_MAP[category as keyof typeof CATEGORY_MAP]?.short ?? "";
+}
+
 export function welcomeDemo(): Preset {
   return FEATURED.find((p) => p.id === WELCOME_DEMO_ID) ?? FEATURED[0];
 }
@@ -44,7 +51,7 @@ export function rigBlocks(preset: Preset, snapshot: number): RigBlock[] {
       id: b.id,
       name: m?.name ?? b.modelId,
       basedOn: m?.basedOn ?? "",
-      short: cat?.short ?? "",
+      short: m ? tileLabel(m.name, m.category) : "",
       color: cat?.lcd ?? "#8b909a",
       on: snap ? snap.enabledBlocks.includes(b.id) : b.enabled,
     };
@@ -62,7 +69,7 @@ export function rigKnobs(preset: Preset, snapshot: number, previous?: number): R
     if (!block || !snap.enabledBlocks.includes(blockId)) continue;
     const model = blockModel(block);
     const name = model?.name ?? block.modelId;
-    const short = model ? (CATEGORY_MAP[model.category]?.short ?? "") : "";
+    const short = model ? tileLabel(model.name, model.category) : "";
     for (const [knob, value] of Object.entries(params)) {
       if (STEPPED.has(knob)) continue;
       const before = prev ? (prev.paramOverrides?.[blockId]?.[knob] ?? block.params[knob]) : value;

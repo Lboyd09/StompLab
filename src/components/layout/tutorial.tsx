@@ -205,13 +205,13 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
         <div key={current} className="sl-tour-step mx-auto grid min-h-full w-full max-w-7xl items-center gap-6 px-4 py-5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 md:px-10 md:py-8 lg:gap-20">
           {current === "what" ? (
             <>
-              <Copy kicker="For Line 6 HX Stomp, Helix and POD Go">
+              <Copy kicker="For HX Stomp, Helix and POD Go">
                 <h1 id="setup-title" tabIndex={-1} className="sl-hero-title text-[clamp(2.4rem,5.4vw,5rem)] outline-none">
                   <span className="block">Type a song.</span>
                   <span className="mt-1 block text-primary">Get that {instrument === "bass" ? "bass" : "guitar"} rig.</span>
                 </h1>
                 <span className="sl-hero-rule" aria-hidden />
-                <p className="max-w-lg text-base leading-relaxed text-muted-foreground md:text-lg">
+                <p className="max-w-lg text-[15px] leading-relaxed text-muted-foreground md:text-lg">
                   Stomp Lab researches the tone on the record and builds a preset you import into your Line 6: the pedals, the amp, the knobs, and a
                   switch for each part of the song.
                 </p>
@@ -240,9 +240,10 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                 <h1 id="setup-title" tabIndex={-1} className="sl-hero-title text-[clamp(2.1rem,4.4vw,4rem)] outline-none">
                   Tap a switch. The rig follows the song.
                 </h1>
-                <p className="max-w-lg text-base leading-relaxed text-muted-foreground md:text-lg">
-                  Each part of {demo.song} has its own footswitch. Tap {demo.snapshots.slice(0, 3).map((s) => s.name).join(", ").replace(/, ([^,]*)$/, " and $1")}: pedals turn on and
-                  off, and the amp knobs move.
+                <p className="max-w-lg text-[15px] leading-relaxed text-muted-foreground md:text-lg">
+                  <span className="md:hidden">Every part of the song is a switch. Tap them below.</span>
+                  <span className="hidden md:inline">Each part of {demo.song} has its own footswitch. Tap {demo.snapshots.slice(0, 3).map((s) => s.name).join(", ").replace(/, ([^,]*)$/, " and $1")}: pedals turn on and
+                  off, and the amp knobs move.</span>
                 </p>
                 <p className={cn("flex items-center gap-2 text-sm", triedAll ? "text-pop" : "text-muted-foreground")} aria-live="polite">
                   {triedAll ? <Check className="size-4" aria-hidden /> : null}
@@ -294,12 +295,12 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                           aria-checked={on}
                           onClick={() => setStompModel(d.id)}
                           className={cn(
-                            "sl-card relative flex min-h-[92px] flex-col items-start justify-between gap-2 rounded-xl border px-3 py-3 text-left text-sm font-medium",
+                            "sl-card relative flex min-h-14 items-center gap-2.5 rounded-xl border px-3 py-2.5 text-left text-sm font-medium sm:min-h-[92px] sm:flex-col sm:items-start sm:justify-between sm:gap-2 sm:py-3",
                             on ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground",
                           )}
                         >
-                          <UnitArt device={d} className={on ? "text-primary" : "text-foreground/70"} />
-                          <span className="text-foreground">{d.name}</span>
+                          <UnitArt device={d} className={cn("h-6 shrink-0 sm:h-8", on ? "text-primary" : "text-foreground/70")} />
+                          <span className="pr-4 leading-tight text-foreground">{d.name}</span>
                           {on ? <Check className="absolute right-2.5 top-2.5 size-4 text-primary" aria-hidden /> : null}
                         </button>
                       );
@@ -342,14 +343,6 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                   Open a free demo built for your rig. Download it, import it in {editor}, and play. Or type your own song.
                 </p>
                 <p className="text-sm text-muted-foreground">{FREE_BUILD_LINE}</p>
-                {phone ? (
-                  <div className="rounded-xl bg-secondary/60 p-4 text-sm">
-                    <p className="font-medium">Keep it on your home screen</p>
-                    <p className="mt-1 text-muted-foreground">
-                      {ios ? "In Safari, tap Share, then Add to Home Screen." : "Open the browser menu, then Add to Home screen."}
-                    </p>
-                  </div>
-                ) : null}
               </Copy>
               <div className="min-w-0 space-y-3">
                 <p className="sl-kicker">Free demos</p>
@@ -375,6 +368,14 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                     </button>
                   ))}
                 </div>
+                {phone ? (
+                  <div className="mt-2 rounded-xl bg-secondary/60 p-4 text-sm">
+                    <p className="font-medium">Keep it on your home screen</p>
+                    <p className="mt-1 text-muted-foreground">
+                      {ios ? "In Safari, tap Share, then Add to Home Screen." : "Open the browser menu, then Add to Home screen."}
+                    </p>
+                  </div>
+                ) : null}
               </div>
             </>
           )}

@@ -47,7 +47,7 @@ export function HardwarePanel({ children, className }: { children: ReactNode; cl
 function Chain({ blocks, shown = blocks.length }: { blocks: RigBlock[]; shown?: number }) {
   return (
     <ol className="relative grid gap-1.5 sm:gap-2.5" style={{ gridTemplateColumns: `repeat(${blocks.length}, minmax(0, 1fr))` }} aria-label="Signal chain">
-      <span aria-hidden className="absolute left-2 right-2 top-[26px] h-px bg-white/15 sm:top-[34px]" />
+      <span aria-hidden className={cn("absolute left-2 right-2 top-[26px] h-px bg-white/15 transition-opacity duration-500 sm:top-[34px]", shown ? "opacity-100" : "opacity-0")} />
       {blocks.map((b, i) => {
         const visible = i < shown;
         return (
@@ -62,7 +62,7 @@ function Chain({ blocks, shown = blocks.length }: { blocks: RigBlock[]; shown?: 
             <span
               className={cn(
                 "relative grid h-[52px] w-full max-w-[84px] place-items-center rounded-xl border transition-all duration-300 sm:h-[68px]",
-                b.on ? "border-transparent" : "border-white/10 bg-white/[0.03]",
+                b.on ? "border-transparent" : "border-white/10 bg-[#141821]",
               )}
               style={b.on ? { background: `color-mix(in oklab, ${b.color} 22%, #0e1117)`, boxShadow: `0 0 0 1px ${b.color}, 0 0 22px -6px ${b.color}` } : undefined}
             >
@@ -71,7 +71,7 @@ function Chain({ blocks, shown = blocks.length }: { blocks: RigBlock[]; shown?: 
                 style={{ background: b.on ? b.color : "rgba(255,255,255,0.15)" }}
                 aria-hidden
               />
-              <span className={cn("font-mono text-[10px] font-medium uppercase tracking-[0.14em] sm:text-xs", b.on ? "text-white" : "text-white/35")}>{b.short}</span>
+              <span className={cn("font-mono text-[9px] font-medium uppercase tracking-[0.04em] sm:text-xs sm:tracking-[0.14em]", b.on ? "text-white" : "text-white/35")}>{b.short}</span>
             </span>
             <span className={cn("mt-1.5 line-clamp-2 w-full text-[10px] leading-tight sm:text-xs", b.on ? "text-white/85" : "text-white/35")}>{b.name}</span>
             <span className="sr-only">{b.on ? "on" : "off"}</span>
