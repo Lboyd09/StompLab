@@ -90,7 +90,7 @@ export function resolveItem(item: SetlistItem, history: Preset[], unit: StompMod
   const stored = history.find((p) => p.id === item.presetId) ?? history.find((p) => historyKey(p) === item.key);
   if (stored) return withStompModel(stored, unit);
   if (featuredOriginal(item.presetId)) {
-    const named = resolveNamedPreset(item.presetId, unit, history);
+    const named = resolveNamedPreset(item.presetId, unit, history, { anyUnitEdits: true });
     if (named) return named;
   }
   return withStompModel(item.copy, unit);

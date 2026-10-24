@@ -325,13 +325,25 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   return { ...preset, id, stompModel: model, blocks, footswitches: fs, snapshots };
 }
 
-export function resolveNamedPreset(id: string, model: StompModelId, stored: Preset[]): Preset | null {
+/**
+ * The stored copy wins over the featured catalog: the exact id, else this rig saved for `model`.
+ * `anyUnitEdits` (setlist export) also takes the player's edited copy from another unit; a shared
+ * link leaves it off so a friend's link never shows your own edits.
+ */
+export function resolveNamedPreset(
+  id: string,
+  model: StompModelId,
+  stored: Preset[],
+  opts: { anyUnitEdits?: boolean } = {},
+): Preset | null {
   const featured = featuredOriginal(id);
   const fromStore =
     stored.find((p) => p.id === id) ??
-    (featured ? stored.find((p) => featuredBaseId(p.id) === featured.id) : undefined);
-  const edited = fromStore?.userEdited ? fromStore : undefined;
-  const source = edited ?? (featured && featured.source === "featured" ? featured : fromStore ?? featured);
+    (featured
+      ? (stored.find((p) => featuredBaseId(p.id) === featured.id && p.stompModel === model) ??
+        (opts.anyUnitEdits ? stored.find((p) => featuredBaseId(p.id) === featured.id && p.userEdited) : undefined))
+      : undefined);
+  const source = fromStore ?? featured;
   if (!source) return null;
   return withStompModel({ ...source, createdAt: fromStore?.createdAt ?? Date.now() }, model);
 }

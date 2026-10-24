@@ -18,8 +18,7 @@ import { CATEGORIES, STOMP_DEVICES } from "@/data/categories";
 import { searchModels } from "@/data/catalog";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { StompModelId } from "@/data/types";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { isDemoId, withStompModel } from "@/lib/preset-utils";
+import { isDemoId } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 import { cn } from "@/lib/utils";
 import { Input } from "../ui/input";
@@ -31,6 +30,8 @@ import { PageWash } from "./page-wash";
 import { Tutorial } from "./tutorial";
 import { UnitChip } from "./unit-chip";
 import { usePlan } from "@/lib/use-plan";
+import { useOpenFeatured } from "@/lib/use-open-featured";
+import { toast } from "sonner";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pullMySetlists, pushMyPresets, pushMySetlists } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
@@ -82,8 +83,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setInstrument = useAppStore((s) => s.setInstrument);
   const stompModel = useAppStore((s) => s.stompModel);
   const setStompModel = useAppStore((s) => s.setStompModel);
-  const gear = useAppStore((s) => s.gear);
-  const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const theme = useAppStore((s) => s.theme);
   const lcdBright = useAppStore((s) => s.lcdBright);
   const largeControls = useAppStore((s) => s.largeControls);
@@ -277,15 +277,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   function openSong(p: (typeof FEATURED)[number]) {
     const demo = isDemoId(p.id) || (DEMO_IDS as readonly string[]).includes(p.id);
-    if (!demo && !plan.paid) {
+    if (!demo && !plan.paid && !plan.admin) {
       closeSearch();
+      if (planPending) {
+        toast.message("Still loading your account. Try again in a second.");
+        return;
+      }
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = overlayUserGear(withStompModel({ ...p, createdAt: Date.now() }, stompModel), gear);
-    savePreset(preset);
+    const preset = openFeaturedPreset(p.id);
     closeSearch();
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   const results = open && q.trim().length >= 2;
@@ -324,7 +327,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   songHits={songHits}
                   modelHits={modelHits}
                   q={q}
-                  paid={plan.paid}
+                  paid={plan.paid || plan.admin || planPending}
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();
@@ -390,7 +393,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   songHits={songHits}
                   modelHits={modelHits}
                   q={q}
-                  paid={plan.paid}
+                  paid={plan.paid || plan.admin || planPending}
                   onSong={openSong}
                   onModel={(m) => {
                     closeSearch();

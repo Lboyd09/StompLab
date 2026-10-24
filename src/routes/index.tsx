@@ -18,6 +18,7 @@ import { isDemoId, withStompModel } from "@/lib/preset-utils";
 import { applyWahPreference } from "@/lib/wah";
 import { applyRouting } from "@/lib/rig-routing";
 import { buildSong } from "@/lib/song-build";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { PAID_BUILD_LINE } from "@/lib/copy";
@@ -40,6 +41,7 @@ function Home() {
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
   const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const search = Route.useSearch();
   const { plan, refresh, isPending: planPending } = usePlan();
   const [song, setSong] = useState(search.q ?? "");
@@ -75,20 +77,16 @@ function Home() {
   function openFeatured(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return;
-    if (!isDemoId(src.id) && !plan.paid) {
+    if (!isDemoId(src.id) && !subscribed) {
+      if (planPending) {
+        toast.message("Still loading your account. Try again in a second.");
+        return;
+      }
       void navigate({ to: "/upgrade" });
       return;
     }
-    const preset = applyRouting(
-      applyWahPreference(
-        overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
-        wahMode,
-        wahModelId,
-      ),
-      playbackTarget,
-    );
-    savePreset(preset);
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    const preset = openFeaturedPreset(id);
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   async function onResearch(e: React.FormEvent) {
