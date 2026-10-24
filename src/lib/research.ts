@@ -469,11 +469,11 @@ export const researchSongFn = createServerFn({ method: "POST" })
 
 Confirmed recording: "${confirmed.song}" by ${confirmed.artist}${confirmed.album ? `, album ${confirmed.album}` : ""}.
 ${bpm ? `Studio tempo is ${bpm} BPM. Set the preset tempo to ${bpm}.` : "Set tempo to the recording's real BPM. Do not use 120 unless the song is actually about 120."}
-${record.notes ? `\nResearch notes from a web search of this recording. Use these facts over memory when they are specific; mark gear the notes call likely as "Likely —"; ignore anything that is about a live rig or a different song:\n${record.notes}\n` : ""}
+${record.notes ? `\nResearch notes from a web search of this recording. Use these facts over memory when they are specific; ignore anything about a live rig or a different song:\n${record.notes}\n` : ""}
 ${songResearchInstructions(confirmed.song, confirmed.artist, data.instrument, wah, role)}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:
@@ -591,7 +591,7 @@ export const createCustomSoundFn = createServerFn({ method: "POST" })
       const prompt = `${customSoundInstructions(data.description, data.instrument, wah, parseGuitarRole(data.guitarRole), player)}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:
@@ -753,7 +753,7 @@ Current path: ${data.current}
 Note from the player: ${data.note}
 ${gearLine(data.userGear)}
 
-Catalog (id|basedOn):
+Catalog (id|basedOn|knobs):
 ${catalog}
 
 JSON schema:

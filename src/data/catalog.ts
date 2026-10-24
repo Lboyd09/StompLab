@@ -267,19 +267,23 @@ export function compactCatalogForPrompt(
     }
     if (deviceId) models = models.filter((m) => modelOnDevice(m, deviceId));
     if (!models.length) continue;
-    // Knobs every model in the category shares go in the header; each row lists only its own extras.
+    // Knobs every model in the category shares go in the header. The most common remaining set
+    // (when 3+ rows share it) is the header default, so those rows carry no list; others list their own.
     const lists = models.map((m) => promptKnobs(m.id));
     const shared = (lists[0] ?? []).filter((k) => lists.every((l) => l.includes(k)));
-    rows.push(shared.length ? `# ${cat.label} (every model: ${shared.join(",")})` : `# ${cat.label}`);
+    const owns = lists.map((l) => l.filter((k) => !shared.includes(k)).join(","));
+    const counts = new Map<string, number>();
+    for (const o of owns) if (o) counts.set(o, (counts.get(o) ?? 0) + 1);
+    const [common, n] = [...counts].sort((a, b) => b[1] - a[1])[0] ?? ["", 0];
+    // Only when no row is knob-free, or "no list" would read as the default.
+    const usual = n >= 3 && owns.every(Boolean) ? common : "";
+    const head = [shared.length ? `every model: ${shared.join(",")}` : "", usual ? `no list = ${usual}` : ""].filter(Boolean);
+    rows.push(head.length ? `# ${cat.label} (${head.join("; ")})` : `# ${cat.label}`);
     models.forEach((m, i) => {
-      const own = lists[i].filter((k) => !shared.includes(k));
-      const knobs = own.length ? `|${own.join(",")}` : "";
-      if (cat.id === "amp-guitar" || cat.id === "amp-bass" || cat.id === "distortion") {
-        const hint = m.description.replace(/\s+/g, " ").split(".")[0].slice(0, 56);
-        rows.push(`- ${m.id}|${m.basedOn}|${hint}${knobs}`);
-      } else {
-        rows.push(`- ${m.id}|${m.basedOn}${knobs}`);
-      }
+      const own = owns[i];
+      const knobs = own && own !== usual ? `|${own}` : "";
+      const based = m.basedOn === "Line 6 Original" ? "Line 6" : m.basedOn;
+      rows.push(`- ${m.id}|${based}${knobs}`);
     });
   }
   return rows.join("\n");

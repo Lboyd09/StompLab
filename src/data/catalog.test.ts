@@ -3,6 +3,8 @@ import { describe, it } from "node:test";
 import { compactCatalogForPrompt, ALL_MODELS, MODEL_MAP, catalogModels, devicesForModel, findEquivalents, lookupAliases, modelOnDevice, searchModels } from "./catalog.ts";
 import { DEVICE_MAP, STOMP_DEVICES } from "./categories.ts";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids.ts";
+import { SYSTEM } from "../lib/gemini.ts";
+import { STANDING_RESEARCH_RULES } from "../lib/research-lessons.ts";
 import { systemForDevice, songResearchInstructions, systemForCustomSound, customSoundInstructions, jsonSchemaHint } from "../lib/preset-schema.ts";
 
 describe("DS-1 catalog", () => {
@@ -84,6 +86,10 @@ describe("research prompt", () => {
     assert.match(prompt, /CLEAN OPENING/);
     assert.match(prompt, /SINGING FUZZ/);
     assert.match(prompt, /SATURATING ECHO/);
+    assert.match(prompt, /NEVER stupor-od \(that is the SD-1\)/);
+    assert.match(prompt, /EQ follows the record/);
+    assert.match(prompt, /SINGING FUZZ: a Big Muff has Sustain, Tone, Level only \(no Mid knob\); keep Tone near 4–5/);
+    assert.match(prompt, /TIGHT CHUG: TS tightener/);
   });
 
   it("asks for the tracked rig before any model id", () => {
@@ -92,13 +98,81 @@ describe("research prompt", () => {
     assert.match(brief, /TRACKED on the record/);
     assert.match(brief, /Listener test/);
     assert.match(brief, /album title, year, studio, producer/);
-    assert.match(brief, /session credits/);
-    assert.match(brief, /paramOverrides/);
-    assert.match(brief, /noise-gate/);
-    assert.match(brief, /dedicated EQ/);
-    assert.match(brief, /never a category/);
     assert.match(brief, /tone fingerprint/);
-    assert.match(brief, /If the recorded opening is clean/);
+    assert.match(brief, /unknown_song/);
+    // Tone rules live once, in the device system prompt (song and revise both send it).
+    const sys = systemForDevice("hx-stomp", "guitar");
+    assert.match(sys, /paramOverrides/);
+    assert.match(sys, /noise-gate/);
+    assert.match(sys, /dedicated EQ/);
+    assert.match(sys, /CLEAN OPENING: snapshot 1 is the recorded opening/);
+  });
+
+  it("says each tone rule once across the whole step-2 prompt", () => {
+    for (const [unit, instrument] of [["hx-stomp", "guitar"], ["hx-stomp", "bass"], ["hx-effects", "guitar"]] as const) {
+      const all = [
+        systemForDevice(unit, instrument),
+        songResearchInstructions("Black Hole Sun", "Soundgarden", instrument, undefined, "lead"),
+        jsonSchemaHint(),
+      ].join("\n");
+      for (const re of [/GATE:/g, /CLEAN OPENING/g, /SINGING FUZZ/g, /SATURATING ECHO/g, /TIGHT CHUG/g, /PEDAL PLATFORM/g, /NAMES \(/g, /Likely —/g, /BOSS CE-2/g, /NEVER stupor-od/g, /8 = dotted eighth/g]) {
+        assert.equal(all.match(re)?.length ?? 0, 1, `${unit} ${instrument} ${re}`);
+      }
+    }
+    assert.match(systemForDevice("hx-stomp", "bass"), /Bass overrides the guitar ranges above/);
+    const fx = systemForDevice("hx-effects", "guitar");
+    assert.equal(/lists the amp/.test(fx), false);
+    assert.match(fx, /Ignore every rule about amp Drive/);
+    assert.match(systemForDevice("hx-stomp", "guitar"), /lists the amp and cab in enabledModelIds/);
+  });
+
+  it("gates only hot rigs, as the finisher does", () => {
+    const sys = systemForDevice("hx-stomp", "guitar");
+    assert.match(sys, /GATE: noise-gate in front of the amp only for a high-gain amp \(or amp Drive ≥ 4\.5\) or a drive\/fuzz with its gain at 6\+/);
+    assert.match(sys, /low-gain overdrive or Klon on a clean amp gets no gate/);
+  });
+
+  it("gives the unit's own snapshot count, keeps the solo, and maps footswitches from it", () => {
+    const stomp = systemForDevice("hx-stomp", "guitar");
+    assert.match(stomp, /SNAPSHOTS \(at most 3\)/);
+    assert.match(stomp, /solo \/ lead part is always one of the 3/);
+    assert.match(stomp, /FS 1–3 = action "snapshot"/);
+    assert.match(stomp, /No spare switches/);
+    assert.equal(/GATE, then EQ/.test(stomp), false);
+    const xl = systemForDevice("hx-stomp-xl", "guitar");
+    assert.match(xl, /FS 1–4 = action "snapshot"/);
+    assert.match(xl, /Spare FS 5\+ = action "bypass" for GATE, then EQ, then WAH/);
+    assert.match(systemForDevice("helix-floor", "guitar"), /SNAPSHOTS \(at most 8\)/);
+    assert.equal(/kinky-boost on for that snapshot/.test(systemForDevice("hx-stomp", "bass")), false);
+  });
+
+  it("keeps the step-2 song prompt inside its size budget (the owner pays per input token)", () => {
+    // Oct 2026: 50.6k chars before the dedupe (catalog 26.5k, rules 24k). Raise only on purpose.
+    for (const unit of ["hx-stomp", "helix-floor"] as const) {
+      const catalog = compactCatalogForPrompt("guitar", unit);
+      const rules = [
+        SYSTEM,
+        systemForDevice(unit, "guitar"),
+        STANDING_RESEARCH_RULES,
+        songResearchInstructions("Sweet Child O' Mine", "Guns N' Roses", "guitar", undefined, "lead"),
+        jsonSchemaHint(),
+      ].join("\n");
+      assert.ok(catalog.length < 21500, `${unit} catalog ${catalog.length}`);
+      assert.ok(rules.length < 13000, `${unit} rules ${rules.length}`);
+    }
+  });
+
+  it("names only stand-in ids the model can see in the catalog", () => {
+    for (const unit of ["hx-stomp", "helix-floor"] as const) {
+      const sys = systemForDevice(unit, "guitar");
+      const stand = sys.slice(sys.indexOf("HX stand-ins"));
+      const catalog = compactCatalogForPrompt("guitar", unit) + "\n" + compactCatalogForPrompt("bass", unit);
+      const ids = [...new Set(stand.match(/→ [a-z0-9]+(?:-[a-z0-9]+)+/g) ?? [])].map((m) => m.slice(2));
+      assert.ok(ids.length > 20);
+      // echo-platter-legacy (Echorec) is the only Echo Platter; the catalog filter change that lists it lands separately.
+      const missing = ids.filter((id) => id !== "echo-platter-legacy" && !catalog.includes(`- ${id}|`));
+      assert.deepEqual(missing, [], unit);
+    }
   });
 
   it("custom sound prompt invents a rig instead of copying a record", () => {

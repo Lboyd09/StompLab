@@ -97,8 +97,7 @@ describe("research thinking", () => {
     assert.match(src, /Fill originalGear with REAL product/);
     assert.match(src, /arrangement by TONE/);
     assert.match(src, /tone fingerprint/);
-    assert.match(src, /If the opening is clean, snapshot 1 is clean/);
-    assert.match(src, /Singing muffs \(Big Muff: Sustain, Tone, Level only — no Mid knob\) keep Tone near 4–5/);
-    assert.match(src, /Tight chug = TS tightener/);
+    assert.match(src, /never a category/);
+    // Clean opening, singing fuzz and tight chug are said once, in systemForDevice (catalog.test.ts).
   });
 });

@@ -417,8 +417,8 @@ export function publicPreset(preset: Preset): Preset {
 }
 
 export function jsonSchemaHint() {
-  return `{"guitarist":"whose part this is, e.g. 'Slash (lead guitar)'","tuning":"E standard | Eb standard | D standard | Drop D | ...","tempo":96,"originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how and where it was used on the record, with any published settings"}],"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, which player, real rig, HX stand-ins. <=240 chars","name":"<=18 chars","blocks":[{"modelId":"catalog-id","enabled":true,"params":[{"name":"Drive","value":4.5},{"name":"Bass","value":5.0},{"name":"Mid","value":6.0},{"name":"Treble","value":5.5},{"name":"Ch Vol","value":5.8}]}],"snapshots":[{"name":"Intro","sections":"Intro, Verse 1","changes":"what this player's tone does here and why, from the record (a riff intro keeps its full drive; only a truly clean part drops it)","color":"#7d9a6a","enabledModelIds":["amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.5},{"name":"Ch Vol","value":5.8}]}]},{"name":"Chorus","sections":"Chorus 1, Chorus 2, Outro","changes":"drive pedal on, gate on","color":"#e24a3a","enabledModelIds":["gate-id","dirt-id","amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.2},{"name":"Ch Vol","value":5.8}]}]},{"name":"Solo","sections":"Guitar solo","changes":"boost on for the lift, delay on","color":"#f5d000","enabledModelIds":["gate-id","dirt-id","kinky-boost","amp-id","cab-id","delay-id","reverb-id"],"paramOverrides":[{"modelId":"kinky-boost","params":[{"name":"Boost","value":10},{"name":"Drive","value":1.2}]}]}],"footswitches":[{"index":1,"label":"INTRO","color":"#7d9a6a","action":"snapshot","snapshotName":"Intro"},{"index":2,"label":"CHORUS","color":"#e24a3a","action":"snapshot","snapshotName":"Chorus"},{"index":3,"label":"SOLO","color":"#f5d000","action":"snapshot","snapshotName":"Solo"},{"index":4,"label":"GATE","color":"#c5c9c2","action":"bypass","targetModelId":"noise-gate"}],"programming":["step"],"tips":["pickup, pick, guitar volume, and tuning so it plays like the record"]}
-params are arrays of {"name","value"}: knob names from the catalog line for that model, values JSON numbers 0-10 (whole-number knobs like Note and Mic carry their real setting). Set every knob that shapes the tone. Cab Mic is 0 (SM57). Every snapshot's enabledModelIds MUST include the amp and the cab — omitting them mutes the path. Only snapshots that change the tone. Do not copy the example modelIds, names, or numbers — pick from the catalog and the record for THIS song.`;
+  return `{"guitarist":"whose part this is, e.g. 'Slash (lead guitar)'","tuning":"E standard | Eb standard | D standard | Drop D | ...","tempo":96,"originalGear":[{"role":"Guitar|Amp|Pedal|Cab","name":"real product (not 'tube amp')","notes":"how and where it was used on the record, with any published settings"}],"fingerprint":"one sentence: brightness, dirt, mids, pick attack, room","summary":"album/year/studio/producer, which player, real rig, HX stand-ins. <=240 chars","name":"<=18 chars","blocks":[{"modelId":"catalog-id","enabled":true,"params":[{"name":"Drive","value":4.5},{"name":"Bass","value":5.0},{"name":"Mid","value":6.0},{"name":"Treble","value":5.5},{"name":"Ch Vol","value":5.8}]}],"snapshots":[{"name":"Intro","sections":"Intro, Verse 1","changes":"what this player's tone does here and why, from the record","color":"#7d9a6a","enabledModelIds":["amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.5},{"name":"Ch Vol","value":5.8}]}]},{"name":"Chorus","sections":"Chorus 1, Chorus 2, Outro","changes":"drive pedal on, gate on","color":"#e24a3a","enabledModelIds":["gate-id","dirt-id","amp-id","cab-id","reverb-id"],"paramOverrides":[{"modelId":"amp-id","params":[{"name":"Drive","value":4.2},{"name":"Ch Vol","value":5.8}]}]},{"name":"Solo","sections":"Guitar solo","changes":"boost on for the lift, delay on","color":"#f5d000","enabledModelIds":["gate-id","dirt-id","kinky-boost","amp-id","cab-id","delay-id","reverb-id"],"paramOverrides":[{"modelId":"kinky-boost","params":[{"name":"Boost","value":10},{"name":"Drive","value":1.2}]}]}],"footswitches":[{"index":1,"label":"INTRO","color":"#7d9a6a","action":"snapshot","snapshotName":"Intro"},{"index":2,"label":"CHORUS","color":"#e24a3a","action":"snapshot","snapshotName":"Chorus"},{"index":3,"label":"SOLO","color":"#f5d000","action":"snapshot","snapshotName":"Solo"}],"programming":["step"],"tips":["pickup, pick, guitar volume, and tuning so it plays like the record"]}
+params are arrays of {"name","value"} with JSON numbers. Do not copy the example modelIds, names, or numbers — pick from the catalog and the record for THIS song.`;
 }
 
 export function jsonSchemaHintCustom() {
@@ -427,59 +427,69 @@ params are arrays of {"name","value"}: knob names from the catalog line for that
 }
 
 const STAND_INS = `HX stand-ins (use these ids, never invent):
-- BOSS DS-1 → deez-one-vintage (MIJ) or deez-one-mod (Keeley). NEVER stupor-od (that is the SD-1).
-- BOSS SD-1 → stupor-od.
-- Ibanez TS-9/TS808 tightener (Drive 1–2.5, Level 7–8) → scream-808.
-- EHX Small Clone / BOSS CE-1 → 70s-chorus. BOSS CE-2 → chorus.
-- ProCo RAT → vermin-dist. Klon → minotaur. Big Muff → bighorn-fuzz or triangle-fuzz.
-- Marshall Shredmaster → kwb. Silver Jubilee 2555 → placater-dirty.
-- Mesa Dual Rectifier → cali-rectifire. Mesa Studio Pre / Mark clean rhythm used as a pedal platform → cali-iv-rhythm-1. Mark IV crunch → cali-iv-rhythm-2. Mark IV lead → cali-iv-lead.
-- Fender Twin Reverb → us-double-nrm (NOT us-deluxe-nrm — Deluxe is a different amp).
-- Fender Deluxe Reverb → us-deluxe-nrm.
-- Marshall JCM-800 → brit-2203 or brit-2204. Plexi → brit-plexi-brt. Hiwatt DR-103 → whowatt-100.
+- BOSS DS-1 → deez-one-vintage (MIJ) or deez-one-mod (Keeley). NEVER stupor-od (that is the SD-1). BOSS SD-1 → stupor-od.
+- Ibanez TS808/TS-9 → scream-808. ProCo RAT → vermin-dist. Klon → minotaur. Big Muff → bighorn-fuzz or triangle-fuzz. Marshall Shredmaster → kwb.
+- BOSS CE-2 → chorus. BOSS CE-1 / EHX Small Clone → 70s-chorus.
+- Mesa Dual Rectifier → cali-rectifire. Mesa Studio Pre / Mark clean rhythm as a pedal platform → cali-iv-rhythm-1. Mark IV crunch → cali-iv-rhythm-2, lead → cali-iv-lead.
+- Fender Twin Reverb → us-double-nrm (NOT us-deluxe-nrm — Deluxe is a different amp). Fender Deluxe Reverb → us-deluxe-nrm. Fender Eighty-Five / solid-state clean platform → us-deluxe-nrm.
+- Marshall JCM-800 → brit-2203 or brit-2204. Plexi → brit-plexi-brt. Silver Jubilee 2555 → placater-dirty. Hiwatt DR-103 → whowatt-100. Diezel VH4 → das-benzin-lead (lead) or das-benzin-mega (tight rhythm).
 - Korg SDD-3000 → vintage-digital. Memory Man → elephant-man. Space Echo / RE-201 → cosmos-echo. Binson Echorec → echo-platter-legacy. EP-3 → transistor-tape.
 - Cry Baby → teardrop-310. Vox V846 → uk-wah-846. Mu-Tron III → mutant-filter. Whammy → pitch-wham.
-- Mesa 5-band graphic → cali-q-graphic. Marshall 1960 G12T-75 → 4x12-1960-t75. Mesa V30 4x12 → 4x12-cali-v30.
-- Diezel VH4 → das-benzin-lead (lead) or das-benzin-mega (tight rhythm). SansAmp bass → zeroamp-bass-di.
-- Fender Eighty-Five / other solid-state clean platforms → us-deluxe-nrm (NOT jazz-rivet — that choruses the whole patch).
-Only catalog modelId values. Prefer HX over Legacy.`;
+- Mesa 5-band graphic → cali-q-graphic. Marshall 1960 G12T-75 → 4x12-1960-t75. Mesa V30 4x12 → 4x12-cali-v30. SansAmp bass → zeroamp-bass-di.
+Only catalog modelId values.`;
 
-const KNOB_RULES = `KNOBS: use the knob names listed for each model (the list is the real HX Edit control set). Values read like HX Edit's screen, 0–10, 5 = noon.
-- dB knobs (an effect's Level, comp Gain, EQ bands): 5 = 0 dB, 10 = the block's max boost.
-- Low Cut ≈ 20 + 30 × value Hz: 2 ≈ 80 Hz on a guitar cab, 0.7 ≈ 40 Hz on a bass cab. High Cut ≈ 1.5 + 1.86 × value kHz (5.5 ≈ 11.7 kHz).
-- Delay Time = value × 100 ms (slapback 0.8–1.4, 1/4 note at 120 BPM = 5).
-- Whole-number knobs take the real setting, not 0–10: Interval in semitones (-12 = octave down, 7 = fifth up), Mic is the mic number (0 = 57 Dynamic), Mode / Clipping / Voice count from 0.
-- On/off knobs (Boost, Bright, Peak Type): 10 = on, 0 = off.
-- Set every knob that shapes this tone. A knob you leave out keeps Line 6's factory default.`;
+const KNOB_RULES = `KNOBS: use the knob names listed for each model (the real HX Edit controls). Values are 0–10 like HX Edit's screen, 5 = noon. Set every knob that shapes this tone; one left out keeps Line 6's factory default.
+- dB knobs (effect Level, comp Gain, EQ bands): 5 = 0 dB.
+- Low Cut ≈ 20 + 30 × value Hz (2 ≈ 80 Hz guitar, 0.7 ≈ 40 Hz bass). High Cut ≈ 1.5 + 1.86 × value kHz.
+- Whole-number knobs carry the real setting: Interval in semitones, Mic number (0 = 57 Dynamic), Mode / Clipping / Voice count from 0.
+- On/off knobs (Boost, Bright, Peak Type): 10 = on, 0 = off.`;
 
-const DELAY_RULES = `DELAY: every delay whose repeats follow the beat (almost every rock, pop and worship delay) uses Note, never Time. To follow the song tempo set Note: 8 = dotted eighth (U2 / worship), 6 = quarter, 9 = eighth, 5 = dotted quarter, 12 = sixteenth, 7 = quarter triplet. Work it out from the BPM: a quarter note is 60000 / BPM ms, a dotted eighth is 0.75 of that; if the record's repeat lands on one of those, use the Note. For a slapback or a time that does not follow the beat, leave Note out and set Time (value × 100 ms). Lead and solo delay Mix ≤ 2.5 and Feedback ≤ 3.5.`;
+const DELAY_RULES = `DELAY: a delay whose repeats follow the beat (almost every rock, pop and worship delay) uses Note, never Time: 8 = dotted eighth, 6 = quarter, 9 = eighth, 5 = dotted quarter, 12 = sixteenth, 7 = quarter triplet (a quarter is 60000 / BPM ms, a dotted eighth 0.75 of that). A slapback or free-running delay leaves Note out and sets Time (value × 100 ms; slapback 0.8–1.4).`;
 
 /**
  * Where the hand-built demos (src/data/featured.ts) sit. They A/B well on
  * hardware, so generated presets are calibrated to the same ranges.
  */
-const REFERENCE_LEVELS = `REFERENCE SETTINGS (from hand-built presets that A/B well on hardware — stay in these ranges unless the record or a published setting says otherwise):
-- Amp: Ch Vol 5.4–6.2, Master 4.6–5.6, Presence 3–5.5, Sag 2.8–4.2. Clean sound on any amp: Drive 0.6–1.8. Edge of breakup / chime (AC30, Deluxe, Plexi low): 2.5–3.5. Classic rock crunch (Plexi, JCM800 with no pedal): 4.5–6. Rectifier-style riff with no pedal: about 5–5.5. A high-gain amp behind a Tube Screamer: 3.4–3.8 — the pedal tightens, the amp is not dimed.
-- Tube Screamer as a tightener: Gain 1–2.5, Level 7–8, Tone 5–5.5. A distortion pedal that is the dirt into a clean amp: about noon, or the published setting.
-- Solo lift: kinky-boost with Boost 10 (its switch on) and Drive 1–1.5 — roughly +3 dB. Keep the amp's Drive and Ch Vol where the riff had them (Ch Vol +0.5 at most).
-- Delay: lead Mix 1.8–2.5, Feedback 2.5–3.5. Slapback Mix 1.5–2.5, one repeat. An ambient part whose dotted eighth is part of the sound (U2 / worship): Mix 3–4, Feedback 3–4.5 on those snapshots.
-- Reverb: a dry studio rock guitar is Room/Plate Mix 1–2, Decay 1.5–3.5. A ballad or ambient record can sit at Mix 2.5–4. Never a big hall at Mix 5+ unless the record is a wash.
+const REFERENCE_LEVELS = `REFERENCE SETTINGS (hand-built presets that A/B well on hardware; stay in range unless the record or a published setting says otherwise):
+- Amp: Ch Vol 5.4–6.2, Master 4.6–5.6, Presence 3–5.5, Sag 2.8–4.2. Every amp sets its gain knob (Drive, Gain, or its own name) in base params. Drive: clean 0.6–2.4; edge of breakup 2.5–3.5; classic crunch 4.5–6; high-gain riff with no pedal 5–6.5; metal ≤ 7; high-gain amp behind a TS 3.4–4.5 (the pedal tightens). Never dime Drive unless the session documented it. Mid-gain records stay mid-gain; guitar volume is a gain stage.
+- Drive pedals: about noon (4.5–6.5) unless a published number exists. TS as a tightener: Gain 1–2.5, Level 7–8, Tone 5–5.5.
+- Solo lift: kinky-boost, Boost 10 (its switch on), Drive 1–1.5 (about +3 dB). Amp Drive and Ch Vol stay where the riff had them.
+- Delay: lead Mix 1.8–2.5, Feedback 2.5–3.5. Slapback Mix 1.5–2.5, one repeat. Ambient dotted eighth that is the sound (U2 / worship): Mix 3–4, Feedback 3–4.5.
+- Reverb: dry studio rock Room/Plate Mix 1–2, Decay 1.5–3.5; ballad / ambient Mix 2.5–4; Mix 5+ only for a wash.
 - Cab: Mic 0 (57), Distance 1.6–3, Low Cut 2–2.8, High Cut 7–8, Early Refl 2.2–4.2.
-- Gate: Threshold 1.6–1.8, Decay 2.4.`;
+- Gate: Threshold 1.6–1.8 (above 2.2 mutes), Decay 2.4, Level 5.`;
 
 /** What the model may put in the amp/cab spot, from the unit and the player's rig (SL-62). */
 function ampRuleFor(hasAmpCab: boolean, playbackTarget: PlaybackTarget): string {
   if (!hasAmpCab) {
-    return "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+    return "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks. Ignore every rule about amp Drive, Ch Vol, or keeping amp and cab on.";
   }
   const route = routeFor(playbackTarget);
   if (route === "pedals" || route === "4cm") {
-    return "The player's real guitar amp is the amp and the speaker. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks — pedals only. Ignore any rule below about amp Drive, Ch Vol, or keeping amp and cab on: there is no amp block. Put the record's gain in drive pedals and the noise-gate after them.";
+    return "The player's real guitar amp is the amp and the speaker. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks — pedals only. Ignore every rule about amp Drive, Ch Vol, or keeping amp and cab on: there is no amp block. Put the record's gain in drive pedals and the noise-gate after them.";
   }
   if (route === "no-cab") {
-    return "One amp, and NO cab, mic, or ir block: the speaker is real. Snapshot Drive/Ch Vol instead of a second amp. Ignore any rule below about the cab.";
+    return "One amp, and NO cab, mic, or ir block: the speaker is real. Snapshot Drive/Ch Vol instead of a second amp. Ignore every rule about the cab.";
   }
   return "One amp. Bypassed amps still cost DSP. Snapshot Drive/Ch Vol instead of a second amp.";
+}
+
+function exportRuleFor(d: (typeof DEVICE_MAP)[StompModelId]): string {
+  return d.exportFormat === "hlx"
+    ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). No invented models, dual-path splits, IRs, or features this unit lacks.`
+    : d.exportFormat === "pgp"
+      ? `Export is a .pgp for POD Go Edit. POD Go has a built-in wah, volume pedal, amp, cab and EQ plus FOUR free effect blocks — at most 4 effects besides those. Only the models listed.`
+      : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
+}
+
+/** Snapshot switches, then the spares, from the unit's real switch and snapshot counts. */
+function footswitchRule(snapCount: number, footswitches: number): string {
+  const n = Math.min(snapCount, footswitches);
+  const spare =
+    footswitches > n
+      ? ` Spare FS ${n + 1}+ = action "bypass" for GATE, then EQ, then WAH, only if those blocks exist.`
+      : " No spare switches: any spare-FS instruction (wah, gate, EQ) does not apply here; those blocks switch per snapshot.";
+  return `FOOTSWITCHES: FS 1–${n} = action "snapshot", in snapshot order.${spare} No TAP on a snapshot switch.`;
 }
 
 export function systemForDevice(
@@ -490,59 +500,53 @@ export function systemForDevice(
   const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
   const play = PLAYBACK_MAP[playbackTarget];
   const ampRule = ampRuleFor(d.hasAmpCab, playbackTarget);
-  const exportRule =
-    d.exportFormat === "hlx"
-      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
-      : d.exportFormat === "pgp"
-        ? `Export is a .pgp for POD Go Edit. POD Go has a built-in wah, volume pedal, amp, cab and EQ plus FOUR free effect blocks — at most 4 effects besides those. Only the models listed (POD Go does not have every Helix model).`
-        : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
   const snapCount = d.snapshots;
-  return `Session tech. Program a Line 6 ${d.name} preset that A/Bs against the RECORD — not a genre template, not a YouTube cover. JSON only.
-Max ${d.maxBlocks} blocks (an amp and its cab count as one), ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
-${exportRule}
+  const route = routeFor(playbackTarget);
+  const ampInChain = d.hasAmpCab && route !== "pedals" && route !== "4cm";
+  const keepOn = !ampInChain ? "" : route === "no-cab" ? "lists the amp in enabledModelIds (omitting it mutes it), and " : "lists the amp and cab in enabledModelIds (omitting them mutes it), and ";
+  const solo =
+    instrument === "bass"
+      ? "- Bass overrides the guitar ranges above: no kinky-boost, bass cab Low Cut 0.5–1 so the low E stays."
+      : `- The solo / lead part is always one of the ${snapCount}; if the song has more tone changes, merge the closest non-solo sections. A solo is almost never the rhythm tone: kinky-boost on for that snapshot only (not extra amp Drive, not only a Ch Vol nudge), plus its own delay/scoop changes in paramOverrides so they export.`;
+  return `Program a Line 6 ${d.name} preset that A/Bs against the RECORD, the way a session tech would. Not a genre template, not a cover.
+Max ${d.maxBlocks} blocks (an amp and its cab count as one), ${snapCount} snapshots, ${d.footswitches} footswitches. Instrument: ${instrument}.
+${exportRuleFor(d)}
 
 ${KNOB_RULES}
 ${DELAY_RULES}
 
 ${REFERENCE_LEVELS}
 
-This unit:
-- Work like a session tech: guitar/pickups, amp + channel, pedal order, cab + mic, then playing technique. Map each real piece to a catalog id only after originalGear is filled.
-- Every block must be on that recording. No spare chorus/hall/comp.
-- AMP GAIN: every amp block sets its gain knob (Drive, Gain, or that amp's own gain name from the menu) in the base params. Never leave it to the factory default.
-- GATE: when the chain has a high-gain amp or a high-gain drive or fuzz, add noise-gate in front of the amp. A low-gain overdrive or Klon-style pedal on a clean amp (worship, country, blues) gets no gate. Threshold 1.6–2.0, Decay about 2.4, Level 5. Bypass it on every clean snapshot. Never add hard-gate. A hot threshold mutes the snapshot.
-- EQ: include simple-eq, parametric, or cali-q-graphic ONLY if the session used a dedicated EQ (Mesa graphic, rack EQ, documented scoop/boost beyond amp knobs). Snapshots toggle it. Spare FS = action "bypass" labeled EQ. Do not add a spare EQ "just in case."
-- Cab Mic = 0 (57 Dynamic) unless the session used something else — a number, never a string.
-- EQ follows the record. Mid-forward (grunge, classic rock) stays mid-forward. Scooped modern stays scooped. Dark Plexi stays dark. Do not "fix" or hype it.
-- GAIN: never dime Drive unless the session documented it. Distortion pedals ~noon (4.5–6.5) unless a published number exists (use that). TS tightener Drive 1–2.5 / Level 7–8. Amp Drive 1.2–2.4 clean intro, 3–4.5 crunch, 5–6.5 high-gain rhythm. Metal 5–7, not 10. Tight chug = TS + moderate amp Drive (3–4.5), not a wall. If the record is mid-gain, stay mid-gain. Guitar volume is a gain stage — verses often roll the guitar down instead of a second amp.
-- CLEAN OPENING: snapshot 1 matches the recorded intro. Dirt off + Drive ≤ 2.4 when the intro is clean.
-- SOLOS: kinky-boost enabled only on the solo snapshot (Boost 10 = its +boost switch on, Drive 1–2). Do not only nudge Ch Vol. Do not add Drive to "make a solo."
-- NAMES: name each snapshot for the song section it covers (Intro, Verse, Chorus, Bridge, Solo, Outro). Put "Clean" in the name only when the record's part is actually clean, with no amp breakup ("Clean Verse"). Many rock intros are the main riff at full drive (Sweet Child O' Mine, Back in Black): name those "Intro" and keep the drive. Use "Solo" or "Lead" only on the solo / lead-break snapshot, never as a prefix on every snapshot. Snapshot and footswitch labels are 12 characters. Use short whole words (Intro, Verse, Chorus, Bridge, Solo, Outro, Ambient, Swell) or abbreviations (Chors, Crnch, Brdg). Never cut a word in half ("Clean Ambien" is wrong; "Ambient" or "Cln Ambient" is right).
-- GEAR: BOSS CE-2 is chorus. BOSS CE-1 and EHX Small Clone are 70s-chorus. BOSS DS-1 is deez-one-vintage, never stupor-od. If a piece is not from a session credit, interview, or published rig, prefix its originalGear notes with "Likely —".
-- VERSE MOD: chorus/vibe that is the verse identity turns OFF for the dry anthem chorus unless the record left it on.
-- SATURATING ECHO: Echorec / tape / Memory Man tracked in front of dirt stays BEFORE the amp. Digital dotted-8th often after.
-- SINGING FUZZ: a Big Muff has no Mid knob — keep its Tone near 4–5 for a vocal lead and add a mid lift with an EQ only if the record has one. Do not stack a TS unless the session did.
-- Unknown rock song ≠ Dual Rectifier. Unknown Fender song ≠ Deluxe. Pick the closest documented amp from that album/era.
+CHAIN:
+- Every block must be on the recording: guitar/pickups, amp + channel, pedal order, cab + mic. No spare chorus, hall, or comp. Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
+- Order: the documented order, else wah → comp → dirt → amp → cab → modulation → delay → reverb.
 - ${ampRule}
-- Skip Poly Pitch/Wham/12-string/Trinity Chorus unless the song needs them.
+- Unknown rock song ≠ Dual Rectifier. Unknown Fender song ≠ Deluxe. Pick the closest documented amp from that album/era.
+- PEDAL PLATFORM: a clean head/preamp used as a pedal platform (Mesa Studio Pre, Hiwatt, Twin) uses its CLEAN channel. The pedal is the dirt.
+- GATE: noise-gate in front of the amp only for a high-gain amp (or amp Drive ≥ 4.5) or a drive/fuzz with its gain at 6+. A low-gain overdrive or Klon on a clean amp gets no gate. Bypassed on clean snapshots. Never hard-gate.
+- EQ follows the record: mid-forward stays mid-forward, scooped stays scooped, dark stays dark. Add simple-eq, parametric or cali-q-graphic only if the session used a dedicated EQ (Mesa graphic, rack EQ); a session graphic sits between amp and cab. Snapshots toggle it.
+- SATURATING ECHO: Echorec / tape / Memory Man tracked in front of dirt goes BEFORE the amp. A digital dotted eighth usually goes after.
+- SINGING FUZZ: a Big Muff has Sustain, Tone, Level only (no Mid knob); keep Tone near 4–5 for a vocal lead. No TS stacked on a muff unless the session did.
+- TIGHT CHUG: TS tightener into a high-gain amp at moderate Drive, not a wall of Drive 7+.
 - ${play.prompt}
 
-${STAND_INS}
+SNAPSHOTS (at most ${snapCount}):
+- Walk the record first bar to last. A snapshot only where this player's TONE changes (blocks or knobs); sections that share a chain are one snapshot. Song order, first sound first.
+- CLEAN OPENING: snapshot 1 is the recorded opening. A clean intro is clean: dirt off, gate off, amp Drive ≤ 2.4. A riff intro keeps its full drive.
+${solo}
+- VERSE MOD: a chorus/vibe that is the verse identity turns OFF for a dry anthem chorus unless the record left it on.
+- Every snapshot ${keepOn}fills "sections" (song parts it covers, in order) and "changes" (what differs from the snapshot before, and why).
+- LEVELS: sections sit at the record's level. Ch Vol, Output, Level, Master and Boost stay ≥ 3.2 (0 recalls as mute); volume pedal never at the heel. A clean snapshot gets Ch Vol +0.5–1 over the dirty one.
+- NAMES (12 characters): the song section (Intro, Verse, Chorus, Bridge, Solo, Outro). "Clean" only when the part is truly clean; "Solo"/"Lead" only on the solo snapshot. Abbreviate whole words (Chors, Crnch, Brdg, Cln Ambient); never cut one in half.
+- ${footswitchRule(snapCount, d.footswitches)}
 
-Order: documented order if known. Else wah → comp → dirt → amp → cab → modulation → delay → reverb. Echorec / tape echo tracked in front of a cranked amp goes before the amp. Amp+cab as a pair.
+originalGear notes not backed by a session credit, interview, or published rig (or that the research notes call likely) start with "Likely —".
+programming = unit steps. tips = pick, pickup, guitar volume, and tuning so the player can match the record.
 
-Arrangement (mandatory — this is how you miss a song):
-- Walk the record from the first bar to the last and note what this player's tone does in each section. Only snapshots that change the TONE. If intro and verse share the same chain and knobs, they are ONE snapshot. Do not invent a snapshot for a lyric section that sounds the same.
-- Every snapshot fills "sections" (which parts of the song use it, in order) and "changes" (what is different from the snapshot before — block on/off, pickup, Drive, delay/reverb amount — and why, from the record).
-- Snapshots go in song order (first sound first). Drop a section when it is not a different sound.
-- A guitar solo, lead break, or signature trick MUST be its own snapshot when the tone actually changes (boost on, delay on, scoop off). A solo is almost never the rhythm tone. Put those in paramOverrides AND toggle the extra block.
-- Loudness: sections should sit at the same level as on the record. A clean snapshot gets Ch Vol about +0.5–1 over the dirty one (clean sounds quieter at the same knob). A solo is a small lift (the boost), not a jump.
-- Use up to ${snapCount} snapshots. FS 1..${Math.min(snapCount, d.footswitches)} = action "snapshot" in that order. No TAP on FS1–3.
-
-programming = unit steps. tips = pick, pickup, guitar volume, and tuning so the player can match the record.`;
+${STAND_INS}`;
 }
 
-/** Song-specific research brief. Catalog + schema are appended by the caller. */
+/** Song-specific research brief. Hardware and tone rules live in systemForDevice; catalog + schema are appended by the caller. */
 export function songResearchInstructions(
   song: string,
   artist: string | undefined,
@@ -554,27 +558,13 @@ export function songResearchInstructions(
   const billed = (artist ?? "").trim();
   const who = billed ? `${title} by ${billed}` : title;
   return `Song: ${who}
-Instrument: ${instrument} as it was TRACKED on the record: the original studio album version (not a cover, a live version, a remaster with new parts, or a re-recording).
-
-If you cannot identify a real commercially released recording matching this title with high confidence — gibberish, fake titles, or not a song — do NOT invent a preset. Reply only: {"error":"unknown_song","message":"not a real song"}.
+Instrument: ${instrument} as it was TRACKED on the record: the original studio album version (not a cover, live version, remaster with new parts, or re-recording).
+If you cannot identify a real commercially released recording matching this title with high confidence, do NOT invent a preset. Reply only: {"error":"unknown_song","message":"not a real song"}.
 
 ${guitarRolePrompt(parseGuitarRole(guitarRole), instrument, guitarArrangement(song, artist))}
-Fill guitarist (whose part), tuning, and originalGear with REAL products BEFORE any modelId — name the product (Fender Twin Reverb, BOSS DS-1), never a category ('tube amp'). Include the guitar and the pickup position used, and any published amp or pedal settings in the notes. Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
-If sources disagree: session credits / Guitar World "original gear" beat a simplified method (e.g. Twin Reverb vs the Mesa Studio Pre that was actually tracked). Prefer the tracking/studio rig over a later live rig.
-Listener test: if you A/B the album against this preset, brightness, dirt amount, midrange, and room must match.
-If the recorded opening is clean, snapshot 1 is clean and named with "Clean" — dirt pedals off, Drive 1.2–2.4, Master between 3.4 and 5.2, gate off. If the opening is dirty (a riff), snapshot 1 is that riff tone.
-If the session used a clean preamp as a pedal platform, pick the clean channel. The pedal is the dirty channel.
-Solos: enable kinky-boost (Boost 10, Drive 1–2) on the solo snapshot only. Do not only nudge Ch Vol. Do not add Drive.
-Delays: Note = 8 for a dotted eighth, 6 for a quarter, or leave Note out and set Time for a free-running delay. Lead delay Mix ≤ 2.5 and Feedback ≤ 3.5.
-Snapshot names are 12 characters and name the song section (Intro, Verse, Chorus, Solo). Abbreviate before you cut a word.
-Map the arrangement by TONE, not by lyric section: intro and verse that share a chain are one snapshot. A solo is its own snapshot when the tone changes, with paramOverrides so it actually exports.
-When the chain has an amp and cab, every snapshot's enabledModelIds MUST list them. Omitting them mutes the snapshot.
-Tuning: put the record's tuning in "tuning" (E standard, Eb standard, D standard, Drop D, ...). Do not add a pitch block for tuning.
-${instrument === "bass" ? "Bass: no noise-gate unless the record is high-gain; no kinky-boost; bass cab Low Cut 0.5–1 (35–50 Hz) so the low E stays." : ""}
-When the chain has a high-gain amp or a high-gain drive or fuzz, add noise-gate in front of the amp (Threshold 1.6–2, off on clean snapshots). A low-gain overdrive on a clean amp gets no gate. Never hard-gate. Add a dedicated EQ only if the session used one. Amp and cab stay on in every snapshot. Ch Vol, Output, Level, and Master stay at 3.2 or higher. Volume pedal never at 0.
-If gear is not from a session credit or published rig, prefix that originalGear note with "Likely —".
-BOSS CE-2 → chorus. CE-1 and Small Clone → 70s-chorus.
-${wahLine ? `\n${wahLine}` : ""}`;
+originalGear: include the guitar, pickup position, and any published amp/pedal settings. Summary starts with the tone fingerprint, then album title, year, studio, producer, and which player.
+Listener test: A/B the album against this preset — brightness, dirt, midrange, and room must match.
+Put the record's tuning in "tuning"; no pitch block for tuning.${wahLine ? `\n${wahLine}` : ""}`;
 }
 
 export function systemForCustomSound(
@@ -585,23 +575,17 @@ export function systemForCustomSound(
   const d = DEVICE_MAP[stompModel] ?? DEVICE_MAP["hx-stomp"];
   const play = PLAYBACK_MAP[playbackTarget];
   const ampRule = ampRuleFor(d.hasAmpCab, playbackTarget);
-  const exportRule =
-    d.exportFormat === "hlx"
-      ? `Export is a .hlx for ${d.name} (device ${d.hlxDeviceId ?? "?"}). Only catalog modelId values that exist in the catalog list. Do not invent models, dual-path splits, IRs, or features this unit does not have.`
-      : d.exportFormat === "pgp"
-        ? `Export is a .pgp for POD Go Edit. POD Go has a built-in wah, volume pedal, amp, cab and EQ plus FOUR free effect blocks — at most 4 effects besides those. Only the models listed (POD Go does not have every Helix model).`
-        : `${d.name} cannot export a file. Still return a real HX chain they can copy by hand.`;
   const snapCount = d.snapshots;
   return `Session tech. Invent a NEW Line 6 ${d.name} preset from the player's description. This is a custom rig — not a song replica, not a famous player's documented patch, not a close copy of Teen Spirit / Sandman / Numb or any other record. JSON only.
 Max ${d.maxBlocks} blocks, ${snapCount} snapshots, ${d.footswitches} FS. Instrument: ${instrument}.
-${exportRule}
+${exportRuleFor(d)}
 
 Custom-sound rules:
 - Build only what they asked for. If they said "Klon into a Deluxe with slapback", that is the chain. Do not add a DS-1, Rectifier, wah intro, Small Clone, or any other famous-song leftover.
 - Do not research a similar song and copy it. Do not name a real song in summary unless they named one.
 - originalGear = the products implied by THIS description, not an album credit list.
 - ${KNOB_RULES}
-- ${DELAY_RULES}
+- ${DELAY_RULES} Lead delay Mix ≤ 2.5, Feedback ≤ 3.5.
 - ${ampRule}
 - GAIN: never dime Drive. Pedals ~noon (4.5–6.5). Amp Drive 1.5–3 clean, 3–5 crunch, 5–6.5 high-gain, metal 5–7.
 - GATE: if the chain has a high-gain amp or a high-gain drive or fuzz, add noise-gate in front of the amp, Threshold 1.6–2, bypassed on clean snapshots. A low-gain overdrive on a clean amp gets no gate. Never hard-gate. A hot threshold mutes the snapshot.
@@ -614,7 +598,8 @@ ${STAND_INS}
 
 Order: dirt → amp → cab → time unless they specified otherwise. Amp+cab as a pair.
 
-Snapshots: if they described scenes (clean / crunch / lead), those are the snapshots and they MUST sound different. Otherwise three useful scenes: Rhythm, Lift, Lead. FS 1..${Math.min(snapCount, d.footswitches)} = snapshot in that order. Spare FS after that: GATE then EQ bypass if those blocks exist. No TAP on FS1–3.
+Snapshots: if they described scenes (clean / crunch / lead), those are the snapshots and they MUST sound different. Otherwise up to three useful scenes: Rhythm, Lift, Lead.
+${footswitchRule(snapCount, d.footswitches)}
 
 programming = unit steps. tips = how to play this custom sound.`;
 }

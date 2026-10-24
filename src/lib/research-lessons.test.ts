@@ -21,26 +21,23 @@ describe("research lessons", () => {
     assert.match(g!, /solo/i);
   });
 
-  it("always includes DS-1 and Guitar Chalk rules, never a featured title", () => {
+  it("frames player lessons as general rules, never a featured title", () => {
     const block = standingRulesBlock([
       "Everlong chorus is too scooped",
       "Like a Stone needs more wah",
       "Show Me How to Live is wrong",
       "Don't dime Drive on high-gain amps",
     ]);
-    assert.match(block, /deez-one-vintage/);
-    assert.match(block, /Guitar Chalk/);
-    assert.match(block, /stupor-od is the SD-1/);
+    assert.match(block, /never retune a named title/);
+    assert.match(block, /Don't dime Drive/);
     assert.equal(/everlong|like a stone|show me how to live/i.test(block), false);
-    assert.match(STANDING_RESEARCH_RULES, /deez-one-vintage/);
-    assert.match(STANDING_RESEARCH_RULES, /Set every knob that shapes the tone/);
-    assert.match(STANDING_RESEARCH_RULES, /brightness and midrange/);
-    assert.match(STANDING_RESEARCH_RULES, /GATE:/);
-    assert.match(STANDING_RESEARCH_RULES, /dedicated EQ/);
-    assert.match(STANDING_RESEARCH_RULES, /CLEAN OPENING/);
-    assert.match(STANDING_RESEARCH_RULES, /PEDAL-PLATFORM/);
-    assert.match(STANDING_RESEARCH_RULES, /SINGING FUZZ/);
-    assert.match(STANDING_RESEARCH_RULES, /TIGHT CHUG/);
+  });
+
+  it("does not repeat the tone rules that SYSTEM and systemForDevice already carry", () => {
+    // Those rules are asserted on systemForDevice in src/data/catalog.test.ts.
+    for (const rule of [/deez-one-vintage/, /GATE:/, /CLEAN OPENING/, /SINGING FUZZ/, /TIGHT CHUG/, /dedicated EQ/]) {
+      assert.equal(rule.test(STANDING_RESEARCH_RULES), false, String(rule));
+    }
   });
 
   it("is actually injected into song research, not only tested", async () => {
