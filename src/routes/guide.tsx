@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { PageHeader } from "@/components/layout/page-header";
 import { FREE_BUILD_LINE, PAID_BUILD_LINE } from "@/lib/copy";
+import { MIN_PASSWORD_LENGTH, RESET_TOKEN_MINUTES } from "@/lib/password-policy";
 
 export const Route = createFileRoute("/guide")({ component: GuidePage });
 
@@ -8,156 +9,106 @@ function GuidePage() {
   return (
     <div className="mx-auto max-w-2xl space-y-10">
       <PageHeader kicker="How it works" title="How to use Stomp Lab">
-        One idea: look up a song, see it on your unit, copy the file onto the hardware. You do not need
-        to learn HX Edit first.
+        Type a song, download the file, import it on your unit.
       </PageHeader>
 
-      <Section title="Quick start">
+      <Section title="Four steps">
         <ol className="list-decimal space-y-2 pl-5">
-          <li>Pick Guitar or Bass, and your unit, in the header.</li>
-          <li>Open a featured song, or type a title and build a preset.</li>
-          <li>Tap Snapshot, Preset, or Stomp above the replica. Play the switches.</li>
-          <li>Download the file. HX Edit imports .hlx; POD Go Edit imports .pgp. File → Import — don’t drag it.</li>
-        </ol>
-      </Section>
-
-      <Section title="Snapshot, Stomp, Preset">
-        <p>
-          <strong className="text-foreground">Snapshot</strong> is song sections. Verse, chorus, solo —
-          as many as your unit holds. HX Stomp has 3. XL, HX Effects, and POD Go have 4. Helix Floor and
-          LT have 8. We never write extras.
-        </p>
-        <p>
-          <strong className="text-foreground">Preset</strong> walks the bank — next song, same box. Same
-          mode the hardware uses when you aren’t inside a snapshot.
-        </p>
-        <p>
-          <strong className="text-foreground">Stomp</strong> is pedals on a board. Each switch turns one
-          effect on or off.
-        </p>
-        <p>
-          The replica’s pills switch all three. Download writes the mode you have selected. On the
-          hardware, press PAGE (or MODE on XL) until the display says SNAP, PRESET, or STOMP.
-        </p>
-      </Section>
-
-      <Section title="The replica is the unit">
-        <p>
-          Looking down at a real Stomp: LCD on the left, View / Action well beside it, three knobs under
-          the screen, volume on the right, three switches along the front edge — numbered 1, 2, 3 left to
-          right.
-        </p>
-        <p>
-          XL is wider, like the hardware from above: switches 1–3 on the top row, LCD and the View /
-          Action well to their right, switches 4–6 on the bottom row with MODE and TAP next to them.
-          Volume is a recessed knob on the rear.
-        </p>
-        <p>
-          1 is always top-left. 2 top-middle, 3 top-right, 4 bottom-left, 5 bottom-middle, 6 bottom-right.
-          The .hlx writes those same physical positions onto the unit.
-        </p>
-      </Section>
-
-      <Section title="Set the switches">
-        <p>
-          Tap a numbered footswitch on the replica, then tap what it should do. Snapshot mode shows song
-          sections. Stomp mode shows effects. That is the whole job.
-        </p>
-        <p>
-          Reset to original puts a featured rig back to the recorded map. Download writes whichever mode
-          is selected — Snapshot, Preset, or Stomp.
-        </p>
-      </Section>
-
-      <Section title="Get it onto the Stomp">
-        <ol className="list-decimal space-y-2 pl-5">
+          <li>Pick your unit and Guitar or Bass in the header.</li>
+          <li>Open a demo, or type a song and build it.</li>
+          <li>Download the file. It is .hlx for Helix and HX units, .pgp for POD Go.</li>
           <li>
-            USB from the unit to a computer. Open HX Edit for Helix family, or POD Go Edit for POD Go
-            (firmware 3.80 or newer).
-          </li>
-          <li>
-            File → Import. Pick the .hlx (Helix / HX) or .pgp (POD Go). Do not drag it onto a setlist.
-          </li>
-          <li>Press PAGE on the unit until SNAP, PRESET, or STOMP matches what you downloaded.</li>
-          <li>
-            Play. Switch 1 is top-left. If a snapshot does nothing, you are still in Stomp mode — PAGE
-            once more.
+            Import it in HX Edit (POD Go Edit for POD Go): File → Import, don’t drag it. Then put the
+            unit in Snapshot mode.
           </li>
         </ol>
       </Section>
 
-      <Section title="Research and builds">
-        <p>
-          Featured demos (Sandman, Teen Spirit, Comfortably Numb) never need an account and always
-          download. {FREE_BUILD_LINE} After that, subscribe monthly or yearly.
-          Opens any song, Create, History, and Gear. {PAID_BUILD_LINE} Each custom research counts — demos never do.
-        </p>
-        <p>
-          Add guitars and amps in Gear first. Research will mention what to grab from your locker. Paid
-          lockers sync to your email.
-        </p>
+      <Section title="Questions">
+        <Faq q="Which switch is which part?">
+          <p>
+            Snapshot mode, in song order. HX Stomp: FS1, FS2, FS3. HX Stomp XL, HX Effects, POD Go:
+            FS5, FS6, FS2, FS3. Helix Floor and LT: FS8 to FS11, then FS2 to FS5. The preset page
+            shows the switch on each part.
+          </p>
+        </Faq>
+        <Faq q="Snapshot or Stomp mode?">
+          <p>
+            Snapshot mode is song parts: verse, chorus, solo. Stomp mode is one effect per switch. Pick
+            the one you want above the download button, and put the unit in the same mode (press PAGE,
+            or MODE on XL, until the screen says SNAP or STOMP). If a snapshot does nothing, the unit is
+            still in Stomp mode.
+          </p>
+        </Faq>
+        <Faq q="What about wah?">
+          <p>
+            By default a wah stays your own pedal, in front of the unit. To use the modeler’s wah on
+            the expression pedal or a footswitch, pick it in Settings or on the preset page. Songs
+            without a wah part don’t show the option.
+          </p>
+        </Faq>
+        <Faq q="How do invites work?">
+          <p>
+            Signed-in accounts get an invite link. A friend who creates a new account with it (first 48
+            hours, before they build a custom song) gets 3 extra custom builds, and so do you. Cap 3
+            friends. If you both pay monthly, you each get 50% off one monthly invoice. Yearly stays $69.
+          </p>
+        </Faq>
+        <Faq q="What does it cost?">
+          <p>
+            Demos are free for everyone. {FREE_BUILD_LINE} Then subscribe: $6.99/month or $69/year.{" "}
+            {PAID_BUILD_LINE} Manage or cancel in Account → Manage subscription.
+          </p>
+        </Faq>
+        <Faq q="Billing or support">
+          <p>
+            Email{" "}
+            <a href="mailto:stomplab1@gmail.com" className="text-primary underline underline-offset-2">
+              stomplab1@gmail.com
+            </a>
+            . Polar handles cards and invoices.
+          </p>
+        </Faq>
       </Section>
 
-      <Section title="Invite a friend">
-        <p>
-          Every signed-in account gets a link. When a friend creates a <em>new</em> account with it
-          (first 48 hours, before they research a custom song), you both get 3 extra custom builds.
-          Cap 3 friends. The Lab, Account, Settings, and Upgrade all show the same invite. A link
-          lives in the header too.
-        </p>
-        <p>
-          If you are subscribed and they start a monthly plan, their first month is 50% off. If you also
-          pay monthly, your next invoice is 50% off too. Yearly stays $69.
-        </p>
-      </Section>
-
-      <Section title="Wah">
-        <p>
-          A wah only goes in the Helix chain if you want the modeler to do it — expression pedal or a
-          footswitch. If you already own a Cry Baby, Vox, or similar, leave Wah on “I have a wah pedal”
-          and plug it in front of the unit. Sandman and Killing in the Name are wah parts; the demos
-          leave the block out on purpose.
-        </p>
-      </Section>
-
-      <Section title="Name the snapshots">
-        <p>
-          Before you download, rename the snapshots. Those names write onto the unit’s scribble strips.
-          Intro and verse that share a chain stay one snapshot — we do not invent a
-          switch for a lyric section that sounds the same.
-        </p>
-      </Section>
-
-      <Section title="Catalog">
-        <p>
-          Every factory Line 6 model, one page each, filtered by guitar or bass from the header and by
-          unit (HX Stomp, XL, Helix, LT, HX Effects, POD Go). Find equivalent maps a real pedal
-          (TS808, Klon, SVT) to the Line 6 name.
-        </p>
-      </Section>
-
-      <Section title="Units">
-        <p>
-          HX Stomp and HX Stomp XL are the battle-tested .hlx exports. Helix Floor, Helix LT, and HX
-          Effects use documented device IDs and the same HX model names — HX Effects never includes
-          amp or cab. POD Go exports a .pgp for POD Go Edit (not a Helix .hlx).
-        </p>
-      </Section>
-
-      <section id="help" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
-        <h2 className="font-display text-lg font-semibold text-foreground">Help</h2>
-        <p>
-          Stuck on a preset, billing, or sign-in? Email{" "}
-          <a href="mailto:stomplab1@gmail.com" className="text-primary underline underline-offset-2">
-            stomplab1@gmail.com
-          </a>
-          . That is the Stomp Lab inbox. Polar handles cards and invoices — use Account → Manage
-          subscription to change or cancel. Sign in at{" "}
-          <a href="https://stomplab.app" className="text-primary underline underline-offset-2">
-            stomplab.app
-          </a>
-          .
-        </p>
+      <section id="troubleshoot" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
+        <h2 className="sl-hero-title text-2xl text-foreground">If something isn’t working</h2>
+        <Faq q="Sign in or forgot password">
+          <p>
+            Use the email you signed up with. New passwords need {MIN_PASSWORD_LENGTH}+ characters.
+            Forgot it? Request a reset from{" "}
+            <Link to="/login" className="text-primary underline underline-offset-2">
+              Sign in
+            </Link>{" "}
+            or Account. The link expires in {RESET_TOKEN_MINUTES} minutes.
+          </p>
+        </Faq>
+        <Faq q="Research is busy">
+          <p>Wait a minute and try again. The three demos still work.</p>
+        </Faq>
+        <Faq q="HX Edit doesn’t recognize the preset">
+          <p>
+            File → Import, don’t drag onto a setlist. Use firmware 3.80 or newer. After import, press
+            PAGE until the screen says SNAP or STOMP.
+          </p>
+        </Faq>
+        <Faq q="Snapshots don’t change the sound">
+          <p>
+            Put the unit in Snapshot mode (PAGE until it says SNAP), then press the part’s switch.
+          </p>
+        </Faq>
+        <Faq q="The wah doesn’t sweep">
+          <p>
+            Your own wah lives in front of the unit. To use the modeler’s wah, pick it on the preset
+            page, then download again.
+          </p>
+        </Faq>
+        <Faq q="DSP is in the red">
+          <p>
+            Drop a cab, a second delay, or a heavy amp. The percentage is a guide. The unit is the
+            authority.
+          </p>
+        </Faq>
       </section>
 
       <section id="privacy" className="space-y-3 text-sm leading-relaxed text-muted-foreground">
@@ -216,5 +167,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h2 className="sl-hero-title text-2xl text-foreground">{title}</h2>
       {children}
     </section>
+  );
+}
+
+function Faq({ q, children }: { q: string; children: React.ReactNode }) {
+  return (
+    <details className="border-b border-border pb-3">
+      <summary className="min-h-11 cursor-pointer py-2 text-sm font-medium text-foreground">{q}</summary>
+      <div className="space-y-2 pb-1">{children}</div>
+    </details>
   );
 }

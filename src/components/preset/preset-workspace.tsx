@@ -38,7 +38,7 @@ import { copyText } from "@/lib/clipboard";
 import { trackDownload } from "@/lib/track";
 import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { WahSelect } from "../layout/wah-select";
-import { applyWahPreference, parseWahMode, type WahMode } from "@/lib/wah";
+import { applyWahPreference, parseWahMode, songUsedWah, type WahMode } from "@/lib/wah";
 
 export function PresetWorkspace({
   preset,
@@ -376,6 +376,10 @@ export function PresetWorkspace({
   const tuning = preset.tips.find((t) => /^tune /i.test(t) && !/^tune (to )?e standard\b/i.test(t));
   const tuningName = tuning ? (tuning.match(/\(([^)]+)\)/)?.[1] ?? tuning.replace(/[.,].*$/, "")) : null;
   const otherTips = preset.tips.filter((t) => t !== tuning);
+  const showNames = preset.snapshots.length > 0 && !stompMode && !readOnly;
+  const hasAbout = showNames || otherTips.length > 0 || Boolean(tuning) || preset.originalGear.length > 0 || preset.recommendedGear.length > 0;
+  const aboutSummary = "Switch names, playing notes, original rig, gear to grab";
+  const hasWah = songUsedWah(preset);
   const fs = (n: number | undefined) => (n ? `FS${n}` : "");
   const modeSteps =
     layout === "stomp"
@@ -430,7 +434,7 @@ export function PresetWorkspace({
           </h1>
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
             {canDownload && canExportHlx(preset.stompModel) && !readOnly ? (
-              <Button type="button" className="h-11 w-full sm:w-auto" onClick={onDownload} data-tour="download">
+              <Button type="button" className="hidden h-11 sm:inline-flex sm:w-auto" onClick={onDownload} data-tour="download">
                 Download .{exportExt}
               </Button>
             ) : null}
@@ -733,83 +737,90 @@ export function PresetWorkspace({
               </p>
             </Fold>
 
-            {preset.snapshots.length && !stompMode && !readOnly ? (
-              <Fold
-                title="Switch names"
-                summary={preset.snapshots.map((s) => s.name || "—").join(" · ")}
-              >
-                <p className="mb-2 text-xs text-muted-foreground">These names show on the unit. Up to 12 letters.</p>
-                <div className="space-y-2">
-                  {preset.snapshots.map((s, i) => (
-                    <label key={s.id} className="flex items-center gap-2">
-                      <span
-                        className="grid h-6 min-w-10 place-items-center rounded-full px-1.5 font-mono text-[11px] font-semibold text-black"
-                        style={{ background: s.color }}
-                      >
-                        {fs(snapFs[i]) || i + 1}
-                      </span>
-                      <input
-                        value={s.name}
-                        maxLength={12}
-                        aria-label={`Snapshot ${i + 1} name`}
-                        onChange={(e) => renameSnapshot(s.id, e.target.value)}
-                        onFocus={() => pickPart(i)}
-                        className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base font-medium"
-                      />
-                    </label>
-                  ))}
-                </div>
-              </Fold>
-            ) : null}
-
-            {otherTips.length || tuning ? (
-              <Fold title="Playing notes" summary={tuning ?? otherTips[0]}>
-                <div className="space-y-2">
-                  {preset.tips.map((t) => (
-                    <p key={t} className="text-sm leading-relaxed text-muted-foreground">
-                      {noteText(t)}
-                    </p>
-                  ))}
-                </div>
-              </Fold>
-            ) : null}
-
-            {preset.originalGear.length ? (
-              <Fold title="Original rig" summary={preset.originalGear.map((g) => g.name).join(", ")}>
-                <p className="mb-2 text-xs text-muted-foreground">What was used on the record or live.</p>
-                <div className="space-y-3">
-                  {preset.originalGear.map((g) => (
-                    <div key={`${g.role}-${g.name}`}>
-                      <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
-                      <div className="text-sm font-medium">{g.name}</div>
-                      <p className="text-xs leading-relaxed text-muted-foreground">{g.notes}</p>
-                    </div>
-                  ))}
-                </div>
-              </Fold>
-            ) : null}
-
-            {preset.recommendedGear.length ? (
-              <Fold title="Grab this" summary={preset.recommendedGear.map((g) => g.item).join(", ")}>
-                <p className="mb-2 text-xs text-muted-foreground">Gear that gets you closer. Yours first.</p>
-                <div className="space-y-2">
-                  {preset.recommendedGear.map((g) => (
-                    <div key={g.item} className="rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        {g.fromLocker ? <Badge variant="outline">Your locker</Badge> : null}
-                        {g.kind ? (
-                          <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</span>
-                        ) : null}
+            {hasAbout ? (
+              <Fold title="About this tone" summary={aboutSummary}>
+                <div className="space-y-5">
+                  {showNames ? (
+                    <div>
+                      <h3 className="text-sm font-semibold">Switch names</h3>
+                      <p className="mb-2 text-xs text-muted-foreground">These names show on the unit. Up to 12 letters.</p>
+                      <div className="space-y-2">
+                        {preset.snapshots.map((s, i) => (
+                          <label key={s.id} className="flex items-center gap-2">
+                            <span
+                              className="grid h-6 min-w-10 place-items-center rounded-full px-1.5 font-mono text-[11px] font-semibold text-black"
+                              style={{ background: s.color }}
+                            >
+                              {fs(snapFs[i]) || i + 1}
+                            </span>
+                            <input
+                              value={s.name}
+                              maxLength={12}
+                              aria-label={`Snapshot ${i + 1} name`}
+                              onChange={(e) => renameSnapshot(s.id, e.target.value)}
+                              onFocus={() => pickPart(i)}
+                              className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base font-medium"
+                            />
+                          </label>
+                        ))}
                       </div>
-                      <div className="mt-1 text-sm font-medium">{g.item}</div>
-                      <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{g.why}</p>
                     </div>
-                  ))}
+                  ) : null}
+
+                  {otherTips.length || tuning ? (
+                    <div>
+                      <h3 className="mb-1 text-sm font-semibold">Playing notes</h3>
+                      <div className="space-y-2">
+                        {preset.tips.map((t) => (
+                          <p key={t} className="text-sm leading-relaxed text-muted-foreground">
+                            {noteText(t)}
+                          </p>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {preset.originalGear.length ? (
+                    <div>
+                      <h3 className="text-sm font-semibold">Original rig</h3>
+                      <p className="mb-2 text-xs text-muted-foreground">What was used on the record or live.</p>
+                      <div className="space-y-3">
+                        {preset.originalGear.map((g) => (
+                          <div key={`${g.role}-${g.name}`}>
+                            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
+                            <div className="text-sm font-medium">{g.name}</div>
+                            <p className="text-xs leading-relaxed text-muted-foreground">{g.notes}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+
+                  {preset.recommendedGear.length ? (
+                    <div>
+                      <h3 className="text-sm font-semibold">Grab this</h3>
+                      <p className="mb-2 text-xs text-muted-foreground">Gear that gets you closer. Yours first.</p>
+                      <div className="space-y-2">
+                        {preset.recommendedGear.map((g) => (
+                          <div key={g.item} className="rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
+                            <div className="flex flex-wrap items-center gap-2">
+                              {g.fromLocker ? <Badge variant="outline">Your locker</Badge> : null}
+                              {g.kind ? (
+                                <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</span>
+                              ) : null}
+                            </div>
+                            <div className="mt-1 text-sm font-medium">{g.item}</div>
+                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{g.why}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
                 </div>
               </Fold>
             ) : null}
 
-            {readOnly ? null : (
+            {readOnly || !hasWah ? null : (
               <Fold
                 title="Wah"
                 summary={

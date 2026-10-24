@@ -2,6 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { Check, Plus, Search, Trash2, X } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { PaywallCard } from "@/components/layout/paywall-card";
+import { SampleGear } from "@/components/layout/paywall-sample";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -127,6 +128,7 @@ function GearPage() {
     return (
       <PaywallCard
         title="Presets that know your gear"
+        sample={<SampleGear />}
         body="Save the guitars, pedals and amps you own. Every preset then tells you which of them to grab for that song. Part of the full Lab."
       />
     );
