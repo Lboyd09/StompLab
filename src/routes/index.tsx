@@ -24,8 +24,9 @@ import { looksLikeRealSong } from "@/lib/song-check";
 import { takeInviteResult } from "@/lib/referral-code";
 
 export const Route = createFileRoute("/")({
-  validateSearch: (s: Record<string, unknown>): { q?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { q?: string; artist?: string } => ({
     q: typeof s.q === "string" && s.q.length ? s.q : undefined,
+    artist: typeof s.artist === "string" && s.artist.length ? s.artist.slice(0, 120) : undefined,
   }),
   component: Home,
 });
@@ -70,7 +71,12 @@ function Home() {
 
   useEffect(() => {
     if (search.q) setSong(search.q);
-  }, [search.q]);
+    // Back from checkout with the song they tried to build: ready to press Build.
+    if (search.q && search.artist) {
+      setArtist(search.artist);
+      setPicked(true);
+    }
+  }, [search.q, search.artist]);
 
   useEffect(() => {
     const hit = takeInviteResult();
@@ -121,7 +127,10 @@ function Home() {
         return;
       }
       if (outcome.kind === "upgrade") {
-        await navigate({ to: "/upgrade" });
+        await navigate({
+          to: "/upgrade",
+          search: outcome.reason === "limit" ? { song: song.trim(), artist: artist.trim() || undefined } : {},
+        });
         return;
       }
       if (outcome.kind === "stopped") {

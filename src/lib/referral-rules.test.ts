@@ -21,6 +21,7 @@ import {
   polarIntervalIsMonth,
   polarIntervalIsYear,
   referrerCountsAsPaid,
+  referrerGivesHalfOff,
   resolveMonthlySubId,
   friendCheckoutGetsReferralDiscount,
 } from "./referral-rules.ts";
@@ -227,5 +228,15 @@ describe("invite links and claim errors", () => {
     );
     assert.equal(mapRedeemSqlError("duplicate key value violates unique constraint"), "This account already used an invite.");
     assert.equal(mapRedeemSqlError("network"), null);
+  });
+});
+
+describe("referrerGivesHalfOff", () => {
+  it("only a paying monthly account (or the admin inbox) gives a friend half off", () => {
+    assert.equal(referrerGivesHalfOff({ paid: true, email: "a@x.com", planInterval: "month" }), true);
+    assert.equal(referrerGivesHalfOff({ paid: true, email: "a@x.com", planInterval: "year" }), false);
+    assert.equal(referrerGivesHalfOff({ paid: true, email: "a@x.com", planInterval: null }), false);
+    assert.equal(referrerGivesHalfOff({ paid: false, email: "a@x.com", planInterval: "month" }), false);
+    assert.equal(referrerGivesHalfOff({ paid: false, email: BUSINESS_EMAIL, planInterval: null }), true);
   });
 });

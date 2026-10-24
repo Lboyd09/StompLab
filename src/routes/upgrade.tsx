@@ -6,7 +6,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { RigDisclaimer } from "@/components/layout/disclaimer";
 import { PAID_BUILD_LINE } from "@/lib/copy";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { confirmCheckout, startCheckout } from "@/lib/billing";
+import { confirmCheckout, openCustomerPortal, resumeMySubscription, startCheckout } from "@/lib/billing";
 import {
   PRICE_MONTHLY_USD,
   PRICE_YEARLY_USD,
@@ -18,6 +18,9 @@ import {
   buildsUsedCopy,
   type PlanInterval,
   subscriptionCanceled,
+  subscriptionLapsed,
+  formatPeriodEnd,
+  FREE_BUILDS,
 } from "@/lib/plan";
 import { getReferralMonthOffer } from "@/lib/referrals";
 import { REFERRAL_SUBSCRIBE_PERCENT } from "@/lib/referral-code";
@@ -27,8 +30,11 @@ import { LegalAgree } from "@/components/layout/legal-agree";
 import { recordLegalAccept } from "@/lib/legal";
 
 export const Route = createFileRoute("/upgrade")({
-  validateSearch: (s: Record<string, unknown>): { checkout_id?: string } => ({
+  validateSearch: (s: Record<string, unknown>): { checkout_id?: string; song?: string; artist?: string } => ({
     checkout_id: typeof s.checkout_id === "string" ? s.checkout_id : undefined,
+    // The song the free limit stopped. After checkout the Lab opens with it filled in.
+    song: typeof s.song === "string" && s.song.trim() ? s.song.trim().slice(0, 120) : undefined,
+    artist: typeof s.artist === "string" && s.artist.trim() ? s.artist.trim().slice(0, 120) : undefined,
   }),
   component: UpgradePage,
 });
@@ -67,6 +73,10 @@ function UpgradePage() {
   const checkoutId = parseCheckoutId(search.checkout_id);
   const [confirming, setConfirming] = useState(Boolean(checkoutId));
   const [monthOff, setMonthOff] = useState(false);
+  const [resumeBusy, setResumeBusy] = useState(false);
+  const [portalBusy, setPortalBusy] = useState(false);
+  const pendingSong = search.song;
+  const pendingArtist = search.artist;
 
   useEffect(() => {
     if (!user) return;
@@ -104,7 +114,7 @@ function UpgradePage() {
           if (res.ok) {
             await refresh();
             if (cancelled) return;
-            await navigate({ to: "/" });
+            await navigate({ to: "/", search: pendingSong ? { q: pendingSong, artist: pendingArtist } : {} });
             return;
           }
           last = res.error;
@@ -132,7 +142,41 @@ function UpgradePage() {
     return () => {
       cancelled = true;
     };
-  }, [checkoutId, user?.id, isPending, refresh, navigate, user]);
+  }, [checkoutId, user?.id, isPending, refresh, navigate, user, pendingSong, pendingArtist]);
+
+  async function onResume() {
+    setError("");
+    setResumeBusy(true);
+    try {
+      const res = await resumeMySubscription();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      await refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not resume.");
+    } finally {
+      setResumeBusy(false);
+    }
+  }
+
+  async function onUpdateCard() {
+    setError("");
+    setPortalBusy(true);
+    try {
+      const res = await openCustomerPortal();
+      if (!res.ok) {
+        setError(res.error);
+        return;
+      }
+      window.location.href = res.url;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not open Polar.");
+    } finally {
+      setPortalBusy(false);
+    }
+  }
 
   async function onSubscribe(interval: PlanInterval) {
     setError("");
@@ -156,9 +200,14 @@ function UpgradePage() {
         return;
       }
       recordLegalAccept("subscribe");
-      const res = await startCheckout({ data: { interval } });
+      const res = await startCheckout({ data: { interval, song: pendingSong, artist: pendingArtist } });
       if (!res.ok) {
+        if ("portal" in res && res.portal) {
+          await onUpdateCard();
+          return;
+        }
         setError(res.error);
+        if ("resume" in res && res.resume) await refresh();
         return;
       }
       if (!res.url || !/^https?:\/\//i.test(res.url)) {
@@ -212,6 +261,57 @@ function UpgradePage() {
     );
   }
 
+  if (plan.paid && plan.polarLinked && subscriptionCanceled(plan) && !plan.admin && !confirming && !checkoutId) {
+    return (
+      <div className="grid place-items-center py-8 text-foreground">
+        <div className="w-full max-w-md space-y-4 text-center">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
+          <h1 className="sl-hero-title text-[clamp(2.2rem,6vw,3rem)]">Your plan ends {formatPeriodEnd(plan.currentPeriodEnd)}</h1>
+          <p className="text-sm text-muted-foreground">
+            Resume to keep it. Polar bills again on that date, same price. Nothing is charged today.
+          </p>
+          <div className="flex flex-wrap justify-center gap-3">
+            <Button type="button" disabled={resumeBusy} onClick={() => void onResume()}>
+              {resumeBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+              {resumeBusy ? "Resuming…" : "Resume plan"}
+            </Button>
+            <Button asChild variant="secondary">
+              <Link to="/">Back to Lab</Link>
+            </Button>
+          </div>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
+  if (plan.polarLinked && subscriptionLapsed(plan) && !plan.admin && !confirming && !checkoutId) {
+    return (
+      <div className="grid place-items-center py-8 text-foreground">
+        <div className="w-full max-w-md space-y-4 text-center">
+          <p className="text-[11px] uppercase tracking-[0.22em] text-muted-foreground">Stomp Lab</p>
+          <h1 className="sl-hero-title text-[clamp(2.2rem,6vw,3rem)]">Your last payment didn't go through</h1>
+          <p className="text-sm text-muted-foreground">
+            Update your card on Polar and your plan picks up where it left off. You won't be billed twice.
+          </p>
+          <Button type="button" disabled={portalBusy} onClick={() => void onUpdateCard()}>
+            {portalBusy ? <Loader2 className="size-4 animate-spin" /> : null}
+            {portalBusy ? "Opening Polar…" : "Update card"}
+          </Button>
+          {error ? (
+            <p className="text-sm text-destructive" role="alert">
+              {error}
+            </p>
+          ) : null}
+        </div>
+      </div>
+    );
+  }
+
   if (plan.admin && polarActive && !confirming && !checkoutId) {
     return (
       <div className="grid place-items-center py-8 text-foreground">
@@ -240,6 +340,11 @@ function UpgradePage() {
   return (
     <div className="relative overflow-x-clip">
       <div className="relative z-10 mx-auto w-full max-w-xl space-y-6">
+        {pendingSong && plan.signedIn && !plan.paid ? (
+          <p className="rounded-xl bg-secondary px-4 py-3 text-sm text-foreground" role="status">
+            You've used your {FREE_BUILDS + plan.bonusBuilds} free builds. Subscribe to build {pendingSong} now.
+          </p>
+        ) : null}
         <div className="space-y-3">
           <p className="sl-kicker">The full Lab</p>
           <h1 className="sl-hero-title text-[clamp(2.2rem,7vw,3.6rem)]">Every song on your setlist, ready to import</h1>

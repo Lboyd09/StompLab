@@ -4,12 +4,12 @@ import { authMiddleware } from "@/lib/auth/middleware";
 import { emailFor, invalidatePlanCache, isEmailVerified, siblingUserIds } from "@/lib/billing";
 import { getSql, withTransaction } from "@/lib/db";
 import { claimReferralSlot } from "@/lib/referral-claim";
-import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, normalizeReferralCode } from "@/lib/referral-code";
+import { REFERRAL_BONUS, REFERRAL_CAP, REFERRAL_SUBSCRIBE_PERCENT, INVITE_PENDING_LINE, isPermanentInviteError, normalizeReferralCode } from "@/lib/referral-code";
 import {
   USER_CREATED_AT_QUERY,
   decideRedeem,
   mapRedeemSqlError,
-  referrerCountsAsPaid,
+  referrerGivesHalfOff,
 } from "@/lib/referral-rules";
 import { referredUserGetsMonthOff } from "@/lib/referral-subscribe";
 
@@ -49,6 +49,13 @@ async function ensureReferralSchema(sql: Awaited<ReturnType<typeof getSql>>) {
     create table if not exists referrals (
       user_id text primary key,
       code text not null unique,
+      created_at timestamptz not null default now()
+    )
+  `).catch(() => undefined);
+  await sql.query(`
+    create table if not exists referral_pending (
+      user_id text primary key,
+      code text not null,
       created_at timestamptz not null default now()
     )
   `).catch(() => undefined);
@@ -109,8 +116,8 @@ export const invitePerkForCode = createServerFn({ method: "POST" })
     if (code.length < 4) return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
     try {
       const sql = await getSql();
-      const rows = await sql<{ paid: boolean | null; email: string | null }>`
-        select e.paid, coalesce(u.email, e.email, '') as email
+      const rows = await sql<{ paid: boolean | null; email: string | null; plan_interval: string | null }>`
+        select e.paid, coalesce(u.email, e.email, '') as email, e.plan_interval
         from referrals r
         left join entitlements e on e.user_id = r.user_id
         left join "user" u on u.id = r.user_id
@@ -119,7 +126,7 @@ export const invitePerkForCode = createServerFn({ method: "POST" })
         limit 1
       `;
       const row = rows[0];
-      const paid = referrerCountsAsPaid({ paid: row?.paid, email: row?.email });
+      const paid = referrerGivesHalfOff({ paid: row?.paid, email: row?.email, planInterval: row?.plan_interval });
       return { ok: true, paid, percent: REFERRAL_SUBSCRIBE_PERCENT };
     } catch {
       return { ok: true, paid: false, percent: REFERRAL_SUBSCRIBE_PERCENT };
@@ -139,100 +146,158 @@ export const getReferralMonthOffer = createServerFn({ method: "GET" })
 
 const RedeemIn = z.object({ code: z.string().min(4).max(12) });
 
+type RedeemResult = { ok: true; bonus: number } | { ok: false; error: string };
+
+/**
+ * Before the email is confirmed an invite cannot pay out, so keep the code on the
+ * server. claimPendingInvite redeems it on the first signed-in load after the
+ * account is confirmed, on whichever device the confirm link opened.
+ */
+async function savePendingInvite(userId: string, code: string): Promise<RedeemResult> {
+  try {
+    const sql = await getSql();
+    await ensureReferralSchema(sql);
+    const owner = await sql<{ user_id: string }>`select user_id from referrals where code = ${code} limit 1`;
+    if (!owner[0]?.user_id) return { ok: false, error: "That invite code doesn't look right." };
+    if (owner[0].user_id === userId) return { ok: false, error: "You can't invite yourself." };
+    await sql`
+      insert into referral_pending (user_id, code) values (${userId}, ${code})
+      on conflict (user_id) do update set code = excluded.code, created_at = now()
+    `;
+  } catch {
+    return { ok: false, error: "Could not save that invite. Try again in a minute." };
+  }
+  return { ok: false, error: INVITE_PENDING_LINE };
+}
+
+async function redeemFor(context: { userId: string; email?: string | null }, rawCode: string): Promise<RedeemResult> {
+  const code = normalizeReferralCode(rawCode);
+  if (code.length < 4) return { ok: false, error: "That invite code doesn't look right." };
+  const email = await emailFor(context.userId, context.email);
+  let referrerId = "";
+  // An invite only counts for an account whose email is confirmed: throwaway
+  // addresses cannot farm bonus builds from each other.
+  if (!(await isEmailVerified(context.userId))) {
+    return savePendingInvite(context.userId, code);
+  }
+  try {
+    const sql = await getSql();
+    await ensureReferralSchema(sql);
+    const already = await sql<{ referrer_user_id: string }>`
+      select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
+    `;
+
+    const owner = await sql<{ user_id: string }>`select user_id from referrals where code = ${code} limit 1`;
+    referrerId = owner[0]?.user_id ?? "";
+
+    const ids = await siblingUserIds(context.userId, email);
+    const refEmail = referrerId ? await emailFor(referrerId, null) : null;
+
+    let createdAt: unknown = null;
+    try {
+      const created = await sql.query<{ created_at: Date | string | null }>(USER_CREATED_AT_QUERY, [
+        context.userId,
+      ]);
+      createdAt = created[0]?.created_at ?? null;
+    } catch {
+      createdAt = null;
+    }
+
+    const builds = await sql<{ n: number }>`
+      select count(*)::int as n from build_events where user_id = ${context.userId}
+    `;
+    const used = referrerId
+      ? await sql<{ n: number }>`
+          select count(*)::int as n from referral_redemptions where referrer_user_id = ${referrerId}
+        `
+      : [{ n: 0 }];
+
+    const decision = decideRedeem({
+      code,
+      userId: context.userId,
+      email,
+      referrerId: referrerId || null,
+      referrerEmail: refEmail,
+      siblingIds: ids,
+      existingReferrerId: already[0]?.referrer_user_id ?? null,
+      createdAt,
+      customBuilds: Number(builds[0]?.n ?? 0),
+      referrerUsed: Number(used[0]?.n ?? 0),
+    });
+    if (!decision.ok) return decision;
+    if (decision.already) return { ok: true, bonus: REFERRAL_BONUS };
+
+    // The friend cap is checked and taken in one locked transaction.
+    const claim = await claimReferralSlot(withTransaction, referrerId, context.userId);
+    if (claim === "full") {
+      return { ok: false, error: "That friend already invited the maximum number of people." };
+    }
+    if (claim === "already") return { ok: true, bonus: REFERRAL_BONUS };
+    try {
+      await bumpBonus(context.userId, REFERRAL_BONUS);
+      await bumpBonus(referrerId, REFERRAL_BONUS);
+    } catch (err) {
+      await sql`delete from referral_redemptions where referred_user_id = ${context.userId}`.catch(() => undefined);
+      await undoBonus(context.userId, REFERRAL_BONUS);
+      await undoBonus(referrerId, REFERRAL_BONUS);
+      throw err;
+    }
+    invalidatePlanCache(context.userId);
+    invalidatePlanCache(referrerId);
+    return { ok: true, bonus: REFERRAL_BONUS };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "";
+    if (/unique|duplicate/i.test(msg) && referrerId) {
+      try {
+        const sql = await getSql();
+        const row = await sql<{ referrer_user_id: string }>`
+          select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
+        `;
+        if (row[0]?.referrer_user_id === referrerId) return { ok: true, bonus: REFERRAL_BONUS };
+      } catch {
+        /* fall through */
+      }
+    }
+    const mapped = mapRedeemSqlError(msg);
+    if (mapped) return { ok: false, error: mapped };
+    console.error("[referrals] redeem failed", msg);
+    return { ok: false, error: "Could not apply that invite. Try again in a minute." };
+  }
+}
+
 export const redeemReferral = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
   .validator((input: unknown) => RedeemIn.parse(input))
-  .handler(async ({ context, data }): Promise<{ ok: true; bonus: number } | { ok: false; error: string }> => {
-    const code = normalizeReferralCode(data.code);
-    if (code.length < 4) return { ok: false, error: "That invite code doesn't look right." };
-    const email = await emailFor(context.userId, context.email);
-    let referrerId = "";
-    // An invite only counts for an account whose email is confirmed: throwaway
-    // addresses cannot farm bonus builds from each other.
-    if (!(await isEmailVerified(context.userId))) {
-      return { ok: false, error: "Check your email to confirm your account, then use the invite." };
-    }
+  .handler(async ({ context, data }): Promise<RedeemResult> => redeemFor(context, data.code));
+
+/**
+ * Pays out an invite saved before the email was confirmed (or one still held in
+ * this browser). Quiet when there is nothing to claim or the email is unconfirmed.
+ */
+export const claimPendingInvite = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator((input: unknown) => z.object({ code: z.string().max(12).optional() }).parse(input))
+  .handler(async ({ context, data }): Promise<RedeemResult | { ok: true; none: true }> => {
+    if (!(await isEmailVerified(context.userId))) return { ok: true, none: true };
+    let pending = "";
     try {
+      // referral_pending comes from schema-ensure; no DDL on this per-session path.
       const sql = await getSql();
-      await ensureReferralSchema(sql);
-      const already = await sql<{ referrer_user_id: string }>`
-        select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
-      `;
-
-      const owner = await sql<{ user_id: string }>`select user_id from referrals where code = ${code} limit 1`;
-      referrerId = owner[0]?.user_id ?? "";
-
-      const ids = await siblingUserIds(context.userId, email);
-      const refEmail = referrerId ? await emailFor(referrerId, null) : null;
-
-      let createdAt: unknown = null;
-      try {
-        const created = await sql.query<{ created_at: Date | string | null }>(USER_CREATED_AT_QUERY, [
-          context.userId,
-        ]);
-        createdAt = created[0]?.created_at ?? null;
-      } catch {
-        createdAt = null;
-      }
-
-      const builds = await sql<{ n: number }>`
-        select count(*)::int as n from build_events where user_id = ${context.userId}
-      `;
-      const used = referrerId
-        ? await sql<{ n: number }>`
-            select count(*)::int as n from referral_redemptions where referrer_user_id = ${referrerId}
-          `
-        : [{ n: 0 }];
-
-      const decision = decideRedeem({
-        code,
-        userId: context.userId,
-        email,
-        referrerId: referrerId || null,
-        referrerEmail: refEmail,
-        siblingIds: ids,
-        existingReferrerId: already[0]?.referrer_user_id ?? null,
-        createdAt,
-        customBuilds: Number(builds[0]?.n ?? 0),
-        referrerUsed: Number(used[0]?.n ?? 0),
-      });
-      if (!decision.ok) return decision;
-      if (decision.already) return { ok: true, bonus: REFERRAL_BONUS };
-
-      // The friend cap is checked and taken in one locked transaction.
-      const claim = await claimReferralSlot(withTransaction, referrerId, context.userId);
-      if (claim === "full") {
-        return { ok: false, error: "That friend already invited the maximum number of people." };
-      }
-      if (claim === "already") return { ok: true, bonus: REFERRAL_BONUS };
-      try {
-        await bumpBonus(context.userId, REFERRAL_BONUS);
-        await bumpBonus(referrerId, REFERRAL_BONUS);
-      } catch (err) {
-        await sql`delete from referral_redemptions where referred_user_id = ${context.userId}`.catch(() => undefined);
-        await undoBonus(context.userId, REFERRAL_BONUS);
-        await undoBonus(referrerId, REFERRAL_BONUS);
-        throw err;
-      }
-      invalidatePlanCache(context.userId);
-      invalidatePlanCache(referrerId);
-      return { ok: true, bonus: REFERRAL_BONUS };
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : "";
-      if (/unique|duplicate/i.test(msg) && referrerId) {
-        try {
-          const sql = await getSql();
-          const row = await sql<{ referrer_user_id: string }>`
-            select referrer_user_id from referral_redemptions where referred_user_id = ${context.userId} limit 1
-          `;
-          if (row[0]?.referrer_user_id === referrerId) return { ok: true, bonus: REFERRAL_BONUS };
-        } catch {
-          /* fall through */
-        }
-      }
-      const mapped = mapRedeemSqlError(msg);
-      if (mapped) return { ok: false, error: mapped };
-      console.error("[referrals] redeem failed", msg);
-      return { ok: false, error: "Could not apply that invite. Try again in a minute." };
+      const rows = await sql<{ code: string }>`select code from referral_pending where user_id = ${context.userId} limit 1`;
+      pending = rows[0]?.code ?? "";
+    } catch {
+      pending = "";
     }
+    const code = normalizeReferralCode(pending || data.code || "");
+    if (code.length < 4) return { ok: true, none: true };
+    const res = await redeemFor(context, code);
+    if (pending && (res.ok || isPermanentInviteError(res.error))) {
+      try {
+        const sql = await getSql();
+        await sql`delete from referral_pending where user_id = ${context.userId}`;
+      } catch {
+        /* tried again next load */
+      }
+    }
+    return res;
   });

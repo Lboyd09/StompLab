@@ -31,6 +31,20 @@ export function referrerCountsAsPaid(opts: { paid?: boolean | null; email?: stri
   return Boolean(opts.paid) || isAdminEmail(opts.email);
 }
 
+/**
+ * Does an invite from this account carry 50% off a friend's first month? Only a
+ * paying MONTHLY account (or the admin inbox). A yearly referrer's friends get the
+ * extra builds, not the half-price month.
+ */
+export function referrerGivesHalfOff(opts: {
+  paid?: boolean | null;
+  email?: string | null;
+  planInterval?: string | null;
+}): boolean {
+  if (isAdminEmail(opts.email)) return true;
+  return Boolean(opts.paid) && polarIntervalIsMonth(opts.planInterval);
+}
+
 export function polarIntervalIsMonth(interval: string | null | undefined): boolean {
   const v = String(interval ?? "").trim().toLowerCase();
   return v === "month" || v === "monthly";

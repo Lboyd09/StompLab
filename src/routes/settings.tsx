@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { DEVICE_MAP, STOMP_DEVICES } from "@/data/categories";
 import { FREE_BUILD_LINE } from "@/lib/copy";
-import { PRICE_MONTHLY_USD, formatUsd } from "@/lib/plan";
+import { firstMonthUsd, formatUsd } from "@/lib/plan";
 import type { FsModePref, ThemeId } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -216,7 +216,7 @@ function SettingsPage() {
               </Button>
               {!plan.paid ? (
                 <Button asChild>
-                  <Link to="/upgrade">Subscribe — {formatUsd(PRICE_MONTHLY_USD)}/mo</Link>
+                  <Link to="/upgrade">Subscribe — {formatUsd(firstMonthUsd())} first month</Link>
                 </Button>
               ) : null}
             </div>

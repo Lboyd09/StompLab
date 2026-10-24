@@ -1,9 +1,7 @@
-export const ADMIN_EMAIL = "liamjamesb09@gmail.com";
 /** Business inbox Liam created for Stomp Lab. The only address that unlocks /admin. */
 export const BUSINESS_EMAIL = "stomplab1@gmail.com";
 /** Public support inbox. Prefer the Gmail we actually read. */
 export const PUBLIC_SUPPORT_EMAIL = "stomplab1@gmail.com";
-export const LEGACY_SUPPORT_EMAIL = "hello@stomplab.app";
 export const PRICE_MONTHLY_USD = 6.99;
 export const PRICE_YEARLY_USD = 69;
 export const FREE_BUILDS = 3;
@@ -30,6 +28,18 @@ export function priceYearlyLaunchUsd() {
 }
 
 
+/**
+ * The one price sentence. Monthly first invoice is the launch price, or half off
+ * with an invite from a paying monthly account; yearly is always the full $69.
+ */
+export function firstMonthUsd(opts: { inviteHalf?: boolean } = {}): number {
+  return opts.inviteHalf ? priceMonthlyReferralUsd() : priceMonthlyLaunchUsd();
+}
+
+export function priceLine(opts: { inviteHalf?: boolean } = {}): string {
+  return `${formatUsd(firstMonthUsd(opts))} first month, then ${formatUsd(PRICE_MONTHLY_USD)}/mo. Or ${formatUsd(PRICE_YEARLY_USD)}/yr.`;
+}
+
 /** @deprecated aliases so leftover one-time copy still compiles */
 export const PRICE_USD = PRICE_YEARLY_USD;
 export const LAUNCH_USD = PRICE_MONTHLY_USD;
@@ -54,52 +64,18 @@ export function resolveAccountEmail(
   return session || null;
 }
 
-function extraOwnerEmails(): string[] {
-  if (typeof process === "undefined") return [];
-  return [process.env.BUSINESS_EMAIL, process.env.SUPPORT_EMAIL, process.env.CONTACT_EMAIL]
-    .map((v) => normalizeEmail(v))
-    .filter(Boolean);
-}
-
 /** /admin unlocks for the Stomp Lab inbox only — never personal Gmail. */
 export function adminEmails(): string[] {
   return [BUSINESS_EMAIL];
 }
 
-/** Polar-test / business inboxes that must never count as revenue. */
-export function ownerEmails(): string[] {
-  return [...new Set([ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, LEGACY_SUPPORT_EMAIL, ...extraOwnerEmails()])];
-}
+// Owner inboxes (revenue and stats exclusions) live in owner-emails.ts, server only.
 
 /** Exact match only. iCloud, aliases, and session leftovers never unlock admin. */
 export function isAdminEmail(email: string | null | undefined) {
   const n = normalizeEmail(email);
   if (!n) return false;
   return adminEmails().includes(n);
-}
-
-/** Owner row — Polar tests from this address are not customer revenue. */
-export function isOwnerAccount(email: string | null | undefined) {
-  const n = normalizeEmail(email);
-  if (!n) return false;
-  return ownerEmails().includes(n);
-}
-
-/** Stats/revenue must drop the owner even when the purchase email is blank. */
-export function hideOwnerRow(
-  email?: string | null,
-  userId?: string | null,
-  ownerIds?: Iterable<string> | null,
-) {
-  if (isOwnerAccount(email)) return true;
-  const uid = String(userId ?? "").trim();
-  if (!uid || uid === "unmatched" || uid === "revoked" || uid === "test") return true;
-  if (ownerIds) {
-    for (const id of ownerIds) {
-      if (id && id === uid) return true;
-    }
-  }
-  return false;
 }
 
 export function yearMonth(d = new Date()) {
@@ -266,6 +242,23 @@ export function yearlySavingsUsd() {
 
 export function subscriptionCanceled(plan: Plan): boolean {
   return /canceled|cancelled/i.test(plan.subscriptionStatus);
+}
+
+/** Polar could not take the last payment (past_due, unpaid, incomplete). The card needs fixing, not a new plan. */
+export function subscriptionLapsed(plan: Pick<Plan, "subscriptionStatus">): boolean {
+  const s = plan.subscriptionStatus.trim().toLowerCase();
+  return s === "past_due" || s === "unpaid" || s === "incomplete";
+}
+
+/** When this month's paid builds come back: the 1st of next month (UTC, like yearMonth). */
+export function quotaResetDate(now = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+}
+
+/** A paid player at the monthly cap: when it resets, and the invite that adds builds now. */
+export function monthlyCapLine(bonus: number, now = new Date()): string {
+  return `You've used this month's custom builds. They come back ${quotaResetDate(now)}. Invite a friend and you both get ${bonus} more now.`;
 }
 
 export function formatPeriodEnd(iso: string | null | undefined): string {

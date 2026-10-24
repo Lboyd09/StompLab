@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { FEATURED } from "@/data/featured";
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
-import { notifyResearchError } from "./notify";
+import { notifyMonthlyCap, notifyResearchError } from "./notify";
 import type { Plan } from "./plan";
 import { featuredForPlayer } from "./open-featured";
 import { isDemoId } from "./preset-utils";
@@ -23,7 +23,8 @@ export type SongBuildOutcome =
   /** `counted` is true when the server took a custom build (refresh the plan after). */
   | { kind: "preset"; preset: Preset; source: "library" | "gemini" | "cache"; counted: boolean }
   | { kind: "login" }
-  | { kind: "upgrade" }
+  /** "limit": free builds are used up. "library": a featured rig that needs a plan. */
+  | { kind: "upgrade"; reason: "limit" | "library" }
   /** Toasts were shown already; `status` is the line to keep under the form, if any. */
   | { kind: "stopped"; status?: string };
 
@@ -59,7 +60,7 @@ export async function buildSong(
         toast.message("Still loading your account. Try again in a second.");
         return { kind: "stopped" };
       }
-      return { kind: "upgrade" };
+      return { kind: "upgrade", reason: "library" };
     }
     if (src && plan.paid) {
       return { kind: "preset", preset: finish(featuredHit), source: "library", counted: false };
@@ -72,10 +73,10 @@ export async function buildSong(
   if (!plan.signedIn) return { kind: "login" };
   if (!plan.canResearch) {
     if (plan.paid) {
-      toast.error("You've used this month's custom builds. Demos still work. Resets next calendar month.");
+      notifyMonthlyCap();
       return { kind: "stopped" };
     }
-    return { kind: "upgrade" };
+    return { kind: "upgrade", reason: "limit" };
   }
   hooks.onStart();
   try {
@@ -98,10 +99,10 @@ export async function buildSong(
           ? result
           : { ok: false as const, error: "Research failed. Try a demo, then try that song again." };
       if (fail.reason === "quota") {
-        toast.error(fail.error);
+        notifyMonthlyCap();
         return { kind: "stopped", status: fail.error };
       }
-      if (fail.reason === "paywall") return { kind: "upgrade" };
+      if (fail.reason === "paywall") return { kind: "upgrade", reason: "limit" };
       if (fail.reason === "signin") return { kind: "login" };
       notifyResearchError(fail, { login: hooks.login, upgrade: hooks.upgrade });
       return { kind: "stopped", status: fail.error };

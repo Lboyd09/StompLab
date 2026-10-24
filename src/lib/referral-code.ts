@@ -4,6 +4,8 @@ export const REFERRAL_CAP = 3;
 export const REFERRAL_SUBSCRIBE_PERCENT = 50;
 export const REFERRAL_STORAGE_KEY = "stomplab.ref";
 export const INVITE_RESULT_KEY = "stomplab.invite.result";
+/** Shown when an invite is kept for an account that has not confirmed its email yet. */
+export const INVITE_PENDING_LINE = "Your invite is saved. It applies once you confirm your email.";
 
 export function normalizeReferralCode(raw: string) {
   return raw.trim().toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 12);
@@ -21,6 +23,14 @@ export function canonicalEmail(email: string | null | undefined): string {
     local = local.split("+")[0]?.replace(/\./g, "") ?? local;
   }
   return `${local}@${domain}`;
+}
+
+/** canonicalEmail() as a SQL expression over a column, for grouping accounts in queries. */
+export function canonicalEmailSql(col: string): string {
+  const e = `lower(trim(${col}))`;
+  return `(case when split_part(${e}, '@', 2) in ('gmail.com', 'googlemail.com')
+    then replace(split_part(split_part(${e}, '@', 1), '+', 1), '.', '') || '@gmail.com'
+    else ${e} end)`;
 }
 
 export function invitePath(code: string, perk?: "half" | "builds") {
@@ -69,7 +79,7 @@ export function clearReferralCode() {
 export type InviteClaim = { ok: true; bonus: number } | { ok: false; error: string };
 
 export function isPermanentInviteError(error: string): boolean {
-  return /already used|can't invite|maximum|48 hours|before you research|doesn't look right|no account uses/i.test(
+  return /already used|can't invite|maximum|48 hours|before you research|doesn't look right|no account uses|once you confirm/i.test(
     error,
   );
 }
