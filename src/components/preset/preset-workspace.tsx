@@ -40,6 +40,16 @@ import { notifyResearchError, notifyResearchSource } from "@/lib/notify";
 import { WahSelect } from "../layout/wah-select";
 import { applyWahPreference, parseWahMode, songUsedWah, type WahMode } from "@/lib/wah";
 
+/** Knob values a revise can send: real numbers only, short names, at most 24 per block. */
+function finiteKnobs(params: Record<string, number>): Record<string, number> {
+  return Object.fromEntries(
+    Object.entries(params)
+      .filter(([, v]) => typeof v === "number" && Number.isFinite(v))
+      .slice(0, 24)
+      .map(([k, v]) => [k.slice(0, 40), v]),
+  );
+}
+
 export function PresetWorkspace({
   preset,
   onChange: onChangeProp,
@@ -75,7 +85,7 @@ export function PresetWorkspace({
   const wahModelId = useAppStore((s) => s.wahModelId);
   const setWahMode = useAppStore((s) => s.setWahMode);
   const setWahModelId = useAppStore((s) => s.setWahModelId);
-  const { plan, isPending: planPending } = usePlan();
+  const { plan, isPending: planPending, refresh: refreshPlan } = usePlan();
   const [copying, setCopying] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
@@ -326,14 +336,48 @@ export function PresetWorkspace({
           note,
           playbackTarget: preset.playbackTarget,
           current,
-          userGear: [],
+          userGear: useAppStore.getState().gear,
+          // The whole preset as it stands, so the revise only changes what the note asks.
+          blocks: sortedBlocks(preset)
+            .slice(0, 16)
+            .map((b) => ({
+              id: b.id.slice(0, 60),
+              modelId: b.modelId.slice(0, 60),
+              enabled: b.enabled,
+              position: Math.max(0, Math.min(40, Math.round(b.position))),
+              params: finiteKnobs(b.params),
+            })),
+          snapshots: preset.snapshots.slice(0, 8).map((s) => ({
+            name: s.name.slice(0, 40),
+            enabledBlocks: s.enabledBlocks.slice(0, 16).map((id) => id.slice(0, 60)),
+            paramOverrides: s.paramOverrides
+              ? Object.fromEntries(
+                  Object.entries(s.paramOverrides).map(([id, knobs]) => [id.slice(0, 60), finiteKnobs(knobs)]),
+                )
+              : undefined,
+            notes: s.notes?.slice(0, 300),
+          })),
+          tempo: preset.tempo >= 40 && preset.tempo <= 240 ? preset.tempo : undefined,
+          wahMode,
+          wahModelId,
         },
       });
       if (!result.ok) {
         notifyResearchError(result, { login: () => undefined, upgrade: () => undefined });
         return;
       }
-      onChange(result.preset);
+      // Same preset, revised: keep its id and place in History so the page and the URL still find it.
+      onChange({
+        ...result.preset,
+        id: preset.id,
+        createdAt: preset.createdAt,
+        source: preset.source,
+        song: preset.song,
+        artist: preset.artist,
+        name: preset.source === "custom" ? preset.name : result.preset.name,
+        stompModel: preset.stompModel,
+      });
+      void refreshPlan().catch(() => undefined);
       setBeforeRevise(before);
       toast.success("Tone revised.", { action: { label: "Undo", onClick: () => undoRevise(before) } });
       notifyResearchSource(result.source);

@@ -6,9 +6,7 @@ import { STOMP_DEVICES } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { playbackOptionsFor } from "@/data/playback";
 import { FREE_BUILD_LINE } from "@/lib/copy";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { withStompModel } from "@/lib/preset-utils";
-import { applyRouting } from "@/lib/rig-routing";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/store/app-store";
 import { Mark } from "./mark";
@@ -45,8 +43,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   const setStompModel = useAppStore((s) => s.setStompModel);
   const playbackTarget = useAppStore((s) => s.playbackTarget);
   const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
-  const gear = useAppStore((s) => s.gear);
-  const savePreset = useAppStore((s) => s.savePreset);
+  const openFeaturedPreset = useOpenFeatured();
   const [open, setOpen] = useState(Boolean(force));
   const [step, setStep] = useState(0);
   const phone = useMemo(() => isPhone(), []);
@@ -108,10 +105,9 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   function openDemo(id: string) {
     const src = FEATURED.find((p) => p.id === id);
     if (!src) return finish();
-    const preset = applyRouting(overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear), playbackTarget);
-    savePreset(preset);
+    const preset = openFeaturedPreset(src.id);
     finish();
-    void navigate({ to: "/preset/$id", params: { id: preset.id } });
+    if (preset) void navigate({ to: "/preset/$id", params: { id: preset.id } });
   }
 
   if (!open) return null;

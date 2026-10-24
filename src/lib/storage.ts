@@ -68,7 +68,7 @@ const DEFAULT_SETTINGS: Settings = {
 function readJson<T>(key: string, fallback: T): T {
   if (typeof window === "undefined") return fallback;
   try {
-    const raw = localStorage.getItem(key);
+    const raw = safeGet(key);
     if (!raw) return fallback;
     return JSON.parse(raw) as T;
   } catch {
@@ -76,9 +76,68 @@ function readJson<T>(key: string, fallback: T): T {
   }
 }
 
-function writeJson(key: string, value: unknown) {
+/** Safari with storage blocked throws on any localStorage access; a read then just finds nothing. */
+function safeGet(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function safeSet(key: string, value: string): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    window.localStorage.setItem(key, value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function safeRemove(key: string) {
   if (typeof window === "undefined") return;
-  localStorage.setItem(key, JSON.stringify(value));
+  try {
+    window.localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Never throws. False when the browser refused (full, private mode, blocked). */
+function writeJson(key: string, value: unknown): boolean {
+  if (typeof window === "undefined") return false;
+  try {
+    return safeSet(key, JSON.stringify(value));
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Write a history list; if the browser says it's full, drop the oldest quarter and try once more.
+ * Never throws. `kept` is what is on disk now (the whole list when nothing could be written:
+ * memory still has it and the account copy follows).
+ */
+export function writeHistoryWithTrim(
+  presets: Preset[],
+  setItem: (value: string) => void,
+): { saved: boolean; kept: Preset[] } {
+  try {
+    setItem(JSON.stringify(presets));
+    return { saved: true, kept: presets };
+  } catch {
+    if (presets.length <= 1) return { saved: false, kept: presets };
+    const newestFirst = [...presets].sort((a, b) => stamp(b) - stamp(a));
+    const kept = newestFirst.slice(0, Math.max(1, Math.floor(presets.length * 0.75)));
+    try {
+      setItem(JSON.stringify(kept));
+      return { saved: true, kept };
+    } catch {
+      return { saved: false, kept: presets };
+    }
+  }
 }
 
 export function storageOwnerKey(userId: string | null | undefined) {
@@ -100,8 +159,10 @@ export function loadPresets(owner = "anon"): Preset[] {
   return dedupeHistory(scoped);
 }
 
-export function savePresets(presets: Preset[], owner = "anon") {
-  writeJson(presetsKey(owner), presets);
+export function savePresets(presets: Preset[], owner = "anon"): boolean {
+  if (typeof window === "undefined") return false;
+  const key = presetsKey(owner);
+  return writeHistoryWithTrim(presets, (value) => window.localStorage.setItem(key, value)).saved;
 }
 
 export const HISTORY_CAP = 400;
@@ -124,7 +185,7 @@ export function historyKey(preset: Preset): string {
 }
 
 export function dedupeHistory(presets: Preset[]): Preset[] {
-  const sorted = [...presets].sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0));
+  const sorted = [...presets].sort((a, b) => stamp(b) - stamp(a));
   const seen = new Set<string>();
   const out: Preset[] = [];
   for (const preset of sorted) {
@@ -136,10 +197,17 @@ export function dedupeHistory(presets: Preset[]): Preset[] {
   return out.slice(0, HISTORY_CAP);
 }
 
-export function upsertPreset(preset: Preset, owner = "anon"): Preset[] {
+/** The list with this preset in front, replacing its old row (same id, or same song + unit). */
+export function upsertInto(list: Preset[], preset: Preset): Preset[] {
   const key = historyKey(preset);
-  const all = loadPresets(owner).filter((p) => p.id !== preset.id && historyKey(p) !== key);
-  const next = dedupeHistory([preset, ...all]);
+  // A knob drag saves the same preset many times a second; it is already in front.
+  if (list[0]?.id === preset.id && historyKey(list[0]) === key) return [preset, ...list.slice(1)];
+  const rest = list.filter((p) => p.id !== preset.id && historyKey(p) !== key);
+  return dedupeHistory([preset, ...rest]);
+}
+
+export function upsertPreset(preset: Preset, owner = "anon"): Preset[] {
+  const next = upsertInto(loadPresets(owner), preset);
   savePresets(next, owner);
   return next;
 }
@@ -148,6 +216,38 @@ export function deletePreset(id: string, owner = "anon"): Preset[] {
   const next = loadPresets(owner).filter((p) => p.id !== id);
   savePresets(next, owner);
   return next;
+}
+
+function stamp(p: Preset): number {
+  return p.updatedAt ?? p.createdAt ?? 0;
+}
+
+/**
+ * This device's history and the account copy, merged by id: the newer save of each preset wins,
+ * a preset only one side has is kept (there are no delete tombstones), then the song + unit dedupe.
+ */
+export function mergeHistory(local: Preset[], remote: Preset[]): Preset[] {
+  const byId = new Map<string, Preset>();
+  for (const p of remote) if (p && typeof p === "object" && p.id) byId.set(p.id, p);
+  for (const p of local) {
+    if (!p || typeof p !== "object" || !p.id) continue;
+    const other = byId.get(p.id);
+    if (!other || stamp(p) > stamp(other)) byId.set(p.id, p);
+  }
+  return dedupeHistory([...byId.values()]);
+}
+
+/**
+ * The merged history has something the account lacks: a preset it doesn't have, or a newer save.
+ * Decided by content, not by comparing JSON (the database reorders keys), so a plain reload never pushes.
+ */
+export function accountIsBehind(merged: Preset[], remote: Preset[]): boolean {
+  const remoteStamp = new Map<string, number>();
+  for (const p of remote) if (p && typeof p === "object" && p.id) remoteStamp.set(p.id, stamp(p));
+  return merged.some((p) => {
+    const theirs = remoteStamp.get(p.id);
+    return theirs === undefined || stamp(p) > theirs;
+  });
 }
 
 /** Setlists are raw JSON here; `cleanSetlists` in setlist.ts shapes them. */
@@ -175,11 +275,11 @@ export function saveGear(gear: UserGear[], owner = "anon") {
 export function adoptLegacyLocal(owner: string): { presets: Preset[]; gear: UserGear[] } {
   if (typeof window === "undefined") return { presets: [], gear: [] };
   if (!owner || owner === "anon") return { presets: loadPresets("anon"), gear: loadGear("anon") };
-  const already = localStorage.getItem(OWNER_KEY);
+  const already = safeGet(OWNER_KEY);
   const existing = loadPresets(owner);
   const existingGear = loadGear(owner);
   if (existing.length || existingGear.length) {
-    localStorage.setItem(OWNER_KEY, owner);
+    safeSet(OWNER_KEY, owner);
     return { presets: existing, gear: existingGear };
   }
   if (already && already !== owner) {
@@ -189,13 +289,9 @@ export function adoptLegacyLocal(owner: string): { presets: Preset[]; gear: User
   const legacyGear = readJson<UserGear[]>(GEAR_KEY, []);
   if (legacy.length) savePresets(legacy, owner);
   if (legacyGear.length) saveGear(legacyGear, owner);
-  localStorage.setItem(OWNER_KEY, owner);
-  try {
-    localStorage.removeItem(PRESETS_KEY);
-    localStorage.removeItem(GEAR_KEY);
-  } catch {
-    /* ignore */
-  }
+  safeSet(OWNER_KEY, owner);
+  safeRemove(PRESETS_KEY);
+  safeRemove(GEAR_KEY);
   return { presets: legacy, gear: legacyGear };
 }
 
@@ -237,13 +333,11 @@ export function patchSettings(partial: Partial<Settings>): Settings {
 }
 
 export function loadGeminiKey(): string {
-  if (typeof window === "undefined") return "";
-  return localStorage.getItem(GEMINI_KEY) ?? "";
+  return safeGet(GEMINI_KEY) ?? "";
 }
 
 export function saveGeminiKey(key: string) {
-  if (typeof window === "undefined") return;
   const trimmed = key.trim();
-  if (!trimmed) localStorage.removeItem(GEMINI_KEY);
-  else localStorage.setItem(GEMINI_KEY, trimmed);
+  if (!trimmed) safeRemove(GEMINI_KEY);
+  else safeSet(GEMINI_KEY, trimmed);
 }

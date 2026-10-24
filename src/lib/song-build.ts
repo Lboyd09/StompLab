@@ -3,11 +3,10 @@ import { FEATURED } from "@/data/featured";
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
 import { notifyResearchError } from "./notify";
 import type { Plan } from "./plan";
-import { overlayUserGear } from "./preset-schema";
-import { isDemoId, withStompModel } from "./preset-utils";
+import { featuredForPlayer } from "./open-featured";
+import { isDemoId } from "./preset-utils";
 import { matchFeatured, researchSongFn } from "./research";
-import { applyWahPreference, type WahMode } from "./wah";
-import { applyRouting } from "./rig-routing";
+import type { WahMode } from "./wah";
 
 export type SongBuildInput = {
   song: string;
@@ -47,18 +46,21 @@ export async function buildSong(
   }
   // The server builds the lead part for two-guitar songs; nothing to pick here.
   const roleForBuild = "both" as const;
-  const finish = (p: Preset) =>
-    applyRouting(
-      applyWahPreference(overlayUserGear(withStompModel(p, input.stompModel), input.gear), input.wahMode, input.wahModelId),
-      input.playbackTarget,
-    );
+  const finish = (p: Preset) => featuredForPlayer(p, input);
   const featuredHit = matchFeatured(song, artist || undefined, input.instrument, input.stompModel, roleForBuild);
   if (featuredHit) {
     const src = FEATURED.find((p) => p.instrument === featuredHit.instrument && p.song === featuredHit.song);
     if (src && isDemoId(src.id)) {
       return { kind: "preset", preset: finish(featuredHit), source: "library", counted: false };
     }
-    if (src && !plan.paid) return { kind: "upgrade" };
+    if (src && !plan.paid) {
+      // A paying player whose plan is still loading must not be sent to the paywall.
+      if (planPending) {
+        toast.message("Still loading your account. Try again in a second.");
+        return { kind: "stopped" };
+      }
+      return { kind: "upgrade" };
+    }
     if (src && plan.paid) {
       return { kind: "preset", preset: finish(featuredHit), source: "library", counted: false };
     }

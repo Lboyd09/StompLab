@@ -2040,9 +2040,9 @@ export const pullMyPresets = createServerFn({ method: "GET" })
           if (p && typeof p === "object" && p.id && !byId.has(p.id)) byId.set(p.id, p);
         }
       }
-      return { presets: [...byId.values()] };
+      return { ok: true as const, presets: [...byId.values()] };
     } catch {
-      return { presets: [] as Preset[] };
+      return { ok: false as const, presets: [] as Preset[] };
     }
   });
 

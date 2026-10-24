@@ -15,8 +15,7 @@ import type { Preset } from "@/data/types";
 import { PAID_BUILD_LINE } from "@/lib/copy";
 import { exportExtension } from "@/lib/hlx";
 import { notifyResearchSource } from "@/lib/notify";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { resolveNamedPreset, withStompModel } from "@/lib/preset-utils";
+import { resolveNamedPreset } from "@/lib/preset-utils";
 import {
   SETLIST_CAP,
   SETLIST_SONG_CAP,
@@ -32,7 +31,7 @@ import { buildSong } from "@/lib/song-build";
 import { looksLikeRealSong } from "@/lib/song-check";
 import { trackDownload } from "@/lib/track";
 import { usePlan } from "@/lib/use-plan";
-import { applyWahPreference } from "@/lib/wah";
+import { useOpenFeatured } from "@/lib/use-open-featured";
 import { useAppStore } from "@/store/app-store";
 
 export const Route = createFileRoute("/setlist")({
@@ -213,6 +212,7 @@ function SetlistEditor({ set }: { set: Setlist }) {
   const gear = useAppStore((s) => s.gear);
   const wahMode = useAppStore((s) => s.wahMode);
   const wahModelId = useAppStore((s) => s.wahModelId);
+  const openFeaturedPreset = useOpenFeatured();
   const [q, setQ] = useState("");
   const [song, setSong] = useState("");
   const [artist, setArtist] = useState("");
@@ -237,22 +237,24 @@ function SetlistEditor({ set }: { set: Setlist }) {
   const needsSong = !picked && !looksLikeRealSong(song, artist);
 
   function add(preset: Preset) {
-    if (full) {
+    // The set as it is now: a build can finish after other songs were added, moved or removed.
+    const latest = useAppStore.getState().setlists.find((s) => s.id === set.id);
+    if (!latest) {
+      toast.message(`${presetTitle(preset)} is in History. That setlist was deleted.`);
+      return;
+    }
+    if (latest.items.length >= SETLIST_SONG_CAP) {
       toast.error(`A setlist holds ${SETLIST_SONG_CAP} songs.`);
       return;
     }
-    saveSetlist(addToSetlist(set, preset));
+    saveSetlist(addToSetlist(latest, preset));
     toast.success(`Added ${presetTitle(preset)}.`);
   }
 
   function addDemo(src: Preset) {
-    add(
-      applyWahPreference(
-        overlayUserGear(withStompModel({ ...src, createdAt: Date.now() }, stompModel), gear),
-        wahMode,
-        wahModelId,
-      ),
-    );
+    // Same demo the Lab opens (the player's edited copy if there is one); it goes into the set only.
+    const preset = openFeaturedPreset(src.id, { save: false });
+    if (preset) add(preset);
   }
 
   async function onBuild(e: React.FormEvent) {

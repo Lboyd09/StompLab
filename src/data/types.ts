@@ -195,6 +195,8 @@ export type Preset = {
   playbackTarget?: PlaybackTarget;
   /** Player changed knobs or bypass. Wins over the featured catalog on the next open. */
   userEdited?: boolean;
+  /** Last save on any device (ms). The newer copy wins when this device and the account merge. */
+  updatedAt?: number;
 };
 
 export type UserGear = {

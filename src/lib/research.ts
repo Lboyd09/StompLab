@@ -704,7 +704,68 @@ const ReviseIn = z.object({
   note: z.string().min(2).max(240),
   current: z.string().max(2000),
   userGear: z.array(GearSchema).max(40).optional().default([]),
+  // The preset as the player has it now, so a revise changes only what the note asks.
+  blocks: z
+    .array(
+      z.object({
+        id: z.string().max(60),
+        modelId: z.string().max(60),
+        enabled: z.boolean(),
+        position: z.number().int().min(0).max(40),
+        params: z.record(z.string().max(40), z.number().finite()),
+      }),
+    )
+    .max(16)
+    .optional()
+    .default([]),
+  snapshots: z
+    .array(
+      z.object({
+        name: z.string().max(40),
+        enabledBlocks: z.array(z.string().max(60)).max(16),
+        paramOverrides: z.record(z.string().max(60), z.record(z.string().max(40), z.number().finite())).optional(),
+        notes: z.string().max(300).optional(),
+      }),
+    )
+    .max(8)
+    .optional()
+    .default([]),
+  tempo: z.number().min(40).max(240).optional(),
+  wahMode: z.enum(["pedal", "exp", "fs"]).optional().default("pedal"),
+  wahModelId: z.string().max(40).optional().default("teardrop-310"),
 });
+
+const fmtKnobs = (params: Record<string, number>) =>
+  Object.entries(params)
+    .slice(0, 24)
+    .map(([k, v]) => `${oneLine(k, 40)} ${Math.round(v * 10) / 10}`)
+    .join(", ");
+
+/** The player's current preset as prompt text: every block with its knobs, then each snapshot. */
+function reviseCurrentText(d: z.infer<typeof ReviseIn>): string {
+  if (!d.blocks.length) return `Current path: ${oneLine(d.current, 2000)}`;
+  const names = new Map<string, string>();
+  const lines = [...d.blocks]
+    .sort((a, b) => a.position - b.position)
+    .map((b) => {
+      const name = MODEL_MAP[b.modelId]?.name ?? b.modelId;
+      names.set(b.id, name);
+      return `- id ${oneLine(b.id, 60)} | ${oneLine(b.modelId, 60)} (${name})${b.enabled ? "" : " OFF"} | ${fmtKnobs(b.params)}`;
+    });
+  const snaps = d.snapshots.map((s, i) => {
+    const on = s.enabledBlocks.map((id) => names.get(id) ?? id).join(", ");
+    const over = Object.entries(s.paramOverrides ?? {})
+      .map(([id, knobs]) => `${names.get(id) ?? id}: ${fmtKnobs(knobs)}`)
+      .join("; ");
+    return `- Snapshot ${i + 1} "${oneLine(s.name, 40)}": on ${on || "none"}${over ? ` | knobs ${over}` : ""}${s.notes ? ` | ${oneLine(s.notes, 300)}` : ""}`;
+  });
+  return [
+    `Current preset${d.tempo ? ` (tempo ${Math.round(d.tempo)} BPM)` : ""}:`,
+    "Blocks in order:",
+    ...lines,
+    ...(snaps.length ? ["Snapshots:", ...snaps] : []),
+  ].join("\n");
+}
 
 export const revisePresetFn = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -746,10 +807,10 @@ export const revisePresetFn = createServerFn({ method: "POST" })
       const lessons = await standingFeedbackLessons();
       const prompt = `${lessons}
 
-Revise this ${DEVICE_MAP[data.stompModel].name} path so it is closer to the RECORD. Keep factory model ids. Only change what the note asks.
+Revise this ${DEVICE_MAP[data.stompModel].name} preset so it is closer to the RECORD. Keep factory model ids. Only change what the note asks: return every block, block id, knob, snapshot and the tempo exactly as given below unless the note asks to change it.
 
 Song: ${data.song}${data.artist ? ` by ${data.artist}` : ""}
-Current path: ${data.current}
+${reviseCurrentText(data)}
 Note from the player: ${data.note}
 ${gearLine(data.userGear)}
 
@@ -773,7 +834,17 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
       });
       await confirmBuildSlot(slot.reservation);
       settled = true;
-      return { ok: true, preset: sanitizeSnapshots(applyRouting(finishTone(preset), data.playbackTarget)), source: "gemini" };
+      const finished = finishPreset(
+        preset,
+        {
+          userGear: data.userGear,
+          wahMode: data.wahMode,
+          wahModelId: data.wahModelId,
+          playbackTarget: data.playbackTarget,
+        },
+        data.tempo,
+      );
+      return { ok: true, preset: finished, source: "gemini" };
     } catch (err) {
       const message = friendlyResearchError(err);
       try {
