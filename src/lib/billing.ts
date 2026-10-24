@@ -1333,6 +1333,24 @@ export async function releaseBuildSlot(reservation: BuildReservation): Promise<v
   }
 }
 
+/** Failed builds are not counted, so they need their own cap: each one still paid for a model call. */
+export const FAILED_BUILDS_PER_DAY = 10;
+
+/** True when this player hit the failed-build cap in the last 24 hours. Fails open on a database error. */
+export async function tooManyFailedBuilds(userId: string, max = FAILED_BUILDS_PER_DAY): Promise<boolean> {
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ n: number }>(
+      `select count(*)::int as n from research_failures
+       where user_id = $1 and created_at > now() - interval '1 day'`,
+      [userId],
+    );
+    return Number(rows[0]?.n ?? 0) >= max;
+  } catch {
+    return false;
+  }
+}
+
 export async function recordFailure(userId: string, song: string, artist: string, error: string) {
   try {
     const sql = await getSql();

@@ -15,7 +15,9 @@ import {
   recordFailure,
   releaseBuildSlot,
   reserveBuildSlot,
+  tooManyFailedBuilds,
 } from "@/lib/billing";
+import { rateLimited } from "./rate-limit";
 import type { Plan } from "./plan";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache, lookupNotesCache, notesCacheKey, persistNotesCache } from "./cache";
@@ -164,6 +166,15 @@ export async function standingFeedbackLessons(): Promise<string> {
     return extra;
   }
 }
+
+const FAILED_TODAY: ResearchErr = {
+  ok: false,
+  reason: "busy",
+  error: "Too many builds failed today. Try again tomorrow, or open a demo.",
+};
+
+/** Pedal matching calls the model on every cache miss. Per player, per hour. */
+export const EQ_LOOKUPS_PER_HOUR = 30;
 
 const researchHits = new Map<string, number[]>();
 function tooManyResearches(userId: string) {
@@ -442,6 +453,7 @@ export const researchSongFn = createServerFn({ method: "POST" })
       /* miss */
     }
 
+    if (!plan.admin && (await tooManyFailedBuilds(context.userId))) return FAILED_TODAY;
     // Reserve the slot before the model call, so two builds in flight cannot
     // both take the last one. It is confirmed on success and released on failure.
     const slot = await reserveBuildSlot({
@@ -669,6 +681,9 @@ export const lookupEquivalentFn = createServerFn({ method: "POST" })
     } catch {
       /* miss */
     }
+    if (!plan.admin && (await rateLimited(getSql, `eq:${context.userId}`, EQ_LOOKUPS_PER_HOUR, 3600))) {
+      return { ok: false, reason: "busy", error: "That's a lot of pedal lookups this hour. Try again later." };
+    }
 
     try {
       const catalog = compactCatalogForPrompt();
@@ -732,6 +747,7 @@ export const revisePresetFn = createServerFn({ method: "POST" })
     if (tooManyResearches(context.userId)) {
       return { ok: false, reason: "busy", error: "Too many custom builds in a minute. Wait a bit, then try again." };
     }
+    if (!plan.admin && (await tooManyFailedBuilds(context.userId))) return FAILED_TODAY;
     const slot = await reserveBuildSlot({
       userId: context.userId,
       email,
