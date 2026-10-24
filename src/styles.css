@@ -1132,3 +1132,12 @@ html[data-motion="reduce"] .sl-card:focus-visible {
 }
 
 /* Six switches across a phone: caps shrink with the row (still round) so the Floor / LT never scroll sideways. */
+
+/* Wider replica (laptop): the small screens' labels grow with the screen so they read like the real UI. */
+@container replica (min-width: 520px) {
+  .hx-lcd-play-name { font-size: 15px; }
+  .hx-lcd-play-slot, .hx-lcd-play-snap { font-size: 9px; }
+  .hx-lcd-face-label, .hx-lcd-stomp .hx-lcd-face-label { font-size: 10px; }
+  .hx-lcd-param-label { font-size: 8px; }
+  .hx-lcd-param-value { font-size: 10px; }
+}

@@ -556,9 +556,8 @@ export function PresetWorkspace({
   return (
     <>
       <div className="space-y-5 pb-24 md:pb-6">
-        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
-          <div className="min-w-0 space-y-1.5">
-            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+        <header className="space-y-1.5">
+          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
               <span className="font-semibold text-pop">{device.name}</span>
               <span aria-hidden>·</span>
               <span className="tabular-nums">{preset.tempo} BPM</span>
@@ -579,8 +578,9 @@ export function PresetWorkspace({
                   {tuningName}
                 </span>
               ) : null}
-            </div>
-            <h1 className="font-display text-[1.75rem] font-semibold leading-[1.05] tracking-tight sm:text-4xl">
+          </div>
+          <div className="flex items-center justify-between gap-3 sm:items-end sm:gap-6">
+            <h1 className="min-w-0 font-display text-[1.75rem] font-semibold leading-[1.05] tracking-tight sm:text-4xl">
               {preset.song || preset.name}
               {preset.song && preset.artist ? (
                 <span className="block font-sans text-base font-normal tracking-normal text-muted-foreground sm:ml-3 sm:inline sm:text-xl">
@@ -588,25 +588,26 @@ export function PresetWorkspace({
                 </span>
               ) : null}
             </h1>
-          </div>
-          <div className="flex w-full gap-2 sm:w-auto">
+            <div className="flex shrink-0 gap-2">
             {canShare ? (
               <Button
                 type="button"
                 variant="secondary"
-                className="h-11 flex-1 sm:flex-none"
+                className="size-11 px-0 sm:w-auto sm:px-4"
                 disabled={sharing}
+                aria-label={sharing ? "Making link" : "Share"}
                 onClick={() => void onShare()}
               >
                 <Share2 className="size-4" />
-                {sharing ? "Making link" : "Share"}
+                <span className="hidden sm:inline">{sharing ? "Making link" : "Share"}</span>
               </Button>
             ) : null}
             {readOnly ? null : (
-              <Button asChild variant="outline" className="h-11 flex-1 sm:flex-none">
-                <Link to="/setlist" search={{ add: preset.id }}>
+              <Button asChild variant="outline" className="h-11 px-3.5 sm:px-4">
+                <Link to="/setlist" search={{ add: preset.id }} aria-label="Add to setlist">
                   <ListPlus className="size-4" />
-                  Add to setlist
+                  <span className="sm:hidden">Setlist</span>
+                  <span className="hidden sm:inline">Add to setlist</span>
                 </Link>
               </Button>
             )}
@@ -626,6 +627,7 @@ export function PresetWorkspace({
                 <Link to="/upgrade">Subscribe</Link>
               </Button>
             ) : null}
+            </div>
           </div>
         </header>
 
