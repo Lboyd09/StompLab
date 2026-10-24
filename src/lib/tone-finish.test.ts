@@ -214,7 +214,7 @@ describe("keepDirtyIntro", () => {
       footswitches: [{ index: 1, label: "CLEAN INTRO", color: "", action: "snapshot", snapshotId: "s1", notes: "" }],
     } as never;
     const notes = '{"sections":[{"section":"Intro","tone":"driven Rectifier riff, full distortion"}]}';
-    const out = keepDirtyIntro(preset, notes) as { snapshots: { name: string; paramOverrides: { amp: { Drive: number } } }[] };
+    const out = keepDirtyIntro(preset, notes) as unknown as { snapshots: { name: string; paramOverrides: { amp: { Drive: number } } }[] };
     assert.equal(out.snapshots[0].name, "Intro");
     assert.equal(out.snapshots[0].paramOverrides.amp.Drive, 5.5);
     const clean = keepDirtyIntro(preset, '{"sections":[{"section":"Intro","tone":"clean arpeggio, neck pickup"}]}') as { snapshots: { name: string }[] };

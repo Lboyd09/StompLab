@@ -4,13 +4,19 @@ import type { Preset } from "@/data/types";
 import { authMiddleware } from "@/lib/auth/middleware";
 import { parseGuitarRole, type GuitarRole } from "@/lib/guitar-role";
 import { playableIssues, sanitizeSnapshots } from "@/lib/snapshot-sanitize";
-import { routeFor } from "@/data/playback";
+import { PLAYBACK_MAP, routeFor } from "@/data/playback";
 import { parsePlaybackTarget } from "@/data/types";
 
 function ampLessPlayback(playback: string): boolean {
   const route = routeFor(parsePlaybackTarget(playback));
   return route === "pedals" || route === "4cm";
 }
+
+/**
+ * Song cache key version. v12 retired every row built before the lead-only prompt (those had no
+ * solo snapshot) and the four live-test songs built before the tempo, gain and intro fixes.
+ */
+const SONG_KEY_V = "v12";
 
 function norm(s: string) {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -25,7 +31,7 @@ export function songCacheKey(
   wahMode = "pedal",
   guitarRole: GuitarRole | string = "both",
 ) {
-  return `song|v11|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
+  return `song|${SONG_KEY_V}|${norm(song)}|${norm(artist ?? "")}|${instrument}|${stompModel}|${playbackTarget}|${wahMode}|${parseGuitarRole(guitarRole)}`;
 }
 
 /** Previous key — still looked up so older rows hit. */
@@ -111,8 +117,9 @@ export async function lookupCacheRaw(key: string) {
 }
 
 /**
- * Shared across accounts (rig_cache has no user_id). Exact v11 key first.
- * The loose fallback only reuses the current key version for this unit, and it
+ * Shared across accounts (rig_cache has no user_id). Exact key first.
+ * The loose fallback only reuses the current key version for this unit, only rows built with the
+ * amp and cab in the chain (a front-of-amp row must never reach an FRFR player), and it
  * needs the same title AND the same artist: a title alone is a different song
  * ("Creep" by TLC is not Radiohead's rig).
  */
@@ -150,24 +157,18 @@ export async function lookupSongCache(opts: {
   try {
     const sql = await getSql();
     const songN = norm(opts.song);
-    const rows = await sql<{
-      preset: Preset | null;
-      hit_count: number;
-      cache_key: string;
-      bpm: number | null;
-    }>`
-      select preset, hit_count, cache_key, bpm from rig_cache
-      where kind = 'song'
-        and lower(trim(song)) = ${songN}
-        and lower(trim(artist)) = ${artistN}
-        and instrument = ${opts.instrument}
-        and cache_key like ${"song|v11|%|" + role}
-        and stomp_model = ${opts.stompModel}
-      order by
-        hit_count desc,
-        updated_at desc
-      limit 1
-    `;
+    // Only a row built with its amp and cab carries over to another playback target: a row built
+    // for the front of an amp has no amp, and one built for a power amp has no cab.
+    const stripped = Object.values(PLAYBACK_MAP)
+      .filter((o) => o.route !== "full")
+      .map((o) => `%|${o.id}|%`);
+    const rows = await sql.query<{ preset: Preset | null; hit_count: number; cache_key: string; bpm: number | null }>(
+      `select preset, hit_count, cache_key, bpm from rig_cache
+       where kind = 'song' and lower(trim(song)) = $1 and lower(trim(artist)) = $2 and instrument = $3
+         and cache_key like $4 and stomp_model = $5 and not (cache_key like any($6::text[]))
+       order by hit_count desc, updated_at desc limit 1`,
+      [songN, artistN, opts.instrument, `song|${SONG_KEY_V}|%|${role}`, opts.stompModel, stripped],
+    );
     let found = rows[0];
     let preset = playablePreset(found?.preset);
     if (!found || !preset) {
@@ -180,7 +181,7 @@ export async function lookupSongCache(opts: {
          where kind = 'song' and lower(trim(song)) = $1 and lower(trim(artist)) = $2 and instrument = $3
            and cache_key like $4 and cache_key like $5 and stomp_model = any($6::text[])
          order by hit_count desc, updated_at desc limit 1`,
-        [songN, artistN, opts.instrument, `song|v11|%|${role}`, `%|${playback}|${wah}|%`, donors],
+        [songN, artistN, opts.instrument, `song|${SONG_KEY_V}|%|${role}`, `%|${playback}|${wah}|%`, donors],
       );
       found = more[0];
       preset = playablePreset(found?.preset);

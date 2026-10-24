@@ -14,14 +14,14 @@ describe("a looked-up song is the lead part", () => {
     assert.equal(songBuildRole("guitar", "Enter Sandman", "Metallica"), "lead");
   });
 
-  it("keeps one-guitarist and unknown songs on 'both' so their v11 cache rows still hit", () => {
+  it("keeps one-guitarist and unknown songs on 'both' in the song cache key", () => {
     assert.equal(songBuildRole("guitar", "Smells Like Teen Spirit", "Nirvana"), "both");
     assert.equal(songBuildRole("guitar", "Oceans (Where Feet May Fail)", "Hillsong UNITED"), "both");
     assert.equal(songBuildRole("bass", "Sweet Child O' Mine", "Guns N' Roses"), "both");
     const key = songCacheKey("Smells Like Teen Spirit", "Nirvana", "guitar", "hx-stomp", "frfr", "pedal", songBuildRole("guitar", "Smells Like Teen Spirit", "Nirvana"));
-    assert.match(key, /^song\|v11\|.*\|both$/);
+    assert.match(key, /^song\|v12\|.*\|both$/);
     const lead = songCacheKey("Sweet Child O' Mine", "Guns N' Roses", "guitar", "hx-stomp", "frfr", "pedal", songBuildRole("guitar", "Sweet Child O' Mine", "Guns N' Roses"));
-    assert.match(lead, /^song\|v11\|.*\|lead$/);
+    assert.match(lead, /^song\|v12\|.*\|lead$/);
   });
 
   it("briefs the model on the lead part, never the rhythm part or a blend", () => {

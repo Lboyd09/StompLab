@@ -16,7 +16,7 @@ export function parseGuitarRole(value: string | null | undefined): GuitarRole {
  * - Anything else (one guitarist, or we don't know): "both". The prompt still
  *   asks for the lead / featured part if the record turns out to have two.
  *
- * The value is also the last field of the v11 cache key, so "both" keeps every
+ * The value is also the last field of the song cache key, so "both" keeps every
  * one-guitarist row and "lead" keeps the lead rows already built.
  */
 export function songBuildRole(
