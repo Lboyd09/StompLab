@@ -664,7 +664,7 @@ export function PresetWorkspace({
         <div className={cn("grid min-w-0 gap-5", !wide && "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start")}>
           <section
             aria-label={`${preset.song || preset.name} on the ${device.name}`}
-            className="sl-stage relative min-w-0 rounded-3xl border border-border p-2.5 sm:p-5"
+            className={cn("sl-stage relative min-w-0 rounded-3xl border border-border p-2.5 sm:p-5", !wide && "lg:sticky lg:top-4")}
             data-tour="replica"
             data-tutorial="replica"
           >
