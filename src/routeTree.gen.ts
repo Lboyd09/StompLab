@@ -36,6 +36,7 @@ import { Route as CatalogIndexRouteImport } from './routes/catalog.index'
 import { Route as CatalogIdRouteImport } from './routes/catalog.$id'
 import { Route as PresetIdRouteImport } from './routes/preset.$id'
 import { Route as SShareIdRouteImport } from './routes/s.$shareId'
+import { Route as SetlistDemoRouteImport } from './routes/setlist_.demo'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
 import { Route as ApiPolarWebhookRouteImport } from './routes/api/polar.webhook'
 
@@ -174,6 +175,11 @@ const SShareIdRoute = SShareIdRouteImport.update({
   path: '/s/$shareId',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SetlistDemoRoute = SetlistDemoRouteImport.update({
+  id: '/setlist_/demo',
+  path: '/setlist/demo',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthSplatRoute = ApiAuthSplatRouteImport.update({
   id: '/api/auth/$',
   path: '/api/auth/$',
@@ -212,6 +218,7 @@ export interface FileRoutesByFullPath {
   '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
   '/s/$shareId': typeof SShareIdRoute
+  '/setlist/demo': typeof SetlistDemoRoute
   '/catalog/': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -242,6 +249,7 @@ export interface FileRoutesByTo {
   '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
   '/s/$shareId': typeof SShareIdRoute
+  '/setlist/demo': typeof SetlistDemoRoute
   '/catalog': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -274,6 +282,7 @@ export interface FileRoutesById {
   '/catalog/$id': typeof CatalogIdRoute
   '/preset/$id': typeof PresetIdRoute
   '/s/$shareId': typeof SShareIdRoute
+  '/setlist_/demo': typeof SetlistDemoRoute
   '/catalog/': typeof CatalogIndexRoute
   '/api/auth/$': typeof ApiAuthSplatRoute
   '/api/polar/webhook': typeof ApiPolarWebhookRoute
@@ -307,6 +316,7 @@ export interface FileRouteTypes {
     | '/catalog/$id'
     | '/preset/$id'
     | '/s/$shareId'
+    | '/setlist/demo'
     | '/catalog/'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -337,6 +347,7 @@ export interface FileRouteTypes {
     | '/catalog/$id'
     | '/preset/$id'
     | '/s/$shareId'
+    | '/setlist/demo'
     | '/catalog'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -368,6 +379,7 @@ export interface FileRouteTypes {
     | '/catalog/$id'
     | '/preset/$id'
     | '/s/$shareId'
+    | '/setlist_/demo'
     | '/catalog/'
     | '/api/auth/$'
     | '/api/polar/webhook'
@@ -397,6 +409,7 @@ export interface RootRouteChildren {
   ApiVisitRoute: typeof ApiVisitRoute
   PresetIdRoute: typeof PresetIdRoute
   SShareIdRoute: typeof SShareIdRoute
+  SetlistDemoRoute: typeof SetlistDemoRoute
   ApiAuthSplatRoute: typeof ApiAuthSplatRoute
   ApiPolarWebhookRoute: typeof ApiPolarWebhookRoute
 }
@@ -592,6 +605,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SShareIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/setlist_/demo': {
+      id: '/setlist_/demo'
+      path: '/setlist/demo'
+      fullPath: '/setlist/demo'
+      preLoaderRoute: typeof SetlistDemoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/$': {
       id: '/api/auth/$'
       path: '/api/auth/$'
@@ -658,6 +678,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiVisitRoute: ApiVisitRoute,
   PresetIdRoute: PresetIdRoute,
   SShareIdRoute: SShareIdRoute,
+  SetlistDemoRoute: SetlistDemoRoute,
   ApiAuthSplatRoute: ApiAuthSplatRoute,
   ApiPolarWebhookRoute: ApiPolarWebhookRoute,
 }

@@ -10,6 +10,7 @@ const APP_DOCUMENTS = new Set([
   "/gear",
   "/history",
   "/setlist",
+  "/setlist/demo",
   "/equivalents",
   "/guide",
   "/login",

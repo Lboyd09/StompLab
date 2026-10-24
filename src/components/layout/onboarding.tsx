@@ -52,7 +52,8 @@ export function Onboarding({ onFinished }: { onFinished?: () => void }) {
   useLayoutEffect(() => {
     try {
       if (
-        (window.localStorage.getItem("stomplab.tutorial.v19") ||
+        (window.localStorage.getItem("stomplab.tutorial.v20") ||
+          window.localStorage.getItem("stomplab.tutorial.v19") ||
           window.localStorage.getItem("stomplab.tutorial.v18") ||
           window.localStorage.getItem("stomplab.tutorial.v17") ||
           window.localStorage.getItem("stomplab.tutorial.v16") ||
