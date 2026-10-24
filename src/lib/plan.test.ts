@@ -225,16 +225,16 @@ describe("assemblePlan", () => {
 });
 
 describe("prices", () => {
-  it("is $6.99 a month and $75 a year", () => {
+  it("is $6.99 a month and $69 a year", () => {
     assert.equal(PRICE_MONTHLY_USD, 6.99);
-    assert.equal(PRICE_YEARLY_USD, 75);
+    assert.equal(PRICE_YEARLY_USD, 69);
     assert.equal(formatUsd(6.99), "$6.99");
     assert.equal(formatUsd(75), "$75");
-    assert.equal(yearlySavingsUsd(), 8.88);
+    assert.equal(yearlySavingsUsd(), 14.88);
   });
-  it("never discounts the year plan — $75 is the only yearly price", () => {
+  it("never discounts the year plan — $69 is the only yearly price", () => {
     assert.equal(priceYearlyLaunchUsd(), PRICE_YEARLY_USD);
-    assert.equal(priceYearlyLaunchUsd(), 75);
+    assert.equal(priceYearlyLaunchUsd(), 69);
     assert.notEqual(priceMonthlyLaunchUsd(), PRICE_MONTHLY_USD);
     assert.equal(LAUNCH_DISCOUNT_PERCENT, 20);
     assert.equal(priceMonthlyReferralUsd(), 3.5);

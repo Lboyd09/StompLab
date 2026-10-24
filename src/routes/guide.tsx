@@ -107,7 +107,7 @@ function GuidePage() {
         </p>
         <p>
           If you are subscribed and they start a monthly plan, their first month is 50% off. If you also
-          pay monthly, your next invoice is 50% off too. Yearly stays $75.
+          pay monthly, your next invoice is 50% off too. Yearly stays $69.
         </p>
       </Section>
 

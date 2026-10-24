@@ -5,10 +5,10 @@ export const BUSINESS_EMAIL = "stomplab1@gmail.com";
 export const PUBLIC_SUPPORT_EMAIL = "stomplab1@gmail.com";
 export const LEGACY_SUPPORT_EMAIL = "hello@stomplab.app";
 export const PRICE_MONTHLY_USD = 6.99;
-export const PRICE_YEARLY_USD = 75;
+export const PRICE_YEARLY_USD = 69;
 export const FREE_BUILDS = 3;
 export const PAID_MONTHLY_BUILDS = 50;
-/** Launch promo: first MONTHLY invoice only (Polar duration=once). Yearly is always $75. */
+/** Launch promo: first MONTHLY invoice only (Polar duration=once). Yearly is always $69. */
 export const LAUNCH_DISCOUNT_PERCENT = 20;
 
 export function launchPriceUsd(full: number) {
@@ -19,12 +19,12 @@ export function priceMonthlyLaunchUsd() {
   return launchPriceUsd(PRICE_MONTHLY_USD);
 }
 
-/** Invite deal: 50% off one monthly invoice. Yearly stays $75. */
+/** Invite deal: 50% off one monthly invoice. Yearly stays $69. */
 export function priceMonthlyReferralUsd() {
   return Math.round(PRICE_MONTHLY_USD * 50) / 100;
 }
 
-/** Yearly is $75 — no launch discount on the year plan. */
+/** Yearly is $69 — no launch discount on the year plan. */
 export function priceYearlyLaunchUsd() {
   return PRICE_YEARLY_USD;
 }
