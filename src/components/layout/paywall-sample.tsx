@@ -19,7 +19,7 @@ const SET = [
 
 export function SampleSetlist() {
   return (
-    <Sample label="Sample: Sunday set">
+    <Sample label="Sample: Friday night set">
       <ol className="space-y-2">
         {SET.map((s, i) => (
           <li key={s.song} className="flex items-center gap-3 rounded-xl border border-border bg-card px-4 py-3">
