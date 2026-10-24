@@ -10,12 +10,11 @@ export const EXPORT_MODE_LABEL: Record<ExportMode, string> = {
   stomp: "Stomp",
 };
 
-/** Sticky bar above the phone nav: unit, file type, Download. */
+/** Sticky bar above the phone nav: unit, file type, Download. Phones only; a laptop has Download by the title. */
 export function DownloadBar({
   unitName,
   ext,
   mode,
-  onMode,
   canDownload,
   signInNext,
   onDownload,
@@ -24,7 +23,8 @@ export function DownloadBar({
   unitName: string;
   ext: string;
   mode: ExportMode;
-  onMode: (mode: ExportMode) => void;
+  /** Unused: the mode is picked once, above the replica. Kept so older callers still compile. */
+  onMode?: (mode: ExportMode) => void;
   canDownload: boolean;
   /** Shared link: the page to return to after sign-in. Replaces Subscribe. */
   signInNext?: string;
@@ -32,21 +32,15 @@ export function DownloadBar({
   panel?: React.ReactNode;
 }) {
   return (
-    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-background/95 backdrop-blur md:bottom-0">
+    <div className="fixed inset-x-0 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] z-30 border-t border-border bg-background/95 backdrop-blur md:hidden">
       {panel}
       <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 md:pb-[max(0.625rem,env(safe-area-inset-bottom))]">
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-medium">{unitName}</p>
           {canDownload ? (
-            <button
-              type="button"
-              onClick={() => onMode(mode === "snapshot" ? "stomp" : "snapshot")}
-              aria-label={`File opens in ${EXPORT_MODE_LABEL[mode]} mode. Tap to switch.`}
-              className="-my-2 flex min-h-11 max-w-full items-center truncate text-xs text-muted-foreground"
-            >
+            <p className="truncate text-xs text-muted-foreground">
               .{ext} · opens in {EXPORT_MODE_LABEL[mode]} mode
-              <span className="ml-1.5 text-primary underline underline-offset-2">change</span>
-            </button>
+            </p>
           ) : (
             <p className="truncate text-xs text-muted-foreground">.{ext} file</p>
           )}

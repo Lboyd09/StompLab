@@ -19,14 +19,16 @@ import { isAmpOrCab } from "@/lib/snapshot-sanitize";
 import { usePlan } from "@/lib/use-plan";
 import { useAppStore } from "@/store/app-store";
 import { Link } from "@tanstack/react-router";
-import { ChevronDown, Share2 } from "lucide-react";
+import { ChevronDown, Download, ListPlus, Share2 } from "lucide-react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import { StompUnit } from "../stomp/stomp-unit";
 import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { FsAssignPanel, stompSwitchIndices } from "./fs-assign";
-import { unitSpec } from "../stomp/hardware";
+import { unitSpec, type FsMode } from "../stomp/hardware";
+import { replicaStatusLine } from "./status-line";
+import { cn } from "@/lib/utils";
 import { DownloadBar, EXPORT_MODE_LABEL, type ExportMode } from "./download-bar";
 import { FREE_BUILD_LINE } from "@/lib/copy";
 import { PostDownloadDialog, shouldAskAgain } from "../layout/post-download";
@@ -89,8 +91,6 @@ export function PresetWorkspace({
   const [copying, setCopying] = useState(false);
   const [sharing, setSharing] = useState(false);
   const [showAdvanced, setShowAdvanced] = useState(false);
-  const [showReplica, setShowReplica] = useState(false);
-  const [showSummary, setShowSummary] = useState(false);
   const [revising, setRevising] = useState<string | null>(null);
   // One choice drives the page and the file: Stomp shows effects on the switches, Snapshot shows song parts.
   const exportMode: ExportMode = fsMode === "stomp" ? "stomp" : "snapshot";
@@ -421,8 +421,7 @@ export function PresetWorkspace({
   const tuningName = tuning ? (tuning.match(/\(([^)]+)\)/)?.[1] ?? tuning.replace(/[.,].*$/, "")) : null;
   const otherTips = preset.tips.filter((t) => t !== tuning);
   const showNames = preset.snapshots.length > 0 && !stompMode && !readOnly;
-  const hasAbout = showNames || otherTips.length > 0 || Boolean(tuning) || preset.originalGear.length > 0 || preset.recommendedGear.length > 0;
-  const aboutSummary = "Switch names, playing notes, original rig, gear to grab";
+  const aboutSummary = "The story of the sound, switch names, playing notes, the original rig";
   const hasWah = songUsedWah(preset);
   const fs = (n: number | undefined) => (n ? `FS${n}` : "");
   const modeSteps =
@@ -443,237 +442,303 @@ export function PresetWorkspace({
     setFsMode("snapshot");
   }
 
-  return (
-    <>
-      <div className="space-y-6 pb-24">
-        <header className="space-y-3">
-          <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs uppercase tracking-[0.14em] text-muted-foreground">
-            <span>{preset.instrument}</span>
-            <span aria-hidden>·</span>
-            <span className="font-medium text-foreground">{device.name}</span>
-            <span aria-hidden>·</span>
-            <span className="tabular-nums">{preset.tempo} BPM</span>
-            {tuningName ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="font-medium text-amber-700 [.dark_&]:text-amber-300">{tuningName}</span>
-              </>
-            ) : null}
-            {showDsp ? (
-              <>
-                <span aria-hidden>·</span>
-                <span className="tabular-nums">{load}% DSP</span>
-              </>
-            ) : null}
-          </div>
-          <h1 className="font-display text-3xl font-semibold leading-tight tracking-tight">
-            {preset.song ? (
-              <>
-                {preset.song}
-                {preset.artist ? <span className="block text-lg font-normal text-muted-foreground sm:inline sm:text-3xl"><span className="hidden sm:inline"> — </span>{preset.artist}</span> : null}
-              </>
-            ) : (
-              preset.name
-            )}
-          </h1>
-          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
-            {canDownload && canExportHlx(preset.stompModel) && !readOnly ? (
-              <Button type="button" className="hidden h-11 sm:inline-flex sm:w-auto" onClick={onDownload} data-tour="download">
-                Download .{exportExt}
-              </Button>
-            ) : null}
-            <div className="flex gap-2">
-              {canShare ? (
-                <Button
-                  type="button"
-                  variant="secondary"
-                  className="h-11 flex-1 sm:flex-none"
-                  disabled={sharing}
-                  onClick={() => void onShare()}
-                >
-                  <Share2 className="size-4" />
-                  {sharing ? "Making link" : "Share"}
-                </Button>
-              ) : null}
-              {readOnly ? null : (
-                <Button asChild variant="ghost" className="h-11 flex-1 sm:flex-none">
-                  <Link to="/setlist" search={{ add: preset.id }}>Add to setlist</Link>
-                </Button>
-              )}
-            </div>
-          </div>
-          {canDownload ? null : (
-            <p className="text-xs leading-relaxed text-muted-foreground">
-              {signInToDownload
-                ? `Sign in to download. ${FREE_BUILD_LINE}`
-                : isDemoId(preset.id)
-                  ? "We could not confirm your account. Reload the page and try again."
-                  : "You can look around. Subscribe to download this one; the demos stay free."}
-            </p>
+  // Helix Floor / LT are wide: the replica takes the full width and the chain sits under it.
+  const wide = layout === "floor" || layout === "lt";
+  const canGetFile = canDownload && canExportHlx(preset.stompModel);
+  const status = replicaStatusLine({
+    stompMode,
+    blocks: chain,
+    partName: activeSnap?.name || (activeSnap ? `Snapshot ${activeSnapshot + 1}` : undefined),
+    partFs: stompMode ? undefined : snapFs[activeSnapshot],
+    footswitches: preset.footswitches,
+    stompFs: spec.stompFs,
+  });
+  const statusColor = stompMode ? "var(--color-pop)" : (activeSnap?.color ?? "var(--color-pop)");
+
+  /** The replica's MODE / PAGE / ▲+▼ go through the same switch as the tabs, so Stomp mode gets its effects. */
+  function replicaFsMode(mode: FsMode) {
+    if (mode === fsMode) return;
+    if (mode === "stomp" || mode === "snapshot") setExportMode(mode);
+    else setFsMode(mode);
+  }
+
+  /** A stomp press on the replica also shows that effect's knobs. */
+  function replicaToggle(blockId: string) {
+    toggleBlock(blockId);
+    selectBlock(blockId);
+  }
+
+  const modeSwitch = (
+    <div role="radiogroup" aria-label="How the switches work" className="grid w-full grid-cols-2 rounded-full border border-border bg-background/70 p-1 backdrop-blur sm:w-auto">
+      {(
+        [
+          ["snapshot", "Song parts"],
+          ["stomp", "Effects"],
+        ] as const
+      ).map(([id, label]) => (
+        <button
+          key={id}
+          type="button"
+          role="radio"
+          aria-checked={exportMode === id}
+          onClick={() => {
+            setExportMode(id);
+            setLcdView("play");
+          }}
+          className={cn(
+            "min-h-11 rounded-full px-4 text-sm font-semibold transition-colors",
+            exportMode === id ? "bg-primary text-primary-foreground shadow-sm" : "text-muted-foreground hover:text-foreground",
           )}
-          <div className="max-w-2xl">
-            <p className={`text-sm leading-relaxed text-muted-foreground ${showSummary ? "" : "line-clamp-2"}`}>{preset.summary}</p>
-            {preset.summary.length > 110 ? (
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const chainList = (
+    <div className="space-y-2.5" data-tour="chain">
+      <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5">
+        <h2 id="tone-heading" className="font-display text-lg font-semibold uppercase tracking-wide">
+          Signal chain
+        </h2>
+        <span className="text-xs text-muted-foreground">
+          {stompMode ? "As it loads" : `On in ${activeSnap?.name || "this part"}`} · tap a block for its knobs
+        </span>
+      </div>
+      <ol
+        className={cn("grid gap-2", wide ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-2")}
+        aria-label="Signal chain, input to output"
+      >
+        {chain.map((b, i) => {
+          const model = blockModel(b)!;
+          const cat = CATEGORY_MAP[model.category];
+          const selected = b.id === selectedId;
+          const onFs = stompMode ? stompFsFor(b.id) : undefined;
+          return (
+            <li key={b.id} className="min-w-0">
               <button
                 type="button"
-                aria-expanded={showSummary}
-                onClick={() => setShowSummary((open) => !open)}
-                className="min-h-11 text-xs text-primary underline underline-offset-2"
+                aria-pressed={selected}
+                aria-label={`${i + 1}. ${model.name}, based on ${model.basedOn}, ${b.enabled ? "on" : "off"}${onFs ? `, on FS${onFs}` : ""}. Show knobs.`}
+                onClick={() => selectBlock(b.id)}
+                className={cn(
+                  "sl-chain-tile relative flex h-full min-h-[4.25rem] w-full min-w-0 flex-col gap-0.5 rounded-xl border py-2 pl-3.5 pr-2.5 text-left",
+                  selected ? "sl-chain-tile-on" : "border-border",
+                  !b.enabled && "opacity-60",
+                )}
+                style={{ ["--cat" as string]: cat.lcd }}
               >
-                {showSummary ? "Less" : "More about this tone"}
+                <span className="flex w-full items-center justify-between gap-2 font-mono text-[10px] font-semibold uppercase tracking-[0.14em]">
+                  <span className="flex min-w-0 items-center gap-1.5">
+                    <span
+                      aria-hidden
+                      className="size-2 shrink-0 rounded-full"
+                      style={{ background: b.enabled ? cat.lcd : "transparent", boxShadow: `inset 0 0 0 1.5px ${cat.lcd}` }}
+                    />
+                    <span className="truncate text-muted-foreground">
+                      {i + 1} · {cat.short}
+                      {onFs ? ` · FS${onFs}` : ""}
+                    </span>
+                  </span>
+                  <span className={b.enabled ? "text-foreground" : "text-muted-foreground"}>{b.enabled ? "On" : "Off"}</span>
+                </span>
+                <span className="text-sm font-semibold leading-snug">{model.name}</span>
+                <span className="truncate text-xs leading-snug text-muted-foreground">{model.basedOn}</span>
               </button>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="space-y-5 pb-24 md:pb-6">
+        <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 space-y-1.5">
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 font-mono text-[11px] uppercase tracking-[0.18em] text-muted-foreground">
+              <span className="font-semibold text-pop">{device.name}</span>
+              <span aria-hidden>·</span>
+              <span className="tabular-nums">{preset.tempo} BPM</span>
+              {preset.instrument === "bass" ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span>Bass</span>
+                </>
+              ) : null}
+              {showDsp ? (
+                <>
+                  <span aria-hidden>·</span>
+                  <span className="tabular-nums">{load}% DSP</span>
+                </>
+              ) : null}
+              {tuningName ? (
+                <span className="rounded-full border border-amber-600/40 bg-amber-500/10 px-2 py-0.5 font-sans text-[11px] font-semibold normal-case tracking-normal text-amber-700 [.dark_&]:text-amber-300">
+                  {tuningName}
+                </span>
+              ) : null}
+            </div>
+            <h1 className="font-display text-[1.75rem] font-semibold leading-[1.05] tracking-tight sm:text-4xl">
+              {preset.song || preset.name}
+              {preset.song && preset.artist ? (
+                <span className="block font-sans text-base font-normal tracking-normal text-muted-foreground sm:ml-3 sm:inline sm:text-xl">
+                  {preset.artist}
+                </span>
+              ) : null}
+            </h1>
+          </div>
+          <div className="flex w-full gap-2 sm:w-auto">
+            {canShare ? (
+              <Button
+                type="button"
+                variant="secondary"
+                className="h-11 flex-1 sm:flex-none"
+                disabled={sharing}
+                onClick={() => void onShare()}
+              >
+                <Share2 className="size-4" />
+                {sharing ? "Making link" : "Share"}
+              </Button>
+            ) : null}
+            {readOnly ? null : (
+              <Button asChild variant="outline" className="h-11 flex-1 sm:flex-none">
+                <Link to="/setlist" search={{ add: preset.id }}>
+                  <ListPlus className="size-4" />
+                  Add to setlist
+                </Link>
+              </Button>
+            )}
+            {canGetFile ? (
+              <Button type="button" className="hidden h-11 md:inline-flex" onClick={onDownload} data-tour="download">
+                <Download className="size-4" />
+                Download .{exportExt}
+              </Button>
+            ) : !canDownload && signInToDownload ? (
+              <Button asChild className="hidden h-11 md:inline-flex">
+                <Link to="/login" search={{ next: signInToDownload }}>
+                  Sign in to download
+                </Link>
+              </Button>
+            ) : !canDownload && !planPending ? (
+              <Button asChild className="hidden h-11 md:inline-flex">
+                <Link to="/upgrade">Subscribe</Link>
+              </Button>
             ) : null}
           </div>
-          {!canExportHlx(preset.stompModel) ? (
-            <p className="text-sm text-muted-foreground">
-              {device.name} does not export a preset file. Copy the chain below by hand.
-            </p>
-          ) : isPodGo ? (
-            <p className="text-sm text-muted-foreground">
-              POD Go Edit imports .pgp files (File → Import). A Helix .hlx will not load on this unit.
-            </p>
-          ) : null}
-          <IrNote preset={preset} />
         </header>
 
-        <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem] lg:items-start">
-          <div className="min-w-0 space-y-6">
-            <section aria-labelledby="tone-heading" className="space-y-5 rounded-2xl border border-border bg-card p-4 sm:p-5">
-              <div className="space-y-2">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h2 id="tone-heading" className="font-display text-lg font-semibold">
-                    The tone
-                  </h2>
-                  <span className="text-xs text-muted-foreground">How the switches work</span>
-                </div>
-                <div role="radiogroup" aria-label="How the switches work" className="grid grid-cols-2 rounded-full bg-secondary p-1">
-                  {(
-                    [
-                      ["snapshot", "Song parts", "Snapshot mode"],
-                      ["stomp", "Effects", "Stomp mode"],
-                    ] as const
-                  ).map(([id, label, sub]) => (
-                    <button
-                      key={id}
-                      type="button"
-                      role="radio"
-                      aria-checked={exportMode === id}
-                      onClick={() => {
-                        setExportMode(id);
-                        setLcdView("play");
-                      }}
-                      className={`flex min-h-12 flex-col items-center justify-center rounded-full px-3 leading-tight ${
-                        exportMode === id ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                      }`}
-                    >
-                      <span className="text-sm font-semibold">{label}</span>
-                      <span className="text-[11px] opacity-80">{sub}</span>
-                    </button>
-                  ))}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  {stompMode
-                    ? "Each switch turns one effect on or off, like a pedalboard. The file opens this way."
-                    : "Each switch calls up one part of the song. The file opens this way."}
-                </p>
-              </div>
+        {!canDownload || !canExportHlx(preset.stompModel) || isPodGo ? (
+          <div className="space-y-1 text-xs leading-relaxed text-muted-foreground">
+            {canDownload ? null : (
+              <p>
+                {signInToDownload
+                  ? `Sign in to download. ${FREE_BUILD_LINE}`
+                  : isDemoId(preset.id)
+                    ? "We could not confirm your account. Reload the page and try again."
+                    : "You can look around. Subscribe to download this one; the demos stay free."}
+              </p>
+            )}
+            {!canExportHlx(preset.stompModel) ? (
+              <p>{device.name} does not export a preset file. Copy the chain below by hand.</p>
+            ) : isPodGo ? (
+              <p>POD Go Edit imports .pgp files (File → Import). A Helix .hlx will not load on this unit.</p>
+            ) : null}
+          </div>
+        ) : null}
+        <IrNote preset={preset} />
 
-              {!stompMode && preset.snapshots.length ? (
-                <div className="space-y-2">
-                  <h3 className="text-sm font-semibold">Song parts</h3>
-                  <div
-                    role="group"
-                    aria-label="Song part to show"
-                    className={`grid gap-2 ${preset.snapshots.length > 4 ? "grid-cols-2 sm:grid-cols-4" : preset.snapshots.length === 3 ? "grid-cols-3" : "grid-cols-2 sm:grid-cols-4"}`}
-                  >
-                    {preset.snapshots.map((s, i) => {
-                      const on = i === activeSnapshot;
-                      return (
-                        <button
-                          key={s.id}
-                          type="button"
-                          aria-pressed={on}
-                          onClick={() => pickPart(i)}
-                          className={`flex min-h-14 min-w-0 flex-col items-start justify-center gap-1 rounded-xl border-2 px-3 py-2 text-left transition-colors ${
-                            on ? "bg-secondary" : "border-border bg-background hover:bg-secondary/60"
-                          }`}
-                          style={on ? { borderColor: s.color } : undefined}
-                        >
-                          <span
-                            className="rounded-full px-1.5 py-0.5 font-mono text-[11px] font-semibold leading-none text-black"
-                            style={{ background: s.color }}
-                          >
-                            {fs(snapFs[i]) || `Part ${i + 1}`}
-                          </span>
-                          <span className="w-full truncate text-base font-semibold">{s.name || `Snapshot ${i + 1}`}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  {activeSnap?.notes ? (
-                    <p className="rounded-lg bg-secondary/60 px-3 py-2 text-sm leading-relaxed text-muted-foreground">
-                      <span className="font-medium text-foreground">{activeSnap.name}: </span>
-                      {activeSnap.notes}
-                    </p>
-                  ) : null}
-                </div>
-              ) : null}
-
-              {stompMode ? (
-                readOnly ? null : (
-                  <FsAssignPanel preset={preset} onAssign={assignFs} onReset={original ? resetFeatured : undefined} />
-                )
-              ) : null}
-
-              <div className="space-y-2" data-tour="chain">
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <h3 className="text-sm font-semibold">Signal chain</h3>
-                  <span className="text-xs text-muted-foreground">
-                    {stompMode ? "How it starts when you load it" : `On in ${activeSnap?.name || "this part"}`} · tap a block for its knobs
-                  </span>
-                </div>
-                <ol className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4" aria-label="Signal chain, input to output">
-                  {chain.map((b, i) => {
-                    const model = blockModel(b)!;
-                    const cat = CATEGORY_MAP[model.category];
-                    const selected = b.id === selectedId;
-                    const onFs = stompMode ? stompFsFor(b.id) : undefined;
+        <div className={cn("grid min-w-0 gap-5", !wide && "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start")}>
+          <section
+            aria-label={`${preset.song || preset.name} on the ${device.name}`}
+            className="sl-stage relative min-w-0 rounded-3xl border border-border p-2.5 sm:p-5"
+            data-tour="replica"
+            data-tutorial="replica"
+          >
+            <div className="flex flex-col gap-2 px-1 pt-1 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
+              {modeSwitch}
+              <p className="min-w-0 text-xs leading-snug text-muted-foreground sm:text-right">
+                {stompMode ? "Each switch turns an effect on or off. Tap one." : "Each switch is one part of the song. Tap one."}
+              </p>
+            </div>
+            <div id="replica-panel" data-replica-toggle className="hx-replica-fit min-w-0">
+              <StompUnit
+                preset={displayed}
+                selectedBlockId={selectedId ?? null}
+                onSelectBlock={selectBlock}
+                view={lcdView}
+                fsMode={fsMode}
+                paramPage={paramPage}
+                activeSnapshot={activeSnapshot}
+                assignFsIndex={assignFsIndex}
+                showDsp={showDsp}
+                onParamPage={setParamPage}
+                onView={setLcdView}
+                onFsMode={replicaFsMode}
+                onSnapshot={setActiveSnapshot}
+                onChangeParam={changeParam}
+                onToggleBlock={replicaToggle}
+                onAssignFsIndex={setAssignFsIndex}
+              />
+            </div>
+            <p
+              role="status"
+              aria-live="polite"
+              className="flex items-start gap-2.5 rounded-2xl border border-border bg-card/80 px-3.5 py-3 text-sm font-medium leading-snug backdrop-blur"
+            >
+              <span aria-hidden className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: statusColor, boxShadow: `0 0 10px ${statusColor}` }} />
+              <span className="min-w-0">{status}</span>
+            </p>
+            {!stompMode && preset.snapshots.length ? (
+              <div className="mt-3 space-y-2">
+                <div
+                  role="group"
+                  aria-label="Song part to show"
+                  className={cn(
+                    "grid gap-2",
+                    preset.snapshots.length === 3 ? "grid-cols-3" : preset.snapshots.length > 4 ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-2 sm:grid-cols-4",
+                  )}
+                >
+                  {preset.snapshots.map((s, i) => {
+                    const on = i === activeSnapshot;
                     return (
-                      <li key={b.id} className="min-w-0">
-                        <button
-                          type="button"
-                          aria-pressed={selected}
-                          aria-label={`${i + 1}. ${model.name}, based on ${model.basedOn}, ${b.enabled ? "on" : "off"}${onFs ? `, on FS${onFs}` : ""}. Show knobs.`}
-                          onClick={() => selectBlock(b.id)}
-                          className={`relative flex h-full min-h-[4.5rem] w-full min-w-0 flex-col gap-0.5 overflow-hidden rounded-xl border-2 py-2 pl-4 pr-2.5 text-left transition-colors ${
-                            selected ? "border-foreground" : "border-transparent"
-                          } ${b.enabled ? "" : "opacity-55"}`}
-                          style={{
-                            background: b.enabled
-                              ? `color-mix(in oklab, ${cat.lcd} 18%, var(--color-background))`
-                              : "var(--color-secondary)",
-                          }}
-                        >
-                          <span
-                            aria-hidden
-                            className="absolute inset-y-0 left-0 w-1.5"
-                            style={{ background: b.enabled ? cat.lcd : "transparent", borderRight: b.enabled ? undefined : `2px dashed ${cat.lcd}` }}
-                          />
-                          <span className="flex w-full items-center justify-between gap-2 text-[10px] font-semibold uppercase tracking-[0.12em]">
-                            <span style={{ color: cat.lcd }}>
-                              {i + 1} · {cat.short}{onFs ? ` · FS${onFs}` : ""}
-                            </span>
-                            <span className={b.enabled ? "text-foreground" : "text-muted-foreground"}>{b.enabled ? "On" : "Off"}</span>
-                          </span>
-                          <span className="text-sm font-semibold leading-snug">{model.name}</span>
-                          <span className="truncate text-xs leading-snug text-muted-foreground">{model.basedOn}</span>
-                        </button>
-                      </li>
+                      <button
+                        key={s.id}
+                        type="button"
+                        aria-pressed={on}
+                        onClick={() => pickPart(i)}
+                        className={cn(
+                          "sl-part flex min-h-14 min-w-0 flex-col items-start justify-center gap-1 rounded-xl border px-2.5 py-2 text-left",
+                          on ? "sl-part-on" : "border-border bg-card/70 hover:bg-card",
+                        )}
+                        style={{ ["--part" as string]: s.color }}
+                      >
+                        <span className="flex items-center gap-1.5 font-mono text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
+                          <span aria-hidden className="size-2 rounded-full" style={{ background: s.color }} />
+                          {fs(snapFs[i]) || `Part ${i + 1}`}
+                        </span>
+                        <span className="line-clamp-2 w-full break-words text-sm font-semibold leading-tight">{s.name || `Snapshot ${i + 1}`}</span>
+                      </button>
                     );
                   })}
-                </ol>
+                </div>
+                {activeSnap?.notes ? (
+                  <p className="px-1 text-sm leading-relaxed text-muted-foreground">{noteText(activeSnap.notes)}</p>
+                ) : null}
               </div>
+            ) : null}
+          </section>
 
+          <section
+            aria-labelledby="tone-heading"
+            className={cn(
+              "min-w-0 rounded-3xl border border-border bg-card p-4 sm:p-5",
+              wide ? "space-y-5 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:space-y-0" : "space-y-5",
+            )}
+          >
+            {chainList}
+            <div className="min-w-0 space-y-5">
               {selectedBlock ? (
                 <BlockKnobs
                   key={selectedBlock.id}
@@ -684,51 +749,100 @@ export function PresetWorkspace({
                   onChange={(name, value) => changeParam(selectedBlock.id, name, value)}
                 />
               ) : null}
-            </section>
-
-            <section className="rounded-2xl border border-border bg-card" data-tour="replica" data-tutorial="replica">
-              <button
-                type="button"
-                data-replica-toggle
-                aria-expanded={showReplica}
-                aria-controls="replica-panel"
-                onClick={() => setShowReplica((open) => !open)}
-                className="flex min-h-14 w-full items-center justify-between gap-3 px-4 text-left sm:px-5"
-              >
-                <span>
-                  <span className="block font-display text-base font-semibold">See it on your {device.name}</span>
-                  <span className="block text-xs text-muted-foreground">The switches, screen and knobs as they look on the unit.</span>
-                </span>
-                <ChevronDown className={`size-5 shrink-0 transition-transform ${showReplica ? "rotate-180" : ""}`} aria-hidden />
-              </button>
-              {showReplica ? (
-                <div id="replica-panel" className="hx-replica-fit min-w-0 px-2 pb-2 sm:px-4">
-                  <StompUnit
-                    preset={displayed}
-                    selectedBlockId={selectedBlockId}
-                    onSelectBlock={selectBlock}
-                    view={lcdView}
-                    fsMode={fsMode}
-                    paramPage={paramPage}
-                    activeSnapshot={activeSnapshot}
-                    assignFsIndex={assignFsIndex}
-                    showDsp={showDsp}
-                    onParamPage={setParamPage}
-                    onView={setLcdView}
-                    onFsMode={setFsMode}
-                    onSnapshot={setActiveSnapshot}
-                    onChangeParam={changeParam}
-                    onToggleBlock={toggleBlock}
-                    onAssignFsIndex={setAssignFsIndex}
-                  />
-                </div>
+              {stompMode && !readOnly ? (
+                <FsAssignPanel preset={preset} onAssign={assignFs} onReset={original ? resetFeatured : undefined} />
               ) : null}
-            </section>
-          </div>
+            </div>
+          </section>
+        </div>
 
+        <div className="grid min-w-0 gap-3 lg:grid-cols-2 lg:items-start">
           <div className="min-w-0 space-y-3">
+            <Fold title="About this tone" summary={aboutSummary}>
+              <div className="space-y-5">
+                {preset.summary ? <p className="text-sm leading-relaxed text-muted-foreground">{preset.summary}</p> : null}
+
+                {showNames ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Switch names</h3>
+                    <p className="mb-2 text-xs text-muted-foreground">These names show on the unit. Up to 12 letters.</p>
+                    <div className="space-y-2">
+                      {preset.snapshots.map((s, i) => (
+                        <label key={s.id} className="flex items-center gap-2">
+                          <span
+                            className="grid h-6 min-w-10 place-items-center rounded-full px-1.5 font-mono text-[11px] font-semibold text-black"
+                            style={{ background: s.color }}
+                          >
+                            {fs(snapFs[i]) || i + 1}
+                          </span>
+                          <input
+                            value={s.name}
+                            maxLength={12}
+                            aria-label={`Snapshot ${i + 1} name`}
+                            onChange={(e) => renameSnapshot(s.id, e.target.value)}
+                            onFocus={() => pickPart(i)}
+                            className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base font-medium"
+                          />
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {otherTips.length || tuning ? (
+                  <div>
+                    <h3 className="mb-1 text-sm font-semibold">Playing notes</h3>
+                    <div className="space-y-2">
+                      {preset.tips.map((t) => (
+                        <p key={t} className="text-sm leading-relaxed text-muted-foreground">
+                          {noteText(t)}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {preset.originalGear.length ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Original rig</h3>
+                    <p className="mb-2 text-xs text-muted-foreground">What was used on the record or live.</p>
+                    <div className="space-y-3">
+                      {preset.originalGear.map((g) => (
+                        <div key={`${g.role}-${g.name}`}>
+                          <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
+                          <div className="text-sm font-medium">{g.name}</div>
+                          <p className="text-xs leading-relaxed text-muted-foreground">{g.notes}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                {preset.recommendedGear.length ? (
+                  <div>
+                    <h3 className="text-sm font-semibold">Grab this</h3>
+                    <p className="mb-2 text-xs text-muted-foreground">Gear that gets you closer. Yours first.</p>
+                    <div className="space-y-2">
+                      {preset.recommendedGear.map((g) => (
+                        <div key={g.item} className="rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
+                          <div className="flex flex-wrap items-center gap-2">
+                            {g.fromLocker ? <Badge variant="outline">Your locker</Badge> : null}
+                            {g.kind ? (
+                              <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</span>
+                            ) : null}
+                          </div>
+                          <div className="mt-1 text-sm font-medium">{g.item}</div>
+                          <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{g.why}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+              </div>
+            </Fold>
+
             <Fold
-              title={`Build it on the ${device.name}`}
+              title={`Load it on your ${device.name}`}
               summary={`Import with ${editor}, then put it in ${EXPORT_MODE_LABEL[exportMode]} mode.`}
             >
               <ol className="space-y-2 text-sm leading-relaxed text-muted-foreground">
@@ -781,89 +895,6 @@ export function PresetWorkspace({
               </p>
             </Fold>
 
-            {hasAbout ? (
-              <Fold title="About this tone" summary={aboutSummary}>
-                <div className="space-y-5">
-                  {showNames ? (
-                    <div>
-                      <h3 className="text-sm font-semibold">Switch names</h3>
-                      <p className="mb-2 text-xs text-muted-foreground">These names show on the unit. Up to 12 letters.</p>
-                      <div className="space-y-2">
-                        {preset.snapshots.map((s, i) => (
-                          <label key={s.id} className="flex items-center gap-2">
-                            <span
-                              className="grid h-6 min-w-10 place-items-center rounded-full px-1.5 font-mono text-[11px] font-semibold text-black"
-                              style={{ background: s.color }}
-                            >
-                              {fs(snapFs[i]) || i + 1}
-                            </span>
-                            <input
-                              value={s.name}
-                              maxLength={12}
-                              aria-label={`Snapshot ${i + 1} name`}
-                              onChange={(e) => renameSnapshot(s.id, e.target.value)}
-                              onFocus={() => pickPart(i)}
-                              className="h-11 min-w-0 flex-1 rounded-md border border-border bg-background px-2 text-base font-medium"
-                            />
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {otherTips.length || tuning ? (
-                    <div>
-                      <h3 className="mb-1 text-sm font-semibold">Playing notes</h3>
-                      <div className="space-y-2">
-                        {preset.tips.map((t) => (
-                          <p key={t} className="text-sm leading-relaxed text-muted-foreground">
-                            {noteText(t)}
-                          </p>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {preset.originalGear.length ? (
-                    <div>
-                      <h3 className="text-sm font-semibold">Original rig</h3>
-                      <p className="mb-2 text-xs text-muted-foreground">What was used on the record or live.</p>
-                      <div className="space-y-3">
-                        {preset.originalGear.map((g) => (
-                          <div key={`${g.role}-${g.name}`}>
-                            <div className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.role}</div>
-                            <div className="text-sm font-medium">{g.name}</div>
-                            <p className="text-xs leading-relaxed text-muted-foreground">{g.notes}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-
-                  {preset.recommendedGear.length ? (
-                    <div>
-                      <h3 className="text-sm font-semibold">Grab this</h3>
-                      <p className="mb-2 text-xs text-muted-foreground">Gear that gets you closer. Yours first.</p>
-                      <div className="space-y-2">
-                        {preset.recommendedGear.map((g) => (
-                          <div key={g.item} className="rounded-xl border border-border bg-secondary/40 px-3 py-2.5">
-                            <div className="flex flex-wrap items-center gap-2">
-                              {g.fromLocker ? <Badge variant="outline">Your locker</Badge> : null}
-                              {g.kind ? (
-                                <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground">{g.kind}</span>
-                              ) : null}
-                            </div>
-                            <div className="mt-1 text-sm font-medium">{g.item}</div>
-                            <p className="mt-1 text-xs leading-relaxed text-muted-foreground">{g.why}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </div>
-              </Fold>
-            ) : null}
-
             {readOnly || !hasWah ? null : (
               <Fold
                 title="Wah"
@@ -878,7 +909,9 @@ export function PresetWorkspace({
                 <WahSelect mode={wahMode} modelId={wahModelId} onMode={onWahMode} onModel={onWahModel} />
               </Fold>
             )}
+          </div>
 
+          <div className="min-w-0 space-y-3">
             {plan.signedIn && !readOnly ? (
               <section className="space-y-3 rounded-2xl border border-border bg-card p-4">
                 <div>
@@ -944,7 +977,6 @@ export function PresetWorkspace({
           unitName={device.name}
           ext={exportExt}
           mode={exportMode}
-          onMode={setExportMode}
           canDownload={canDownload}
           signInNext={signInToDownload}
           onDownload={onDownload}
@@ -1006,11 +1038,16 @@ function BlockKnobs({
   const locked = isAmpOrCab(block.modelId);
   const knobs = paramEntries(block);
   return (
-    <div role="group" className="space-y-4 rounded-xl border border-border bg-background p-3 sm:p-4" aria-labelledby={`knobs-${block.id}`}>
+    <div
+      role="group"
+      className="sl-knob-panel space-y-4 rounded-2xl border border-border p-3.5 sm:p-4"
+      style={{ ["--cat" as string]: cat.lcd }}
+      aria-labelledby={`knobs-${block.id}`}
+    >
       <div className="flex items-start gap-3">
-        <span aria-hidden className="mt-1 size-3 shrink-0 rounded-full" style={{ background: cat.lcd }} />
+        <span aria-hidden className="mt-1.5 size-3 shrink-0 rounded-full" style={{ background: cat.lcd, boxShadow: `0 0 10px ${cat.lcd}` }} />
         <div className="min-w-0 flex-1">
-          <p id={`knobs-${block.id}`} className="text-base font-semibold leading-snug">
+          <p id={`knobs-${block.id}`} className="font-display text-lg font-semibold leading-snug tracking-wide">
             {model.name}
           </p>
           <p className="text-xs text-muted-foreground">
@@ -1025,7 +1062,7 @@ function BlockKnobs({
           disabled={readOnly}
           onClick={onToggle}
           className={`h-11 min-w-16 shrink-0 rounded-full border px-4 text-xs font-semibold uppercase tracking-[0.12em] disabled:opacity-70 ${
-            block.enabled ? "border-foreground bg-foreground text-background" : "border-border"
+            block.enabled ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
           }`}
         >
           {locked && block.enabled ? "Stays on" : block.enabled ? "On" : "Off"}
@@ -1052,7 +1089,7 @@ function BlockKnobs({
                   disabled={readOnly}
                   onClick={() => onChange(p.name, p.value >= 5 ? 0 : 10)}
                   className={`mt-1 h-11 w-full rounded-full border px-3 text-xs font-semibold uppercase tracking-[0.12em] ${
-                    p.value >= 5 ? "border-foreground bg-foreground text-background" : "border-border"
+                    p.value >= 5 ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background"
                   }`}
                 >
                   {p.value >= 5 ? "On" : "Off"}
@@ -1096,8 +1133,8 @@ function BlockKnobs({
                     }
                     onChange(p.name, next);
                   }}
-                  className="mt-1 h-11 w-full cursor-pointer accent-foreground"
-                  style={{ accentColor: cat.lcd }}
+                  className="sl-range mt-1 h-11 w-full cursor-pointer"
+                  style={{ accentColor: cat.lcd, ["--fill" as string]: `${(Math.max(0, Math.min(10, Number.isFinite(p.value) ? p.value : 5)) / 10) * 100}%` }}
                 />
               )}
             </div>

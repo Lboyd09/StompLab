@@ -109,7 +109,7 @@ export function Knob({
         className={cn("hx-knob relative rounded-full touch-none", dim, disabled && "opacity-40")}
       >
         <span className="pointer-events-none absolute inset-0" style={{ transform: `rotate(${angle}deg)` }}>
-          <span className="hx-knob-tick absolute left-1/2 top-[5px] h-[8px] w-[2px] -translate-x-1/2 rounded-full" />
+          <span className="hx-knob-tick absolute left-1/2 top-[19%] h-[27%] w-[2px] -translate-x-1/2 rounded-full" />
         </span>
       </button>
       {(label || (showValue && onChange)) && (
