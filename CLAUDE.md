@@ -98,7 +98,7 @@ stomplab.app was still returning Vercel’s security checkpoint (`429`, `x-verce
 
 `createCustomSoundFn` is not a song. It does not confirm a title and does not take a BPM. Create is paid.
 
-`revisePresetFn` runs `sanitizeSnapshots(finishTone(preset))` without a BPM.
+`revisePresetFn` sends the current blocks, knobs, snapshots, tempo and wah, keeps the preset id, and runs `finishPreset` with the stored BPM.
 
 Standing prompt rules live in `src/lib/preset-schema.ts` and `src/lib/research-lessons.ts`. Lessons must not name a featured song title. Feedback does not retune one named demo; Liam asks for those by hand.
 
