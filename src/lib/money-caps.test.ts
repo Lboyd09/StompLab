@@ -1,7 +1,9 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { useTestDatabase, type Sql } from "./db";
-import { FAILED_BUILDS_PER_DAY, recordFailure, tooManyFailedBuilds } from "./billing";
+import { FAILED_BUILDS_PER_DAY, freeBuildUserIds, recordFailure, tooManyFailedBuilds } from "./billing";
+import { gmailAliasTaken } from "./closed-accounts";
+import { canonicalEmail, canonicalEmailSql } from "./referral-code";
 import { cachedSuggestions, rememberSuggestions, suggestCacheKey } from "./songs";
 import { makeTestDb } from "./test-db";
 
@@ -37,5 +39,25 @@ describe("song suggestion cache", () => {
     assert.deepEqual(cachedSuggestions(key, 2_000), hits);
     assert.equal(cachedSuggestions(key, 1_000 + 11 * 60_000), null);
     assert.equal(cachedSuggestions(suggestCacheKey("ever long", "bass"), 2_000), null);
+  });
+});
+
+describe("Gmail aliases share one free allowance", () => {
+  it("the SQL canonical form matches canonicalEmail()", async () => {
+    for (const email of ["Stomp.Lab1+x@Gmail.com", "a.b@googlemail.com", "Joe.Smith+1@icloud.com", " x@y.com "]) {
+      const rows = await sql.query<{ c: string }>(`select ${canonicalEmailSql("$1::text")} as c`, [email]);
+      assert.equal(rows[0]?.c, canonicalEmail(email), email);
+    }
+  });
+
+  it("groups dot and +tag spellings for free builds, and refuses a new alias sign-up", async () => {
+    await sql.query(`insert into "user" (id, name, email, "emailVerified") values ('alias-1', 'a', 'riff.player@gmail.com', true)`);
+    await sql.query(`insert into "user" (id, name, email, "emailVerified") values ('alias-2', 'b', 'riffplayer+2@gmail.com', true)`);
+    await sql.query(`insert into "user" (id, name, email, "emailVerified") values ('other-1', 'c', 'riffplayer@icloud.com', true)`);
+    const ids = (await freeBuildUserIds("alias-2", "riffplayer+2@gmail.com")).sort();
+    assert.deepEqual(ids, ["alias-1", "alias-2"]);
+    assert.equal(await gmailAliasTaken("r.i.f.f.player+3@gmail.com"), true);
+    assert.equal(await gmailAliasTaken("new.player@gmail.com"), false);
+    assert.equal(await gmailAliasTaken("riffplayer@icloud.com"), false);
   });
 });

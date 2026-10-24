@@ -25,6 +25,14 @@ export function canonicalEmail(email: string | null | undefined): string {
   return `${local}@${domain}`;
 }
 
+/** canonicalEmail() as a SQL expression over a column, for grouping accounts in queries. */
+export function canonicalEmailSql(col: string): string {
+  const e = `lower(trim(${col}))`;
+  return `(case when split_part(${e}, '@', 2) in ('gmail.com', 'googlemail.com')
+    then replace(split_part(split_part(${e}, '@', 1), '+', 1), '.', '') || '@gmail.com'
+    else ${e} end)`;
+}
+
 export function invitePath(code: string, perk?: "half" | "builds") {
   const c = normalizeReferralCode(code);
   // Straight to Create account. /join still works for older links.

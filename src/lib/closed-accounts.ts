@@ -5,7 +5,7 @@ import { sendLabEmail } from "@/lib/mailer";
 import { cancelPolarSubscription } from "@/lib/polar";
 import { rateLimited, currentClientIp } from "@/lib/rate-limit";
 import { PUBLIC_SUPPORT_EMAIL } from "@/lib/plan";
-import { canonicalEmail } from "@/lib/referral-code";
+import { canonicalEmail, canonicalEmailSql } from "@/lib/referral-code";
 import { publicOrigin } from "@/lib/site-origin";
 
 export const DELETE_HOLD_DAYS = 14;
@@ -185,10 +185,37 @@ export async function emailHoldStatus(email: string | null | undefined): Promise
   }
 }
 
+/** New accounts per network address per hour, counted in the database so every server instance agrees. */
+export const SIGNUPS_PER_IP_PER_HOUR = 5;
+
+export const ALIAS_SIGNUP_ERROR = "That Gmail address is in use on another Stomp Lab account. Sign in with that one.";
+
+/** True when another account uses a Gmail spelling (dots, +tag) of this address. */
+export async function gmailAliasTaken(email: string | null | undefined): Promise<boolean> {
+  const canon = canonicalEmail(email);
+  if (!canon.endsWith("@gmail.com")) return false;
+  const exact = (email ?? "").trim().toLowerCase();
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ id: string }>(
+      `select id from "user" where ${canonicalEmailSql("email")} = $1 and lower(email) <> $2 limit 1`,
+      [canon, exact],
+    );
+    return rows.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Throws a user-facing error if this email cannot create an account. */
 export async function assertEmailCanSignup(email: string | null | undefined): Promise<void> {
   const hold = await emailHoldStatus(email);
   if (hold.blocked) throw new Error(hold.message);
+  if (await gmailAliasTaken(email)) throw new Error(ALIAS_SIGNUP_ERROR);
+  const ip = await currentClientIp();
+  if (ip !== "unknown" && (await rateLimited(getSql, `signup:${ip}`, SIGNUPS_PER_IP_PER_HOUR, 3600))) {
+    throw new Error("Too many new accounts from this network. Try again in an hour.");
+  }
 }
 
 export async function requestDeleteHold(opts: {

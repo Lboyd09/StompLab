@@ -44,6 +44,7 @@ import { COUNTED_BUILD_SQL, bonusTotalFor, confirmBuild, paidBonusRemaining, rel
 import { emailVerifiedFor, entitlementScope, findEntitlement, type EntRow } from "./entitlement";
 import { FREE_BUILDS } from "./plan";
 import { rateLimited, currentClientIp } from "./rate-limit";
+import { canonicalEmail, canonicalEmailSql } from "./referral-code";
 
 export async function emailFor(userId: string, sessionEmail?: string | null): Promise<string | null> {
   try {
@@ -69,6 +70,29 @@ export async function siblingUserIds(userId: string, email: string | null): Prom
     }
   } catch {
     /* ignore */
+  }
+  return [...ids];
+}
+
+/**
+ * Accounts that share one free allowance: the same email, plus Gmail spellings of
+ * it (dots, +tags, googlemail.com) that deliver to the same inbox.
+ */
+export async function freeBuildUserIds(userId: string, email: string | null): Promise<string[]> {
+  const ids = new Set(await siblingUserIds(userId, email));
+  const canon = canonicalEmail(email);
+  if (!canon.includes("@")) return [...ids];
+  try {
+    const sql = await getSql();
+    const rows = await sql.query<{ id: string }>(
+      `select id from "user" where ${canonicalEmailSql("email")} = $1 limit 20`,
+      [canon],
+    );
+    for (const r of rows) {
+      if (r?.id) ids.add(r.id);
+    }
+  } catch {
+    /* same-email accounts still share */
   }
   return [...ids];
 }
@@ -364,10 +388,12 @@ async function computePlan(userId: string, email: string | null): Promise<Plan> 
   const month = yearMonth();
   // Both counts throw when unreadable. The caller decides how to fail.
   const monthlyN = await countBuildsFor(ids, month);
-  const lifetimeN = paid ? monthlyN : await countBuildsFor(ids);
+  // Free builds are one allowance per inbox, so Gmail aliases share it.
+  const freeIds = paid ? ids : await freeBuildUserIds(userId, em || email);
+  const lifetimeN = paid ? monthlyN : await countBuildsFor(freeIds);
   const intervalRaw = String(ent?.plan_interval ?? "").trim().toLowerCase();
   const planInterval: PlanInterval | null = intervalRaw === "year" ? "year" : intervalRaw === "month" ? "month" : null;
-  const bonusTotal = await bonusBuildsFor(ids);
+  const bonusTotal = await bonusBuildsFor(freeIds);
   // Invite bonus is one pool. For a paid player it is what earlier months have not already used.
   const bonusBuilds = paid ? await paidBonusRemaining(sql, ids, month, bonusTotal).catch(() => 0) : bonusTotal;
   const polarLinked = Boolean(
@@ -1293,7 +1319,9 @@ export async function reserveBuildSlot(opts: {
   confirmed?: boolean;
 }): Promise<BuildSlot> {
   try {
-    const ids = await siblingUserIds(opts.userId, opts.email);
+    const ids = opts.plan.paid
+      ? await siblingUserIds(opts.userId, opts.email)
+      : await freeBuildUserIds(opts.userId, opts.email);
     const result = await reserveBuild(withTransaction, {
       userId: opts.userId,
       ids,
