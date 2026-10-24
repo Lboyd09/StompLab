@@ -157,19 +157,35 @@ describe("snapshot trimming keeps the solo", () => {
     snapshots: ["Intro", "Verse", "Chorus", "Solo"].map((name) => ({ name, enabledModelIds: ["brit-2204", "4x12-greenback-25"] })),
   };
 
-  it("on a fresh HX Stomp build", () => {
-    assert.deepEqual(
-      song(four, "hx-stomp").snapshots.map((s) => s.name),
-      ["Intro", "Verse", "Solo"],
+  const switches = ["Intro", "Verse", "Chorus", "Solo"].map((name, i) => ({ index: i + 1, label: name.toUpperCase(), action: "snapshot", snapshotName: name }));
+  /** Snapshot name on each snapshot switch, by index. */
+  const fsNames = (p: Preset) =>
+    Object.fromEntries(
+      p.footswitches.filter((f) => f.action === "snapshot").map((f) => [f.index, p.snapshots.find((s) => s.id === f.snapshotId)?.name]),
     );
+
+  it("on a fresh HX Stomp build, with the solo on FS3", () => {
+    const p = song({ ...four, footswitches: switches }, "hx-stomp");
+    assert.deepEqual(p.snapshots.map((s) => s.name), ["Intro", "Verse", "Solo"]);
+    assert.deepEqual(fsNames(p), { 1: "Intro", 2: "Verse", 3: "Solo" });
   });
 
-  it("on a cached Floor build served to a Stomp", () => {
-    const floor = song({ ...four, snapshots: [...four.snapshots, { name: "Outro", enabledModelIds: ["brit-2204"] }] }, "helix-floor");
+  it("on a cached Floor build served to a Stomp (FS3) or an XL (FS4)", () => {
+    const floor = song(
+      {
+        ...four,
+        snapshots: ["Intro", "Verse", "Pre", "Chorus", "Bridge", "Solo"].map((name) => ({ name, enabledModelIds: ["brit-2204", "4x12-greenback-25"] })),
+        footswitches: ["Intro", "Verse", "Pre", "Chorus", "Bridge", "Solo"].map((name, i) => ({ index: i + 1, label: name, action: "snapshot", snapshotName: name })),
+      },
+      "helix-floor",
+    );
     const stomp = withStompModel(floor, "hx-stomp");
     assert.deepEqual(stomp.snapshots.map((s) => s.name), ["Intro", "Verse", "Solo"]);
-    const tone = toneOf(buildHlx(stomp, { irSlot: null }) as Json);
-    assert.equal(tone.snapshot2["@name"], "SOLO");
+    assert.deepEqual(fsNames(stomp), { 1: "Intro", 2: "Verse", 3: "Solo" });
+    assert.equal(toneOf(buildHlx(stomp, { irSlot: null }) as Json).snapshot2["@name"], "SOLO");
+    const xl = withStompModel(floor, "hx-stomp-xl");
+    assert.deepEqual(xl.snapshots.map((s) => s.name), ["Intro", "Verse", "Pre", "Solo"]);
+    assert.equal(fsNames(xl)[4], "Solo");
   });
 
   it("leaves a list that fits, or one with no solo, in order", () => {

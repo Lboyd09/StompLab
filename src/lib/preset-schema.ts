@@ -244,16 +244,25 @@ export function toPreset(
     };
   });
 
-  const footswitches = out.footswitches
-    .filter((f) => f.index >= 1 && f.index <= device.footswitches)
+  const kept = out.footswitches.filter((f) => f.index >= 1 && f.index <= device.footswitches);
+  const byName = (name: string | undefined) => (name ? snapshots.find((s) => s.name.toLowerCase() === name.toLowerCase()) : undefined);
+  const footswitches = kept
     .map((f) => {
       const target = f.targetModelId ? blocks.find((b) => b.modelId === f.targetModelId) : undefined;
-      const snap = f.snapshotName
-        ? snapshots.find((s) => s.name.toLowerCase() === f.snapshotName!.toLowerCase())
-        : snapshots[f.index - 1];
+      let snap = byName(f.snapshotName);
+      // A switch for a trimmed snapshot takes the snapshot now at its position (the kept solo).
+      let label = f.label;
+      if (!snap && f.action === "snapshot") {
+        const atIndex = snapshots[f.index - 1];
+        const claimed = atIndex && kept.some((o) => o !== f && byName(o.snapshotName)?.id === atIndex.id);
+        if (atIndex && !claimed) {
+          snap = atIndex;
+          if (f.snapshotName) label = atIndex.name;
+        }
+      }
       return {
         index: f.index,
-        label: fitSnapshotName(f.label, 12).toUpperCase(),
+        label: fitSnapshotName(label, 12).toUpperCase(),
         color: f.color || "#c5c9c2",
         action: f.action,
         targetBlockId: target?.id,

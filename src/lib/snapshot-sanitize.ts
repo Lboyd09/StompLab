@@ -36,7 +36,8 @@ export function fitSnapshotName(raw: string, max = 12): string {
   return s.slice(0, max).replace(/[\s-]+$/g, "") || "Snap";
 }
 
-const LEAD_SNAPSHOT = /\b(lead|solo)\b/i;
+/** Same words finishTone lifts as the solo. */
+const LEAD_SNAPSHOT = /\b(lead|solo|lick)\b/i;
 
 /**
  * Fit snapshots to a unit with fewer switches. The lead/solo snapshot is the one a player

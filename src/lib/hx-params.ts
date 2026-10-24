@@ -295,6 +295,7 @@ export function blockNativeParams(block: StompBlock, overrides?: Record<string, 
  */
 export function liftSnapshotSwitches<T extends { blocks: StompBlock[]; snapshots: Snapshot[] }>(preset: T): T {
   let changed = false;
+  const lifted = new Map<string, string[]>();
   const blocks = preset.blocks.map((block) => {
     const m = hxModel(helixIdFor(block.modelId));
     if (!m || !m.params.some((p) => p.type === "b")) return block;
@@ -319,9 +320,25 @@ export function liftSnapshotSwitches<T extends { blocks: StompBlock[]; snapshots
       Object.entries(block.params).filter(([uiName]) => !resolveParamKeys(block.modelId, uiName).some((k) => keys.includes(k))),
     );
     for (const key of keys) params[key] = lift[key];
+    lifted.set(block.id, keys);
     return { ...block, params };
   });
-  return changed ? { ...preset, blocks } : preset;
+  if (!changed) return preset;
+  // The snapshots stop naming that switch, so the screen shows what the file plays.
+  const snapshots = preset.snapshots.map((snap) => {
+    if (!snap.paramOverrides) return snap;
+    const paramOverrides: Record<string, Record<string, number>> = {};
+    for (const [id, params] of Object.entries(snap.paramOverrides)) {
+      const keys = lifted.get(id);
+      const modelId = blocks.find((b) => b.id === id)?.modelId ?? "";
+      const left = keys
+        ? Object.fromEntries(Object.entries(params).filter(([uiName]) => !resolveParamKeys(modelId, uiName).some((k) => keys.includes(k))))
+        : params;
+      if (Object.keys(left).length) paramOverrides[id] = left;
+    }
+    return { ...snap, paramOverrides: Object.keys(paramOverrides).length ? paramOverrides : undefined };
+  });
+  return { ...preset, blocks, snapshots };
 }
 
 /** Legacy cab "@mic" index for HD2_Cab* (the newer CabMicIr_ cabs use the Mic param instead). */

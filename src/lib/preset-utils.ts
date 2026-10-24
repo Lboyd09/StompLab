@@ -277,22 +277,17 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
   }
 
   const snapIds = new Set(snapshots.map((s) => s.id));
+  // A switch for a snapshot that was trimmed goes first, so its index is free for the kept ones.
   let fs = preset.footswitches.filter(
-    (f) => f.index >= 1 && f.index <= device.footswitches && f.action !== "mode" && f.action !== "tap",
+    (f) =>
+      f.index >= 1 &&
+      f.index <= device.footswitches &&
+      f.action !== "mode" &&
+      f.action !== "tap" &&
+      (f.action !== "snapshot" || (f.snapshotId && snapIds.has(f.snapshotId))),
   );
-
-  if (device.footswitches <= 3) {
-    const low = fs.filter((f) => f.index <= 3);
-    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
-  } else {
-    const low = fs.filter((f) => f.index <= 3);
-    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
-    if (!low.length && high.length) {
-      fs = high.map((f) => ({ ...f, index: f.index - 3 }));
-    } else {
-      fs = [...low, ...high.filter((h) => h.action !== "snapshot" || !low.some((l) => l.index === h.index - 3))];
-    }
+  // Snapshot N on switch N when that switch is free and the snapshot has none (a kept solo).
+  const fillSnapshotSwitches = () => {
     for (let i = 0; i < Math.min(snapshots.length, Math.min(device.footswitches, 8)); i++) {
       const index = i + 1;
       const snap = snapshots[i];
@@ -310,6 +305,22 @@ export function withStompModel(preset: Preset, model: StompModelId): Preset {
         },
       ];
     }
+  };
+
+  if (device.footswitches <= 3) {
+    const low = fs.filter((f) => f.index <= 3);
+    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
+    fs = low.length ? low : high.map((f) => ({ ...f, index: f.index - 3 }));
+    fillSnapshotSwitches();
+  } else {
+    const low = fs.filter((f) => f.index <= 3);
+    const high = fs.filter((f) => f.index >= 4 && f.index <= 6);
+    if (!low.length && high.length) {
+      fs = high.map((f) => ({ ...f, index: f.index - 3 }));
+    } else {
+      fs = [...low, ...high.filter((h) => h.action !== "snapshot" || !low.some((l) => l.index === h.index - 3))];
+    }
+    fillSnapshotSwitches();
     fs = assignUtilityBypassFs(blocks, fs, device);
     if (device.layout === "xl") {
       fs = [...fs.filter((f) => f.index <= 6), MODE_FS, TAP_FS];
