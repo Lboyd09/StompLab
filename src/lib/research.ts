@@ -18,7 +18,8 @@ import {
   tooManyFailedBuilds,
 } from "@/lib/billing";
 import { rateLimited } from "./rate-limit";
-import type { Plan } from "./plan";
+import { monthlyCapLine, type Plan } from "./plan";
+import { REFERRAL_BONUS } from "./referral-code";
 import { getSql } from "@/lib/db";
 import { lookupCacheRaw, persistEqCache, persistSongCache, saveCacheBpm, songCacheKey, soundCacheKey, eqCacheKey, lookupSongCache, lookupNotesCache, notesCacheKey, persistNotesCache } from "./cache";
 import { libraryServesFeatured, parseGuitarRole, songBuildRole, type GuitarRole } from "./guitar-role";
@@ -251,7 +252,7 @@ function blocked(reason: "paywall" | "quota"): ResearchErr {
     return {
       ok: false,
       reason: "quota",
-      error: "You've used this month's 50 custom builds. Featured demos still work. Resets next calendar month.",
+      error: monthlyCapLine(REFERRAL_BONUS),
     };
   }
   return {

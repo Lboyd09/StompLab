@@ -1,6 +1,19 @@
 import { toast } from "sonner";
 import { resendVerificationEmail } from "./billing";
+import { monthlyCapLine } from "./plan";
+import { REFERRAL_BONUS } from "./referral-code";
 import type { ResearchErr } from "./research";
+
+/** Paid player at the monthly cap: the reset date and a way to get more now. */
+export function notifyMonthlyCap(invite?: () => void) {
+  toast.message(monthlyCapLine(REFERRAL_BONUS), {
+    action: {
+      label: "Invite a friend",
+      onClick: invite ?? (() => window.location.assign("/account#invite")),
+    },
+    duration: 12000,
+  });
+}
 
 export function notifyResearchError(
   err: ResearchErr,
@@ -15,7 +28,7 @@ export function notifyResearchError(
     return;
   }
   if (err.reason === "quota") {
-    toast.error(err.error, { duration: 8000 });
+    notifyMonthlyCap();
     return;
   }
   if (err.reason === "verify") {

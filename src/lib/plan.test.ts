@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed, priceLine, firstMonthUsd } from "./plan.ts";
+import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed, priceLine, firstMonthUsd, quotaResetDate, monthlyCapLine } from "./plan.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {
@@ -265,5 +265,13 @@ describe("priceLine", () => {
     assert.equal(priceLine(), "$5.59 first month, then $6.99/mo. Or $69/yr.");
     assert.equal(priceLine({ inviteHalf: true }), "$3.50 first month, then $6.99/mo. Or $69/yr.");
     assert.equal(firstMonthUsd({ inviteHalf: true }), priceMonthlyReferralUsd());
+  });
+});
+
+describe("monthly cap notice", () => {
+  it("names the reset date and the invite", () => {
+    assert.equal(quotaResetDate(new Date("2026-10-24T12:00:00Z")), "November 1");
+    assert.equal(quotaResetDate(new Date("2026-12-31T23:00:00Z")), "January 1");
+    assert.match(monthlyCapLine(3, new Date("2026-10-24T12:00:00Z")), /November 1\..*3 more/);
   });
 });

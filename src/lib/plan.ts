@@ -286,6 +286,17 @@ export function subscriptionLapsed(plan: Pick<Plan, "subscriptionStatus">): bool
   return s === "past_due" || s === "unpaid" || s === "incomplete";
 }
 
+/** When this month's paid builds come back: the 1st of next month (UTC, like yearMonth). */
+export function quotaResetDate(now = new Date()): string {
+  const next = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() + 1, 1));
+  return next.toLocaleDateString("en-US", { month: "long", day: "numeric", timeZone: "UTC" });
+}
+
+/** A paid player at the monthly cap: when it resets, and the invite that adds builds now. */
+export function monthlyCapLine(bonus: number, now = new Date()): string {
+  return `You've used this month's custom builds. They come back ${quotaResetDate(now)}. Invite a friend and you both get ${bonus} more now.`;
+}
+
 export function formatPeriodEnd(iso: string | null | undefined): string {
   if (!iso) return "the end of the period you already paid for";
   const d = new Date(iso);

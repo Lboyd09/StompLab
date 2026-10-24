@@ -1,7 +1,7 @@
 import { toast } from "sonner";
 import { FEATURED } from "@/data/featured";
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
-import { notifyResearchError } from "./notify";
+import { notifyMonthlyCap, notifyResearchError } from "./notify";
 import type { Plan } from "./plan";
 import { overlayUserGear } from "./preset-schema";
 import { isDemoId, withStompModel } from "./preset-utils";
@@ -71,7 +71,7 @@ export async function buildSong(
   if (!plan.signedIn) return { kind: "login" };
   if (!plan.canResearch) {
     if (plan.paid) {
-      toast.error("You've used this month's custom builds. Demos still work. Resets next calendar month.");
+      notifyMonthlyCap();
       return { kind: "stopped" };
     }
     return { kind: "upgrade", reason: "limit" };
@@ -97,7 +97,7 @@ export async function buildSong(
           ? result
           : { ok: false as const, error: "Research failed. Try a demo, then try that song again." };
       if (fail.reason === "quota") {
-        toast.error(fail.error);
+        notifyMonthlyCap();
         return { kind: "stopped", status: fail.error };
       }
       if (fail.reason === "paywall") return { kind: "upgrade", reason: "limit" };
