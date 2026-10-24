@@ -200,6 +200,8 @@ export function dedupeHistory(presets: Preset[]): Preset[] {
 /** The list with this preset in front, replacing its old row (same id, or same song + unit). */
 export function upsertInto(list: Preset[], preset: Preset): Preset[] {
   const key = historyKey(preset);
+  // A knob drag saves the same preset many times a second; it is already in front.
+  if (list[0]?.id === preset.id && historyKey(list[0]) === key) return [preset, ...list.slice(1)];
   const rest = list.filter((p) => p.id !== preset.id && historyKey(p) !== key);
   return dedupeHistory([preset, ...rest]);
 }

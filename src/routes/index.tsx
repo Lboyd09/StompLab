@@ -1,4 +1,4 @@
-import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate, useRouter } from "@tanstack/react-router";
 import { ArrowRight, Loader2, Lock } from "lucide-react";
 import { useEffect, useState } from "react";
 import { toast } from "sonner";
@@ -13,10 +13,7 @@ import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { PlaybackTarget } from "@/data/types";
 import { notifyResearchSource } from "@/lib/notify";
-import { overlayUserGear } from "@/lib/preset-schema";
-import { isDemoId, withStompModel } from "@/lib/preset-utils";
-import { applyWahPreference } from "@/lib/wah";
-import { applyRouting } from "@/lib/rig-routing";
+import { isDemoId } from "@/lib/preset-utils";
 import { buildSong } from "@/lib/song-build";
 import { useOpenFeatured } from "@/lib/use-open-featured";
 import { usePlan } from "@/lib/use-plan";
@@ -43,15 +40,26 @@ function Home() {
   const savePreset = useAppStore((s) => s.savePreset);
   const openFeaturedPreset = useOpenFeatured();
   const search = Route.useSearch();
+  const router = useRouter();
   const { plan, refresh, isPending: planPending } = usePlan();
-  const [song, setSong] = useState(search.q ?? "");
-  const [artist, setArtist] = useState("");
+  // A build keeps running if the player leaves the Lab; coming back shows it, not an empty form.
+  const labBuild = useAppStore((s) => s.labBuild);
+  const setLabBuild = useAppStore((s) => s.setLabBuild);
+  const [song, setSong] = useState(search.q ?? labBuild?.song ?? "");
+  const [artist, setArtist] = useState(labBuild?.artist ?? "");
   const [picked, setPicked] = useState(false);
   const playbackTarget = useAppStore((s) => s.playbackTarget);
   const setPlaybackTarget = useAppStore((s) => s.setPlaybackTarget);
-  const [busy, setBusy] = useState(false);
+  const busy = Boolean(labBuild);
   const [status, setStatus] = useState("");
-  const [progress, setProgress] = useState(0);
+  const [now, setNow] = useState(() => Date.now());
+  const progress = labBuild ? Math.min(94, 8 + Math.floor((now - labBuild.startedAt) / 450) * 3) : 0;
+
+  useEffect(() => {
+    if (!labBuild) return;
+    const tick = window.setInterval(() => setNow(Date.now()), 450);
+    return () => window.clearInterval(tick);
+  }, [labBuild]);
 
   const featured = FEATURED.filter((p) => p.instrument === instrument);
   const demos = featured.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
@@ -91,19 +99,18 @@ function Home() {
 
   async function onResearch(e: React.FormEvent) {
     e.preventDefault();
-    let tick = 0;
+    if (useAppStore.getState().labBuild) return;
+    let started = false;
     try {
       const outcome = await buildSong(
         { song, artist, instrument, stompModel, playbackTarget, gear, wahMode, wahModelId },
         { plan, planPending },
         {
           onStart: () => {
-            setBusy(true);
+            started = true;
             setStatus("Researching…");
-            setProgress(8);
-            tick = window.setInterval(() => {
-              setProgress((p) => (p >= 94 ? 94 : p + 3));
-            }, 450);
+            setNow(Date.now());
+            setLabBuild({ song: song.trim(), artist: artist.trim(), startedAt: Date.now() });
           },
           login: () => void navigate({ to: "/login" }),
           upgrade: () => void navigate({ to: "/upgrade" }),
@@ -122,13 +129,20 @@ function Home() {
         return;
       }
       savePreset(outcome.preset);
-      notifyResearchSource(outcome.source);
-      if (outcome.counted) await refresh();
-      await navigate({ to: "/preset/$id", params: { id: outcome.preset.id } });
+      if (outcome.counted) void refresh().catch(() => undefined);
+      const id = outcome.preset.id;
+      // Only jump to the preset if the player is still on the Lab; elsewhere, offer it.
+      if (router.state.location.pathname === "/") {
+        notifyResearchSource(outcome.source);
+        await router.navigate({ to: "/preset/$id", params: { id } });
+      } else {
+        toast.success(`Your ${outcome.preset.song || outcome.preset.name} preset is ready.`, {
+          duration: 12000,
+          action: { label: "Open", onClick: () => void router.navigate({ to: "/preset/$id", params: { id } }) },
+        });
+      }
     } finally {
-      if (tick) window.clearInterval(tick);
-      setBusy(false);
-      setProgress(0);
+      if (started) setLabBuild(null);
     }
   }
 
@@ -272,7 +286,7 @@ function Home() {
         </div>
       </section>
 
-      {!subscribed ? (
+      {!subscribed && !planPending ? (
         <section className="rounded-2xl bg-primary px-6 py-8 text-primary-foreground sm:px-8">
           <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
           <div className="space-y-2">
@@ -297,12 +311,12 @@ function Home() {
               <h2 className="sl-hero-title text-3xl">More songs</h2>
             </div>
             <span className="text-xs text-muted-foreground">
-              {subscribed ? `${instrument} · replica` : "Subscribe to open"}
+              {subscribed || planPending ? `${instrument} · replica` : "Subscribe to open"}
             </span>
           </div>
           <div className="sl-stagger grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {rest.map((p) => {
-              const locked = !subscribed;
+              const locked = !subscribed && !planPending;
               return (
                 <button
                   key={p.id}
