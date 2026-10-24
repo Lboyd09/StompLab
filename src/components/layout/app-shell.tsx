@@ -34,6 +34,7 @@ import { usePlan } from "@/lib/use-plan";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { pullMyPresets, pullMySetlists, pushMyPresets, pushMySetlists } from "@/lib/billing";
 import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
+import { mergeHistory } from "@/lib/storage";
 import { captureReferralCode } from "@/lib/referral-code";
 
 const NAV = [
@@ -50,10 +51,29 @@ const DESKTOP_NAV = [
   { to: "/guide", label: "Guide", icon: BookOpen },
 ] as const;
 
+const PULL_RETRY_MS = [0, 2000, 6000, 15000];
+
+/** A pull that returns null on failure, tried a few times with growing waits. Null if all fail. */
+async function pullWithRetry<T>(pull: () => Promise<T | null>, cancelled: () => boolean): Promise<T | null> {
+  for (const wait of PULL_RETRY_MS) {
+    if (wait) await new Promise((r) => window.setTimeout(r, wait));
+    if (cancelled()) return null;
+    try {
+      const res = await pull();
+      if (res) return res;
+    } catch {
+      /* try again */
+    }
+  }
+  return null;
+}
+
 export function AppShell({ children }: { children: React.ReactNode }) {
   const hydrate = useAppStore((s) => s.hydrate);
   const hydrateOwner = useAppStore((s) => s.hydrateOwner);
   const replacePresets = useAppStore((s) => s.replacePresets);
+  const setHistoryReady = useAppStore((s) => s.setHistoryReady);
+  const syncTick = useAppStore((s) => s.syncTick);
   const presets = useAppStore((s) => s.presets);
   const setlists = useAppStore((s) => s.setlists);
   const replaceSetlists = useAppStore((s) => s.replaceSetlists);
@@ -80,6 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [syncReady, setSyncReady] = useState(false);
   const searchRef = useRef<HTMLInputElement>(null);
   const lastSynced = useRef("");
+  const handledTick = useRef(0);
   const [setlistSyncReady, setSetlistSyncReady] = useState(false);
   const lastSetlistSync = useRef("");
 
@@ -109,45 +130,57 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (authPending) return;
     setSyncReady(false);
-    const local = hydrateOwner(userId);
+    setHistoryReady(false);
+    hydrateOwner(userId);
     if (!userId) {
       lastSynced.current = "";
       setSyncReady(true);
+      setHistoryReady(true);
       return;
     }
     let cancelled = false;
-    void pullMyPresets()
-      .then((res) => {
-        if (cancelled) return;
-        if (res.presets.length) {
-          replacePresets(res.presets);
-          lastSynced.current = jsonFingerprint(res.presets);
-        } else if (local.presets.length) {
-          lastSynced.current = jsonFingerprint(local.presets);
-          void pushMyPresets({ data: { presets: local.presets } }).catch(() => undefined);
-        } else {
-          lastSynced.current = jsonFingerprint(local.presets);
-        }
-      })
-      .catch(() => undefined)
-      .finally(() => {
-        if (!cancelled) setSyncReady(true);
-      });
+    void pullWithRetry(() => pullMyPresets().then((r) => (r.ok ? r : null)), () => cancelled).then((res) => {
+      if (cancelled) return;
+      // Never push without a good pull: the account row is the whole list, a blind push would erase it.
+      if (!res) {
+        setHistoryReady(true);
+        return;
+      }
+      // Merge, don't replace: a build saved here in the last few seconds may not be on the account yet.
+      const merged = mergeHistory(useAppStore.getState().presets, res.presets);
+      replacePresets(merged);
+      const remoteFp = jsonFingerprint(res.presets);
+      const mergedFp = jsonFingerprint(merged);
+      lastSynced.current = remoteFp;
+      if (mergedFp !== remoteFp) {
+        lastSynced.current = mergedFp;
+        void pushMyPresets({ data: { presets: merged } }).catch(() => undefined);
+      }
+      handledTick.current = useAppStore.getState().syncTick;
+      setHistoryReady(true);
+      setSyncReady(true);
+    });
     return () => {
       cancelled = true;
     };
-  }, [userId, authPending, hydrateOwner, replacePresets]);
+  }, [userId, authPending, hydrateOwner, replacePresets, setHistoryReady]);
 
   useEffect(() => {
     if (!userId || !syncReady || ownerId !== userId) return;
-    if (!shouldPushSync(lastSynced.current, presets)) return;
-    const nextFp = jsonFingerprint(presets);
-    const timer = window.setTimeout(() => {
-      lastSynced.current = nextFp;
-      void pushMyPresets({ data: { presets } }).catch(() => undefined);
-    }, 8000);
+    // A build, an open or a delete goes up right away; knob turns wait for a quiet moment.
+    const urgent = syncTick !== handledTick.current;
+    const timer = window.setTimeout(
+      () => {
+        handledTick.current = syncTick;
+        const next = useAppStore.getState().presets;
+        if (!shouldPushSync(lastSynced.current, next)) return;
+        lastSynced.current = jsonFingerprint(next);
+        void pushMyPresets({ data: { presets: next } }).catch(() => undefined);
+      },
+      urgent ? 300 : 8000,
+    );
     return () => window.clearTimeout(timer);
-  }, [presets, userId, syncReady, ownerId]);
+  }, [presets, syncTick, userId, syncReady, ownerId]);
 
   // Setlists follow the same account sync as History, on their own so one failing never blocks the other.
   const canSyncSetlists = plan.signedIn && (plan.paid || plan.admin);
@@ -160,18 +193,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
     hydrateOwner(userId);
     let cancelled = false;
-    void pullMySetlists()
-      .then((res) => {
-        if (cancelled || !res.ok) return;
-        if (res.setlists.length) {
-          replaceSetlists(res.setlists);
-          lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
-        } else {
-          lastSetlistSync.current = jsonFingerprint([]);
-        }
-        setSetlistSyncReady(true);
-      })
-      .catch(() => undefined);
+    void pullWithRetry(
+      () => pullMySetlists().then((res) => (res.ok ? res : null)),
+      () => cancelled,
+    ).then((res) => {
+      if (cancelled) return;
+      if (!res) {
+        // Still unreachable after retries: only push once this device changes a setlist, so a stale
+        // copy here never overwrites the account just because it loaded.
+        lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
+      } else if (res.setlists.length) {
+        replaceSetlists(res.setlists);
+        lastSetlistSync.current = jsonFingerprint(useAppStore.getState().setlists);
+      } else {
+        lastSetlistSync.current = jsonFingerprint([]);
+      }
+      setSetlistSyncReady(true);
+    });
     return () => {
       cancelled = true;
     };
