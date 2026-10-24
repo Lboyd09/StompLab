@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "node:test";
-import { ADMIN_EMAIL, BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, hideOwnerRow, isAdminEmail, isOwnerAccount, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed, priceLine, firstMonthUsd, quotaResetDate, monthlyCapLine } from "./plan.ts";
+import { BUSINESS_EMAIL, PUBLIC_SUPPORT_EMAIL, assemblePlan, emptyPlan, formatUsd, isAdminEmail, normalizeEmail, planFingerprint, resolveAccountEmail, PRICE_MONTHLY_USD, PRICE_YEARLY_USD, yearlySavingsUsd, buildsUsedCopy, priceYearlyLaunchUsd, priceMonthlyLaunchUsd, priceMonthlyReferralUsd, LAUNCH_DISCOUNT_PERCENT, subscriptionCanceled, canceledCopy, subscriptionLapsed, priceLine, firstMonthUsd, quotaResetDate, monthlyCapLine } from "./plan.ts";
+import { ADMIN_EMAIL, hideOwnerRow, isOwnerAccount } from "./owner-emails.ts";
 
 describe("isAdminEmail", () => {
   it("unlocks only the Stomp Lab gmail, never personal Gmail", () => {

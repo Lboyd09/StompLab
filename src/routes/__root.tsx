@@ -6,7 +6,6 @@ import { AppShell } from "@/components/layout/app-shell";
 import { Toaster } from "@/components/ui/sonner";
 import { Analytics } from "@vercel/analytics/react";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import { isOwnerAccount } from "@/lib/plan";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Stomp Lab";
@@ -90,7 +89,7 @@ function VisitBeacon() {
   useEffect(() => {
     if (isPending) return;
     if (pathname.startsWith("/admin")) return;
-    if (isOwnerAccount(user?.primaryEmail)) return;
+    // Owner inboxes are dropped by /api/event on the server; their addresses stay out of the browser.
     try {
       const day = new Date().toISOString().slice(0, 10);
       const key = "stomplab.visit.day";

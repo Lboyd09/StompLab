@@ -34,7 +34,8 @@ import { referredUserGetsMonthOff, giftReferrerMonthOff, giftReferrerPendingDisc
 import { friendCheckoutGetsReferralDiscount } from "./referral-rules";
 import { mailerConfigured, mailerLastError } from "./mailer";
 import { geminiConfigured } from "./gemini";
-import { assemblePlan, emptyPlan, isAdminEmail, isOwnerAccount, hideOwnerRow, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, ownerEmails, subscriptionCanceled, subscriptionLapsed } from "./plan";
+import { assemblePlan, emptyPlan, isAdminEmail, normalizeEmail, resolveAccountEmail, yearMonth, type Plan, type PlanInterval, subscriptionCanceled, subscriptionLapsed } from "./plan";
+import { hideOwnerRow, isOwnerAccount, ownerEmails } from "./owner-emails";
 import type { Preset, UserGear } from "@/data/types";
 import type { Setlist } from "./setlist";
 import { parseStompModelId, STOMP_MODEL_IDS } from "@/data/types";
@@ -1319,7 +1320,14 @@ export async function reserveBuildSlot(opts: {
   confirmed?: boolean;
 }): Promise<BuildSlot> {
   try {
-    const ids = opts.plan.paid
+    // The plan the caller holds may be up to PLAN_TTL_MS old (and from another
+    // instance's cache). A refund or revoke since then must not buy a paid build.
+    let plan = opts.plan;
+    if (plan.paid && !plan.admin) {
+      invalidatePlanCache(opts.userId);
+      plan = await computePlan(opts.userId, opts.email);
+    }
+    const ids = plan.paid
       ? await siblingUserIds(opts.userId, opts.email)
       : await freeBuildUserIds(opts.userId, opts.email);
     const result = await reserveBuild(withTransaction, {
@@ -1327,8 +1335,8 @@ export async function reserveBuildSlot(opts: {
       ids,
       kind: opts.kind,
       song: opts.song,
-      paid: opts.plan.paid,
-      admin: opts.plan.admin,
+      paid: plan.paid,
+      admin: plan.admin,
       confirmed: opts.confirmed,
     });
     invalidatePlanCache(opts.userId);

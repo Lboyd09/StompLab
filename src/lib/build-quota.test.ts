@@ -138,6 +138,19 @@ describe("reserve, confirm, release", () => {
     await seed(sql, "paid-3", 30, { month: "2026-09" });
     assert.equal(await paidBonusRemaining(sql, ["paid-3"], "2026-10", 3), 3);
   });
+
+  it("bonus builds used while free do not come back on subscribing", async () => {
+    const { sql } = await makeTestDb();
+    // 3 free + 2 of the 3 bonus, all before the first payment.
+    await seed(sql, "paid-4", 5, { month: "2026-09", minutesAgo: 120 });
+    await sql.query(
+      `insert into entitlements (user_id, email, bonus_builds, paid, paid_at) values ('paid-4', '', 3, true, now() - interval '1 hour')`,
+    );
+    assert.equal(await paidBonusRemaining(sql, ["paid-4"], "2026-10", 3), 1);
+    // Builds after paying are not free-time builds.
+    await seed(sql, "paid-4", 10, { month: "2026-10" });
+    assert.equal(await paidBonusRemaining(sql, ["paid-4"], "2026-10", 3), 1);
+  });
 });
 
 describe("referral friend cap", () => {

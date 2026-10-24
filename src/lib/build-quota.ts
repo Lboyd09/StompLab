@@ -35,7 +35,8 @@ export type ReserveInput = {
 
 /**
  * Invite bonus builds for a paid player. The bonus is a one-time pool, so builds
- * that earlier months already took past the monthly cap use it up first.
+ * that earlier months already took past the monthly cap use it up first, and so
+ * do builds past the 3 free ones taken before the first payment.
  */
 export async function paidBonusRemaining(
   sql: Sql,
@@ -52,8 +53,15 @@ export async function paidBonusRemaining(
      ) t`,
     [ids, month, PAID_MONTHLY_BUILDS],
   );
-  const spent = Number(rows[0]?.n ?? 0);
-  return Math.max(0, bonusTotal - spent);
+  const spentPaid = Number(rows[0]?.n ?? 0);
+  const free = await sql.query<{ n: number }>(
+    `select count(*)::int as n from build_events b
+     where b.user_id = any($1::text[]) and b.status = 'confirmed'
+       and b.created_at < (select min(paid_at) from entitlements where user_id = any($1::text[]) and paid_at is not null)`,
+    [ids],
+  );
+  const spentFree = Math.max(0, Number(free[0]?.n ?? 0) - FREE_BUILDS);
+  return Math.max(0, bonusTotal - spentPaid - spentFree);
 }
 
 export async function bonusTotalFor(sql: Sql, ids: string[]): Promise<number> {

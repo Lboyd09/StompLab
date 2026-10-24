@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { before, describe, it } from "node:test";
 import { useTestDatabase, type Sql } from "./db";
-import { FAILED_BUILDS_PER_DAY, freeBuildUserIds, recordFailure, tooManyFailedBuilds } from "./billing";
+import { FAILED_BUILDS_PER_DAY, freeBuildUserIds, loadPlan, recordFailure, reserveBuildSlot, tooManyFailedBuilds } from "./billing";
 import { gmailAliasTaken } from "./closed-accounts";
 import { canonicalEmail, canonicalEmailSql } from "./referral-code";
 import { cachedSuggestions, rememberSuggestions, suggestCacheKey } from "./songs";
@@ -59,5 +59,26 @@ describe("Gmail aliases share one free allowance", () => {
     assert.equal(await gmailAliasTaken("r.i.f.f.player+3@gmail.com"), true);
     assert.equal(await gmailAliasTaken("new.player@gmail.com"), false);
     assert.equal(await gmailAliasTaken("riffplayer@icloud.com"), false);
+  });
+});
+
+describe("a refund on another server instance", () => {
+  it("is seen when the build slot is taken, not two minutes later", async () => {
+    await sql.query(`insert into "user" (id, name, email, "emailVerified") values ('stale-1', 's', 'stale@example.com', true)`);
+    await sql.query(
+      `insert into entitlements (user_id, email, paid, paid_source, polar_order_id, polar_subscription_id, subscription_status)
+       values ('stale-1', 'stale@example.com', true, 'polar', 'ord_stale_0001', 'sub_stale_0001', 'active')`,
+    );
+    for (let i = 0; i < 3; i++) {
+      await sql.query(
+        `insert into build_events (user_id, kind, song, year_month, status) values ('stale-1', 'song', 's', '2000-01', 'confirmed')`,
+      );
+    }
+    const stale = await loadPlan("stale-1", "stale@example.com");
+    assert.equal(stale.paid, true);
+    // The refund lands without this instance's cache hearing about it.
+    await sql.query(`update entitlements set paid = false, subscription_status = 'refunded' where user_id = 'stale-1'`);
+    const slot = await reserveBuildSlot({ userId: "stale-1", email: "stale@example.com", plan: stale, kind: "song", song: "x" });
+    assert.deepEqual(slot, { ok: false, reason: "paywall" });
   });
 });

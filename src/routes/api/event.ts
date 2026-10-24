@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { getSql } from "@/lib/db";
 import { isAbuseUserAgent } from "@/lib/edge-budget";
-import { isOwnerAccount } from "@/lib/plan";
+import { isOwnerAccount } from "@/lib/owner-emails";
 import { clientIpFrom, rateLimited } from "@/lib/rate-limit";
 
 /**
