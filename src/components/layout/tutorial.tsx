@@ -14,7 +14,7 @@ import { useAppStore } from "@/store/app-store";
 import { Mark } from "./mark";
 import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 
-export const TUTORIAL_KEY = "stomplab.tutorial.v20";
+export const TUTORIAL_KEY = "stomplab.tutorial.v21";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
 type Step = "what" | "try" | "rig" | "play";
