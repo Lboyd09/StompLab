@@ -462,7 +462,7 @@ const REFERENCE_LEVELS = `REFERENCE SETTINGS (hand-built presets that A/B well o
 /** What the model may put in the amp/cab spot, from the unit and the player's rig (SL-62). */
 function ampRuleFor(hasAmpCab: boolean, playbackTarget: PlaybackTarget): string {
   if (!hasAmpCab) {
-    return "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks.";
+    return "HX Effects has NO amp, cab, preamp, or IR. Pedals only. If they need a real amp, say so in tips and use send-return. Never emit amp-guitar, amp-bass, preamp, cab, mic, or ir blocks. Ignore every rule about amp Drive, Ch Vol, or keeping amp and cab on.";
   }
   const route = routeFor(playbackTarget);
   if (route === "pedals" || route === "4cm") {
@@ -488,7 +488,7 @@ function footswitchRule(snapCount: number, footswitches: number): string {
   const spare =
     footswitches > n
       ? ` Spare FS ${n + 1}+ = action "bypass" for GATE, then EQ, then WAH, only if those blocks exist.`
-      : " No spare switches.";
+      : " No spare switches: any spare-FS instruction (wah, gate, EQ) does not apply here; those blocks switch per snapshot.";
   return `FOOTSWITCHES: FS 1–${n} = action "snapshot", in snapshot order.${spare} No TAP on a snapshot switch.`;
 }
 
@@ -501,9 +501,12 @@ export function systemForDevice(
   const play = PLAYBACK_MAP[playbackTarget];
   const ampRule = ampRuleFor(d.hasAmpCab, playbackTarget);
   const snapCount = d.snapshots;
+  const route = routeFor(playbackTarget);
+  const ampInChain = d.hasAmpCab && route !== "pedals" && route !== "4cm";
+  const keepOn = !ampInChain ? "" : route === "no-cab" ? "lists the amp in enabledModelIds (omitting it mutes it), and " : "lists the amp and cab in enabledModelIds (omitting them mutes it), and ";
   const solo =
     instrument === "bass"
-      ? "- Bass: no kinky-boost; bass cab Low Cut 0.5–1 so the low E stays."
+      ? "- Bass overrides the guitar ranges above: no kinky-boost, bass cab Low Cut 0.5–1 so the low E stays."
       : `- The solo / lead part is always one of the ${snapCount}; if the song has more tone changes, merge the closest non-solo sections. A solo is almost never the rhythm tone: kinky-boost on for that snapshot only (not extra amp Drive, not only a Ch Vol nudge), plus its own delay/scoop changes in paramOverrides so they export.`;
   return `Program a Line 6 ${d.name} preset that A/Bs against the RECORD, the way a session tech would. Not a genre template, not a cover.
 Max ${d.maxBlocks} blocks (an amp and its cab count as one), ${snapCount} snapshots, ${d.footswitches} footswitches. Instrument: ${instrument}.
@@ -532,7 +535,7 @@ SNAPSHOTS (at most ${snapCount}):
 - CLEAN OPENING: snapshot 1 is the recorded opening. A clean intro is clean: dirt off, gate off, amp Drive ≤ 2.4. A riff intro keeps its full drive.
 ${solo}
 - VERSE MOD: a chorus/vibe that is the verse identity turns OFF for a dry anthem chorus unless the record left it on.
-- Every snapshot lists the amp and cab in enabledModelIds (omitting them mutes it), and fills "sections" (song parts it covers, in order) and "changes" (what differs from the snapshot before, and why).
+- Every snapshot ${keepOn}fills "sections" (song parts it covers, in order) and "changes" (what differs from the snapshot before, and why).
 - LEVELS: sections sit at the record's level. Ch Vol, Output, Level, Master and Boost stay ≥ 3.2 (0 recalls as mute); volume pedal never at the heel. A clean snapshot gets Ch Vol +0.5–1 over the dirty one.
 - NAMES (12 characters): the song section (Intro, Verse, Chorus, Bridge, Solo, Outro). "Clean" only when the part is truly clean; "Solo"/"Lead" only on the solo snapshot. Abbreviate whole words (Chors, Crnch, Brdg, Cln Ambient); never cut one in half.
 - ${footswitchRule(snapCount, d.footswitches)}

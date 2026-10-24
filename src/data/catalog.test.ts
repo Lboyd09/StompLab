@@ -109,14 +109,21 @@ describe("research prompt", () => {
   });
 
   it("says each tone rule once across the whole step-2 prompt", () => {
-    const all = [
-      systemForDevice("hx-stomp", "guitar"),
-      songResearchInstructions("Black Hole Sun", "Soundgarden", "guitar", undefined, "lead"),
-      jsonSchemaHint(),
-    ].join("\n");
-    for (const re of [/GATE:/g, /CLEAN OPENING/g, /SINGING FUZZ/g, /SATURATING ECHO/g, /TIGHT CHUG/g, /PEDAL PLATFORM/g, /NAMES \(/g, /Likely —/g, /BOSS CE-2/g, /NEVER stupor-od/g, /8 = dotted eighth/g]) {
-      assert.equal(all.match(re)?.length ?? 0, 1, String(re));
+    for (const [unit, instrument] of [["hx-stomp", "guitar"], ["hx-stomp", "bass"], ["hx-effects", "guitar"]] as const) {
+      const all = [
+        systemForDevice(unit, instrument),
+        songResearchInstructions("Black Hole Sun", "Soundgarden", instrument, undefined, "lead"),
+        jsonSchemaHint(),
+      ].join("\n");
+      for (const re of [/GATE:/g, /CLEAN OPENING/g, /SINGING FUZZ/g, /SATURATING ECHO/g, /TIGHT CHUG/g, /PEDAL PLATFORM/g, /NAMES \(/g, /Likely —/g, /BOSS CE-2/g, /NEVER stupor-od/g, /8 = dotted eighth/g]) {
+        assert.equal(all.match(re)?.length ?? 0, 1, `${unit} ${instrument} ${re}`);
+      }
     }
+    assert.match(systemForDevice("hx-stomp", "bass"), /Bass overrides the guitar ranges above/);
+    const fx = systemForDevice("hx-effects", "guitar");
+    assert.equal(/lists the amp/.test(fx), false);
+    assert.match(fx, /Ignore every rule about amp Drive/);
+    assert.match(systemForDevice("hx-stomp", "guitar"), /lists the amp and cab in enabledModelIds/);
   });
 
   it("gates only hot rigs, as the finisher does", () => {
