@@ -136,8 +136,8 @@ Snapshot names: 12 characters in the `.hlx`. `fitSnapshotName` abbreviates every
 
 Homepage trio only: Enter Sandman, Smells Like Teen Spirit, Comfortably Numb. Higher is in the featured library and is not on that trio.
 
-- **Teen Spirit.** Clean, then Verse (DS-1, `deez-one-vintage`), then Hello (a light chorus). No noise gate. Solo shares Hello. Don’t add a fourth “solo” snapshot.
-- **Sandman.** Intro is amp and cab, drive about 0.6, gate bypassed. Rhythm is the Tube Screamer, gate on, the graphic scoop, no boost, no delay. Lead turns the scoop off, turns the boost on (output ~7), and turns on a restrained delay (mix ~2.2, feedback ~3.0, scale 5). Do not raise amp drive for the lead. On XL the spare switches are GATE and EQ.
+- **Teen Spirit.** Verse (clean amp, Small Clone `70s-chorus` on, DS-1 off; also the opening strum), then Pre-Chorus (the hello build: Small Clone on, DS-1 off, amp a touch hotter), then Riff/Chorus (DS-1, `deez-one-vintage`, on; chorus off). No noise gate. Solo shares Riff/Chorus. Don’t add a fourth “solo” snapshot.
+- **Sandman.** Kirk’s part. Intro is amp and cab, drive about 0.6, gate bypassed (his clean wah-style lines; the wah is the player’s own pedal). Riff is the Tube Screamer, gate on, the graphic scoop, no boost, no delay. Solo turns the scoop off, turns the boost on (output ~7, Bright off), and turns on a restrained delay (mix ~2.2, feedback ~3.0, Note 8). Do not raise amp drive for the solo. On XL the spare switches are GATE and EQ.
 - **Comfortably Numb.** The delay in the chain is Echo Platter (the Helix Binson), in front of the amp. The copy says Echorec. It must not say Cosmos Echo and then load a different model.
 - **Higher** (Creed, Human Clay, tempo 78). Verse clean with chorus (drive ~1.6, gate and boost off). Chorus heavy (drive ~5.4, gate on, chorus pedal off). The lift is the boost output, not more drive. The CE-2 note is marked likely.
 

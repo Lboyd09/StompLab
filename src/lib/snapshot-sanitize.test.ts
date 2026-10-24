@@ -59,8 +59,8 @@ describe("sanitizeSnapshots", () => {
     );
     assert.equal(sand.blocks.some((b) => b.modelId === "hard-gate"), false);
     const intro = sand.snapshots.find((s) => s.name === "Intro");
-    const rhythm = sand.snapshots.find((s) => s.name === "Rhythm");
-    const lead = sand.snapshots.find((s) => s.name === "Lead");
+    const rhythm = sand.snapshots.find((s) => s.name === "Riff");
+    const lead = sand.snapshots.find((s) => s.name === "Solo");
     const gate = sand.blocks.find((b) => b.modelId === "noise-gate");
     const boost = sand.blocks.find((b) => b.modelId === "kinky-boost");
     const delay = sand.blocks.find((b) => b.modelId === "simple-delay");
