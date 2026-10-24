@@ -5,37 +5,12 @@
 
 const SONG_SHAPED = /\b(teen spirit|enter sandman|numb|everlong|like a stone|show me how to live|smells like|black hole sun|creep|hurt|wonderwall)\b/gi;
 
-export const STANDING_RESEARCH_RULES = `Standing research rules (apply to EVERY future song — never retune a named title from feedback):
-- Work like Guitar Chalk / a session tech: album + year, studio vs live, which player; guitar/pickups; amp + channel; pedal order as tracked; cab + mic; then technique. Map to catalog modelId values only after that.
-- Session credits beat a simplified method. Tracking rig beats a later tour rig.
-- BOSS DS-1 is deez-one-vintage (MIJ) or deez-one-mod (Keeley). NEVER stupor-od for a DS-1 — stupor-od is the SD-1 Super OverDrive.
-- BOSS CE-2 → chorus (not 70s-chorus). BOSS CE-1 and EHX Small Clone → 70s-chorus.
-- BOSS SD-1 → stupor-od. Ibanez TS808/TS-9 tightener (Drive 1–2.5, Level 7–8) → scream-808. ProCo RAT → vermin-dist.
-- One amp. Snapshot Drive / Ch Vol instead of a second amp.
-- Never dime Drive. Pedals ~noon unless the session documented a specific number — then use that number.
-- Snapshot 1 is the recorded OPENING. Only add a snapshot when the TONE changes (blocks or knobs). Intro and verse that share a chain are ONE snapshot. A solo / signature trick is its own snapshot.
-- Footswitches 1, 2, 3 carry the first three snapshots. Spare FS (4+) = GATE then EQ then WAH bypass. No TAP on FS1–3.
-- ONLY catalog modelId values. Factory HX names only. Never invent models or IRs.
-- Cab = a cab from the list (the one on the record if HX has it). Prefer the tracking/studio rig over a later tour rig.
-- Use the knob names listed for each model. Set every knob that shapes the tone; one left out keeps Line 6's factory default.
-- Match the record's brightness and midrange. Do not scoop a mid-forward guitar or brighten a dark one.
-- GATE: when the chain has a high-gain amp or a drive pedal, add noise-gate IN FRONT of the amp. Threshold must be 2 or lower (about 1.8), Decay about 2.4, and the clean or intro snapshot bypasses it. Never hard-gate. A missing or hot threshold mutes the snapshot. Level on a gate stays unity, never a mute.
-- LEVELS: Ch Vol, Output, Level, Master, and Boost stay at 3.2 or higher on every snapshot. A 0 recalls as mute. Volume pedal Position / Level stays off the heel (never 0). Amp and cab are ON in every snapshot.
-- EQ: only if the session used a dedicated EQ (Mesa graphic, rack EQ). A session graphic sits BETWEEN the amp and the cab (in the loop), never after the speaker.
-- WAH: do not put a wah block in the chain unless the wah instruction says the player wants Helix wah. A real wah lives in front of the unit.
-- Do not "fix" a previous song by name. Turn a miss into a general rule.
-- CLEAN OPENING: if the recorded intro/verse is clean, snapshot 1 MUST be clean — dirt pedals OFF, amp Drive 1.2–2.4, gate OFF. A dirty opening means you left a dirt pedal on or Drive ≥ 3.
-- PEDAL-PLATFORM AMPS: when the session used a clean preamp/head as a pedal platform (Mesa Studio Pre rhythm-clean, Hiwatt, Twin), use the CLEAN channel (cali-iv-rhythm-1, us-double-nrm, whowatt-100). Do not sneak the crunch/lead channel. The pedal is the dirty channel.
-- SOLOS: kinky-boost on the solo snapshot only (Boost 10 turns its boost switch on, Drive 1–2), not a tiny Ch Vol nudge and not extra Drive. Extra Drive on the same amp is a different song.
-- DELAY: Note = 8 (dotted eighth) or 6 (quarter) to follow tempo; leave Note out and set Time (value × 100 ms) for a free-running delay such as a slapback. Lead Mix ≤ 2.5 and Feedback ≤ 3.5.
-- NAMES: snapshots are named for the song section (Intro, Verse, Chorus, Solo), 12 characters. "Clean" only in a clean snapshot's name; "Solo"/"Lead" only on the solo snapshot. Abbreviate (Chors, Crnch) before cutting a word in half.
-- UNSOURCED GEAR: if it is not a session credit, interview, or published rig, prefix the note with "Likely —".
-- VERSE CHORUS/MOD: if a chorus/vibe is the verse identity, it turns OFF for the dry anthem chorus (Small Clone pattern). Do not leave it on for the loud section unless the record did.
-- SATURATING ECHO: tape/Echorec/Memory Man that was tracked in front of a muff'd or cranked amp stays BEFORE the amp block so repeats saturate. Digital dotted-8th (SDD-3000) is often after.
-- SINGING FUZZ: Big Muff / Ram's Head has no Mid knob; for a vocal lead keep Tone near 4–5 rather than a deep scoop. Do not stack a Tube Screamer on a muff+clean-head rig unless the session did.
-- TIGHT CHUG: TS tightener Drive 1–2.5 / Level 7–8 into a Recto/high-gain amp. Keep amp Drive in the 3–4.5 range — a wall of Drive 7+ is mush, not palm-mute tightness. Add noise-gate in front of the amp (Threshold ≤ 2), not a hard-gate.
-- WHOSE PART: a song build is the LEAD guitarist's part through the whole song (their intro, verse, chorus, solo). When the record has two guitar parts, research the lead player's guitar, amp, and pedals — never the rhythm player's chain and never both players in one preset. If the song is one guitarist, build that one rig and do not invent a second part.
-- PUBLISHED NUMBERS WIN: Guitar World / session-credit knob numbers beat "noon on everything." Copy them onto the matching catalog params.`;
+/**
+ * The tone and hardware rules themselves live once, in SYSTEM (src/lib/gemini.ts)
+ * and systemForDevice (src/lib/preset-schema.ts). This is only the frame for the
+ * player-derived lessons, so nothing is said twice in the prompt.
+ */
+export const STANDING_RESEARCH_RULES = `Standing rule: never retune a named title from feedback. A miss becomes a general rule for every song.`;
 
 export function generalizeLesson(raw: string): string | null {
   let s = raw.replace(/\s+/g, " ").trim();
