@@ -95,6 +95,18 @@ describe("an old /upgrade?checkout_id link", () => {
     );
   });
 
+  it("an unmatched webhook row with this checkout does not block the payer's own confirm", async () => {
+    await addUser("replay-4", "replay4@example.com");
+    await sql.query(
+      `insert into purchases (user_id, email, polar_order_id, polar_checkout_id, amount_cents, raw)
+       values ('unmatched', 'billing@example.com', 'ord_unm_0004', 'chk_unm_0004', 699, '{}'::jsonb)`,
+    );
+    assert.equal(
+      await checkoutReplayState(sql, { ids: ["replay-4"], checkoutId: "chk_unm_0004", checkoutAt: null }),
+      null,
+    );
+  });
+
   it("an old event time cannot overwrite a newer refund", async () => {
     const applied = await grantPaid({
       userId: "replay-1",

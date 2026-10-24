@@ -185,8 +185,8 @@ export async function emailHoldStatus(email: string | null | undefined): Promise
   }
 }
 
-/** New accounts per network address per hour, counted in the database so every server instance agrees. */
-export const SIGNUPS_PER_IP_PER_HOUR = 5;
+/** New accounts per network address per minute (same as the old in-memory rule), counted in the database so every server instance agrees. */
+export const SIGNUPS_PER_IP_PER_MINUTE = 5;
 
 export const ALIAS_SIGNUP_ERROR = "That Gmail address is in use on another Stomp Lab account. Sign in with that one.";
 
@@ -213,8 +213,8 @@ export async function assertEmailCanSignup(email: string | null | undefined): Pr
   if (hold.blocked) throw new Error(hold.message);
   if (await gmailAliasTaken(email)) throw new Error(ALIAS_SIGNUP_ERROR);
   const ip = await currentClientIp();
-  if (ip !== "unknown" && (await rateLimited(getSql, `signup:${ip}`, SIGNUPS_PER_IP_PER_HOUR, 3600))) {
-    throw new Error("Too many new accounts from this network. Try again in an hour.");
+  if (ip !== "unknown" && (await rateLimited(getSql, `signup:${ip}`, SIGNUPS_PER_IP_PER_MINUTE, 60))) {
+    throw new Error("Too many new accounts from this network. Try again in a minute.");
   }
 }
 

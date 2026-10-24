@@ -482,6 +482,8 @@ export async function grantPaid(opts: {
   subscriptionStatus?: string;
   /** Polar's time for this event. An older event never overwrites a newer state. */
   eventAt?: string | null;
+  /** When the paid period renews, if Polar said. */
+  currentPeriodEnd?: string | null;
 }): Promise<boolean> {
   const subId = opts.subscriptionId ?? "";
   const canGrantBySub = isRealPolarSubscriptionId(subId);
@@ -502,15 +504,17 @@ export async function grantPaid(opts: {
   const status = (opts.subscriptionStatus || "active").slice(0, 32);
   const email = normalizeEmail(opts.email) || opts.email;
   const eventAt = opts.eventAt || null;
+  const periodEnd = opts.currentPeriodEnd && Number.isFinite(Date.parse(opts.currentPeriodEnd)) ? opts.currentPeriodEnd : null;
   const sql = await getSql();
   let applied = true;
   try {
     const rows = await sql.query<{ user_id: string }>(
       `insert into entitlements (
          user_id, email, paid, paid_source, polar_customer_id, polar_order_id,
-         polar_subscription_id, plan_interval, subscription_status, amount_cents, paid_at, updated_at, polar_event_at
+         polar_subscription_id, plan_interval, subscription_status, amount_cents, paid_at, updated_at, polar_event_at,
+         current_period_end
        )
-       values ($1, $2, true, 'polar', $3, $4, $5, $6, $7, $8, now(), now(), $9::timestamptz)
+       values ($1, $2, true, 'polar', $3, $4, $5, $6, $7, $8, now(), now(), $9::timestamptz, $10::timestamptz)
        on conflict (user_id) do update set
          paid = true,
          paid_source = 'polar',
@@ -523,12 +527,13 @@ export async function grantPaid(opts: {
          amount_cents = excluded.amount_cents,
          paid_at = coalesce(entitlements.paid_at, now()),
          polar_event_at = greatest(entitlements.polar_event_at, excluded.polar_event_at),
+         current_period_end = coalesce(excluded.current_period_end, entitlements.current_period_end),
          updated_at = now()
        where entitlements.polar_event_at is null
           or excluded.polar_event_at is null
           or entitlements.polar_event_at <= excluded.polar_event_at
        returning user_id`,
-      [opts.userId, email, opts.customerId, orderId, subId, interval, status, opts.amountCents, eventAt],
+      [opts.userId, email, opts.customerId, orderId, subId, interval, status, opts.amountCents, eventAt, periodEnd],
     );
     applied = rows.length > 0;
   } catch {
@@ -670,6 +675,7 @@ export async function grantPaidByEmail(
     // order.paid carries "paid" here, which is not a subscription status.
     subscriptionStatus: order.subStatus === "trialing" ? "trialing" : "active",
     eventAt,
+    currentPeriodEnd: order.currentPeriodEnd || null,
   });
   return true;
 }
@@ -882,7 +888,11 @@ export async function checkoutReplayState(
   const checkoutId = opts.checkoutId.trim();
   let recorded = false;
   if (checkoutId) {
-    const hit = await sql.query(`select 1 from purchases where polar_checkout_id = $1 limit 1`, [checkoutId]);
+    // Only this player's rows: an "unmatched" webhook row must not block their own confirm.
+    const hit = await sql.query(`select 1 from purchases where polar_checkout_id = $1 and user_id = any($2::text[]) limit 1`, [
+      checkoutId,
+      opts.ids,
+    ]);
     recorded = hit.length > 0;
   }
   const rows = await sql.query<{ subscription_status: string | null; state_at: string | null }>(
@@ -891,7 +901,9 @@ export async function checkoutReplayState(
      order by updated_at desc limit 8`,
     [opts.ids],
   );
-  const ended = rows.find((r) => ENDED_STATUSES.has(String(r.subscription_status ?? "").trim().toLowerCase()));
+  // The newest row is the state grantPaid would overwrite; an old ended sibling does not count.
+  const newest = rows[0];
+  const ended = newest && ENDED_STATUSES.has(String(newest.subscription_status ?? "").trim().toLowerCase()) ? newest : null;
   if (!ended) return recorded ? "recorded" : null;
   if (recorded) return "stale";
   // A new checkout made after the plan ended is a real resubscribe.
@@ -977,6 +989,7 @@ export const confirmCheckout = createServerFn({ method: "POST" })
         subscriptionStatus: "active",
         // Without a time, an old checkout could overwrite a newer revoke or refund.
         eventAt: polarEventTime(checkout) || null,
+        currentPeriodEnd: order.currentPeriodEnd || null,
       });
     }
     invalidatePlanCache(context.userId);

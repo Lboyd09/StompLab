@@ -281,8 +281,8 @@ export const claimPendingInvite = createServerFn({ method: "POST" })
     if (!(await isEmailVerified(context.userId))) return { ok: true, none: true };
     let pending = "";
     try {
+      // referral_pending comes from schema-ensure; no DDL on this per-session path.
       const sql = await getSql();
-      await ensureReferralSchema(sql);
       const rows = await sql<{ code: string }>`select code from referral_pending where user_id = ${context.userId} limit 1`;
       pending = rows[0]?.code ?? "";
     } catch {

@@ -17,6 +17,7 @@ import {
 import { requestAccountDelete } from "@/lib/account-delete";
 import {
   FREE_BUILDS,
+  PAID_MONTHLY_BUILDS,
   PRICE_MONTHLY_USD,
   PRICE_YEARLY_USD,
   firstMonthUsd,
@@ -289,10 +290,14 @@ function AccountPage() {
             </div>
             <div className="rounded-xl bg-secondary px-3 py-2.5">
               <dt className="text-xs text-muted-foreground">
-                {plan.paid ? (canceled ? "Ends on" : "Builds reset") : "Demos"}
+                {plan.paid ? (canceled ? "Ends on" : plan.currentPeriodEnd ? "Renews on" : "Builds reset") : "Demos"}
               </dt>
               <dd className="font-medium">
-                {plan.paid ? (canceled ? formatPeriodEnd(plan.currentPeriodEnd) : quotaResetDate()) : "Always free"}
+                {plan.paid
+                  ? canceled || plan.currentPeriodEnd
+                    ? formatPeriodEnd(plan.currentPeriodEnd)
+                    : quotaResetDate()
+                  : "Always free"}
               </dd>
             </div>
           </dl>
@@ -392,7 +397,7 @@ function AccountPage() {
             </p>
             <ul className="list-disc space-y-1 pl-5 text-sm">
               <li>
-                {left} custom build{left === 1 ? "" : "s"} left this month, and 50 more each month
+                {left} custom build{left === 1 ? "" : "s"} left this month, and {PAID_MONTHLY_BUILDS} more each month
               </li>
               <li>Setlists</li>
               <li>Your gear locker on every device</li>
