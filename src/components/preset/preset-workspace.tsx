@@ -421,7 +421,16 @@ export function PresetWorkspace({
   const tuningName = tuning ? (tuning.match(/\(([^)]+)\)/)?.[1] ?? tuning.replace(/[.,].*$/, "")) : null;
   const otherTips = preset.tips.filter((t) => t !== tuning);
   const showNames = preset.snapshots.length > 0 && !stompMode && !readOnly;
-  const aboutSummary = "The story of the sound, switch names, playing notes, the original rig";
+  const aboutSummary = [
+    preset.summary ? "The sound" : "",
+    showNames ? "switch names" : "",
+    preset.tips.length ? "playing notes" : "",
+    preset.originalGear.length ? "the original rig" : "",
+    preset.recommendedGear.length ? "gear to grab" : "",
+  ]
+    .filter(Boolean)
+    .join(", ")
+    .replace(/^./, (c) => c.toUpperCase());
   const hasWah = songUsedWah(preset);
   const fs = (n: number | undefined) => (n ? `FS${n}` : "");
   const modeSteps =
@@ -452,6 +461,7 @@ export function PresetWorkspace({
     partFs: stompMode ? undefined : snapFs[activeSnapshot],
     footswitches: preset.footswitches,
     stompFs: spec.stompFs,
+    context: [preset.summary, ...preset.snapshots.map((s) => s.notes ?? ""), ...preset.originalGear.map((g) => `${g.name} ${g.notes}`)].join(" "),
   });
   const statusColor = stompMode ? "var(--color-pop)" : (activeSnap?.color ?? "var(--color-pop)");
 
@@ -760,6 +770,7 @@ export function PresetWorkspace({
 
         <div className="grid min-w-0 gap-3 lg:grid-cols-2 lg:items-start">
           <div className="min-w-0 space-y-3">
+            {aboutSummary ? (
             <Fold title="About this tone" summary={aboutSummary}>
               <div className="space-y-5">
                 {preset.summary ? <p className="text-sm leading-relaxed text-muted-foreground">{preset.summary}</p> : null}
@@ -842,6 +853,7 @@ export function PresetWorkspace({
                 ) : null}
               </div>
             </Fold>
+            ) : null}
 
             <Fold
               title={`Load it on your ${device.name}`}
