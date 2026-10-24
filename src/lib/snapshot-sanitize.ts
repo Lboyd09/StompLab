@@ -1,11 +1,15 @@
 import { MODEL_MAP } from "@/data/catalog";
+import { DEVICE_MAP } from "@/data/categories";
 import type { CategoryId, Preset, Snapshot, StompBlock } from "@/data/types";
 import { isVolumeKnob } from "./hx-params";
 import { routeFor } from "@/data/playback";
 
-/** In front of a real amp, a snapshot with every pedal off is the amp's clean sound, not silence. */
+/**
+ * In front of a real amp (HX Effects, or a unit set to play into an amp), a snapshot with every
+ * pedal off is the amp's clean sound, not silence.
+ */
 function dryIsAudible(preset: Preset): boolean {
-  return routeFor(preset.playbackTarget) === "pedals";
+  return routeFor(preset.playbackTarget) === "pedals" || DEVICE_MAP[preset.stompModel]?.hasAmpCab === false;
 }
 
 const ABBREV: [RegExp, string][] = [
@@ -32,6 +36,25 @@ export function fitSnapshotName(raw: string, max = 12): string {
   return s.slice(0, max).replace(/[\s-]+$/g, "") || "Snap";
 }
 
+const LEAD_SNAPSHOT = /\b(lead|solo)\b/i;
+
+/**
+ * Fit snapshots to a unit with fewer switches. The lead/solo snapshot is the one a player
+ * misses most, so it is always kept; a section in the middle goes instead. Order is kept.
+ */
+export function keepSnapshots<T extends { name?: string }>(snaps: T[], max: number): T[] {
+  if (snaps.length <= max) return snaps;
+  if (max <= 0) return [];
+  const leads = snaps.filter((s) => LEAD_SNAPSHOT.test(s.name ?? ""));
+  // Every snapshot named lead ("Lead Verse", "Lead Chorus"): nothing to protect, keep the first ones.
+  if (!leads.length || leads.length === snaps.length) return snaps.slice(0, max);
+  // More solos than switches: still leave room for the first snapshot (the intro).
+  const keptLeads = leads.slice(0, Math.max(1, max - 1));
+  const others = snaps.filter((s) => !keptLeads.includes(s)).slice(0, max - keptLeads.length);
+  const keep = new Set<T>([...others, ...keptLeads]);
+  return snaps.filter((s) => keep.has(s));
+}
+
 const AMP_CAB: ReadonlySet<CategoryId> = new Set([
   "amp-guitar",
   "amp-bass",
@@ -43,6 +66,9 @@ const AMPS: ReadonlySet<CategoryId> = new Set(["amp-guitar", "amp-bass", "preamp
 
 /** Session graphics live in the loop — after the preamp, before the speaker. */
 const LOOP_EQ = new Set(["cali-q-graphic", "10-band-graphic"]);
+
+/** Effects with tails a gate must not sit after. */
+const TIME_FX: ReadonlySet<CategoryId> = new Set(["delay", "reverb"]);
 
 /** A gate after the cab, or a hot threshold, mutes the whole snapshot. */
 const GATES = new Set(["hard-gate", "noise-gate", "horizon-gate"]);
@@ -86,7 +112,7 @@ function reindex(blocks: StompBlock[]): StompBlock[] {
 /**
  * Recorded order, not "whatever was typed last":
  * gates in front of the amp, session EQ between amp and cab, cab never before the amp.
- * Delays that were already in front (Echorec, SDD) stay there.
+ * Delays that were already in front (Echorec, SDD) stay there, with the gate ahead of them.
  */
 export function arrangeSignal(blocks: StompBlock[]): StompBlock[] {
   const sorted = [...blocks].sort((a, b) => a.position - b.position);
@@ -102,9 +128,13 @@ export function arrangeSignal(blocks: StompBlock[]): StompBlock[] {
     else rest.push(block);
   }
   const ampInRest = rest.findIndex((b) => isAmp(b.modelId));
+  // A gate after a pre-amp echo chops the repeats: it goes in front of the first delay/reverb.
+  const timeAt = rest.slice(0, ampInRest).findIndex((b) => TIME_FX.has(categoryOf(b.modelId) as CategoryId));
+  const gateAt = timeAt < 0 ? ampInRest : timeAt;
   const next = [
-    ...rest.slice(0, ampInRest),
+    ...rest.slice(0, gateAt),
     ...gates,
+    ...rest.slice(gateAt, ampInRest),
     rest[ampInRest]!,
     ...graphics,
     ...rest.slice(ampInRest + 1),

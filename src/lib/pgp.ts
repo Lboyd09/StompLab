@@ -2,10 +2,10 @@ import { DEVICE_MAP } from "@/data/categories";
 import { MODEL_MAP } from "@/data/catalog";
 import { helixIdFor, UNEXPORTABLE_MODELS } from "@/data/helix-ids";
 import { podGoIdFor, podGoModel, type PodGoModel } from "@/data/podgo-catalog";
-import type { Preset, StompBlock } from "@/data/types";
+import type { Preset, Snapshot, StompBlock } from "@/data/types";
 import { blockNativeParams, legacyMicIndex, nativeFor, resolveParamKeys } from "./hx-params";
 import { coerceNative } from "./hx-units";
-import { sortedBlocks, visualToHardwareFs } from "./preset-utils";
+import { snapshotEnables, sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { routeFor } from "@/data/playback";
 import { applyRouting, removesAmp, removesCab } from "./rig-routing";
 import { userIrSlot } from "./hlx";
@@ -73,10 +73,12 @@ function podParams(block: StompBlock | undefined, model: PodGoModel, overrides?:
   return out;
 }
 
-function enabledIn(snapIndex: number, preset: Preset, block: StompBlock): boolean {
-  const snap = preset.snapshots[snapIndex];
-  if (snap?.enabledBlocks?.length) return snap.enabledBlocks.includes(block.id);
-  return block.enabled;
+/**
+ * A placed block follows the snapshot's enabledBlocks only. Its own `enabled` (the state it
+ * starts in) is not ANDed in, or a boost that starts bypassed could never turn on.
+ */
+function enabledIn(preset: Preset, snap: Snapshot | undefined, block: StompBlock): boolean {
+  return snapshotEnables(preset, snap, block);
 }
 
 export function pgpLayout(preset: Preset, irIndex?: number): { slots: Placed[]; dropped: StompBlock[] } {
@@ -207,7 +209,7 @@ export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" 
       "@model": p.id,
       "@position": i,
       "@no_snapshot_bypass": false,
-      "@enabled": p.block ? enabledIn(0, preset, p.block) && p.enabled !== false : p.enabled,
+      "@enabled": p.block ? enabledIn(preset, preset.snapshots[0], p.block) : p.enabled,
       "@type": blockType(p),
     };
     if (blockType(p) === 5) b["@trails"] = p.role !== "fxloop";
@@ -292,7 +294,7 @@ export function buildPgp(preset: Preset, opts?: { fsMode?: "stomp" | "snapshot" 
       [`block${volIdx}`]: { Pedal: { "@fs_enabled": false, "@value": 1 } },
     };
     slots.forEach((p, i) => {
-      blocks[`block${i}`] = p.block ? (src?.enabledBlocks?.length ? src.enabledBlocks.includes(p.block.id) : p.block.enabled) && p.enabled !== false : p.enabled;
+      blocks[`block${i}`] = p.block ? enabledIn(preset, src, p.block) : p.enabled;
       const list = assigned.get(i);
       if (!list || !p.block) return;
       const native = podParams(p.block, p.model, src?.paramOverrides?.[p.block.id]);

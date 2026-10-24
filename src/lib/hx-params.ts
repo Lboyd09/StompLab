@@ -1,7 +1,7 @@
 import { MODEL_MAP } from "@/data/catalog";
 import { helixIdFor } from "@/data/helix-ids";
 import { hxModel, SYNC_DOTTED_EIGHTH, type HxCatModel, type HxParam } from "@/data/hx-catalog";
-import type { StompBlock } from "@/data/types";
+import type { Snapshot, StompBlock } from "@/data/types";
 import { coerceNative, uiToNative } from "./hx-units";
 
 /**
@@ -286,6 +286,42 @@ export function blockNativeParams(block: StompBlock, overrides?: Record<string, 
   }
   for (const p of m.params) out[p.key] = coerceNative(p, out[p.key] ?? p.def);
   return out;
+}
+
+/**
+ * On/off switches (Kinky Boost "Boost" and "Bright", HX type "b") are never snapshot-controlled
+ * in the file, so a switch that only a snapshot turns on would export off everywhere. A switch on
+ * in any snapshot that enables the block is written on the block itself.
+ */
+export function liftSnapshotSwitches<T extends { blocks: StompBlock[]; snapshots: Snapshot[] }>(preset: T): T {
+  let changed = false;
+  const blocks = preset.blocks.map((block) => {
+    const m = hxModel(helixIdFor(block.modelId));
+    if (!m || !m.params.some((p) => p.type === "b")) return block;
+    const base = blockNativeParams(block);
+    const lift: Record<string, number> = {};
+    for (const snap of preset.snapshots) {
+      const on = snap.enabledBlocks?.length ? snap.enabledBlocks.includes(block.id) : block.enabled;
+      if (!on) continue;
+      for (const [uiName, raw] of Object.entries(snap.paramOverrides?.[block.id] ?? {})) {
+        if (typeof raw !== "number") continue;
+        for (const key of resolveParamKeys(block.modelId, uiName)) {
+          if (m.byKey[key]?.type !== "b" || base[key] === true) continue;
+          if (nativeFor(block.modelId, key, uiName, raw) === true) lift[key] = raw;
+        }
+      }
+    }
+    const keys = Object.keys(lift);
+    if (!keys.length) return block;
+    changed = true;
+    // Drop the block's own names for that switch (Output vs Boost) so the "on" is the one written.
+    const params = Object.fromEntries(
+      Object.entries(block.params).filter(([uiName]) => !resolveParamKeys(block.modelId, uiName).some((k) => keys.includes(k))),
+    );
+    for (const key of keys) params[key] = lift[key];
+    return { ...block, params };
+  });
+  return changed ? { ...preset, blocks } : preset;
 }
 
 /** Legacy cab "@mic" index for HD2_Cab* (the newer CabMicIr_ cabs use the Mic param instead). */

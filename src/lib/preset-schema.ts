@@ -8,7 +8,7 @@ import { guitarArrangement } from "@/data/guitar-parts";
 import { guitarRolePrompt, parseGuitarRole, type GuitarRole } from "./guitar-role";
 import { newId } from "./preset-utils";
 import { normalizeBlockParams } from "./hx-params";
-import { fitSnapshotName, sanitizeSnapshots } from "./snapshot-sanitize";
+import { fitSnapshotName, keepSnapshots, sanitizeSnapshots } from "./snapshot-sanitize";
 
 export const GearSchema = z.object({
   id: z.string(),
@@ -221,7 +221,8 @@ export function toPreset(
   }
   if (!blocks.length) throw new Error("No valid HX models in the response");
 
-  const snapshots = out.snapshots.slice(0, device.snapshots).map((s, i) => {
+  // Over the unit's snapshot count: keep the solo, drop a middle section.
+  const snapshots = keepSnapshots(out.snapshots, device.snapshots).map((s, i) => {
     const enabled = s.enabledModelIds?.length
       ? blocks.filter((b) => s.enabledModelIds!.includes(b.modelId)).map((b) => b.id)
       : blocks.filter((b) => b.enabled).map((b) => b.id);
@@ -412,8 +413,45 @@ export function gearNamesMatch(a: string, b: string) {
   return bw.filter((w) => aw.has(w)).length >= 2;
 }
 
-export function publicPreset(preset: Preset): Preset {
-  return { ...preset, recommendedGear: [] };
+/**
+ * True when text talks about the player's own locker: "your <item word>", or the name of an item
+ * the record did not use (a locker DS-1 on a DS-1 record is still the record's pedal).
+ */
+function mentionsLocker(text: string, gear: UserGear[], record: Preset["originalGear"]): boolean {
+  const t = ` ${gearKey(text)} `;
+  for (const g of gear) {
+    const key = gearKey(g.name);
+    if (!key) continue;
+    const words = key.split(" ").filter((w) => w.length > 2);
+    if (words.some((w) => t.includes(` your ${w} `))) return true;
+    const model = key.split(" ").slice(1).join(" ");
+    const onRecord = record.some((o) => gearNamesMatch(o.name, g.name));
+    if (!onRecord && (t.includes(` ${key} `) || (model.length >= 3 && t.includes(` ${model} `)))) return true;
+  }
+  return false;
+}
+
+/**
+ * What goes in the shared song cache (rig_cache has no user id): no gear recommendations, and no
+ * tip, step or note written about the first player's locker (the prompt names their gear).
+ */
+export function publicPreset(preset: Preset, gear: UserGear[] = []): Preset {
+  if (!gear.length) return { ...preset, recommendedGear: [] };
+  const record = preset.originalGear ?? [];
+  const mine = (s: string) => mentionsLocker(s, gear, record);
+  const sentences = (s: string) =>
+    s
+      .split(/(?<=[.!?])\s+/)
+      .filter((x) => !mine(x))
+      .join(" ");
+  return {
+    ...preset,
+    recommendedGear: [],
+    tips: preset.tips.filter((t) => !mine(t)),
+    programming: preset.programming.filter((t) => !mine(t)),
+    snapshots: preset.snapshots.map((s) => ({ ...s, notes: sentences(s.notes) })),
+    footswitches: preset.footswitches.map((f) => (f.notes ? { ...f, notes: sentences(f.notes) } : f)),
+  };
 }
 
 export function jsonSchemaHint() {

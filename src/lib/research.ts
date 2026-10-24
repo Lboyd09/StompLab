@@ -501,7 +501,7 @@ ${systemForDevice(data.stompModel, data.instrument, data.playbackTarget)}`,
           artist: confirmed.artist,
           instrument: data.instrument,
           stompModel: data.stompModel,
-          preset: publicPreset(preset),
+          preset: publicPreset(preset, data.userGear),
           bpm,
         });
       } catch {
@@ -616,7 +616,7 @@ ${systemForCustomSound(data.stompModel, data.instrument, data.playbackTarget)}`,
           artist: "custom",
           instrument: data.instrument,
           stompModel: data.stompModel,
-          preset: publicPreset(preset),
+          preset: publicPreset(preset, data.userGear),
         });
       } catch {
         /* ignore */

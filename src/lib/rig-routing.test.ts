@@ -262,7 +262,10 @@ describe("SL-68 player IR slot", () => {
         const preset = { ...withStompModel(src, device.id), playbackTarget: "frfr" as const };
         const hlx = buildHlx(preset, { irSlot: 42 }) as Json;
         assert.deepEqual(validatePreset(hlx, { strict: true }), [], `${src.id} ${device.id}`);
-        if (src.blocks.some((b) => MODEL_MAP[b.modelId]?.category === "cab")) {
+        if (src.instrument === "bass") {
+          // A guitar IR would thin a bass rig: the bass cab stays.
+          assert.equal(irBlocks(hlx).length, 0, `${src.id} ${device.id}`);
+        } else if (src.blocks.some((b) => MODEL_MAP[b.modelId]?.category === "cab")) {
           assert.equal(irBlocks(hlx).length, 1, `${src.id} ${device.id}`);
           assert.ok(!droppedOnExport(preset, { irSlot: 42 }).some((b) => MODEL_MAP[b.modelId]?.category === "cab"));
         }
