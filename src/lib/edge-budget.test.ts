@@ -17,6 +17,7 @@ describe("isScannerPath", () => {
       "/catalog/scream-808",
       "/s/Ab3dEf9hJk",
       "/setlist",
+      "/setlist/demo",
       "/create",
       "/gear",
       "/guide",
