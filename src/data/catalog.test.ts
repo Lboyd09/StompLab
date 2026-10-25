@@ -299,3 +299,11 @@ describe("devices", () => {
     assert.equal(DEVICE_MAP["hx-effects"].maxBlocks, 9);
   });
 });
+
+describe("POD Go id list", () => {
+  it("matches the POD Go catalog exactly", async () => {
+    const { PODGO_CATALOG_JSON } = await import("./podgo-catalog.gen.ts");
+    const { PODGO_MODEL_IDS } = await import("./podgo-ids.gen.ts");
+    assert.deepEqual([...PODGO_MODEL_IDS], Object.keys(JSON.parse(PODGO_CATALOG_JSON).models).sort());
+  });
+});

@@ -1,7 +1,7 @@
 import { CATEGORIES, CATEGORY_MAP, DEFAULT_PARAMS, DEVICE_MAP, STOMP_DEVICES } from "./categories";
 import { HELIX_IDS, UNEXPORTABLE_MODELS, helixIdFor } from "./helix-ids";
 import { hxModel, hxModelOnUnit } from "./hx-catalog";
-import { podGoIdFor } from "./podgo-catalog";
+import { podGoIdFor } from "./podgo-ids";
 import { AMP_MODELS } from "./models-amps";
 import { CAB_MODELS } from "./models-cabs";
 import { FX_MODELS } from "./models-fx";

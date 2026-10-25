@@ -8,7 +8,7 @@ import { coerceNative } from "./hx-units";
 import { snapshotEnables, sortedBlocks, visualToHardwareFs } from "./preset-utils";
 import { routeFor } from "@/data/playback";
 import { applyRouting, removesAmp, removesCab } from "./rig-routing";
-import { userIrSlot } from "./hlx";
+import { userIrSlot } from "./export-meta";
 
 /**
  * POD Go Edit .pgp, laid out like the unit's own New Preset (POD Go 2.50 exports):

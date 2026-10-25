@@ -1,5 +1,5 @@
 import type { Preset } from "@/data/types";
-import { userIrSlot } from "@/lib/hlx";
+import { userIrSlot } from "@/lib/export-meta";
 import { useAppStore } from "@/store/app-store";
 
 /** SL-68: one line when the download swaps the stock cab for the player's IR. */

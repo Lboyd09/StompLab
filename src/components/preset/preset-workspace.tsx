@@ -1,6 +1,7 @@
 import { CATEGORY_MAP } from "@/data/categories";
 import type { FootswitchAssign, Preset, StompBlock } from "@/data/types";
-import { copyHlx, downloadHlx, hlxFilename, hlxJson, canExportHlx } from "@/lib/hlx";
+import { canExportHlx, hlxFilename } from "@/lib/export-meta";
+import { getExport, loadExport } from "@/lib/export-loader";
 import {
   blockModel,
   canDownloadPreset,
@@ -296,7 +297,14 @@ export function PresetWorkspace({
     toast.success("Switches restored to the original rig.");
   }
 
-  function onDownload() {
+  // Fetch the file builder while the player looks around, so Download saves in the same tap.
+  useEffect(() => {
+    if (!canDownload) return;
+    const id = window.setTimeout(() => void loadExport(), 1200);
+    return () => window.clearTimeout(id);
+  }, [canDownload]);
+
+  async function onDownload() {
     if (!canDownload) return;
     if (!canExportHlx(preset.stompModel)) {
       toast.error(
@@ -306,7 +314,8 @@ export function PresetWorkspace({
     }
     const filename = hlxFilename(preset);
     if (confirmDownload && !window.confirm(`Download ${filename} for ${editor}?`)) return;
-    const ok = downloadHlx(preset, { fsMode: exportMode });
+    const exporter = getExport() ?? (await loadExport());
+    const ok = exporter.downloadHlx(preset, { fsMode: exportMode });
     if (ok) {
       trackDownload();
       setSavedFile(filename);
@@ -400,7 +409,7 @@ export function PresetWorkspace({
     if (!canDownload) return;
     setCopying(true);
     try {
-      await copyHlx(preset, { fsMode: exportMode });
+      await (getExport() ?? (await loadExport())).copyHlx(preset, { fsMode: exportMode });
       toast.success(`${editor} JSON copied. Paste into a text file named .${exportExt} and import it.`);
     } catch {
       toast.error(`Could not copy. Try Download .${exportExt} instead.`);
@@ -1006,7 +1015,7 @@ export function PresetWorkspace({
         unitName={device.name}
         modeLabel={EXPORT_MODE_LABEL[exportMode]}
         fsMode={exportMode}
-        getJson={() => hlxJson(preset, { fsMode: exportMode })}
+        getJson={() => getExport()?.hlxJson(preset, { fsMode: exportMode }) ?? ""}
         showImport={askOpen === "download"}
         onClose={() => setAskOpen(null)}
       />

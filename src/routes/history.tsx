@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Download, Search, Trash2 } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { toast } from "sonner";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import { DEVICE_MAP } from "@/data/categories";
@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/layout/page-header";
 import { FREE_BUILD_LINE } from "@/lib/copy";
-import { canExportHlx, downloadHlx, exportExtension, hlxFilename } from "@/lib/hlx";
+import { canExportHlx, exportExtension, hlxFilename } from "@/lib/export-meta";
+import { getExport, loadExport } from "@/lib/export-loader";
 import type { Preset } from "@/data/types";
 import { HISTORY_CAP } from "@/lib/storage";
 import { usePlan } from "@/lib/use-plan";
@@ -27,6 +28,10 @@ function HistoryPage() {
   const { plan, isPending } = usePlan();
   const [q, setQ] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
+  useEffect(() => {
+    const id = window.setTimeout(() => void loadExport(), 1200);
+    return () => window.clearTimeout(id);
+  }, []);
   const [filter, setFilter] = useState<"all" | "song" | "custom">("all");
   const user = presets.filter((p) => p.source !== "featured");
   const demos = FEATURED.filter((p) => (DEMO_IDS as readonly string[]).includes(p.id));
@@ -51,8 +56,8 @@ function HistoryPage() {
     });
   }
 
-  function onRedownload(p: Preset) {
-    const ok = downloadHlx(p, { fsMode: "snapshot" });
+  async function onRedownload(p: Preset) {
+    const ok = (getExport() ?? (await loadExport())).downloadHlx(p, { fsMode: "snapshot" });
     if (ok) toast.success(`Saved ${hlxFilename(p)}.`);
     else toast.error("Could not save that file. Open the preset and try Download there.");
   }

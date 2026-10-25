@@ -13,7 +13,7 @@ import { DEVICE_MAP } from "@/data/categories";
 import { DEMO_IDS, FEATURED } from "@/data/featured";
 import type { Preset } from "@/data/types";
 import { PAID_BUILD_LINE } from "@/lib/copy";
-import { exportExtension } from "@/lib/hlx";
+import { exportExtension } from "@/lib/export-meta";
 import { notifyResearchSource } from "@/lib/notify";
 import { resolveNamedPreset } from "@/lib/preset-utils";
 import {
