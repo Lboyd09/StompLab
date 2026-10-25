@@ -159,7 +159,62 @@ html.dark {
 }
 
 .sl-tour-step {
-  animation: sl-enter 700ms var(--ease-out);
+  animation: sl-tour-fwd 560ms var(--ease-out) both;
+}
+.sl-tour-step[data-dir="back"] {
+  animation-name: sl-tour-back;
+}
+
+@keyframes sl-tour-fwd {
+  from { opacity: 0; transform: translateX(28px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+@keyframes sl-tour-back {
+  from { opacity: 0; transform: translateX(-28px); filter: blur(6px); }
+  to { opacity: 1; transform: none; filter: blur(0); }
+}
+
+/* The next footswitch to try breathes so the player knows where to tap. */
+.sl-hint-ring {
+  animation: sl-hint 1.6s var(--ease-out) infinite;
+}
+@keyframes sl-hint {
+  0% { box-shadow: 0 0 0 0 color-mix(in oklab, var(--color-pop) 55%, transparent); }
+  70% { box-shadow: 0 0 0 14px transparent; }
+  100% { box-shadow: 0 0 0 0 transparent; }
+}
+
+/* One glow when every switch has been tried. */
+.sl-burst {
+  animation: sl-burst 900ms var(--ease-out) forwards;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sl-burst { display: none; }
+}
+@keyframes sl-burst {
+  0% { opacity: 0.9; transform: scale(0.96); }
+  100% { opacity: 0; transform: scale(1.06); }
+}
+
+/* A picked unit card pops once. */
+.sl-pop {
+  animation: sl-pop 420ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+@keyframes sl-pop {
+  0% { transform: scale(0.85); }
+  60% { transform: scale(1.12); }
+  100% { transform: scale(1); }
+}
+
+/* "Get it on your unit": the three steps light up in turn, on a loop. */
+.sl-flow > li {
+  animation: sl-flow-step 7.5s var(--ease-out) infinite;
+}
+.sl-flow > li:nth-child(2) { animation-delay: 2.5s; }
+.sl-flow > li:nth-child(3) { animation-delay: 5s; }
+@keyframes sl-flow-step {
+  0%, 30% { border-color: color-mix(in oklab, var(--color-pop) 70%, transparent); background: color-mix(in oklab, var(--color-pop) 9%, transparent); }
+  38%, 100% { border-color: var(--color-border); background: transparent; }
 }
 
 html.sl-touring,
@@ -276,6 +331,9 @@ html.sl-touring nav {
   .sl-tour-step,
   .sl-btn-sheen::after,
   .sl-menu,
+  .sl-hint-ring,
+  .sl-pop,
+  .sl-flow > li,
   .sl-tour-step {
     animation: none !important;
     opacity: 1 !important;

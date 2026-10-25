@@ -87,11 +87,14 @@ function Footswitches({
   active,
   onPick,
   tried,
+  hint,
 }: {
   preset: Preset;
   active: number;
   onPick?: (i: number) => void;
   tried?: Set<number>;
+  /** The switch to tap next: it pulses. */
+  hint?: number;
 }) {
   return (
     <div className="grid grid-cols-3 gap-2 sm:gap-4" role={onPick ? "group" : undefined} aria-label={onPick ? "Footswitches" : undefined}>
@@ -103,6 +106,7 @@ function Footswitches({
               className={cn(
                 "grid size-12 place-items-center rounded-full border-2 transition-all duration-300 sm:size-16",
                 on ? "scale-105" : "border-white/15",
+                i === hint && !on ? "sl-hint-ring border-pop/70" : null,
               )}
               style={on ? { borderColor: s.color, boxShadow: `0 0 0 4px color-mix(in oklab, ${s.color} 25%, transparent), 0 0 28px -4px ${s.color}` } : undefined}
             >
@@ -319,6 +323,7 @@ export function TryRig({ preset, active, onPick, tried }: { preset: Preset; acti
           preset={preset}
           active={active}
           tried={tried}
+          hint={preset.snapshots.slice(0, 3).findIndex((_, i) => !tried.has(i))}
           onPick={(i) => {
             setPrevious(active === i ? previous : active);
             onPick(i);

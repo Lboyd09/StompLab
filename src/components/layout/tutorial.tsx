@@ -49,6 +49,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   const openFeaturedPreset = useOpenFeatured();
   const [open, setOpen] = useState(Boolean(force));
   const [step, setStep] = useState(0);
+  const [dir, setDir] = useState<"fwd" | "back">("fwd");
   const [snap, setSnap] = useState(0);
   const [tried, setTried] = useState<Set<number>>(() => new Set([0]));
   const phone = useMemo(() => isPhone(), []);
@@ -159,8 +160,14 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   const editor = stompModel === "pod-go" ? "POD Go Edit" : "HX Edit";
   const { demos, fallback } = demosFor(instrument);
   const triedAll = tried.size >= Math.min(3, demo.snapshots.length);
-  const next = () => setStep((n) => Math.min(STEPS.length - 1, n + 1));
-  const back = () => setStep((n) => Math.max(0, n - 1));
+  const next = () => {
+    setDir("fwd");
+    setStep((n) => Math.min(STEPS.length - 1, n + 1));
+  };
+  const back = () => {
+    setDir("back");
+    setStep((n) => Math.max(0, n - 1));
+  };
 
   return (
     <div
@@ -197,7 +204,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
       </header>
 
       <div data-scroll className="relative min-h-0 flex-1 overflow-y-auto overflow-x-hidden overscroll-contain">
-        <div key={current} className="sl-tour-step mx-auto grid min-h-full w-full max-w-7xl items-center gap-6 px-4 py-5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 md:px-10 md:py-8 lg:gap-20">
+        <div key={current} data-dir={dir} className="sl-tour-step mx-auto grid min-h-full w-full max-w-7xl items-center gap-6 px-4 py-5 md:grid-cols-[minmax(0,5fr)_minmax(0,7fr)] md:gap-12 md:px-10 md:py-8 lg:gap-20">
           {current === "what" ? (
             <>
               <Copy kicker="For HX Stomp, Helix and POD Go">
@@ -246,7 +253,15 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                 </p>
               </Copy>
               <Visual>
-                <TryRig preset={demo} active={snap} onPick={pickSnap} tried={tried} />
+                <div className="relative">
+                  <TryRig preset={demo} active={snap} onPick={pickSnap} tried={tried} />
+                  {triedAll ? (
+                    <span
+                      aria-hidden
+                      className="sl-burst pointer-events-none absolute inset-0 rounded-2xl border-2 border-pop shadow-[0_0_60px_-6px_var(--color-pop)]"
+                    />
+                  ) : null}
+                </div>
               </Visual>
             </>
           ) : current === "rig" ? (
@@ -294,7 +309,11 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                             on ? "border-primary bg-primary/10 text-foreground" : "border-border bg-card text-muted-foreground",
                           )}
                         >
-                          <UnitArt device={d} className={cn("h-6 shrink-0 sm:h-8", on ? "text-primary" : "text-foreground/70")} />
+                          <UnitArt
+                            key={on ? "on" : "off"}
+                            device={d}
+                            className={cn("h-6 shrink-0 sm:h-8", on ? "sl-pop text-primary" : "text-foreground/70")}
+                          />
                           <span className="pr-4 leading-tight text-foreground">{d.name}</span>
                           {on ? <Check className="absolute right-2.5 top-2.5 size-4 text-primary" aria-hidden /> : null}
                         </button>
@@ -343,7 +362,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
               <div className="min-w-0 space-y-3">
                 <p className="sl-kicker">Free demos</p>
                 {fallback ? <p className="text-sm text-muted-foreground">The free demos are guitar rigs. Bass songs build the same way.</p> : null}
-                <div className="grid gap-3">
+                <div className="sl-stagger grid gap-3">
                   {demos.map((p) => (
                     <button
                       key={p.id}
@@ -364,6 +383,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                     </button>
                   ))}
                 </div>
+                <ImportFlow editor={editor} />
                 {phone ? (
                   <div className="mt-2 rounded-xl bg-secondary/60 p-4 text-sm">
                     <p className="font-medium">Keep it on your home screen</p>
@@ -407,9 +427,32 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
 
 function Copy({ kicker, children }: { kicker: string; children: ReactNode }) {
   return (
-    <div className="min-w-0 space-y-4 md:space-y-6">
+    <div className="sl-stagger min-w-0 space-y-4 md:space-y-6">
       <p className="sl-kicker">{kicker}</p>
       {children}
+    </div>
+  );
+}
+
+/** The three things that happen after a demo opens, lit in turn so the order sticks. */
+function ImportFlow({ editor }: { editor: string }) {
+  const steps = [
+    ["Download", "Tap Download on the preset page."],
+    ["Import", `In ${editor}: File, then Import. Don't drag it.`],
+    ["Play", "Put the unit in Snapshot mode. Each switch is a part of the song."],
+  ];
+  return (
+    <div className="pt-2">
+      <p className="sl-kicker mb-2">Then, on your unit</p>
+      <ol className="sl-flow grid gap-2 sm:grid-cols-3">
+        {steps.map(([title, body], i) => (
+          <li key={title} className="rounded-xl border border-border px-3.5 py-3">
+            <span className="font-mono text-[11px] text-pop">{i + 1}</span>
+            <span className="ml-2 text-sm font-medium">{title}</span>
+            <span className="mt-1 block text-xs leading-snug text-muted-foreground">{body}</span>
+          </li>
+        ))}
+      </ol>
     </div>
   );
 }
