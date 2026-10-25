@@ -4,6 +4,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode }
 import { Button } from "@/components/ui/button";
 import { demosFor, welcomeDemo } from "@/components/onboarding/demo-rig";
 import { DemoReel, TryRig, UnitArt } from "@/components/onboarding/rig-visual";
+import { FeatureScene, ImportScene } from "@/components/onboarding/tour-scenes";
 import { STOMP_DEVICES } from "@/data/categories";
 import { playbackOptionsFor } from "@/data/playback";
 import { FREE_BUILD_LINE } from "@/lib/copy";
@@ -17,9 +18,9 @@ import { ONBOARD_KEY, persistInstrumentUnit } from "./onboarding";
 export const TUTORIAL_KEY = "stomplab.tutorial.v21";
 export const TUTORIAL_EVENT = "stomplab:tutorial";
 
-type Step = "what" | "try" | "rig" | "play";
-const STEPS: Step[] = ["what", "try", "rig", "play"];
-const STEP_LABEL: Record<Step, string> = { what: "What it is", try: "Try it", rig: "Your rig", play: "Play" };
+type Step = "what" | "try" | "rig" | "unit" | "more" | "play";
+const STEPS: Step[] = ["what", "try", "rig", "unit", "more", "play"];
+const STEP_LABEL: Record<Step, string> = { what: "What it is", try: "Try it", rig: "Your rig", unit: "On your unit", more: "What else", play: "Play" };
 
 function isIos(): boolean {
   if (typeof navigator === "undefined") return false;
@@ -77,6 +78,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
   useLayoutEffect(() => {
     function replay() {
       setStep(0);
+      setDir("fwd");
       setSnap(0);
       setTried(new Set([0]));
       setOpen(true);
@@ -348,6 +350,34 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                 </fieldset>
               </div>
             </>
+          ) : current === "unit" ? (
+            <>
+              <Copy kicker="On your unit">
+                <h1 id="setup-title" tabIndex={-1} className="sl-hero-title text-[clamp(2.1rem,4.4vw,4rem)] outline-none">
+                  From this page to your {unitName}.
+                </h1>
+                <p className="max-w-lg text-base leading-relaxed text-muted-foreground md:text-lg">
+                  Download the file, import it in {editor}, and step on a switch. Each switch is already set to a part of the song.
+                </p>
+              </Copy>
+              <Visual>
+                <ImportScene preset={demo} unitName={unitName} editor={editor} ext={stompModel === "pod-go" ? "pgp" : "hlx"} />
+              </Visual>
+            </>
+          ) : current === "more" ? (
+            <>
+              <Copy kicker="What else">
+                <h1 id="setup-title" tabIndex={-1} className="sl-hero-title text-[clamp(2.1rem,4.4vw,4rem)] outline-none">
+                  More than one song.
+                </h1>
+                <p className="max-w-lg text-base leading-relaxed text-muted-foreground md:text-lg">
+                  Build a set for the gig, fix a tone that's off, and share it with the band. Tap a card to see it.
+                </p>
+              </Copy>
+              <Visual>
+                <FeatureScene preset={demo} />
+              </Visual>
+            </>
           ) : (
             <>
               <Copy kicker="Ready">
@@ -383,7 +413,6 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                     </button>
                   ))}
                 </div>
-                <ImportFlow editor={editor} />
                 {phone ? (
                   <div className="mt-2 rounded-xl bg-secondary/60 p-4 text-sm">
                     <p className="font-medium">Keep it on your home screen</p>
@@ -414,7 +443,15 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
               </Button>
             ) : (
               <Button type="button" className="h-12 w-full px-6 text-base sm:w-auto sm:px-8" onClick={next}>
-                {current === "what" ? "See how it works" : current === "try" ? "Set up my rig" : `That's my ${unitName}`}
+                {current === "what"
+                  ? "See how it works"
+                  : current === "try"
+                    ? "Set up my rig"
+                    : current === "rig"
+                      ? `That's my ${unitName}`
+                      : current === "unit"
+                        ? "What else can it do?"
+                        : "Pick a song"}
                 <ArrowRight aria-hidden />
               </Button>
             )}
@@ -430,29 +467,6 @@ function Copy({ kicker, children }: { kicker: string; children: ReactNode }) {
     <div className="sl-stagger min-w-0 space-y-4 md:space-y-6">
       <p className="sl-kicker">{kicker}</p>
       {children}
-    </div>
-  );
-}
-
-/** The three things that happen after a demo opens, lit in turn so the order sticks. */
-function ImportFlow({ editor }: { editor: string }) {
-  const steps = [
-    ["Download", "Tap Download on the preset page."],
-    ["Import", `In ${editor}: File, then Import. Don't drag it.`],
-    ["Play", "Step on a switch. Each one is a part of the song, already set up."],
-  ];
-  return (
-    <div className="pt-2">
-      <p className="sl-kicker mb-2">Then, on your unit</p>
-      <ol className="sl-flow grid gap-2 sm:grid-cols-3">
-        {steps.map(([title, body], i) => (
-          <li key={title} className="rounded-xl border border-border px-3.5 py-3">
-            <span className="font-mono text-[11px] text-pop">{i + 1}</span>
-            <span className="ml-2 text-sm font-medium">{title}</span>
-            <span className="mt-1 block text-xs leading-snug text-muted-foreground">{body}</span>
-          </li>
-        ))}
-      </ol>
     </div>
   );
 }
