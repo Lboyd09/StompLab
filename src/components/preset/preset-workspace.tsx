@@ -452,8 +452,6 @@ export function PresetWorkspace({
     setFsMode("snapshot");
   }
 
-  // Helix Floor / LT are wide: the replica takes the full width and the chain sits under it.
-  const wide = layout === "floor" || layout === "lt";
   const canGetFile = canDownload && canExportHlx(preset.stompModel);
   const status = replicaStatusLine({
     stompMode,
@@ -518,7 +516,7 @@ export function PresetWorkspace({
         </span>
       </div>
       <ol
-        className={cn("grid gap-2", wide ? "grid-cols-2 sm:grid-cols-3" : "grid-cols-2 sm:grid-cols-3 lg:grid-cols-2")}
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
         aria-label="Signal chain, input to output"
       >
         {chain.map((b, i) => {
@@ -662,10 +660,10 @@ export function PresetWorkspace({
         ) : null}
         <IrNote preset={preset} />
 
-        <div className={cn("grid min-w-0 gap-5", !wide && "lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] lg:items-start")}>
+        <div className="grid min-w-0 gap-5">
           <section
             aria-label={`${preset.song || preset.name} on the ${device.name}`}
-            className={cn("sl-stage relative min-w-0 rounded-3xl border border-border p-2.5 sm:p-5", !wide && "lg:sticky lg:top-4")}
+            className="sl-stage relative min-w-0 rounded-3xl border border-border p-3 sm:p-6"
             data-tour="replica"
             data-tutorial="replica"
           >
@@ -675,7 +673,7 @@ export function PresetWorkspace({
                 {stompMode ? "Each switch turns an effect on or off. Tap one." : "Each switch is one part of the song. Tap one."}
               </p>
             </div>
-            <div id="replica-panel" data-replica-toggle className="hx-replica-fit min-w-0">
+            <div id="replica-panel" data-replica-toggle className="min-w-0 pt-3">
               <StompUnit
                 preset={displayed}
                 selectedBlockId={selectedId ?? null}
@@ -695,14 +693,6 @@ export function PresetWorkspace({
                 onAssignFsIndex={setAssignFsIndex}
               />
             </div>
-            <p
-              role="status"
-              aria-live="polite"
-              className="flex items-start gap-2.5 rounded-2xl border border-border bg-card/80 px-3.5 py-3 text-sm font-medium leading-snug backdrop-blur"
-            >
-              <span aria-hidden className="mt-1 size-2.5 shrink-0 rounded-full" style={{ background: statusColor, boxShadow: `0 0 10px ${statusColor}` }} />
-              <span className="min-w-0">{status}</span>
-            </p>
             {!stompMode && preset.snapshots.length ? (
               <div className="mt-3 space-y-2">
                 <div
@@ -736,18 +726,23 @@ export function PresetWorkspace({
                     );
                   })}
                 </div>
-                {activeSnap?.notes ? (
-                  <p className="px-1 text-sm leading-relaxed text-muted-foreground">{noteText(activeSnap.notes)}</p>
-                ) : null}
               </div>
             ) : null}
+            <div className="mt-3 flex items-start gap-3 rounded-2xl border border-border bg-card/80 px-4 py-3.5 backdrop-blur">
+              <span aria-hidden className="mt-1.5 size-2.5 shrink-0 rounded-full" style={{ background: statusColor, boxShadow: `0 0 10px ${statusColor}` }} />
+              <div className="min-w-0 space-y-1">
+                {!stompMode && activeSnap?.notes ? <p className="text-[15px] leading-relaxed">{noteText(activeSnap.notes)}</p> : null}
+                <p role="status" aria-live="polite" className="text-xs leading-relaxed text-muted-foreground">
+                  {status}
+                </p>
+              </div>
+            </div>
           </section>
 
           <section
             aria-labelledby="tone-heading"
             className={cn(
-              "min-w-0 rounded-3xl border border-border bg-card p-4 sm:p-5",
-              wide ? "space-y-5 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-6 lg:space-y-0" : "space-y-5",
+              "min-w-0 space-y-5 rounded-3xl border border-border bg-card p-4 sm:p-6 lg:grid lg:grid-cols-[minmax(0,1.15fr)_minmax(0,1fr)] lg:gap-8 lg:space-y-0",
             )}
           >
             {chainList}
@@ -871,7 +866,13 @@ export function PresetWorkspace({
                 <li className="flex gap-2">
                   <span className="font-mono text-[11px] text-foreground/70">2.</span>
                   <span>
-                    {modeSteps} The numbered switches only recall the song parts in Snapshot mode.
+                    {exportMode !== "snapshot"
+                      ? modeSteps
+                      : isPodGo
+                        ? `${modeSteps} POD Go only shows song parts in Snapshot mode; it can't be saved in the file.`
+                        : layout === "stomp"
+                          ? `Nothing to set: FS1 and FS2 play the first two parts in any mode. For part 3, ${modeSteps.charAt(0).toLowerCase()}${modeSteps.slice(1)}`
+                          : "Nothing to set: the switches play the song parts whether the unit is in Stomp or Snapshot mode."}
                   </span>
                 </li>
                 <li className="flex gap-2">
@@ -904,7 +905,7 @@ export function PresetWorkspace({
               ) : null}
               <p className="mt-2 text-xs text-muted-foreground">
                 Stuck?{" "}
-                <Link to="/guide" className="inline-flex min-h-11 items-center text-primary underline underline-offset-2">
+                <Link to="/settings" hash="help" className="inline-flex min-h-11 items-center text-primary underline underline-offset-2">
                   Open the guide
                 </Link>
               </p>

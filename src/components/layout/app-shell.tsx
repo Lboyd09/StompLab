@@ -1,6 +1,5 @@
 import { Link, useNavigate, useRouterState } from "@tanstack/react-router";
 import {
-  BookOpen,
   Clock,
   Guitar,
   Library,
@@ -39,19 +38,16 @@ import { jsonFingerprint, shouldPushSync } from "@/lib/edge-budget";
 import { accountIsBehind, mergeHistory } from "@/lib/storage";
 import { captureReferralCode } from "@/lib/referral-code";
 
+// Most used first: build a song, your presets, your sets, then your gear and the model list.
 const NAV = [
   { to: "/", label: "Lab", icon: Guitar },
-  { to: "/catalog", label: "Catalog", icon: Library },
+  { to: "/history", label: "History", icon: Clock },
   { to: "/setlist", label: "Setlists", icon: ListMusic },
   { to: "/gear", label: "Gear", icon: Wrench },
-  { to: "/history", label: "History", icon: Clock },
+  { to: "/catalog", label: "Catalog", icon: Library },
 ] as const;
 
-const DESKTOP_NAV = [
-  ...NAV,
-  { to: "/create", label: "Create", icon: Sparkles },
-  { to: "/guide", label: "Guide", icon: BookOpen },
-] as const;
+const DESKTOP_NAV = [...NAV.slice(0, 3), { to: "/create", label: "Create", icon: Sparkles }, ...NAV.slice(3)] as const;
 
 const PULL_RETRY_MS = [0, 2000, 6000, 15000];
 

@@ -966,3 +966,32 @@ describe("demo notes name the real switches", () => {
     assert.equal(unitSwitchText("Hit FS1.", [1, 2, 3]), "Hit FS1.");
   });
 });
+
+describe("song-part switches work in Stomp mode too", () => {
+  const tone = (p: Preset, fsMode: "stomp" | "snapshot") => (buildHlx(p, { fsMode }) as { data: { tone: Record<string, any> } }).data.tone;
+  const commands = (t: Record<string, any>) =>
+    Object.fromEntries(Object.entries(t).filter(([k]) => k.startsWith("commandFS")).map(([k, v]) => [k, v["@press"]]));
+
+  it("HX Stomp XL: parts on FS5, FS6, FS2 as Snapshot commands", () => {
+    const t = tone(withStompModel(featured("featured-sandman"), "hx-stomp-xl"), "snapshot");
+    assert.deepEqual(commands(t), { commandFS5: 3, commandFS6: 4, commandFS2: 5 });
+    assert.equal(t.commandFS5["@command"], 15);
+    const fsUsed = Object.values(t.footswitch.dsp0).map((v: any) => v["@fs_index"]);
+    for (const n of [5, 6, 2]) assert.ok(!fsUsed.includes(n), `FS${n} also carries an effect`);
+  });
+  it("HX Stomp: parts 1 and 2 on FS1 and FS2; FS3 stays TAP", () => {
+    const t = tone(withStompModel(featured("featured-sandman"), "hx-stomp"), "snapshot");
+    assert.deepEqual(commands(t), { commandFS1: 3, commandFS2: 4 });
+  });
+  it("Helix Floor and LT: parts on FS8 upward", () => {
+    for (const model of ["helix-floor", "helix-lt"] as const) {
+      const t = tone(withStompModel(featured("featured-teen-spirit"), model), "snapshot");
+      assert.equal(commands(t).commandFS8, 3);
+      assert.equal(commands(t).commandFS9, 4);
+    }
+  });
+  it("Effects mode writes no part commands", () => {
+    const t = tone(withStompModel(featured("featured-sandman"), "hx-stomp-xl"), "stomp");
+    assert.deepEqual(commands(t), {});
+  });
+});

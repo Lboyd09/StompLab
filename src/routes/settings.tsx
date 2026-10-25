@@ -3,6 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { ChevronDown } from "lucide-react";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
+import { HelpGuide } from "@/components/layout/help-guide";
 import { replayTutorial } from "@/components/layout/tutorial";
 import { PageHeader } from "@/components/layout/page-header";
 import { Button } from "@/components/ui/button";
@@ -408,15 +409,14 @@ function SettingsPage() {
         </div>
       </details>
 
-      <p className="text-sm text-muted-foreground">
-        <Link to="/" className="text-primary underline underline-offset-2">
-          Back to the Lab
-        </Link>
-        {" · "}
-        <Link to="/guide" className="text-primary underline underline-offset-2">
-          Help
-        </Link>
-      </p>
+      <section id="help" className="scroll-mt-24 space-y-6 border-t border-border pt-8">
+        <div className="space-y-1">
+          <p className="sl-kicker">Help</p>
+          <h2 className="sl-hero-title text-3xl">How to use Stomp Lab</h2>
+          <p className="text-sm text-muted-foreground">Type a song, download the file, import it on your unit.</p>
+        </div>
+        <HelpGuide />
+      </section>
     </div>
   );
 }

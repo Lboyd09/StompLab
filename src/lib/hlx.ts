@@ -416,6 +416,44 @@ function sanitizeLabel(s: string, max: number) {
   return (clean || "Stomp Lab").slice(0, max);
 }
 
+/**
+ * Song-part switches that work in any footswitch mode. The unit keeps Stomp or Snapshot mode as its
+ * own setting, not per file, so a unit left in Stomp mode would show no song parts. A Command Center
+ * "Snapshot" command on each switch (@command 15, @press = 3 + snapshot index, as HX Edit writes it)
+ * recalls the part from Stomp mode too. The switches match where Snapshot mode puts each part.
+ */
+function snapshotCommands(preset: Preset, footswitch: { dsp0: HlxJson; dsp1: HlxJson }): HlxJson {
+  const device = exportProfile(preset.stompModel);
+  const spec = unitSpec(deviceFor(preset).layout);
+  const parts = preset.snapshots.slice(0, device.snapshots);
+  const out: HlxJson = {};
+  const used = new Set<number>();
+  parts.forEach((_, i) => {
+    const fs = spec.snapshotFs[i];
+    // Only switches that act as stomps in Stomp mode; TAP, MODE and BANK keep their jobs.
+    if (!fs || !spec.stompFs.includes(fs)) return;
+    used.add(fs);
+    out[`commandFS${fs}`] = {
+      "@command": 15,
+      "@fs_label": "Snapshot",
+      "@fs_enabled": false,
+      "@fs_ledcolor": 462860,
+      "@fs_momentary": true,
+      "@fs_primary": true,
+      "@behavior": 0,
+      "@press": 3 + i,
+      "@relhold": 0,
+    };
+  });
+  // A song-part switch carries only its part, never an effect as well.
+  for (const dsp of [footswitch.dsp0, footswitch.dsp1]) {
+    for (const [key, v] of Object.entries(dsp)) {
+      if (used.has((v as { "@fs_index"?: number })["@fs_index"] ?? -1)) delete dsp[key];
+    }
+  }
+  return out;
+}
+
 /** Stomp switch assignments. HX stores them in every footswitch mode; they act whenever stomps are showing. */
 function buildFootswitch(preset: Preset, slots: Slot[]) {
   const device = exportProfile(preset.stompModel);
@@ -496,11 +534,15 @@ export function buildHlx(preset: Preset, opts?: ExportOpts): HlxJson {
   const mode = resolveFsMode(preset, opts?.fsMode);
   const assigned = collectAssigned(preset, slots, snapCount);
 
+  const footswitch = buildFootswitch(preset, slots);
+  const commands = mode === "snapshot" ? snapshotCommands(preset, footswitch) : {};
+
   const tone: HlxJson = {
     dsp0: dsp,
     dsp1: {},
     controller: buildControllerSection(preset, slots, assigned),
-    footswitch: buildFootswitch(preset, slots),
+    footswitch,
+    ...commands,
     global: {
       "@model": "@global_params",
       "@topology0": "A",

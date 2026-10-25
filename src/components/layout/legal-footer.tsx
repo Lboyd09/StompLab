@@ -19,7 +19,7 @@ export function LegalFooter({ className, full }: { className?: string; full?: bo
         <Link to="/privacy" className="text-foreground/80 underline-offset-2 hover:underline">
           Privacy
         </Link>
-        <Link to="/guide" hash="help" className="text-foreground/80 underline-offset-2 hover:underline">
+        <Link to="/settings" hash="help" className="text-foreground/80 underline-offset-2 hover:underline">
           Help
         </Link>
         <Link to="/account" className="text-foreground/80 underline-offset-2 hover:underline">

@@ -1,4 +1,6 @@
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { Maximize2, X } from "lucide-react";
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { toast } from "sonner";
 import { CATEGORY_MAP } from "@/data/categories";
 import type { Preset } from "@/data/types";
@@ -488,13 +490,128 @@ export function StompUnit({
     );
   }
 
+  const chassis = (
+    <div className={cn("hx-chassis mx-auto w-full", `hx-chassis-${layout}`)} data-layout={layout}>
+      <div className="hx-sparkle" aria-hidden />
+      {/* HX Stomp, XL and POD Go place the logo inside their own layout. */}
+      {layout === "floor" || layout === "lt" || layout === "effects" ? brand : null}
+      {board}
+    </div>
+  );
+
+  return <ReplicaFrame width={DESIGN_WIDTH[layout]}>{chassis}</ReplicaFrame>;
+}
+
+/** Each unit is drawn on a canvas this wide, at its real layout, then scaled as one piece to fit. */
+const DESIGN_WIDTH: Record<string, number> = { stomp: 560, xl: 820, podgo: 760, effects: 680, floor: 1100, lt: 1000 };
+
+/**
+ * Never rearranges the unit for a small screen: the whole top panel is scaled evenly, like a photo.
+ * Full screen turns it sideways on a phone held upright, so it fills the screen at near real size.
+ */
+function ReplicaFrame({ width, children }: { width: number; children: ReactNode }) {
+  const [full, setFull] = useState(false);
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setFull(false);
+    window.addEventListener("keydown", onKey);
+    document.documentElement.classList.add("sl-touring");
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.documentElement.classList.remove("sl-touring");
+    };
+  }, [full]);
+
+  if (full && typeof document !== "undefined") {
+    return (
+      <>
+        <div className="grid h-40 place-items-center rounded-2xl border border-dashed border-border text-sm text-muted-foreground">
+          Showing full screen
+        </div>
+        {createPortal(<FullScreen width={width} onClose={() => setFull(false)}>{children}</FullScreen>, document.body)}
+      </>
+    );
+  }
   return (
-    <div className="hx-replica-scroll min-w-0">
-      <div className={cn("hx-chassis mx-auto w-full", `hx-chassis-${layout}`)} data-layout={layout}>
-        <div className="hx-sparkle" aria-hidden />
-        {/* HX Stomp, XL and POD Go place the logo inside their own layout. */}
-        {layout === "floor" || layout === "lt" || layout === "effects" ? brand : null}
-        {board}
+    <div>
+      <div className="mb-2 flex justify-end">
+        <button
+          type="button"
+          onClick={() => setFull(true)}
+          className="flex min-h-9 items-center gap-1.5 rounded-full border border-border bg-card/80 px-3 text-xs font-medium text-muted-foreground backdrop-blur hover:text-foreground"
+        >
+          <Maximize2 className="size-3.5" aria-hidden /> Full screen
+        </button>
+      </div>
+      <FitCanvas width={width} maxScale={1.2}>
+        {children}
+      </FitCanvas>
+    </div>
+  );
+}
+
+function FullScreen({ width, onClose, children }: { width: number; onClose: () => void; children: ReactNode }) {
+  const [box, setBox] = useState(() => ({ w: window.innerWidth, h: window.innerHeight }));
+  useEffect(() => {
+    const on = () => setBox({ w: window.innerWidth, h: window.innerHeight });
+    window.addEventListener("resize", on);
+    return () => window.removeEventListener("resize", on);
+  }, []);
+  // A phone held upright: lay the unit on its side, the way it sits on the floor in front of you.
+  const turn = box.h > box.w && box.w < 700;
+  const w = turn ? box.h : box.w;
+  const h = turn ? box.w : box.h;
+  return (
+    <div className="fixed inset-0 z-[95] overflow-hidden bg-background" role="dialog" aria-modal="true" aria-label="Unit, full screen">
+      <div
+        className="absolute left-1/2 top-1/2 flex items-center justify-center"
+        style={{ width: w, height: h, transform: `translate(-50%, -50%)${turn ? " rotate(90deg)" : ""}` }}
+      >
+        <div className="w-full px-4 pt-12 pb-4" style={{ maxHeight: h }}>
+          <FitCanvas width={width} maxScale={2} maxHeight={h - 72}>
+            {children}
+          </FitCanvas>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="absolute right-3 top-3 flex min-h-11 items-center gap-1.5 rounded-full border border-border bg-card px-4 text-sm font-medium"
+        >
+          <X className="size-4" aria-hidden /> Close
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function FitCanvas({ width, maxScale, maxHeight, children }: { width: number; maxScale: number; maxHeight?: number; children: ReactNode }) {
+  const outer = useRef<HTMLDivElement>(null);
+  const inner = useRef<HTMLDivElement>(null);
+  const [fit, setFit] = useState<{ scale: number; height?: number }>({ scale: 1 });
+  useLayoutEffect(() => {
+    const o = outer.current;
+    const i = inner.current;
+    if (!o || !i) return;
+    const update = () => {
+      const natural = i.offsetHeight;
+      let scale = Math.min(maxScale, o.clientWidth / width);
+      if (maxHeight && natural) scale = Math.min(scale, maxHeight / natural);
+      setFit({ scale, height: natural * scale });
+    };
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(o);
+    ro.observe(i);
+    return () => ro.disconnect();
+  }, [width, maxScale, maxHeight]);
+  return (
+    <div ref={outer} className="relative w-full" style={{ height: fit.height }}>
+      <div
+        ref={inner}
+        className="hx-replica-fit absolute left-1/2 top-0 py-2"
+        style={{ width, transform: `translateX(-50%) scale(${fit.scale})`, transformOrigin: "top center" }}
+      >
+        {children}
       </div>
     </div>
   );

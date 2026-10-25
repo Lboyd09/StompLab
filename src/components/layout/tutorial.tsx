@@ -439,7 +439,7 @@ function ImportFlow({ editor }: { editor: string }) {
   const steps = [
     ["Download", "Tap Download on the preset page."],
     ["Import", `In ${editor}: File, then Import. Don't drag it.`],
-    ["Play", "Put the unit in Snapshot mode. Each switch is a part of the song."],
+    ["Play", "Step on a switch. Each one is a part of the song, already set up."],
   ];
   return (
     <div className="pt-2">
