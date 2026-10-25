@@ -604,12 +604,19 @@ function FitCanvas({ width, maxScale, maxHeight, children }: { width: number; ma
     ro.observe(i);
     return () => ro.disconnect();
   }, [width, maxScale, maxHeight]);
+  // Before the first measure (and before the app loads), hold the space and hide the unscaled unit.
+  const measured = fit.height !== undefined;
   return (
-    <div ref={outer} className="relative w-full" style={{ height: fit.height }}>
+    <div ref={outer} className="relative w-full overflow-hidden" style={measured ? { height: fit.height } : { aspectRatio: "2 / 1" }}>
       <div
         ref={inner}
         className="hx-replica-fit absolute left-1/2 top-0 py-2"
-        style={{ width, transform: `translateX(-50%) scale(${fit.scale})`, transformOrigin: "top center" }}
+        style={{
+          width,
+          transform: `translateX(-50%) scale(${fit.scale})`,
+          transformOrigin: "top center",
+          visibility: measured ? undefined : "hidden",
+        }}
       >
         {children}
       </div>
