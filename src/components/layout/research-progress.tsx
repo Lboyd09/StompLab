@@ -5,10 +5,19 @@ export function ResearchProgress({ pct }: { pct: number }) {
   return (
     <div className="space-y-2 rounded-xl border border-border bg-card p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <p className="text-sm font-medium">{researchLabel(clamped)}</p>
+        <p className="text-sm font-medium" aria-live="polite">
+          {researchLabel(clamped)}
+        </p>
         <p className="font-mono text-xs tabular-nums text-muted-foreground">{clamped}%</p>
       </div>
-      <div className="h-1.5 overflow-hidden rounded-full bg-secondary">
+      <div
+        className="h-1.5 overflow-hidden rounded-full bg-secondary"
+        role="progressbar"
+        aria-label="Building your preset"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={clamped}
+      >
         <div
           className="h-full rounded-full bg-primary transition-[width] duration-300"
           style={{ width: `${clamped}%` }}

@@ -216,6 +216,19 @@ function assignUtilityBypassFs(
   return next;
 }
 
+/** A short fingerprint of a demo's rig. It changes whenever we improve the demo. */
+const revCache = new WeakMap<Preset, string>();
+export function featuredRev(src: Preset): string {
+  const hit = revCache.get(src);
+  if (hit) return hit;
+  const text = JSON.stringify([src.blocks, src.snapshots, src.footswitches]);
+  let h = 5381;
+  for (let i = 0; i < text.length; i++) h = ((h * 33) ^ text.charCodeAt(i)) >>> 0;
+  const rev = h.toString(36);
+  revCache.set(src, rev);
+  return rev;
+}
+
 export function featuredOriginal(id: string): Preset | undefined {
   const base = featuredBaseId(id);
   return FEATURED.find((p) => p.id === base || p.id === id);
@@ -347,6 +360,11 @@ export function resolveNamedPreset(
   opts: { anyUnitEdits?: boolean } = {},
 ): Preset | null {
   const featured = featuredOriginal(id);
+  // A demo copy the player never changed, built from an older demo, is skipped: the new demo wins.
+  if (featured) {
+    const rev = featuredRev(featured);
+    stored = stored.filter((p) => p.userEdited || p.featuredRev === rev || featuredBaseId(p.id) !== featured.id);
+  }
   const fromStore =
     stored.find((p) => p.id === id) ??
     (featured

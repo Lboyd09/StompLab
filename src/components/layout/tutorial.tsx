@@ -301,6 +301,7 @@ export function Tutorial({ force, onClose }: { force?: boolean; onClose?: () => 
                       );
                     })}
                   </div>
+                  <p className="text-xs text-muted-foreground">Helix Rack or Helix Native: pick Helix Floor. POD Go Wireless: pick POD Go. Helix Stadium isn’t supported yet.</p>
                 </fieldset>
                 <fieldset className="space-y-2">
                   <legend className="sl-kicker mb-2">I play through</legend>

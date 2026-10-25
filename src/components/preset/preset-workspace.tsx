@@ -59,14 +59,15 @@ export function PresetWorkspace({
   signInToDownload,
 }: {
   preset: Preset;
-  onChange?: (next: Preset) => void;
+  /** `userEdit: false` for changes the player didn't make (auto switch picks, wah setting, reset). */
+  onChange?: (next: Preset, opts?: { userEdit: boolean }) => void;
   /** Shared link: no edits, no revise, no feedback. */
   readOnly?: boolean;
   /** Where to come back to after signing in. Set on a shared link: download needs an account. */
   signInToDownload?: string;
 }) {
-  const onChange = (next: Preset) => {
-    if (!readOnly) onChangeProp?.(next);
+  const onChange = (next: Preset, opts?: { userEdit: boolean }) => {
+    if (!readOnly) onChangeProp?.(next, opts);
   };
   const selectedBlockId = useAppStore((s) => s.selectedBlockId);
   const selectBlock = useAppStore((s) => s.selectBlock);
@@ -117,7 +118,7 @@ export function PresetWorkspace({
           notes: `Toggle ${model.name}`,
         };
       });
-    if (picks.length) onChange({ ...preset, footswitches: [...preset.footswitches, ...picks] });
+    if (picks.length) onChange({ ...preset, footswitches: [...preset.footswitches, ...picks] }, { userEdit: false });
   };
   const [savedFile, setSavedFile] = useState<string | null>(null);
   const [askOpen, setAskOpen] = useState<"download" | "rate" | null>(null);
@@ -258,12 +259,12 @@ export function PresetWorkspace({
 
   function onWahMode(mode: WahMode) {
     setWahMode(mode);
-    onChange(applyWahPreference(preset, mode, wahModelId));
+    onChange(applyWahPreference(preset, mode, wahModelId), { userEdit: false });
   }
 
   function onWahModel(id: string) {
     setWahModelId(id);
-    onChange(applyWahPreference(preset, parseWahMode(wahMode), id));
+    onChange(applyWahPreference(preset, parseWahMode(wahMode), id), { userEdit: false });
   }
 
   function assignFs(index: number, patch: Partial<FootswitchAssign> | null) {
@@ -291,7 +292,7 @@ export function PresetWorkspace({
 
   function resetFeatured() {
     if (!original) return;
-    onChange(withStompModel({ ...original, createdAt: preset.createdAt }, preset.stompModel));
+    onChange(withStompModel({ ...original, createdAt: preset.createdAt }, preset.stompModel), { userEdit: false });
     toast.success("Switches restored to the original rig.");
   }
 

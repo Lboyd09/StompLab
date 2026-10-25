@@ -125,6 +125,9 @@ export function SongTypeahead({
           autoComplete="off"
           className="h-12 placeholder:font-normal placeholder:text-muted-foreground/50"
         />
+        <p className="sr-only" aria-live="polite">
+          {showList ? `${hits.length} song suggestions. Use the arrow keys to pick one.` : ""}
+        </p>
         {showList ? (
           <ul
             id={listId}

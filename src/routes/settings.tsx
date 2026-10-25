@@ -31,6 +31,7 @@ function Chip({
   return (
     <button
       type="button"
+      aria-pressed={active}
       onClick={() => {
         onClick();
       }}
@@ -256,12 +257,16 @@ function SettingsPage() {
 
         <div className="space-y-2">
           <p className="text-xs font-medium uppercase tracking-[0.16em] text-muted-foreground">Unit</p>
-          <p className="text-xs text-muted-foreground">The replica and the download file follow this.</p>
+          <p className="text-xs text-muted-foreground">
+            The replica and the download file follow this. Helix Rack or Native: pick Helix Floor. POD Go Wireless:
+            pick POD Go. Helix Stadium isn’t supported yet.
+          </p>
           <div className="grid grid-cols-2 gap-2">
             {STOMP_DEVICES.map((d) => (
               <button
                 key={d.id}
                 type="button"
+                aria-pressed={stompModel === d.id}
                 onClick={() => {
                   setStompModel(d.id);
                 }}

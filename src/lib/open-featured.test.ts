@@ -2,8 +2,8 @@ import assert from "node:assert/strict";
 import { describe, it } from "node:test";
 import { FEATURED } from "@/data/featured";
 import type { Preset } from "@/data/types";
-import { openFeatured, type PlayerSettings } from "./open-featured.ts";
-import { resolveNamedPreset, withStompModel } from "./preset-utils.ts";
+import { isOutdatedFeatured, openFeatured, type PlayerSettings } from "./open-featured.ts";
+import { featuredRev, resolveNamedPreset, withStompModel } from "./preset-utils.ts";
 
 const settings = (stompModel: PlayerSettings["stompModel"]): PlayerSettings => ({
   stompModel,
@@ -45,7 +45,7 @@ describe("opening a demo", () => {
 
 describe("resolving a preset link", () => {
   it("prefers the stored copy for that unit over the catalog", () => {
-    const stored = { ...withStompModel(sandman(), "hx-stomp"), tempo: 77 };
+    const stored = { ...withStompModel(sandman(), "hx-stomp"), featuredRev: featuredRev(sandman()), tempo: 77 };
     assert.equal(resolveNamedPreset("featured-sandman-hx-stomp", "hx-stomp", [stored])?.tempo, 77);
   });
   it("a friend's link for another unit never shows this player's edits", () => {
@@ -58,5 +58,29 @@ describe("resolving a preset link", () => {
     const mine = { ...withStompModel(sandman(), "hx-stomp"), userEdited: true, tempo: 77 };
     const out = resolveNamedPreset("featured-sandman-hx-stomp", "helix-floor", [mine], { anyUnitEdits: true });
     assert.equal(out?.tempo, 77);
+  });
+});
+
+describe("old demo copies", () => {
+  it("skips an unchanged copy built from an older demo, so the new demo wins", () => {
+    const old = { ...withStompModel(sandman(), "hx-stomp-xl"), snapshots: [] };
+    const got = resolveNamedPreset("featured-sandman-hx-stomp-xl", "hx-stomp-xl", [old]);
+    assert.ok(got);
+    assert.equal(got.snapshots.length, sandman().snapshots.length);
+  });
+  it("keeps a changed copy, and flags it as outdated", () => {
+    const old = { ...withStompModel(sandman(), "hx-stomp-xl"), snapshots: [], userEdited: true };
+    const got = resolveNamedPreset("featured-sandman-hx-stomp-xl", "hx-stomp-xl", [old]);
+    assert.ok(got);
+    assert.equal(got.snapshots.length, 0);
+    assert.equal(isOutdatedFeatured(got), true);
+  });
+  it("a freshly opened demo is current and not marked edited", () => {
+    const opened = openFeatured("featured-sandman", settings("hx-stomp"), []);
+    assert.ok(opened);
+    assert.equal(opened.preset.userEdited, false);
+    assert.equal(isOutdatedFeatured(opened.preset), false);
+    const again = resolveNamedPreset(opened.preset.id, "hx-stomp", [opened.preset]);
+    assert.equal(again?.featuredRev, opened.preset.featuredRev);
   });
 });

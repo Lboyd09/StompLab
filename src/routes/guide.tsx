@@ -25,6 +25,9 @@ function GuidePage() {
       </Section>
 
       <Section title="Questions">
+        <Faq q="My unit isn't in the list">
+          <p>Helix Rack or Helix Native: pick Helix Floor. POD Go Wireless: pick POD Go. Helix Stadium isn’t supported yet. Their files import the same way.</p>
+        </Faq>
         <Faq q="Which switch is which part?">
           <p>
             Snapshot mode, in song order. HX Stomp: FS1, FS2, FS3. HX Stomp XL, HX Effects, POD Go:

@@ -1,6 +1,8 @@
 import type { PlaybackTarget, Preset, StompModelId, UserGear } from "@/data/types";
 import { overlayUserGear } from "./preset-schema";
-import { featuredOriginal, withStompModel } from "./preset-utils";
+import { featuredOriginal, featuredRev, withStompModel } from "./preset-utils";
+
+export { featuredRev };
 import { applyRouting } from "./rig-routing";
 import { applyWahPreference, type WahMode } from "./wah";
 
@@ -13,9 +15,15 @@ export type PlayerSettings = {
   playbackTarget: PlaybackTarget;
 };
 
+/** True when this saved demo copy was built from an older version of the demo. */
+export function isOutdatedFeatured(copy: Preset): boolean {
+  const src = featuredOriginal(copy.id);
+  return !!src && copy.featuredRev !== featuredRev(src);
+}
+
 /** A featured rig fitted to the player: their unit, their gear, their wah choice, their routing. */
 export function featuredForPlayer(src: Preset, settings: PlayerSettings): Preset {
-  return applyRouting(
+  const fitted = applyRouting(
     applyWahPreference(
       overlayUserGear(withStompModel(src, settings.stompModel), settings.gear),
       settings.wahMode,
@@ -23,6 +31,7 @@ export function featuredForPlayer(src: Preset, settings: PlayerSettings): Preset
     ),
     settings.playbackTarget,
   );
+  return { ...fitted, featuredRev: featuredRev(src), userEdited: false };
 }
 
 /**

@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { useEffect, useMemo } from "react";
+import { toast } from "sonner";
 import { PresetWorkspace } from "@/components/preset/preset-workspace";
 import { Button } from "@/components/ui/button";
 import { DEVICE_MAP } from "@/data/categories";
-import { featuredForPlayer, openFeatured } from "@/lib/open-featured";
+import { featuredForPlayer, featuredRev, isOutdatedFeatured, openFeatured } from "@/lib/open-featured";
 import { featuredOriginal, resolveNamedPreset, stompModelFromId } from "@/lib/preset-utils";
 import { useAppStore } from "@/store/app-store";
 
@@ -33,37 +34,47 @@ function PresetPage() {
   const urlModel = stompModelFromId(id);
   const model = urlModel ?? stompModel;
 
-  const preset = useMemo(() => {
-    const resolved = resolveNamedPreset(id, model, presets);
-    if (!resolved) return null;
-    const inStore = presets.some((p) => p.id === resolved.id);
-    const src = featuredOriginal(id);
-    if (resolved.source === "featured" && !inStore && src) {
-      return featuredForPlayer(
-        { ...src, createdAt: resolved.createdAt },
-        { stompModel: model, gear, wahMode, wahModelId, playbackTarget },
-      );
-    }
-    return resolved;
-  }, [id, presets, model, gear, wahMode, wahModelId, playbackTarget]);
+  const settings = useMemo(
+    () => ({ stompModel: model, gear, wahMode, wahModelId, playbackTarget }),
+    [model, gear, wahMode, wahModelId, playbackTarget],
+  );
 
-  const inStore = preset ? presets.some((p) => p.id === preset.id) : false;
+  // A demo copy the player never changed is always rebuilt from the latest demo, so fixes reach
+  // everyone. A copy they changed is kept, with an offer to swap in the new version.
+  const { preset, needsSave } = useMemo(() => {
+    const resolved = resolveNamedPreset(id, model, presets);
+    if (!resolved) return { preset: null, needsSave: false };
+    const stored = presets.find((p) => p.id === resolved.id);
+    const src = featuredOriginal(id);
+    if (resolved.source === "featured" && src && !stored?.userEdited && stored?.featuredRev !== featuredRev(src)) {
+      return { preset: featuredForPlayer({ ...src, createdAt: resolved.createdAt }, settings), needsSave: true };
+    }
+    return { preset: resolved, needsSave: !stored };
+  }, [id, presets, model, settings]);
+
+  const outdated = preset?.userEdited ? isOutdatedFeatured(preset) : false;
   const otherUnit = urlModel && urlModel !== stompModel ? urlModel : null;
 
   useEffect(() => {
     if (!preset) return;
-    // Wait for this account's History before writing, and never write over a stored (maybe edited)
-    // copy. A link for another unit stays out of History until "Open on my …".
-    if (historyReady && !inStore && !otherUnit) savePreset(preset);
+    // Wait for this account's History before writing. A link for another unit stays out of
+    // History until "Open on my …".
+    if (historyReady && needsSave && !otherUnit) savePreset(preset);
     if (preset.source === "featured" && preset.id !== id) {
       void navigate({ to: "/preset/$id", params: { id: preset.id }, replace: true });
     }
-  }, [preset, inStore, otherUnit, historyReady, id, savePreset, navigate]);
+  }, [preset, needsSave, otherUnit, historyReady, id, savePreset, navigate]);
+
+  function takeNewVersion() {
+    const src = preset ? featuredOriginal(preset.id) : undefined;
+    if (!preset || !src) return;
+    savePreset(featuredForPlayer({ ...src, createdAt: preset.createdAt }, settings));
+    toast.success("Updated to the newest version of this demo.");
+  }
 
   function openOnMyUnit() {
     if (!preset) return;
-    const settings = { stompModel, gear, wahMode, wahModelId, playbackTarget };
-    const opened = openFeatured(preset.id, settings, presets);
+    const opened = openFeatured(preset.id, { ...settings, stompModel }, presets);
     if (opened) {
       if (opened.save) savePreset(opened.preset);
       void navigate({ to: "/preset/$id", params: { id: opened.preset.id } });
@@ -99,11 +110,19 @@ function PresetPage() {
           </Button>
         </div>
       ) : null}
+      {outdated ? (
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-2 rounded-xl border border-border bg-card px-4 py-3 text-sm">
+          <span className="text-muted-foreground">We improved this demo since you changed it. Your changes are kept until you swap.</span>
+          <Button type="button" size="sm" variant="secondary" onClick={takeNewVersion}>
+            Get the new version
+          </Button>
+        </div>
+      ) : null}
       <PresetWorkspace
         preset={preset}
-        onChange={(next) => {
-          // Memory now, disk once the knob stops moving.
-          patchCurrent({ ...next, userEdited: true });
+        onChange={(next, opts) => {
+          // Memory now, disk once the knob stops moving. Only the player's own changes mark it edited.
+          patchCurrent({ ...next, userEdited: opts?.userEdit === false ? !!next.userEdited : true });
         }}
       />
     </>
